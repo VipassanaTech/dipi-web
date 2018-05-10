@@ -1,0 +1,135 @@
+.form-inline .control-label {
+	float: none;
+	display: block;
+	vertical-align: top;
+}
+
+.form-inline .form-group {
+	vertical-align: top !important;
+	display: block;
+	float: left;
+	margin-right: 25px;
+	margin-bottom: 12px !important;
+}
+
+.form-inline .form-type-radio, .form-inline .form-type-checkbox {
+	margin-right: 15px;
+}
+
+.form-item-a-address {
+	display: block;
+}
+
+.form-type-checkbox {
+	float: left;
+}
+
+.container-inline-date {
+	display: block;
+	float: left;
+	clear: left;
+}
+
+.form-item-a-address, .form-item-a-zip, .form-item-a-education, 
+.form-item-document-type, .form-item-ac-first-location-str, 
+.form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,
+.form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile,
+.form-item-a-lang-1,  .form-item-a-lang-3, .form-item-al-relationship, .form-item-al-relation-harmonious,
+.form-item-al-left-course-details, .form-item-al-personal-tragedy-details, .form-item-al-special-req-details,
+.form-item-al-recommending, 
+.form-item-l-course-type, .form-item-l-subject, .form-item-l-body, .form-item-files-l-attachment,
+.form-item-c-trust, .form-item-c-country, .form-item-c-phone, .form-item-c-email,
+.form-item-cs-seating-dir-male, .form-item-cs-email-from-name, .form-item-c-address,
+.form-item-cs-seat-per-row-male, .form-item-cs-chowky-per-row-male, .form-item-cs-cells-config, 
+.form-item-cs-seat-config {
+	clear: left;
+}
+
+.form-submit {
+	display: block !important;
+	clear: left;
+}
+
+input.ui-autocomplete-input {
+	background-image: url(/misc/throbber.gif) ;
+	/*background-position-y: 8px;*/
+	background-position: 100% 12px;
+	/*background-size: 24px 24px;*/
+	background-repeat: no-repeat;;
+}
+input.throbbing {
+	/*background-position-y: -18px; */
+	background-position: 100% -18px;
+}
+
+.ui-autocomplete {
+	z-index: 9999 !important;
+}
+
+#day-summary {
+	text-align: center;
+}
+
+#table-totals {
+	margin-right: 20px;
+}
+#table-special {
+	width: 450px;
+}
+
+
+#day-summary .table-responsive {
+	display: inline-block;
+	margin-right: 20px; 
+}
+
+.form-item-ct-teacher,.form-item-ct-type,.form-item-ct-group {
+	float: left;
+	margin-right: 12px;
+}
+
+
+.summary-block {
+	float: left;
+}
+
+@media only screen and (min-width: 768px) {
+	.summary-block { width: 49%; }
+}
+
+.summary-block .table-responsive {
+	display: inline-block;
+	margin-right: 35px;
+}
+
+.summary-block table.table-hover tr th:nth-child(1) { width: 40px; }
+
+
+.table-heading {
+    font-weight: bold;
+    text-align: center;
+    font-size: 16px;
+    line-height: 30px;
+}
+
+.table-merge-fields td {
+	padding: 5px 10px 5px 10px;
+}
+
+fieldset#edit-b {
+	float: right;
+}
+
+.right {
+	float: right;
+}
+
+
+#dialog-form .control-label {
+	font-size: 0.8em;
+	display: block;
+}
+
+textarea#comments {
+	width: 500px;
+}

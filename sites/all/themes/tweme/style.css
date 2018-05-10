@@ -1,0 +1,154 @@
+html {
+  background: #222;
+}
+body {
+  font-size: 160%;
+  font-weight: 300;
+}
+h1,
+h2,
+h3 {
+  font-weight: normal;
+  margin-bottom: 2rem;
+}
+p,
+p:last-child {
+  margin-bottom: 2rem;
+}
+.carousel-control {
+  font-size: 3rem;
+}
+.navbar-brand {
+  font-weight: normal;
+  color: #333333 !important;
+}
+.header {
+  position: relative;
+  text-align: center;
+  border-bottom: 1px solid #dddddd;
+  background: #eeeeee no-repeat center center;
+  background-size: cover;
+}
+.header .breadcrumb {
+  background: transparent;
+  font-size: 12px;
+  opacity: 0.5;
+}
+.header .jumbotron {
+  margin: 0;
+  /*padding: 12rem 0 6rem 0;*/
+  padding: 5rem 0 2rem 0;*/
+  background-color: transparent;
+}
+.header .jumbotron h1,
+.header .jumbotron h2 {
+  font-size: 63px;
+  font-weight: 300;
+  margin: 0 0 1rem 0;
+}
+.header-top {
+  position: absolute;
+  top: 5rem;
+  width: 100%;
+  z-index: 1;
+}
+.header-bottom {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}
+.header-bottom .nav-tabs {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+.main {
+  padding: 4rem 0 2rem 0;
+}
+.main-col {
+  margin-bottom: 2rem;
+}
+.region-sidebar-first .nav {
+  margin: 0 -1.9rem;
+}
+.region-sidebar-first .nav > li > a {
+  padding: 1rem 1.9rem;
+}
+.bottom {
+  background: #eeeeee;
+  padding: 4rem 0;
+}
+.region-share .at-share-btn {
+  float: left;
+  width: 20%;
+  max-width: none !important;
+  max-height: 5rem !important;
+  margin: 0 !important;
+  padding: 0.9rem;
+  text-align: center;
+  cursor: pointer;
+}
+.region-share .at_flat_counter {
+  float: left;
+  margin: 0.9rem 0 0.9rem -6rem !important;
+}
+.footer {
+  background: #222;
+  color: #777777;
+  margin-top: 0;
+  padding: 2rem 0;
+  border: none;
+  text-align: center;
+}
+.footer a {
+  color: #9d9d9d;
+  text-decoration: none;
+}
+.footer a:hover {
+  color: white;
+}
+.footer hr {
+  border-color: #333333;
+}
+.footer .block {
+  padding: 2rem 0;
+}
+.footer .block + .block {
+  border-top: 1px solid #333333;
+}
+#block-menu-menu-footer-sitemap {
+  text-align: left;
+}
+#block-menu-menu-footer-sitemap li {
+  margin-top: 0.5rem;
+}
+#block-menu-menu-footer-sitemap li.root {
+  margin-bottom: 1.5rem;
+}
+#block-menu-menu-footer-sitemap li.root > a {
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 2px;
+}
+#block-menu-menu-footer-sitemap li.root > ul {
+  margin-top: 1.5rem;
+}
+.region-header .block {
+   margin: 0px !important;
+}
+
+div.DTED.DTED_Lightbox_Wrapper {
+   top: 50px !important;
+}
+
+
+.DTE_Body_Content {
+    max-height: 400px !important;
+}
+
+/*
+.form-inline .control-label {
+        float: none;
+        display: block;
+        vertical-align: top;
+}
+*/

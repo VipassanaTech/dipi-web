@@ -1,0 +1,45 @@
+<?php
+
+/**
+ * @file
+ * Describe the file
+ *
+ * @author  Chris Kahn <ckahn@coldfrontlabs.ca>
+ */
+
+/**
+ * Implements hook_library().
+ */
+function responsive_tables_library() {
+  $path = libraries_get_path('MediaTable');
+
+  $libraries['responsive_tables'] = array(
+    'title' => 'Responsive Tables',
+    'version' => '1.0',
+    'js' => array(
+      $path . '/jquery.mediaTable.js' => array(),
+      $path . '/respond.min.js' => array(),
+    ),
+    'css' => array(
+      $path . '/jquery.mediaTable.css' => array(
+        'type' => 'file',
+        'media' => 'screen',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Implements hook_preprocess_views_view().
+ */
+function responsive_tables_preprocess_views_view(&$vars) {
+  if (isset($vars['view']->style_plugin->options['responsify']) &&
+      $vars['view']->style_plugin->options['responsify'] == TRUE
+  ) {
+    drupal_add_library('responsive_tables', 'responsive_tables');
+    drupal_add_js('jQuery(document).ready(function() { jQuery(".view-dom-id-' . $vars['view']->dom_id . ' table").mediaTable(); });', array(
+      'type' => 'inline',
+    ));
+  }
+}

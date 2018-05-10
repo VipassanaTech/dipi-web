@@ -1,0 +1,36 @@
+name = Tweme
+description = Ultra lightweight Bootstrap theme for Drupal.
+core = 7.x
+base theme = bootstrap
+
+simplytest_dependencies[] = jquery_update
+
+settings[bootstrap_navbar_position] = 'fixed-top'
+settings[bootstrap_cdn] = 3.3.4
+
+stylesheets[all][] = common.less
+stylesheets[all][] = style.less
+
+scripts[] = tweme.js
+
+regions[body_top] = Body top
+regions[page_top] = Page top
+regions[header] = Header
+regions[header_bg] = Header background
+regions[help] = Help
+regions[highlighted] = Highlighted
+regions[content] = Content
+regions[sidebar_first] = Sidebar first
+regions[sidebar_second] = Sidebar second
+regions[share] = Share
+regions[bottom] = Bottom
+regions[footer] = Footer
+regions[page_bottom] = Page bottom
+regions[body_bottom] = Body bottom
+
+; Information added by Drupal.org packaging script on 2015-09-14
+version = "7.x-3.0-beta5"
+core = "7.x"
+project = "tweme"
+datestamp = "1442267640"
+

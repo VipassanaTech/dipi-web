@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @file
+ * Cleanup the menu_marker variables.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function menu_marker_uninstall() {
+  variable_del('menu_marker_wrapper');
+}

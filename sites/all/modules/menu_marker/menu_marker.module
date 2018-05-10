@@ -1,0 +1,298 @@
+<?php
+/**
+ * @file
+ * Module to add a marker to menu items.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function menu_marker_help($path, $arg) {
+  if ($path == 'admin/help#menu_marker') {
+    return t('This module enables you to add a New/Updated tag to any menu item.');
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function menu_marker_menu() {
+  $items['admin/config/user-interface/menu_marker'] = array(
+    'title' => 'Menu Marker settings',
+    'description' => 'Configuration for the Menu Marker.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('menu_marker_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function menu_marker_permission() {
+  return array(
+    'add menu marker' => array(
+      'title' => t('Add menu marker'),
+      'description' => t('Allow user to set or modify a menu marker.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function menu_marker_form_menu_edit_item_alter(&$form, $form_state, $form_id) {
+
+  if (user_access('add menu marker')) {
+
+    if (isset($form['mlid']['#value'])) {
+      $options = unserialize(db_query('SELECT options FROM {menu_links} WHERE mlid = :mlid', array(':mlid' => $form['mlid']['#value']))->fetchField());
+    }
+    if (!isset($options) || !isset($options['menu_marker'])) {
+      $options = array(
+        'menu_marker' => array(
+          'enable' => NULL,
+          'menu_marker_text' => 'new',
+          'menu_marker_text_other' => '',
+          'menu_marker_position' => 'sup',
+        ),
+      );
+    }
+
+    $form['menu_marker'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Menu marker settings'),
+    );
+
+    $form['menu_marker']['add_new_marker'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Add a marker'),
+      '#default_value' => $options['menu_marker']['enable'],
+      '#description' => t('Check this if you want to add a marker to the menu. You may need to clear the cache after changing this option for it to take effect.'),
+    );
+
+    $form['menu_marker']['menu_marker_position'] = array(
+      '#type' => 'select',
+      '#title' => t('Select marker position'),
+      '#default_value' => $options['menu_marker']['menu_marker_position'],
+      '#options' => array(
+        'Append' => array(
+          'app-sup' => t('Superscript'),
+          'app-sub' => t('Subscript'),
+          'app-span' => t('Normal'),
+        ),
+        'Prepend' => array(
+          'pre-sup' => t('Superscript'),
+          'pre-sub' => t('Subscript'),
+          'pre-span' => t('Normal'),
+        ),
+
+      ),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="add_new_marker"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $form['menu_marker']['menu_marker_text'] = array(
+      '#title' => t('Select the marker text'),
+      '#type' => 'select',
+      '#default_value' => $options['menu_marker']['menu_marker_text'],
+      '#options' => array(
+        'new' => t('New'),
+        'updated' => t('Updated'),
+        'other' => t('Other'),
+      ),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="add_new_marker"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $form['menu_marker']['menu_marker_text_other'] = array(
+      '#title' => t('Enter the marker text'),
+      '#type' => 'textfield',
+      '#default_value' => $options['menu_marker']['menu_marker_text_other'],
+      '#description' => t('Leave blank to use default. Default is "New".'),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="menu_marker_text"]' => array('value' => 'other'),
+          ':input[name="add_new_marker"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $form['#submit'][] = 'menu_marker_form_submit';
+
+  }
+}
+
+/**
+ * Process the submitted form.
+ */
+function menu_marker_form_submit($form, &$form_state) {
+
+  $options = unserialize(db_query('SELECT options FROM {menu_links} WHERE mlid = :mlid', array(':mlid' => $form_state['values']['mlid']))->fetchField());
+  $options['menu_marker'] = array(
+    'enable' => $form_state['values']['add_new_marker'],
+    'menu_marker_text' => $form_state['values']['menu_marker_text'],
+    'menu_marker_text_other' => $form_state['values']['menu_marker_text_other'],
+    'menu_marker_position' => $form_state['values']['menu_marker_position'],
+
+  );
+
+  db_update('menu_links')
+  ->fields(array(
+    'options' => serialize($options),
+  ))
+  ->condition('mlid', $form_state['values']['mlid'])
+  ->execute();
+  menu_rebuild();
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function menu_marker_theme_registry_alter(&$theme_registry) {
+
+  if (!empty($theme_registry['menu_link'])) {
+    $theme_registry['menu_link']['function'] = 'menu_marker_menu_link';
+  }
+  if (!empty($theme_registry['link'])) {
+    $theme_registry['link']['function'] = 'menu_marker_link';
+  }
+}
+
+/**
+ * Implements hook_theme_menu_link().
+ */
+function menu_marker_menu_link($variables) {
+
+  $element = $variables['element'];
+  $sub_menu = '';
+
+  if ($element['#below']) {
+    $sub_menu = drupal_render($element['#below']);
+  }
+
+  $output = l($element['#title'], $element['#href'], $element['#localized_options']);
+
+  if (isset($element['#localized_options']['menu_marker'])) {
+    if ($element['#localized_options']['menu_marker']['enable'] == 1) {
+
+      $new_marker_html_array = menu_marker_make_marker_html($element['#localized_options']);
+      $new_marker_html = $new_marker_html_array['marker_html'];
+      $marker_position_hor = $new_marker_html_array['marker_pos_hor'];
+
+      // Purposely not using l() here.
+      $menu_href = check_plain(url($element['#href'], $element['#localized_options']));
+      $menu_attrib = drupal_attributes($element['#localized_options']['attributes']);
+      $menu_title = (isset($element['#localized_options']['html']) && $element['#localized_options']['html']) ? $element['#title'] : check_plain($element['#title']);
+      if ($marker_position_hor == 'pre') {
+        $menu_title = $new_marker_html . $menu_title;
+      }
+      else {
+        $menu_title .= $new_marker_html;
+      }
+      $output = '<a href="' . $menu_href . '"' . $menu_attrib . '>' . $menu_title . '</a>';
+    }
+  }
+
+  return '<li' . drupal_attributes($element['#attributes']) . '>' . $output . $sub_menu . "</li>\n";
+}
+
+
+/**
+ * Implements hook_theme_link().
+ */
+function menu_marker_link($variables) {
+
+  $menu_href = check_plain(url($variables['path'], $variables['options']));
+  $menu_attrib = drupal_attributes($variables['options']['attributes']);
+  $menu_title = $variables['options']['html'] ? $variables['text'] : check_plain($variables['text']);
+
+  $output = '<a href="' . $menu_href . '"' . $menu_attrib . '>' . $menu_title . '</a>';
+
+  if (isset($variables['options']['menu_marker'])) {
+    if ($variables['options']['menu_marker']['enable'] == 1) {
+
+      $new_marker_html_array = menu_marker_make_marker_html($variables['options']);
+      $new_marker_html = $new_marker_html_array['marker_html'];
+      $marker_position_hor = $new_marker_html_array['marker_pos_hor'];
+
+      if ($marker_position_hor == 'pre') {
+        $menu_title = $new_marker_html . $menu_title;
+      }
+      else {
+        $menu_title .= $new_marker_html;
+      }
+
+      $output = '<a href="' . $menu_href . '"' . $menu_attrib . '>' . $menu_title . '</a>';
+    }
+  }
+  return $output;
+}
+
+/**
+ * Build the admin settings form.
+ *
+ * @return array
+ *   The form array with new fields.
+ */
+function menu_marker_admin_settings($form, &$form_state) {
+
+  $form['menu_marker_wrapper'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Wrap the marker in Parentheses'),
+    '#default_value' => variable_get('menu_marker_wrapper', ''),
+    '#description' => t('Check this to wrap the marker in Parentheses.'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Helper function to build marker html.
+ *
+ * @param array $options
+ *   This is an array of options for the current menu item.
+ *
+ * @return string
+ *   The marker formatter marker text.
+ */
+function menu_marker_make_marker_html($options) {
+
+  $marker_position = explode('-', $options['menu_marker']['menu_marker_position']);
+
+  // Get the horizontal position of the marker i.e Append or Prepend.
+  $marker_position_hor = $marker_position[0];
+
+  // Get the vertical position of the marker i.e superscript, subscript or span.
+  $marker_position_ver = $marker_position[1];
+
+  $marker_text = t(ucfirst($options['menu_marker']['menu_marker_text']));
+
+  if ($marker_text == 'Other') {
+    // Default value.
+    $marker_text_other = t('New');
+
+    if (trim($options['menu_marker']['menu_marker_text_other']) != '') {
+      $marker_text_other = t(check_plain($options['menu_marker']['menu_marker_text_other']));
+    }
+    $marker_text = $marker_text_other;
+  }
+
+  if (variable_get('menu_marker_wrapper', '')) {
+    $marker_text = '(' . $marker_text . ')';
+  }
+
+  return array(
+    'marker_html' => '<' . $marker_position_ver . ' class="marker">' . $marker_text . '</' . $marker_position_ver . '>',
+    'marker_pos_hor' => $marker_position_hor,
+  );
+
+}

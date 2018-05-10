@@ -1,0 +1,30 @@
+body.navbar-is-fixed-top,
+body.navbar-is-fixed-top.admin-menu {
+  padding-top: 0 !important;
+}
+body.navbar-is-fixed-top.toolbar {
+  padding-top: 6.4rem !important;
+}
+img {
+  max-width: 100%;
+  height: auto;
+}
+div.links {
+  margin-top: 1rem;
+}
+.links.list-inline {
+  margin-left: 0;
+}
+.navbar-brand img {
+  float: left;
+  height: 3.2rem;
+  width: auto;
+  margin: -0.6rem 1rem 0 0;
+}
+.jumbotron {
+  background: #eeeeee no-repeat center center;
+  background-size: cover;
+}
+.hljs {
+  background: transparent !important;
+}

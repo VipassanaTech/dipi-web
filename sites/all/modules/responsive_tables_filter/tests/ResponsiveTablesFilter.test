@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Tests for responsive_tables_filter module.
+ */
+
+/**
+ * Minimal testing for drupal.org of responsive_tables_filter module.
+ *
+ * @group filter
+ */
+class ResponsiveTablesFilterWebTestCase extends DrupalWebTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Responsive Tables Filter access'),
+      'description' => t('Tests for responsive_tables_filter module.'),
+      'group' => t('Filter'),
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp('views', 'filter', 'responsive_tables_filter');
+  }
+
+  /**
+   * The tests.
+   */
+  public function test() {
+    $this->drupalGet('admin/config/content/responsive_tables_filter');
+    $this->assertResponse(403, 'Anonymous user unable to access configuration page.');
+
+    $user = $this->drupalCreateUser(array('administer views'));
+    $user = $this->drupalLogin($user);
+
+    $this->drupalGet('admin/config/content/responsive_tables_filter');
+    $this->assertResponse(200, 'User with "administer views" able to access configuration page.');
+  }
+
+}

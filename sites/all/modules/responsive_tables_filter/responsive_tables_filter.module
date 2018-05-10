@@ -1,0 +1,398 @@
+<?php
+
+/**
+ * @file
+ * Make tables responsive, when filter is enabled for the field.
+ */
+
+/**
+ * System variable to toggle responsive tables on Drupal Views.
+ */
+define('RESPONSIVE_TABLES_FILTER_VIEWS', 'responsive_tables_filter_views');
+
+/**
+ * System variable to toggle responsive tables on admin theme.
+ */
+define('RESPONSIVE_TABLES_FILTER_ADMIN', 'responsive_tables_filter_admin');
+
+/**
+ * System variable to toggle responsive tables on file tables.
+ */
+define('RESPONSIVE_TABLES_FILTER_FILES', 'responsive_tables_filter_files');
+
+/**
+ * System variable to toggle asset loading on every page.
+ */
+define('RESPONSIVE_TABLES_FILTER_EVERY_PAGE', 'responsive_tables_filter_every_page');
+
+/**
+ * System variable to toggle asset loading on every page.
+ */
+define('RESPONSIVE_TABLES_FILTER_CUSTOM_CSS', 'responsive_tables_filter_custom_css');
+
+/**
+ * Path to module configuration.
+ */
+define('RESPONSIVE_TABLES_FILTER_ADMIN_PATH', 'admin/config/content/responsive_tables_filter');
+
+/**
+ * Implements hook_menu().
+ *
+ * Defines the menu routing for the administration path.
+ */
+function responsive_tables_filter_menu() {
+  return array(
+    RESPONSIVE_TABLES_FILTER_ADMIN_PATH => array(
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('responsive_tables_filter_admin_form'),
+      'access arguments' => array('administer views'),
+      'title' => 'Responsive Tables',
+      'description' => 'Configure which tables should be responsive',
+    ),
+  );
+}
+
+/**
+ * Form callback to control module settings.
+ *
+ * Allows on/off for responsiveness on Drupal Views.
+ */
+function responsive_tables_filter_admin_form($form, &$form_state) {
+
+  $form['introductory_text'] = array(
+    '#markup' => '<p>' . t('Enable responsive tables in WYSIWYG fields by going to !text_formats and checking "Make tables responsive" for the desired text format(s).', array('!text_formats' => l(t('Text Formats'), '/admin/config/content/formats'))) . '</p><hr />',
+  );
+
+  $form[RESPONSIVE_TABLES_FILTER_EVERY_PAGE] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Load CSS and Javascript on every page'),
+    '#description' => t('This is useful if you use Tablesaw in content other than nodes or Views tables (e.g., blocks or Panel displays). However this unconditionally increases the asset weight of page loads, which may be a performance drawback for sites that do not aggregate CSS/JS.'),
+    '#default_value' => variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE),
+  );
+
+  $form[RESPONSIVE_TABLES_FILTER_CUSTOM_CSS] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path to custom CSS'),
+    '#description' => t('It may be necessary to override the module-provided CSS if, for example, your theme uses different media breakpoints. Copy tablesaw/css/tablesaw.stackonly.css from this module and modify as necessary, then provide the path, relative to the Drupal root directory, of the new file. This allows you to continue to update this module without maintaining a patched version.'),
+    '#default_value' => variable_get(RESPONSIVE_TABLES_FILTER_CUSTOM_CSS, ''),
+  );
+
+  $form[RESPONSIVE_TABLES_FILTER_FILES] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Apply to file table display'),
+    '#description' => t('This only applies when you have set a file field display format to "Table of files".'),
+    '#default_value' => variable_get(RESPONSIVE_TABLES_FILTER_FILES, TRUE),
+  );
+
+  $form[RESPONSIVE_TABLES_FILTER_VIEWS] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Apply to Views'),
+    '#description' => t('When checked, Views table displays will be responsive.'),
+    '#default_value' => variable_get(RESPONSIVE_TABLES_FILTER_VIEWS, TRUE),
+  );
+
+  $form[RESPONSIVE_TABLES_FILTER_ADMIN] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Apply to Views in administration theme'),
+    '#description' => t('When checked, responsive components will load for the administration theme.'),
+    '#default_value' => variable_get(RESPONSIVE_TABLES_FILTER_ADMIN, FALSE),
+    '#states' => array(
+      'disabled' => array(
+        ':input[name="' . RESPONSIVE_TABLES_FILTER_VIEWS . '"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
+  $form['#validate'] = ['responsive_tables_filter_config_form_validate'];
+
+  // Use the system_settings_form() to add submit handlers to the button.
+  return system_settings_form($form);
+}
+
+/**
+ * Custom form validation.
+ */
+function responsive_tables_filter_config_form_validate($form, &$form_state) {
+  $values = $form_state['values'];
+  if (!empty($values[RESPONSIVE_TABLES_FILTER_CUSTOM_CSS])) {
+    $path = DRUPAL_ROOT . '/' . $values[RESPONSIVE_TABLES_FILTER_CUSTOM_CSS];
+    if (!file_exists($path)) {
+      form_set_error(RESPONSIVE_TABLES_FILTER_CUSTOM_CSS, t('No file exists at %path', array('%path' => $path)));
+    }
+  }
+}
+
+/**
+ * Implements hook_init().
+ */
+function responsive_tables_filter_init() {
+  // If this page is using the default theme, AND the "every page" configuration
+  // setting was checked, then add tablesaw on every page. Otherwise,
+  // responsive_tables_filter_preprocess_page() conditionally adds it on a
+  // per-page basis.
+  if (_responsive_tables_filter_is_theme_default() && variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE)) {
+    _responsive_tables_filter_add_js_css();
+  }
+}
+
+/**
+ * Implements hook_filter_info().
+ */
+function responsive_tables_filter_filter_info() {
+  $filters = array();
+  $filters['tablesaw'] = array(
+    'title' => t('Make tables responsive'),
+    'process callback' => '_tablesaw_filter',
+  );
+  return $filters;
+}
+
+/**
+ * Filter callback for tablesaw filter.
+ */
+function _tablesaw_filter($text, $filter, $format, $langcode, $cache, $cache_id) {
+  // Older versions of libxml always add DOCTYPE, <html>, and <body> tags.
+  // See http://www.php.net/manual/en/libxml.constants.php.
+  // Sometimes, PHP is >= 5.4, but libxml is old enough that the constants are
+  // not defined.
+  static $new_libxml;
+  if (!isset($new_libxml)) {
+    $new_libxml = defined(LIBXML_VERSION) && LIBXML_VERSION >= 20708;
+  }
+  if ($text != '') {
+    $tables = array();
+    libxml_use_internal_errors(TRUE);
+    // LibXML requires that the html is wrapped in a root node.
+    $rooted_text = '<root>' . $text . '</root>';
+    $dom = new DOMDocument();
+    if ($new_libxml) {
+      $dom->loadHTML(mb_convert_encoding($rooted_text, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    }
+    else {
+      $dom->loadHTML(mb_convert_encoding($rooted_text, 'HTML-ENTITIES', 'UTF-8'));
+    }
+    // Retrieve user-defined tables defined by xpath, or default to table tag.
+    $query = variable_get('responsive_tables_filter_table_xpath', FALSE);
+    if ($query) {
+      $xpath = new DOMXPath($dom);
+      $tables = $xpath->query($query);
+    }
+    else {
+      $tables = $dom->getElementsByTagName('table');
+    }
+    // Find all tables in text.
+    if ($tables->length !== 0) {
+      foreach ($tables as $table) {
+        // Find existing class attributes, if any, and append tablesaw class.
+        $existing_classes = $table->getAttribute('class');
+        if (strpos($existing_classes, 'no-tablesaw') === FALSE) {
+          $new_classes = !empty($existing_classes) ? $existing_classes . ' tablesaw tablesaw-stack' : 'tablesaw tablesaw-stack';
+          $table->setAttribute('class', $new_classes);
+          // Force data-tablesaw-mode attribute to be "stack".
+          $table->setAttribute('data-tablesaw-mode', 'stack');
+        }
+      }
+      // Get innerHTML of root node.
+      $html = "";
+      foreach ($dom->getElementsByTagName('root')->item(0)->childNodes as $child) {
+        // Re-serialize the HTML.
+        $html .= $dom->saveHTML($child);
+      }
+      // For lower older libxml, use preg_replace to clean up DOCTYPE.
+      if (!$new_libxml && strpos($html, '<html><body>') != FALSE) {
+        $html_start = strpos($html, '<html><body>') + 12;
+        $html_length = strpos($html, '</body></html>') - $html_start;
+        $html = substr($html, $html_start, $html_length);
+      }
+      return $html;
+    }
+  }
+  return $text;
+}
+
+/**
+ * Implements hook_preprocess_page().
+ *
+ * Adds tablesaw JS when tables present and "every_page" is off.
+ */
+function responsive_tables_filter_preprocess_page(&$variables) {
+  // Only execute this preprocess logic if every page loading is off and the
+  // page request is for the default theme.
+  if (_responsive_tables_filter_is_theme_default() && isset($variables['node']) && (!variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE))) {
+    $formats_with_tablesaw = array();
+    // Get text formats that have "tablesaw filter" enabled.
+    $result = db_query('SELECT n.format FROM {filter} n WHERE n.module = :module AND n.status = 1', array(':module' => 'responsive_tables_filter'));
+    foreach ($result as $record) {
+      $formats_with_tablesaw[] = $record->format;
+    }
+    array_unique($formats_with_tablesaw);
+    $node = $variables['node'];
+    // Switch to workbench moderation element if present.
+    if (isset($node->workbench_moderation['current']) && !isset($node->entity_view_prepared)) {
+      $node = workbench_moderation_node_current_load($node);
+    }
+    $field_info = field_info_instances('node', $node->type);
+    $lang = $node->language;
+    $fields = array_keys($field_info);
+
+    foreach ($fields as $field) {
+      $f = $field;
+      // Add the required JS only if the following 3 conditions are met:
+      // (1) The field must have a text format value
+      // (2) The field format must have tablesaw filter enabled
+      // (3) The field value must contain '<table'.
+      if (isset($node->{$f}[$lang][0]['format']) && in_array($node->{$f}[$lang][0]['format'], $formats_with_tablesaw) && strpos($node->{$f}[$lang][0]['value'], '<table') !== FALSE) {
+        _responsive_tables_filter_add_js_css(FALSE);
+        // Quit searching once a field matching the criteria is found.
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_field().
+ */
+function responsive_tables_filter_preprocess_field(&$variables) {
+  $field_type = $variables['element']['#field_type'];
+
+  switch ($field_type) {
+    case 'tablefield':
+      if (isset($variables['items'])) {
+        // Account for field deltas.
+        foreach ($variables['items'] as &$item) {
+          $item['#attributes']['class'][] = 'tablesaw';
+          $item['#attributes']['class'][] = 'tablesaw-stack';
+          $item['#attributes']['data-tablesaw-mode'] = 'stack';
+        }
+      }
+
+      break;
+  }
+}
+
+/**
+ * Implements hook_field_formatter_info_alter().
+ */
+function responsive_tables_filter_field_formatter_info_alter(&$info) {
+  if (variable_get(RESPONSIVE_TABLES_FILTER_FILES, TRUE)) {
+    $info['file_table']['module'] = 'responsive_tables_filter';
+  }
+
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function responsive_tables_filter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  // First replicate file module's rendering.
+  $element = file_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display);
+  // Override the render function.
+  $element[0]['#theme'] = 'file_formatter_responsive_table';
+
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function responsive_tables_filter_theme() {
+  return array(
+    'file_formatter_responsive_table' => array(
+      'variables' => array('items' => NULL),
+    ),
+  );
+}
+
+/**
+ * Returns HTML for a file attachments table.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - items: An array of file attachments.
+ *
+ * @ingroup themeable
+ */
+function theme_file_formatter_responsive_table(array $variables) {
+  // If we aren't loading assets on every page, do so here.
+  if (!variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE)) {
+    _responsive_tables_filter_add_js_css();
+  }
+
+  $header = array(t('Attachment'), t('Size'));
+  $rows = array();
+  foreach ($variables['items'] as $delta => $item) {
+    $rows[] = array(
+      theme('file_link', array('file' => (object) $item)),
+      format_size($item['filesize']),
+    );
+  }
+  // The following attributes is what is unique about this render.
+  $attributes = array(
+    'class' => array(
+      'tablesaw',
+      'tablesaw-stack',
+    ),
+    'data-tablesaw-mode' => 'stack',
+  );
+  return empty($rows) ? '' : theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'attributes' => $attributes,
+  ));
+}
+
+/**
+ * Implements hook_preprocess_views_view_table().
+ *
+ * Adds tablesaw JS when tables present and CSS/JS aggregation is off to table.
+ */
+function responsive_tables_filter_preprocess_views_view_table(&$variables) {
+  // Only execute if this View is using the default theme.
+  if ((_responsive_tables_filter_is_theme_default() || variable_get(RESPONSIVE_TABLES_FILTER_ADMIN, TRUE)) && variable_get(RESPONSIVE_TABLES_FILTER_VIEWS, TRUE)) {
+    // Add tablesaw classes & attribute.
+    $variables['classes_array'][] = 'tablesaw';
+    $variables['classes_array'][] = 'tablesaw-stack';
+    $variables['attributes_array']['data-tablesaw-mode'] = 'stack';
+    // If we aren't loading assets on every page, do so here.
+    if (!variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE)) {
+      _responsive_tables_filter_add_js_css();
+    }
+  }
+}
+
+/**
+ * Check whether we are on a page using the default theme.
+ *
+ * @return bool
+ *   Whether or not this page uses the default theme.
+ */
+function _responsive_tables_filter_is_theme_default() {
+  global $theme;
+  $theme_default = variable_get('theme_default', FALSE);
+  return $theme == $theme_default;
+}
+
+/**
+ * Add Tablesaw JS and CSS.
+ */
+function _responsive_tables_filter_add_js_css() {
+  $every_page = variable_get(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, FALSE);
+  $module_path = drupal_get_path('module', 'responsive_tables_filter');
+
+  // Check if the user has supplied custom CSS. If not, use default.
+  $custom = variable_get(RESPONSIVE_TABLES_FILTER_CUSTOM_CSS, '');
+  $css = (!empty($custom)) ? $custom : $module_path . '/tablesaw/css/tablesaw.stackonly.css';
+  drupal_add_css($css, array('every_page' => $every_page));
+
+  drupal_add_js($module_path . '/tablesaw/js/tablesaw.stackonly.js', array(
+    'every_page' => $every_page,
+    'scope' => 'footer',
+    'weight' => 30,
+  ));
+  drupal_add_js($module_path . '/tablesaw/js/tablesaw-init.js', array(
+    'every_page' => $every_page,
+    'scope' => 'footer',
+    'weight' => 31,
+  ));
+}

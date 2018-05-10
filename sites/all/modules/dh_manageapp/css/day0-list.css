@@ -1,0 +1,98 @@
+table.table-day0-list {
+	width: 1100px;
+	table-layout:fixed;
+}
+
+.header-day0 {
+	width: 1100px;
+}
+
+table.table-day0-list tr th:nth-child(1) { width: 30px; }
+table.table-day0-list tr th:nth-child(2) { width: 65px; }
+table.table-day0-list tr th:nth-child(3) { width: 200px; }
+table.table-day0-list tr th:nth-child(4) { width: 30px; }
+table.table-day0-list tr th:nth-child(5) { width: 85px; }
+table.table-day0-list tr th:nth-child(6) { width: 35px; }
+table.table-day0-list tr th:nth-child(7) { width: 75px; }
+table.table-day0-list tr th:nth-child(8) { width: 100px; }
+table.table-day0-list tr th:nth-child(9) { width: 210px; }
+table.table-day0-list tr th:nth-child(10) { width: 100px; }
+table.table-day0-list tr th:nth-child(11) { width: 25px; }
+table.table-day0-list tr th:nth-child(12) { width: 25px; }
+table.table-day0-list tr th:nth-child(13) { width: 25px; }
+table.table-day0-list tr th:nth-child(14) { width: 25px; }
+table.table-day0-list tr th:nth-child(15) { width: 25px; }
+table.table-day0-list tr th:nth-child(16) { width: 25px; }
+table.table-day0-list tr th:nth-child(17) { width: 100px; }
+
+table.table-day0-list th {
+	font-weight: bold;
+	font-size: 11pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: none;
+	text-align: left;
+	word-wrap:break-word;
+	vertical-align: top;
+}
+
+table.table-day0-list td {
+	font-weight: normal;
+	font-size: 11pt;
+	text-transform: uppercase;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: none;
+	border-width: 1px;
+	border-bottom-style: dashed;
+	border-color: gray;
+	background-color: white;
+	padding: 6px;
+	word-wrap:break-word;
+	text-align: left;
+	vertical-align: top;
+}
+
+
+.title {
+	font-weight: bold;
+	font-size: 13pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: underline;
+	margin-bottom: 5px;
+}
+
+.title-head {
+	font-weight: bold;
+	font-size: 11pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: none;
+}
+
+.title-info {
+	font-weight: bold;
+	font-size: 13pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: underline;
+}
+
+
+
+#footer {
+	page-break-after: always;
+}

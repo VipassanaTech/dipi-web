@@ -1,0 +1,1282 @@
+<?php
+include_once(dirname(__FILE__)."/inc/centre.inc");
+include_once(dirname(__FILE__)."/inc/pdf.inc");
+include_once(dirname(__FILE__)."/inc/letters.inc");
+include_once(dirname(__FILE__)."/inc/zero-day.inc");
+include_once(dirname(__FILE__)."/inc/course.inc");
+include_once(dirname(__FILE__)."/inc/application.inc");
+include_once(dirname(__FILE__)."/inc/search.inc");
+
+
+function dh_manageapp_help($path, $arg)
+{
+	$output = '';
+	switch ($path)
+	{
+    case "admin/help#dh_manageapp":
+		$output = '<p>'.  t("Provides functionality to manage the life cycle of an applicant in a Vipassana Course") .'</p>';
+		break;
+	}
+	return $output;
+}
+
+function dh_manageapp_init()
+{
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/jquery.loading.min.js');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery.loading.min.css');
+}
+
+function dh_manageapp_permission()
+{
+	$perms['access manageapp'] = array('title' => t('Access ManageApp') ) ;
+	$perms['administer manageapp'] = array('title' => t('Administer ManageApp module') ) ;
+	$perms['access manageapp settings'] = array('title' => t('Access ManageApp System Settings') ) ;
+	$perms['access all centres'] = array('title' => t('Access All Centres') ) ;
+	$perms['access zero day'] = array('title' => t('Access Zero Day Module') ) ;
+	$perms['access centre'] = array('title' => t('Access Centre Details') ) ;
+	$perms['access centre settings'] = array('title' => t('Access Centre Settings') ) ;
+	$perms['access course'] = array('title' => t('Access Course Module') ) ;
+	$perms['manage course'] = array('title' => t('Manage Courses') ) ;
+	$perms['add application'] = array('title' => t('Add Application') ) ;
+	$perms['edit application'] = array('title' => t('Edit Application') ) ;
+	$perms['delete application'] = array('title' => t('Delete Application') ) ;
+	$perms['access application pdf'] = array('title' => t('Access PDF of applicant') ) ;
+	$perms['access application photos'] = array('title' => t('Access Photos of applicant') ) ;
+	$perms['change status'] = array('title' => t('Change Application Status') ) ;
+	$perms['transfer course'] = array('title' => t('Transfer to Course') ) ;
+	$perms['manage letters'] = array('title' => t('Manage Letters') ) ;
+	$perms['access daily activity'] = array('title' => t('Access Daily Activity'));
+	$perms['access male'] = array('title' => t('Access Male Applications'));
+	$perms['access female'] = array('title' => t('Access Female Applications'));
+	$perms['export data'] = array('title' => t('Ability to Export data as PDF/Excel'));
+	$perms['view teachers list'] = array('title' => t('Access Teachers List'));
+	$perms['received applications block'] = array('title' => t('View Received Applications Block'));
+	$perms['upcoming courses block'] = array('title' => t('View Upcoming Courses Block'));
+	return $perms;
+}
+
+function dh_manageapp_menu()
+{
+    $items['admin/dh_manageapp'] = array( 'title' => t('Manage Applicant Settings'),
+           'page arguments' => array('dh_manageapp_admin_form'),
+           'page callback' => 'drupal_get_form',
+           'access arguments' => array('administer manageapp'));
+
+    $items['manage-course/%centre_id'] = array('title' => t('Manage Courses'),
+	       'page callback' => 'dh_manage_courses',
+	       'access arguments' => array('manage course'),
+	       'type' => MENU_CALLBACK);
+
+    $items['course/%centre_id/%course_id'] = array('title' => t('Manage Course'),
+	       'page callback' => 'dh_manage_courses_main',
+	       'access arguments' => array('access course'),
+	       'type' => MENU_CALLBACK);
+
+    $items['course/get-types'] = array('title' => t('Course Types'),
+	       'page callback' => 'dh_get_course_types',
+	       'access arguments' => array('access course'),
+	       'type' => MENU_CALLBACK);
+
+    $items['course/handler/%centre_id'] = array('title' => t('Manage Courses'),
+	       'page callback' => 'dh_manage_course_handler',
+	       'access arguments' => array('manage course'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre'] = array('title' => t('Manage Centre'),
+	       'page callback' => 'dh_manage_centre',
+	       'access arguments' => array('access centre'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id'] = array('title' => t('Manage Centre'),
+	       'page callback' => 'dh_manage_centre',
+	       'access arguments' => array('access centre'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/add'] = array('title' => t('Add Centre'),
+	       'page callback' => 'dh_addedit_centre',
+	       'access arguments' => array('access all centres'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/edit'] = array('title' => t('Edit Centre'),
+	       'page callback' => 'dh_addedit_centre',
+	       'access arguments' => array('access centre settings'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/acco-handler'] = array('title' => t('Accomodation'),
+	       'page callback' => 'dh_acco_handler',
+	       'access arguments' => array('access centre'),
+	       'type' => MENU_CALLBACK);
+
+
+    $items['user-mapping'] = array('title' => t('Manager User Mapping'),
+	       'page callback' => 'dh_manage_usermapping',
+	       'access arguments' => array('access all centres'),
+	       'type' => MENU_CALLBACK);
+
+    $items['user-mapping/handler'] = array('title' => t('Manager User Mapping'),
+	       'page callback' => 'dh_manage_usermapping_handler',
+	       'access arguments' => array('access all centres'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['search-app'] = array( 'title' => t('Search'),
+           'page arguments' => array('dh_manageapp_search_form'),
+	       'page callback' => 'drupal_get_form',
+	       'access arguments' => array('access all centres'),
+	       'type' => MENU_LOCAL_TASK);
+
+	$items['search-app/%centre_id'] = array( 'title' => t('Search'),
+           'page arguments' => array('dh_manageapp_search_form'),
+	       'page callback' => 'drupal_get_form',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_LOCAL_TASK);
+
+
+	$items['search-course/%centre_id/%course_id'] = array( 'title' => t('Search'),
+	       'page callback' => '_search_course',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app-courses/%app_id'] = array( 'title' => t('Search'),
+	       'page callback' => '_search_student',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app-clarifications/%app_id'] = array( 'title' => t('Search'),
+	       'page callback' => '_get_clarifications',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app-activity/%app_id'] = array( 'title' => t('Search'),
+	       'page callback' => '_get_activity',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['change-status/%app_id'] = array( 'title' => t('Search'),
+	       'page callback' => '_change_status',
+	       'access arguments' => array('change status'),
+	       'type' => MENU_CALLBACK);
+
+	$items['letters/%centre_id'] = array( 'title' => t('Manage Letters'),
+	       'page callback' => 'dh_manage_letters',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
+	$items['letters/%centre_id/edit/%letter_id'] = array( 'title' => t('Manage Letters'),
+	       'page callback' => 'dh_manage_letters',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
+	$items['letters/%centre_id/delete/%letter_id'] = array( 'title' => t('Manage Letters'),
+	       'page callback' => 'dh_manage_letters',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
+	$items['letter-fields/%centre_id'] = array( 'title' => t('Manage Letter Fields'),
+	       'page callback' => 'dh_manage_letter_fields',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
+    $items['letter-fields/handler/%centre_id'] = array('title' => t('Manage Letter Fields'),
+	       'page callback' => 'dh_manage_letter_fields_handler',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['zero-day'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['zero-day/%centre_id'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['zero-day/%centre_id/%course_id'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['app/%app_id/edit'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('edit application'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app/%app_id/edit/%ctools_js'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('edit application'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app/%app_id/delete'] = array( 'title' => t('Day Zero'),
+	       'page callback' => '_delete_app',
+	       'access arguments' => array('delete application'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['app/add/%centre_id/%course_id'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('add application'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app/add/%centre_id/%course_id/%ctools_js'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['app-update-attended/%app_id'] = array( 'title' => t('Day Zero'),
+	       'page callback' => 'dh_app_update_attended',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['move-to-course/%app_id/%course_id'] = array( 'title' => t('Move To Course'),
+	       'page callback' => '_move_to_course',
+	       'access arguments' => array('access course'),
+	       'type' => MENU_CALLBACK);
+
+	$items['teacher-list/%centre_id/%course_id'] = array( 'title' => t('Teacher List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('view teachers list'),
+	       'type' => MENU_CALLBACK);
+
+	$items['manager-list/%centre_id/%course_id'] = array( 'title' => t('Teacher List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['cell-list/%centre_id/%course_id'] = array( 'title' => t('Cell List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['laundry-list/%centre_id/%course_id'] = array( 'title' => t('Laundry List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['valuable-list/%centre_id/%course_id'] = array( 'title' => t('Valuable List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['seating/%centre_id/%course_id'] = array( 'title' => t('Teacher List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['day0-list/%centre_id/%course_id'] = array( 'title' => t('Day Zero List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['student-chit/%centre_id/%course_id'] = array( 'title' => t('Student Chit'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['report-day11/%centre_id/%course_id'] = array( 'title' => t('Day 11 Report'),
+	       'page callback' => 'course_day11_report',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['assign-teacher/%centre_id/%course_id'] = array( 'title' => t('Assign Teachers'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['assign-teacher/delete/%centre_id/%course_id/%course_teacher_id'] = array( 'title' => t('Assign Teachers'),
+	       'page callback' => 'dh_assign_teacher_delete',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+    $items['daily-activity/%centre_id'] = array('title' => t('Daily Activity'),
+           'page arguments' => array('dh_daily_activity_form'),
+           'page callback' => 'drupal_get_form',
+	       'access arguments' => array('access daily activity'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['autocomplete/get-country'] = array( 'title' => t('Country'),
+	       'page callback' => '_get_country',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['autocomplete/get-state'] = array( 'title' => t('State'),
+	       'page callback' => '_get_state',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['autocomplete/get-city'] = array( 'title' => t('City'),
+	       'page callback' => '_get_city',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['get-location-from-pincode'] = array( 'title' => t('Pincode'),
+	       'page callback' => '_get_location_from_pincode',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['autocomplete/get-teacher'] = array( 'title' => t('Teacher'),
+	       'page callback' => '_get_teacher',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['webhook/mailgun'] = array( 'title' => t('Mailgun'),
+	       'page callback' => 'mailgun_webhook',
+	       'access arguments' => array('access content'),
+	       'type' => MENU_CALLBACK);
+
+	return $items;
+}
+
+
+function dh_manageapp_file_download($uri) 
+{
+	// Get the file record based on the URI. If not in the database just return.
+	//drupal_set_message($uri);
+	$file = drupal_realpath($uri);
+ 	if ( !file_exists($file) )
+ 	{
+ 		watchdog('File', 'File not Found - '.$uri);
+ 		return;
+ 	}
+ 	$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+ 	
+	global $user;
+
+	if ( $ext == 'pdf' )
+	{
+		if (user_access('access application pdf'))
+		{
+			$name = basename($file);
+			$header = array('Content-Type' => 'application/pdf', 'Content-Length' => filesize($file), 'Content-disposition' => 'inline; filename="'.$name.'"',
+				'Cache-Control' => 'private');
+			return $header;
+		}		
+	}
+	elseif ( in_array($ext, array('jpg', 'jpeg', 'png' ))  )
+	{
+		if ( user_access('access application photos') )
+		{
+			if ( $ext == 'jpg' ) $ext = 'jpeg';
+			$name = basename($file);
+			$header = array('Content-Type' => 'image/'.$ext, 'Content-Length' => filesize($file) );
+			return $header;
+
+		}
+	}
+	elseif ( in_array($ext, array('doc', 'docx' ))  )
+	{
+		if (user_access('access application pdf'))
+		{
+			$name = basename($file);
+			$header = array('Content-Type' => 'application/octet-stream', 'Content-Length' => filesize($file), 
+				'Content-disposition' => 'attachment; filename="'.$name.'"',
+				'Cache-Control' => 'private');
+			return $header;
+		}		
+	}
+}
+
+
+
+function centre_id_load( $id )
+{
+	global $user;
+	if (!is_numeric($id))
+		return false;
+	$temp = db_query("select c_id from dh_center where c_id='$id'")->fetchField();
+	if ($temp <> $id)
+		return false;
+
+	if (user_access("access all centres"))
+		return $id;
+
+	$temp = db_query("select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='$id' and uc_deleted=0")->fetchField();
+	//watchdog('TEMP', "select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='$id'");
+	if ($temp > 0 )
+		return $id;
+
+	return false;
+}
+
+function course_id_load( $id )
+{
+	global $user;
+	if (!is_numeric($id))
+		return false;
+	$temp = db_query("select c_id from dh_course where c_id='$id'")->fetchField();
+	if ($temp <> $id)
+		return false;
+
+	if (user_access("access all centres"))
+		return $id;
+
+	$centre = db_query("select c_center from dh_course where c_id=$id")->fetchField();
+	$temp = db_query("select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='$centre' and uc_deleted=0")->fetchField();
+	//watchdog('TEMP', "select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='$id'");
+	if ($temp > 0 )
+		return $id;
+
+	return false; 
+}
+
+function app_id_load( $id )
+{
+	global $user;
+	if ( ! is_numeric($id) )
+		return false;
+
+	$centre_id = db_query("select a_center from dh_applicant where a_id='$id'")->fetchField();
+	if ($centre_id == '')
+		return false;
+	if (user_access("access all centres"))
+		return $id;
+	$count = db_query("select count(uc_id) from dh_user_center where uc_center='$centre_id' and uc_user='".$user->uid."'  and uc_deleted=0")->fetchField();
+	if ( $count <= 0  )
+		return false;
+
+	$gender = db_query("select a_gender from dh_applicant where a_id=$id")->fetchField();
+	$gender = strtoupper($gender);
+	if (($gender == 'M') && (! user_access('access male')))
+		return false;		
+
+	if (($gender == 'F') && (! user_access('access female')))
+		return false;
+
+	return $id;
+}
+
+
+function course_teacher_id_load( $id )
+{
+	if (!is_numeric($id))
+		return false;
+	$temp = db_query("select ct_id from dh_course_teacher where ct_id=$id")->fetchField();
+	if ( $temp <> $id )
+		return false;
+	return $id;
+}
+
+
+function letter_id_load( $id )
+{
+	if (!is_numeric($id))
+		return false;
+	$temp = db_query("select l_id from dh_letter where l_id=$id")->fetchField();
+	if ( $temp <> $id )
+		return false;
+	return $id;	
+}
+
+
+function dh_manageapp_admin_form($form, &$form_state)
+{
+	$options = array("3 month" => '3 Months Old', '6 month' => '6 Months Old', '9 month' => '9 Months Old', '12 month' => '1 Year old' );
+ 	$form['max_old_courses'] = array('#type' => 'select', '#options' => $options , '#title' => 'Maximum Old Courses to show?', 
+ 		'#default_value' => variable_get('max_old_courses', '6 month') );
+
+ 	$form['cell_list_rows_per_page'] = array('#type' => 'textfield', '#size' => '5' , '#title' => 'Rows per page in Cell List For Print?', 
+ 		'#default_value' => variable_get('cell_list_rows_per_page', '5') );
+
+ 	$form['student_chit_rows_per_page'] = array('#type' => 'textfield', '#size' => '5' , '#title' => 'Blocks per page in Student Chit For Print?', 
+ 		'#default_value' => variable_get('student_chit_rows_per_page', '18') );
+
+ 	$group = 'Test Mode Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => $group , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['mode_test'] = array('#type' => 'radios', '#options' => array('0' => 'No', '1' => 'Yes' ) , '#title' => 'Test mode on?', 
+ 		'#default_value' => variable_get('mode_test', '0') );
+ 	$form[$group]['mode_test_emails'] = array('#type' => 'textfield', '#size' => 120 , '#title' => 'Test mode Emails to send letters?', 
+ 		'#default_value' => variable_get('mode_test_emails', '') );
+
+
+ 	$group = 'Mail Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'Mail Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['mailgun_primary_domain'] = array('#title' => 'Mailgun Primary Domain', '#type' => 'textfield', '#size' => 40, '#default_value' => variable_get('mailgun_primary_domain', ''));
+ 	$form[$group]['mailgun_key'] = array('#title' => 'Mailgun Key', '#type' => 'textfield', '#size' => 40, '#default_value' => variable_get('mailgun_key', ''));
+
+ 	$group = 'SMS Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'SMS Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['sms_url'] = array('#title' => 'SMS URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_url', ''));
+
+ 	$group = 'Applicant Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'Applicant Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['applicant_url'] = array('#title' => 'Applicant URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('applicant_url', ''));
+
+
+   return system_settings_form($form);
+}
+
+
+
+function dh_manage_usermapping_handler()
+{
+	global $user;
+	include_once "sites/all/libraries/editor/php/DataTables.php";
+
+	$editor = \DataTables\Editor::inst( $db, 'dh_user_center', 'uc_id' ); 
+    $editor->fields(\DataTables\Editor\Field::inst( 'dh_user_center.uc_user' )
+   	            ->options( \DataTables\Editor\Options::inst()
+                ->table( 'users' )
+                ->value( 'uid' )
+                ->label( 'name' )
+                ->where( function ($q) {
+		            $q->where( 'name', 'Applicant', '!=' );
+		            $q->where( 'name', '', '!=' );
+        		}
+            )            
+            )
+   	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
+                ->message( 'Please Select a User' )
+            ) ),
+	        \DataTables\Editor\Field::inst( 'uc.name' ),
+			\DataTables\Editor\Field::inst( 'dh_user_center.uc_center' )
+   	            ->options( \DataTables\Editor\Options::inst()
+                ->table( 'dh_center' )
+                ->value( 'c_id' )
+                ->label( 'c_name' )
+            )
+   	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
+                ->message( 'Please Select a Center' )
+            ) ),            
+        \DataTables\Editor\Field::inst( 'dh_center.c_name' ),
+        \DataTables\Editor\Field::inst( 'dh_user_center.uc_deleted' ),
+        \DataTables\Editor\Field::inst( 'dh_user_center.uc_id' ),
+	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_updated_by' )
+	    ->setValue( $user->uid ),
+        \DataTables\Editor\Field::inst( 'up.name' ),
+	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_updated' )
+	    ->setValue( date('Y-m-d H:i:s') ),
+	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_created_by' )
+	    ->set( \DataTables\Editor\Field::SET_CREATE )
+	    ->setValue( $user->uid )	   
+	  )
+    ->leftJoin('users as uc', 'uc.uid', '=', 'dh_user_center.uc_user' ) 
+    ->leftJoin('dh_center', 'dh_center.c_id', '=', 'dh_user_center.uc_center' ) 
+    ->leftJoin('users as up', 'up.uid', '=', 'dh_user_center.uc_updated_by' ) 
+    ->pkey('uc_id')
+//    ->on( 'preCreate', function ( $editor, $values ) { _course_set_default( $editor, 0, $values); } )
+//   ->on( 'preEdit', function ( $editor, $id, $values ) { _course_set_default( $editor, $id, $values); } )
+    ->on( 'preRemove', function() { return false; })
+    ->where( 'uc_deleted', 0)
+    ->process( $_POST )
+    ->json();
+    exit;
+}
+
+
+function dh_manage_usermapping()
+{
+	drupal_add_library('system', 'ui.core');
+	drupal_add_library('system', 'ui.dialog');
+	drupal_add_library('system', 'ui.datepicker');
+	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.select2.js');
+
+	$js = '
+		var editor;
+		(function ($) {
+			function load_editor()
+			{
+				editor = new $.fn.dataTable.Editor({ 
+				    ajax: {url: "/user-mapping/handler/'.arg(1).'", type: "POST"},
+					table: "#user-mapping-table",
+				    fields: [
+				        { name: "dh_user_center.uc_center", label: "Centre Name", type: "select2" },
+				        { name: "dh_user_center.uc_user", label:  "User", type: "select2" }, 
+				        { name: "dh_user_center.uc_deleted", type: "hidden" },
+
+				    ]
+				});
+
+
+				var table = $("#user-mapping-table").DataTable( {
+				    ajax: "/user-mapping/handler/'.arg(1).'",
+				    dom: "Bfrtip",
+					columns: [
+						{ data: "dh_user_center.uc_id"  },
+						{ data: "dh_center.c_name"  },
+						{ data: "uc.name" },
+						{ data: "dh_user_center.uc_updated"  },
+						{ data: "up.name"  },
+					],
+				    select: true,
+				    buttons: [
+				        { extend: "create", editor: editor },
+				        { extend: "edit",   editor: editor },
+			            {
+			                extend: "selected",
+			                text: "Delete",
+			                action: function ( e, dt, node, config ) {
+			                    var rows = table.rows( {selected: true} ).indexes();
+			 
+			                    editor
+			                        .hide( editor.fields() )
+			                        .one( "close", function () {
+			                            setTimeout( function () { // Wait for animation
+			                                editor.show( editor.fields() );
+			                            }, 500 );
+			                        } )
+			                        .edit( rows, {
+			                            title: "Delete",
+			                            message: rows.length === 1 ?
+			                                "Are you sure you wish to delete this row?" :
+			                                "Are you sure you wish to delete these "+rows.length+" rows",
+			                            buttons: "Delete"
+			                        } )
+			                        .val( "dh_user_center.uc_deleted", 1 );
+			                }
+			            }
+				    ]
+				});
+
+			}
+
+
+
+			$(document).ready(function(){
+				load_editor();
+			});
+		})(jQuery);
+	';
+	drupal_add_js($js, 'inline');
+
+	//$out = '<h2>'.l("Back to Manage Letters", "letters/".arg(1)).'</h2>';
+	$out = '<table id="user-mapping-table">
+				<thead>
+					<tr>
+						<th>Id</th>
+						<th>Centre Name</th>
+						<th>User</th>
+						<th>Last Updated On</th>
+						<th>Last Updated by</th>
+					</tr>
+				</thead>
+
+	</table>';
+	return $out;
+
+}
+
+function dh_get_course_types()
+{
+	$q = "select td_id as 'id', td_val1 as 'Course', td_val2 as 'Duration' from dh_type_detail where td_type='COURSE-TYPE'";
+	$hand = db_query($q);
+	$out = array();
+	while($row = $hand->fetchAssoc())
+	{
+		$out[] = $row;
+	}
+	drupal_json_output($out);
+	exit;
+}
+
+
+
+
+function _ma_make_link($link_text, $url) 
+{
+  	//return '<div id="magical-modal-link">' . l($link_text, $url.'/nojs', array('attributes' => array('class' => 'ctools-use-modal'))) . '</div>';
+  	return '<div id="magical-modal-link">' . l($link_text, $url, array())  . '</div>';
+
+}
+
+function _get_country( $name )
+{
+	$q = 'select c_name, c_code from dh_country where c_name like \''.$name.'%\' order by c_name limit 10';
+	$return = db_query($q);
+	$matches = array();
+  	foreach ($return as $row) {
+    	//$matches[$row->c_code] = $row->c_name;
+    	$matches[] = array('value' =>  $row->c_name, 'code' => $row->c_code);
+  	}
+  	drupal_json_output($matches);  	
+}
+
+function _get_state( $name )
+{
+	$country = $_REQUEST['country'];
+	//$country_code = db_query("select c_code from dh_country WHERE c_name='$country'")->fetchField();
+	$q = 'select s_code, s_name from dh_state where s_country=\''.$country.'\' and  s_name like \''.$name.'%\' order by s_name limit 10';
+	$return = db_query($q);
+	$matches = array();
+  	foreach ($return as $row) {
+    	$matches[] = array('value' => $row->s_name, 'code' => $row->s_code );
+  	}
+  	drupal_json_output($matches);  	
+}
+
+function _get_city( $name )
+{
+	$country = $_REQUEST['country'];
+	//$country_code = db_query("select c_code from dh_country WHERE c_name='$country'")->fetchField();
+
+	$state = $_REQUEST['state'];
+	//$state_code = db_query("select s_code from dh_state WHERE s_name='$state'")->fetchField();
+
+	$q = 'select c_name from dh_city where c_country=\''.$country.'\' and c_state=\''.$state.'\' and  c_name like \''.$name.'%\' order by c_name limit 10';
+	$return = db_query($q);
+	$matches = array();
+  	foreach ($return as $row) {
+    	$matches[$row->c_name] = $row->c_name;
+  	}
+  	drupal_json_output($matches);  	
+}
+
+
+function _get_location_from_pincode()
+{
+	$code = $_REQUEST['code'];
+	$matches = array();
+	$q = "select co.c_code,s.s_code,ci.c_name as 'c_city' from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join 
+		dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where 
+		pc_pin='$code' limit 0,1";
+	$return = db_query($q);
+
+  	foreach ($return as $row) {
+    	$matches[] = array( 'country' => $row->c_code, 'state' => $row->s_code, 'city' => $row->c_city );
+  	}
+
+  	drupal_json_output($matches);  	
+}
+
+function _get_teacher( $search )
+{
+	$matches = array();
+	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b' from dh_teacher where CONCAT(t_f_name, ' ', t_l_name) like '%$search%' limit 10";
+	$return = db_query($q); // array(':name', $search)
+
+  	foreach ($return as $row) {
+    	$matches[] = array('value' =>  $row->a, 'code' => $row->b);
+  	}
+
+  	drupal_json_output($matches);  	
+}
+
+function _search_student()
+{
+	$app_id = arg(1);
+	$q = "select a_f_name,a_l_name,a_dob,a_email,a_zip from dh_applicant where a_id='$app_id'";
+	$d = db_query($q)->fetchAssoc();
+
+	if ($d['a_email'] <> '')
+		$append = " and a_email='".$d['a_email']."'";
+	elseif ($d['a_zip'] == '')
+		$append = " and a_zip='".$d['a_zip']."'";
+	else
+		$append = " and a_dob='".$d['a_dob']."'";
+
+	$q = "select c_name, a_address, a_attended,a_status from dh_applicant left join dh_course on a_course=c_id where a_f_name='".$d['a_f_name']."' and a_l_name='".$d['a_l_name']."' $append order by c_created desc limit 15";
+	$result = db_query($q);
+	$rows = array();
+	while($r = $result->fetchAssoc())
+	{
+		$row = array();
+		$row[] = $r['c_name']; 
+		$row[] = $r['a_status']; 
+		$row[] = $r['a_attended']?'True':'False'; 
+		$row[] = $r['a_address']; 
+		$rows[] = $row;
+	}
+	$header = array('Course', 'Status', 'Attended', 'Address');
+	$out = theme('table', array('header' => $header, 'rows' => $rows));
+	print $out;
+	exit;
+}
+
+function _change_status()
+{
+	global $user;
+	$app_id = arg(1);
+	$status = $_REQUEST['s'];
+	$letter = $_REQUEST['l'];
+	$comment = $_REQUEST['c'];
+	if ( !$letter )
+		$letter = 0;
+
+	$out = array();
+	$out['status'] = 'OK';
+	$out['msg'] = '';
+
+	$res = _update_status($app_id, $status);
+	$out['confno'] = $res;
+	dh_send_letter('applicant', $app_id, $status, $letter, $comment);
+
+	drupal_json_output($out);
+	exit;
+}
+
+function _update_status($app_id, $status, $uid=0 )
+{
+	global $user;
+	$fields = array();
+	$fields['a_status'] = $status;
+	$fields['a_updated_by'] = $uid?$uid:$user->uid;
+	$fields['a_updated'] = date("Y-m-d H:i:s");
+	$row = db_query("select a_status,a_conf_no from dh_applicant where a_id=$app_id")->fetchAssoc();
+	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
+
+	if ( $system_statuses['STATUS-CUSTOM'] == $status)
+		return '';
+
+	$conf_no = $row['a_conf_no'];
+
+
+	if (!in_array($status, array($system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-EXPECTED'], $system_statuses['STATUS-ERROR'])))
+	{
+		$fields['a_conf_no'] = '';
+		$conf_no = '';
+	}	
+	
+	if (($row['a_status'] == $system_statuses['STATUS-EXPECTED']) && ($status == $system_statuses['STATUS-CONFIRMED']))
+		return '';
+
+	if ( $row['a_status'] <> $status)
+	{
+		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && ($row['a_status'] <> $system_statuses['STATUS-ERROR']) )
+		{
+			$conf_no = generate_conf_no($app_id);
+			$fields['a_conf_no'] = $conf_no;
+		}
+		db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
+		create_application_pdf($app_id);
+	}
+	return $conf_no;
+}
+
+
+
+
+function dh_daily_activity_form($form, &$form_state)
+{
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	$form['a'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1)).'</h3>');
+	$form['#attributes'] = array('class' => array('container-inline')); 
+	$form['date'] = array('#title' => 'Select Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 1, 
+		'#default_value' => date('Y-m-d'), '#date_format' => 'Y-m-d', '#datepicker_options' => array(
+    		'maxDate' => 0, '#required' => 1, 
+    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+    	),'#date_year_range' => '-20:0', '#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); 
+
+	$q = "select uid, name from users u left join dh_user_center uc on u.uid = uc.uc_user where uc_center=".arg(1);
+	$users = db_query($q)->fetchAllKeyed();
+	$users[''] = 'Choose'; 
+	$form['user'] = array('#title' => 'Select user', '#type' => 'select', 
+		'#options' => $users, '#default_value' => '', '#weight' => 2);
+	$form['sub'] = array('#value' => 'Submit', '#type' => 'submit', '#weight'=> 10);
+
+	if ( isset($form_state['storage']) )
+	{
+		$storage = $form_state['storage'];
+		$out = dh_activity_search_results( arg(1), $storage['date'], $storage['user'] );
+		$form['out'] = array('#markup' => $out, '#weight' => 100);
+	}
+
+	$js = '
+
+		(function ($) {
+		$(document).ready(function(){
+			$("#table-daily-activity").DataTable();
+		})
+	})(jQuery);
+
+	';
+	drupal_add_js($js, 'inline');
+	return $form;
+}
+
+function dh_daily_activity_form_submit($form, &$form_state)
+{
+	$form_state['storage'] = $form_state['input'];
+	$form_state['rebuild'] = TRUE;
+}
+
+function dh_activity_search_results( $centre, $date, $user = '' )
+{
+	if (is_array($date))
+		$date = $date['date'];
+	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
+	$append = '';
+	if ($user <> '' )
+		$append = "and l_user='$user'";
+	$q = "select  CONCAT(a_f_name,' ',a_l_name) as 'Applicant', l_event,l_msg, u.name, l_tstamp from dh_log l left join dh_applicant a on (l.l_identifier=a.a_id and l.l_module='Applicant') left join users u on (l.l_user=u.uid) where DATE_FORMAT(l_tstamp,'%Y-%m-%d') = '$date' and l_center='$centre' and l_module='Applicant' $append order by l_tstamp desc";
+
+	$header = array('Applicant Name', 'Event', 'Message', 'User', 'DateTime');
+	$results = 	db_query($q);
+	$rows = array();
+	while($r = $results->fetchAssoc())
+	{
+		$rows[] = $r;
+	}
+	$attributes = array('id' => 'table-daily-activity');
+
+	if (!empty($rows))
+		$out = '<br>'.theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
+	return $out;
+}
+
+function _search_course()
+{
+	$centre_id = arg(1);
+	$course_id = arg(2);
+	$status = $_REQUEST['s'];
+	$old = $_REQUEST['t'];
+
+	$app_type = '';
+	if (isset($_REQUEST['at']))
+		$app_type = ($_REQUEST['at']=='s')?'Sevak':'Student';
+
+
+	if (isset($_REQUEST['d']))
+		$type = $_REQUEST['d'];
+	else
+		$type = 'a';
+
+	if ($type == 's')
+		$type = 'student';
+	else
+		$type = 'applicant';
+
+
+	if ( ! (user_access("access male") && (user_access("access female"))) )
+	{
+		if ( user_access("access male") ) $gender = 'M'; else $gender = 'F'; 
+		//$where .= " and a_gender ='$gender'";
+	}
+	else	
+		$gender = $_REQUEST['g'];
+
+	$field = 'a_course'; 
+	if ($type == 'student') $field = 'sc_course';
+	$where = " $field=$course_id";
+	$msg = "";
+	$temp = explode(",", $status);
+
+	if ($app_type <> '')
+		$where .= " and a_type='$app_type'";
+
+	if ( $status <> '' )
+	{
+		if ( $type == 'applicant')
+		{
+			if (count($temp) > 0)
+				$where .= " and a_status IN ('".implode("','", $temp)."') ";
+			else
+				$where .= " and a_status ='$status' ";
+			$msg .= 'Status: '.$status;			
+		}
+	}
+	else
+		$msg .= 'Status: All';
+		
+	if ( $gender <> '' )
+	{
+		$field = 'a_gender';
+		if ($type == 'student') $field = 's_gender';
+		$where .= " and $field ='$gender' ";
+		$msg .= ', Gender: '.($gender=='M'?'Male':'Female');						
+	}
+	if ( $old <> '' )
+	{
+		if ( $type == 'student' )
+		{
+			$temp = !$old;
+			$where .= " and s_first ='$temp' ";			
+		}
+		else
+			$where .= " and a_old ='$old' ";
+		$msg .= ($old?'Old':'New');
+	}
+
+	$out = '<h3>'.$msg.' ('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Add Applicant", "app/add/$centre_id/$course_id").'</h3>';
+	$out .= dh_manageapp_search_results( $type, $where, $centre_id );
+	return $out;
+}
+
+function _get_clarifications()
+{
+	$app_id = arg(1);
+	$q = "select ac_msg, ac_file, ac_tstamp from dh_applicant_clarification where ac_app='$app_id'";
+	$res = db_query($q);
+	$rows = array();
+	while( $row = $res->fetchAssoc())
+	{
+		$r = array();
+		$r[] = $row['ac_tstamp'];
+		$r[] = $row['ac_msg'];
+		if ($row['ac_file'])
+			$r[] = l("View", file_create_url($row['ac_file']));
+		else
+			$r[] = 'No Upload';
+		$rows[] = $r;
+	}
+	$header = array('DateTime', 'Message', 'File');
+	$out = '';
+	if (!empty($rows))
+		$out = theme('table', array('header' => $header, 'rows' => $rows));
+	print $out;
+	exit;
+}
+
+function _get_activity()
+{
+	$app_id = arg(1);
+	$q = "select l_msg , name, l_tstamp from dh_log left join users on l_user=uid where l_module='Applicant' and l_identifier='$app_id' and l_event in ('Status Change', 'Letter') order by l_tstamp desc";
+	$res = db_query($q);
+	$rows = array();
+	while( $row = $res->fetchAssoc())
+	{
+		$r = array();
+		$r[] = $row['l_tstamp'];
+		$r[] = $row['l_msg'];
+		$r[] = $row['name'];
+		$rows[] = $r;
+	}
+	$header = array('DateTime', 'Activity', 'User');
+	$out = '<h4>Activity Log</h4>';
+	if (!empty($rows))
+		$out .= theme('table', array('header' => $header, 'rows' => $rows));
+	print $out;
+	exit;
+}
+
+function _move_to_course()
+{
+	global $user;
+	$app_id = arg(1);
+	$new_course = arg(2);
+	$rs = db_query("select a_center, a_course from dh_applicant where a_id=".$app_id)->fetchAssoc();
+	$course_name = db_query("select c_name from dh_course where c_id=".$rs['a_course'])->fetchField();
+
+	$SYSTEM_RECEIVED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-RECEIVED'")->fetchField();
+	$comment = '';
+	if ( $_REQUEST['c'] <> '' )
+	{
+		$comment .= " (".$_REQUEST['c'].")";
+	}
+
+	$fields = array();
+	$fields['l_center'] = $rs['a_center'];
+	$fields['l_module'] = 'Applicant';
+	$fields['l_identifier'] = $app_id;
+	$fields['l_event'] = 'Status Change';
+	$fields['l_msg'] = 'Transferred from '.$course_name.$comment;
+	$fields['l_user'] = $user->uid;
+	db_insert('dh_log')->fields( $fields )->execute();
+
+
+	$fields = array();
+	$fields['a_course'] = $new_course;
+	$fields['a_status'] = $SYSTEM_RECEIVED; //STATUS_RECEIVED;
+	$fields['a_conf_no'] = '';
+	db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
+	$out = array();
+	$out['status'] = 'OK';
+	$out['msg'] = '';
+	drupal_json_output($out);
+	exit;
+
+}
+
+
+function _delete_app()
+{
+	$out['status'] = 'OK';
+	$out['msg'] = '';
+	app_delete(arg(1));
+	drupal_json_output($out);	
+}
+
+function generate_conf_no( $app_id )
+{
+	$q = "select a_gender, a_course, a_old, a_type from dh_applicant where a_id=$app_id";
+	$row = db_query($q)->fetchAssoc();
+	if ( strtolower($row['a_type']) == 'sevak' )
+		$pre = 'S'.$row['a_gender'];
+	else
+		$pre = ($row['a_old']?'O':'N').$row['a_gender'];
+	$new_conf_no = $pre.db_query("select nextval('".$row['a_course']."-$pre')")->fetchField();
+	return $new_conf_no;
+}
+
+function update_status_external($app_id, $new_status)
+{
+	$row = db_query("select a_status,a_conf_no from dh_applicant where a_id=$app_id")->fetchAssoc();
+	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
+	$UID_APPLICANT = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-APPLICANT-UID'")->fetchField();
+
+	if ( ($row['a_status'] <> $new_status) )
+	{
+		_update_status($app_id, $new_status, $UID_APPLICANT);
+		dh_send_letter('applicant', $app_id, $new_status );
+	}
+	else
+		watchdog('Applicant', "ID $app_id - New status $new_status, old status is ".$row['a_status']);
+}
+
+function dh_app_update_attended()
+{
+	global $user;
+	$app_id = arg(1);
+	$r = db_query("select a_course, a_center from dh_applicant where a_id=$app_id")->fetchAssoc();
+	$course_id = $r['a_course'];
+	$centre_id = $r['a_center'];
+
+	$res = false;
+	$out = array();
+	if ( $_REQUEST['a'] == 'false' )
+	{
+		$app['a_attended'] = 0;
+		db_update('dh_applicant')->fields($app)->condition('a_id', $app_id)->execute();
+		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);
+		$out['msg'] = 'Ok';
+		$out['status'] = true; 
+		$out['applicant'] = dh_manageapp_list( $centre_id, $course_id );
+		$out['attended'] = dh_manageapp_attended( $centre_id, $course_id )	;	
+		$out['acco'] = dh_get_acco( $centre_id , $course_id );
+		$out['alloted'] = dh_get_alloted( $centre_id , $course_id);
+
+		drupal_json_output($out);
+		exit;
+	}
+
+	if ($_REQUEST['s'] == '')
+	{
+		$out['msg'] = 'Please select room section';
+		$out['status'] = false; 
+		drupal_json_output($out);
+		exit;
+	}
+	if ($_REQUEST['r'] == '')
+	{
+		$out['status'] = false; 
+		$out['msg'] = 'Please select room no';
+		drupal_json_output($out);
+		exit;
+	}
+
+	$fields['aa_section'] = $_REQUEST['s'];
+	$fields['aa_acco'] = $_REQUEST['r'];
+	$fields['aa_group'] = $_REQUEST['g'];
+	$fields['aa_laundry'] = $_REQUEST['l'];
+	$fields['aa_valuable'] = $_REQUEST['v'];
+	$fields['aa_cell'] = $_REQUEST['c'];
+
+	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
+	$fields['aa_chowky'] = ($_REQUEST['chow'] == 'true')?1:0;
+	$fields['aa_chair'] = ($_REQUEST['chai'] == 'true')?1:0;
+	$fields['aa_backrest'] = ($_REQUEST['back'] == 'true')?1:0;
+	$fields['aa_comment'] = $_REQUEST['comment'];
+	$fields['aa_updated_by'] = $user->uid;
+	$fields['aa_updated'] = date('Y-m-d H:i:s');
+
+	if ( !dh_manageapp_lock_acquire("dh_app_update_attended", 10.0, 10) )
+	{
+		$out['status'] = false; 
+		$out['msg'] = 'Unable to get lock';
+		drupal_json_output($out);
+		exit;				
+	}
+	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and aa_section='".$fields['aa_section']."' and aa_acco='".$fields['aa_acco']."' and aa_applicant <> '$app_id'")->fetchField();
+	if ($check_id > 0 )
+	{
+		$out['status'] = false; 
+		$out['msg'] = 'Room has already been alloted';
+		drupal_json_output($out);
+		exit;		
+	}
+
+	$attended_id = db_query("select aa_id from dh_applicant_attended where aa_applicant=$app_id")->fetchField();
+	if ( $attended_id > 0)
+	{
+		db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', $app_id)->execute();
+	}
+	else
+	{
+		$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
+		_update_status( $app_id, $system_statuses['STATUS-CONFIRMED'] );
+		
+		$app['a_attended'] = 1;
+		db_update('dh_applicant')->fields($app)->condition('a_id', $app_id)->execute();
+
+		$fields['aa_applicant'] = $app_id;
+		$fields['aa_created_by'] = $user->uid;
+		db_insert('dh_applicant_attended')->fields($fields)->execute();		
+	}
+	lock_release("dh_app_update_attended");
+
+	$out['msg'] = 'Ok';
+	$out['status'] = true; 
+	$out['applicant'] = dh_manageapp_list( $centre_id, $course_id );
+	$out['attended'] = dh_manageapp_attended( $centre_id, $course_id )	;	
+	$out['acco'] = dh_get_acco( $centre_id , $course_id );
+	$out['alloted'] = dh_get_alloted( $centre_id , $course_id);
+
+	drupal_json_output($out);
+	exit;
+
+}
+
+
+function generate_random_str($length = 10) 
+{
+    return substr(str_shuffle(str_repeat($x='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil($length/strlen($x)) )),1,$length);
+}
+
+
+function logit($centre, $event, $app_id, $msg, $uid = 0 )
+{
+	global $user;
+	$log_uid = $uid?$uid:$user->uid;
+	if ( $log_uid <=0 ) 
+		$log_uid = 	db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+	$fields['l_user'] = $log_uid;
+	$fields['l_center'] = $centre;
+	$fields['l_msg'] = $msg;
+	$fields['l_module'] = 'Applicant';
+	$fields['l_event'] = $event;
+	$fields['l_identifier'] = $app_id;
+	db_insert('dh_log')->fields($fields)->execute();
+}
+
+function simple_crypt( $string, $action = 'e' )
+{
+    // you may change these values to your own
+    $secret_key = 'DHAMMA4ALL_ANICCA';
+    $secret_iv = 'THIS_IS_THE_END';
+
+    $output = false;
+    $encrypt_method = "AES-256-CBC";
+    $key = hash( 'sha256', $secret_key );
+    $iv = substr( hash( 'sha256', $secret_iv ), 0, 16 );
+
+    if( $action == 'e' ) {
+        $output = base64_encode( openssl_encrypt( $string, $encrypt_method, $key, 0, $iv ) );
+    }
+    else if( $action == 'd' ){
+        $output = openssl_decrypt( base64_decode( $string ), $encrypt_method, $key, 0, $iv );
+    }
+    return $output;
+}
+
+
+function dh_manageapp_lock_acquire($name, $timeout = 30.0, $delay = 30) 
+{
+  return (
+    lock_acquire($name, $timeout)
+    || (
+      !lock_wait($name, $delay)
+      && lock_acquire($name, $timeout)
+    )
+  );
+}
+
+?>

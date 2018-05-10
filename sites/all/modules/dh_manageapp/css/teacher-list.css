@@ -1,0 +1,154 @@
+div.teachers-title {
+	font-weight: normal;
+	font-size: 8pt;
+	text-transform: uppercase;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: none;
+	border-width: 1px;
+	border-bottom-style: dashed;
+	border-color: gray;
+	background-color: white;
+	margin-bottom: 10px;
+	width: 700px;
+}
+
+table.table-teacher-list {
+	width: 1015px;
+	table-layout:fixed;
+}
+
+table.table-manager-list {
+	width: 700px;
+	table-layout:fixed;
+}
+
+.header-teacher {
+	width: 1015px;
+}
+
+.header-manager {
+	width: 700px;
+}
+
+table.table-teacher-list tr th:nth-child(1) { width: 35px; }
+table.table-teacher-list tr th:nth-child(2) { width: 200px; }
+table.table-teacher-list tr th:nth-child(3) { width: 70px; }
+table.table-teacher-list tr th:nth-child(4) { width: 30px; }
+table.table-teacher-list tr th:nth-child(5) { width: 70px; }
+table.table-teacher-list tr th:nth-child(6) { width: 40px; }
+table.table-teacher-list tr th:nth-child(7) { width: 40px; }
+table.table-teacher-list tr th:nth-child(8) { width: 40px; }
+table.table-teacher-list tr th:nth-child(9) { width: 120px; }
+table.table-teacher-list tr th:nth-child(10) { width: 125px; }
+table.table-teacher-list tr th:nth-child(11) { width: 70px; }
+table.table-teacher-list tr th:nth-child(12) { width: 200px; }
+
+table.table-teacher-list th {
+	font-weight: bold;
+	font-size: 8pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: none;
+	text-align: left;
+	word-wrap:break-word;
+	vertical-align: top;
+}
+
+table.table-teacher-list td {
+	font-weight: normal;
+	font-size: 8pt;
+	text-transform: uppercase;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: none;
+	border-width: 1px;
+	border-bottom-style: dashed;
+	border-color: gray;
+	background-color: white;
+	padding: 6px;
+	word-wrap:break-word;
+	text-align: left;
+	vertical-align: top;
+}
+
+
+table.table-manager-list tr th:nth-child(1) { width: 35px; }
+table.table-manager-list tr th:nth-child(2) { width: 190px; }
+table.table-manager-list tr th:nth-child(3) { width: 40px; }
+table.table-manager-list tr th:nth-child(4) { width: 60px; }
+table.table-manager-list tr th:nth-child(5) { width: 140px; }
+table.table-manager-list tr th:nth-child(6) { width: 100px; }
+table.table-manager-list tr th:nth-child(7) { width: 50px; }
+table.table-manager-list tr th:nth-child(8) { width: 30px; }
+
+
+table.table-manager-list th {
+	font-weight: bold;
+	font-size: 8pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: none;
+	text-align: left;
+	vertical-align: top;
+}
+
+table.table-manager-list td {
+	font-weight: normal;
+	font-size: 8pt;
+	text-transform: uppercase;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: none;
+	text-align: left;
+	vertical-align: top;
+
+}
+
+.title {
+	font-weight: bold;
+	font-size: 11pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	text-decoration: underline;
+	margin-bottom: 5px;
+}
+
+.title-head {
+	font-weight: bold;
+	font-size: 8pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: none;
+}
+
+.title-info {
+	font-weight: bold;
+	font-size: 11pt;
+	text-transform: capitalize;
+	color: black;
+	font-style: normal;
+	font-family: Verdana, Arial;
+	font-variant: normal;
+	text-decoration: underline;
+}
+
+
+
+#footer {
+	page-break-after: always;
+}

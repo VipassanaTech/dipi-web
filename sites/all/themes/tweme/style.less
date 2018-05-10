@@ -1,0 +1,154 @@
+@import '../../libraries/bootstrap/less/variables.less';
+
+html {
+  background: #222;
+}
+
+body {
+  font-size: 160%;
+  font-weight: 300;
+}
+
+h1, h2, h3 {
+  font-weight: normal;
+  margin-bottom: 2rem;
+}
+
+p {
+  &, &:last-child {
+    margin-bottom: 2rem;
+  }
+}
+
+.carousel-control {
+  font-size: 3rem;
+}
+
+.navbar-brand {
+  font-weight: normal;
+  color: @gray-dark !important;
+}
+
+.header {
+  position: relative;
+  text-align: center;
+  border-bottom: 1px solid @panel-default-border;
+  background: @jumbotron-bg no-repeat center center;
+  background-size: cover;
+  .breadcrumb {
+    background: transparent;
+    font-size: @font-size-small;
+    opacity: 0.5;
+  }
+  .jumbotron {
+    margin: 0;
+    padding: 12rem 0 6rem 0;
+    background-color: transparent;
+    h1, h2 {
+      font-size: @jumbotron-heading-font-size;
+      font-weight: 300;
+      margin: 0 0 1rem 0;
+    }
+  }
+}
+
+.header-top {
+  position: absolute;
+  top: 5rem;
+  width: 100%;
+  z-index: 1;
+}
+
+.header-bottom {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  .nav-tabs {
+    margin-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+.main {
+  padding: 4rem 0 2rem 0;
+}
+
+.main-col {
+  margin-bottom: 2rem;
+}
+
+.region-sidebar-first {
+  .nav {
+    margin: 0 -1.9rem;
+    > li {
+      > a {
+        padding: 1rem 1.9rem;
+      }
+    }
+  }
+}
+
+.bottom {
+  background: @gray-lighter;
+  padding: 4rem 0;
+}
+
+.region-share {
+  .at-share-btn {
+    float: left;
+    width: 20%;
+    max-width: none !important;
+    max-height: 5rem !important;
+    margin: 0 !important;
+    padding: 0.9rem;
+    text-align: center;
+    cursor: pointer;
+  }
+  .at_flat_counter {
+    float: left;
+    margin: 0.9rem 0 0.9rem -6rem !important;
+  }
+}
+
+.footer {
+  background: #222;
+  color: @gray-light;
+  margin-top: 0;
+  padding: 2rem 0;
+  border: none;
+  text-align: center;
+  a {
+    color: lighten(@gray-light, 15%);
+    text-decoration: none;
+    &:hover {
+      color: white;
+    }
+  }
+  hr {
+    border-color: @gray-dark;
+  }
+  .block {
+    padding: 2rem 0;
+    + .block {
+      border-top: 1px solid @gray-dark;
+    }
+  }
+}
+
+#block-menu-menu-footer-sitemap {
+  text-align: left;
+  li {
+    margin-top: 0.5rem;
+  }
+  li.root {
+    margin-bottom: 1.5rem;
+    > a {
+      text-transform: uppercase;
+      font-size: 1rem;
+      letter-spacing: 2px;
+    }
+    > ul {
+      margin-top: 1.5rem;
+    }
+  }
+}

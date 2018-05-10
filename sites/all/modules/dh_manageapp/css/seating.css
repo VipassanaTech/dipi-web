@@ -1,0 +1,138 @@
+div,td {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	line-height: 1.42857143;
+	color: #333;
+}
+
+.grid-item {
+	width: 160px;
+	height: 160px;
+	background-color: #cecece;
+}
+
+
+.grid-6 {
+	width: 1050px;
+}
+
+.grid-5 {
+	width: 860px;
+}
+
+.grid-4 {
+	width: 700px;
+}
+
+.main-div {
+	/*width: 780px;*/
+	max-width: 1135px;
+	margin-right: 30px;
+}
+.chowky-div {
+	max-width: 250px;
+	margin-right: 30px;
+}
+
+table {
+	border: 1px;
+	border-color: #000000;
+	border-spacing: 0;
+	border-collapse: collapse;
+}
+
+td {
+	font-size: 14px;
+	text-align: center;
+	vertical-align: middle;
+	width: 140px;
+	height: 130px;
+	border: 1px solid #000000;
+	font-weight: bold;
+	padding-top: 5px;
+}
+
+.seat-no {
+	font-size: 16px;
+}
+
+.teacher-seat {
+	margin-top: 10px;
+	width: 1000px;
+	text-align: center;
+	font-weight: bold;
+	font-size: 18px;
+}
+
+.main-div,.chowky-div {
+	display: inline-block;
+}
+
+.footer {
+	page-break-after: always;
+}
+
+#sortable { list-style-type: none; margin: 0; padding: 0; width: 800px; }
+#sortable li { 
+	margin: 0; 
+	padding: 1px; 
+	float: left; 
+	width: 150px; 
+	height: 130px; 
+	font-size: 14px; 
+	text-align: center; 
+	border: 1px solid #000000;
+	vertical-align: top;
+
+}
+  
+.s-seat-no {
+	width: 40px;
+	float: left;
+}
+
+.s-acco {
+	float: right;
+	width: 80px;
+	text-align: right;
+	padding-right: 7px;	
+}
+
+
+.s-name {
+    height: 60px;
+    text-align: center;
+    padding-top: 10px;
+    clear: both;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;    
+}
+
+.s-old-student {
+	width: 68px;
+	float: left;
+	text-align: left;
+	margin-left: 5px;
+	font-size: 12px;	
+}
+
+.s-age {
+	width: 58px;
+	float: right;
+	padding-right: 5px;
+	font-size: 12px;
+}
+
+.s-backrest {
+	clear: both;
+	height: 3px;
+}
+
+.s-backrest-yes {
+	background-color: #000000;
+}
+
+.s-teacher {
+	background-color: #c6c6c6;
+}
+

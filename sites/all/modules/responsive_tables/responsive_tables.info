@@ -1,0 +1,12 @@
+name = Responsive Tables
+description = Brings a responsive tables library into views
+core = 7.x
+
+dependencies[] = views
+
+; Information added by drupal.org packaging script on 2013-10-01
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "responsive_tables"
+datestamp = "1380625749"
+

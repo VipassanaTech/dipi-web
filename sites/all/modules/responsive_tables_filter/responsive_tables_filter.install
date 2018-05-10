@@ -1,0 +1,37 @@
+<?php
+
+/**
+ * @file
+ * Install and update code for responsive_tables_filter.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function responsive_tables_filter_install() {
+  // Set the initial value for the schema version so we can run updates after
+  // install.
+  drupal_set_installed_schema_version('responsive_tables_filter', 7100);
+
+  $value = (variable_get('preprocess_css', FALSE) && variable_get('preprocess_js', FALSE));
+  variable_set(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, $value);
+}
+
+/**
+ * Assign correct value for the responsive_tables_filter_every_page variable.
+ */
+function responsive_tables_filter_update_7100() {
+  $value = (variable_get('preprocess_css', FALSE) && variable_get('preprocess_js', FALSE));
+  variable_set(RESPONSIVE_TABLES_FILTER_EVERY_PAGE, $value);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function responsive_tables_filter_uninstall() {
+  variable_del(RESPONSIVE_TABLES_FILTER_VIEWS);
+  variable_del(RESPONSIVE_TABLES_FILTER_ADMIN);
+  variable_del(RESPONSIVE_TABLES_FILTER_FILES);
+  variable_del(RESPONSIVE_TABLES_FILTER_EVERY_PAGE);
+  variable_del(RESPONSIVE_TABLES_FILTER_CUSTOM_CSS);
+}

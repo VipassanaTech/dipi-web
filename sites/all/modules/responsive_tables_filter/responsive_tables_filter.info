@@ -1,0 +1,17 @@
+name = Responsive Tables Filter
+description = Makes tables in fields responsive
+core = 7.x
+package = "Input filters"
+
+dependencies[] = filter
+dependencies[] = jquery_update
+files[] = tests/ResponsiveTablesFilter.test
+
+test_dependencies[] = views
+
+; Information added by Drupal.org packaging script on 2017-07-23
+version = "7.x-1.9"
+core = "7.x"
+project = "responsive_tables_filter"
+datestamp = "1500831850"
+

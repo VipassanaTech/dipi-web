@@ -1,0 +1,4 @@
+name = "Manage Applicant"
+description = "Manage Applicant of Vipassana Course"
+core = 7.x
+version="7.x.1.0"
