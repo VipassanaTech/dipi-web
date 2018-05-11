@@ -696,7 +696,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 		if ($input['attending'] || $old_status == $status_confirmed)
 		{
-			if ( isset($app['a_status']) && ($app['a_status'] <> 'Left') )
+			if ( $app['a_status'] <> 'Left' )
 			{
 				$app['a_status'] =  $status_confirmed;
 				$conf_no = $res['a_conf_no'];
