@@ -448,9 +448,11 @@ function _course_set_default( &$editor, $id, &$values)
 	if ($values['dh_course']['c_end'] == '')
 	{
 		$days = db_query("select td_val2 from dh_type_detail where td_id=".$values['dh_course']['c_course_type'])->fetchField() + 1;
-		if ( in_array($values['dh_course']['c_course_type'], array(9,11,41) ) )             //array('2 Day Course', '3 Day Course', 'STP') ) )
+		//if ( in_array($values['dh_course']['c_course_type'], array(9,11,41) ) )             //array('2 Day Course', '3 Day Course', 'STP') ) )
+		if ($days < 10) // Less than 10 days is 1d, 2d, 3d, STP, for India it ends on same day. 
 			$days -= 1;
 		$end_date = date("d M Y", strtotime("+$days day", strtotime($start)) );
+		if ($days == 1) $end_date = $start;
 		//file_put_contents("/tmp/lalalalal", "$days - $end_date");
 		$values['dh_course']['c_end'] = $end_date;
         $editor->field( 'dh_course.c_end' )->setValue( $end_date );
