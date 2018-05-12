@@ -181,7 +181,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$button_access = '                        
 				$.extend( true, {}, buttonCommon, {
 	                extend: "excelHtml5",
-	            	title: "A-List"
+	            	title: "Student Data"
 				} )
 			';
 /*
