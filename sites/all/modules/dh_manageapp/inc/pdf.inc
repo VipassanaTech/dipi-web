@@ -238,7 +238,7 @@ function map_application_fields($row)
 
 	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
 	if ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
-	if ($row['a_voter_id']) { $fields['voter id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
+	if ($row['a_national_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_national_id']; }
 	if ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
 //	$fields['Photo ID'] = ''; 	
 
