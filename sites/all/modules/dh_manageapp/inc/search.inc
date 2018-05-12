@@ -42,7 +42,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$letters_json = json_encode($letters);
 
 	$courses = array(); $today = date('Y-m-d',strtotime("-1 month"));
-	$q = "select c_id, c_name from dh_course where c_center=$centre and c_start >= '$today' order by c_start";
+	$q = "select c_id, c_name from dh_course where c_center=$centre and c_start >= '$today' and c_deleted=0 order by c_start";
 	$courses = db_query($q)->fetchAllKeyed();
 	$courses_j = array();
 	foreach( $courses as $k => $v)
