@@ -131,7 +131,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_designation'])?$edit_data['a_designation']:'', '#required' => 0, );
 
 
-	$doc_types = array('' => 'Choose', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_aadhar' => 'Aadhar', 'a_voter_id' => 'Voter ID');
+	$doc_types = array('' => 'Choose', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_aadhar' => 'Aadhar', 'a_national_id' => 'National ID');
 	$default_doc_type = '';
 	$default_doc_id = '';
 	if (!$add || (isset($edit_data['a_passport'])) )
@@ -139,7 +139,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		if ( $edit_data['a_passport'] <> '' ) $default_doc_type = 'a_passport';
 		if ( $edit_data['a_pancard'] <> '' ) $default_doc_type = 'a_pancard';
 		if ( $edit_data['a_aadhar'] <> '' ) $default_doc_type = 'a_aadhar';
-		if ( $edit_data['a_voter_id'] <> '' ) $default_doc_type = 'a_voter_id';
+		if ( $edit_data['a_national_id'] <> '' ) $default_doc_type = 'a_national_id';
 		if ($default_doc_type <> '')
 			$default_doc_id = $edit_data[$default_doc_type];		
 	}

@@ -850,8 +850,8 @@ function check_student($r)
 		$sid = db_query("select s_id from dh_student where s_pancard='".$r['a_pancard']."'")->fetchField();
 	if ($sid > 0 ) return $sid;
 
-	if ($r['a_voter_id'] <> '')
-		$sid = db_query("select s_id from dh_student where s_voter_id='".$r['a_voter_id']."'")->fetchField();
+	if ($r['a_national_id'] <> '')
+		$sid = db_query("select s_id from dh_student where s_national_id='".$r['a_national_id']."'")->fetchField();
 	if ($sid > 0 ) return $sid;
 
 	if ($r['a_passport'] <> '')
