@@ -91,6 +91,8 @@ function dh_manage_courses()
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.select2.js');
 
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+
 	$js = '
 		var editor;
 		var ctypes = [];

@@ -133,3 +133,8 @@ fieldset#edit-b {
 textarea#comments {
 	width: 500px;
 }
+
+#centre-acco-table,#course-table { width: 100% !important; }
+#centre-acco-table td,#course-table td { word-wrap: break-word; word-break: break-all; }
+
+
