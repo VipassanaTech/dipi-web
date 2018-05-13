@@ -513,6 +513,8 @@ function cron_pc_auto_cancel()
 {
 	$status_cancelled = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CANCELLED'")->fetchField();
 	$q = "select cs_center, cs_preconf_days from dh_center_setting where cs_preconf_enable=1 and cs_preconf_days > 0";
+	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
@@ -521,7 +523,7 @@ function cron_pc_auto_cancel()
 		$res = db_query($q);
 		while($row = $res->fetchAssoc())
 		{
-			_update_status($row['a_id'], $status_cancelled);
+			_update_status($row['a_id'], $status_cancelled, $UID_SYSTEM);
 			dh_send_letter('applicant', $row['a_id'], $status_cancelled );
 		}
 	}
@@ -531,6 +533,7 @@ function cron_pc_auto_cancel()
 function cron_expected()
 {
 	$status_expected = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-EXPECTED'")->fetchField();
+	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$q = "select cs_center, cs_expected_days from dh_center_setting where cs_expected_enable=1 and cs_expected_days > 0 ";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -544,7 +547,7 @@ function cron_expected()
 			$res = db_query($q);
 			while($row = $res->fetchAssoc())
 			{
-				_update_status($row['a_id'], $status_expected);
+				_update_status($row['a_id'], $status_expected, $UID_SYSTEM);
 				dh_send_letter('applicant', $row['a_id'], $status_expected );
 			}			
 		}
