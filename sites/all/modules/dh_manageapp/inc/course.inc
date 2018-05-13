@@ -87,6 +87,9 @@ function dh_manage_courses()
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 	drupal_add_js( libraries_get_path("editor").  "/js/moment.min.js");
 	drupal_add_js( libraries_get_path("editor").  "/js/datetime-moment.js");
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.select2.js');
 
 	$js = '
 		var editor;
@@ -114,6 +117,7 @@ function dh_manage_courses()
 				        { name: "dh_course.c_date_change", label: "Date Change", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_comments", label: "Comments", type: "textarea" },
 				        { name: "dh_course.c_description", label: "Description", type: "textarea" },
+				        { name: "dh_course.c_combined_seat_course", label: "Combine Seating with Course", type: "select2", def: "0" },
 				        { name: "dh_course.c_deleted", type: "hidden" },
 				        { name: "dh_course.c_finalized", type: "hidden" },
 				    ],	
@@ -408,8 +412,31 @@ function dh_manage_course_handler()
 	    \DataTables\Editor\Field::inst( 'dh_course.c_list_only' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_date_change' ),   	            
         \DataTables\Editor\Field::inst( 'dh_course.c_comments' ),            
-        \DataTables\Editor\Field::inst( 'dh_course.c_description' ),            
-	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),
+        \DataTables\Editor\Field::inst( 'dh_course.c_description' ),
+		\DataTables\Editor\Field::inst( 'dh_course.c_combined_seat_course' )
+   	            ->options( function() {
+				  //global $db;
+  				  //return $db->sql(  )->fetchAll();
+
+/*	   	             \DataTables\Editor\Options::inst() 
+	                ->table( 'dh_course' )
+	                ->value( 'c_id' )
+	                ->label( 'c_name' )
+	                ->where( function ($q) {
+			            $q->where( 'c_center', arg(2), '=' );
+			            $q->where( 'c_start', date("Y-m-d"), ">=" );
+			            $q->where( 'c_deleted', '0', '=' );
+			            $q->order( 'c_start');
+        			})
+*/
+   	            	$a = db_query('select c_name as label, c_id as value from dh_course where c_center='.arg(2)." and c_start >= '".date('Y-m-d')."' and c_deleted=0 order by c_start")->fetchAllKeyed();
+   	            	$out = $a;
+   	            	$out['None'] = "0";
+        			//$out[] = array("label" => "None", "value" => "");
+        			//$out[] = array("value" => "1", "label" => "Hi there");
+        			return $out;
+         		}),
+	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),	    
 	    \DataTables\Editor\Field::inst( 'dh_course.c_center' )
 	    ->setValue( $centre_id ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_updated_by' )

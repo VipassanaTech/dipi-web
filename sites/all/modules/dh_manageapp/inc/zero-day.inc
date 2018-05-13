@@ -21,9 +21,14 @@ function dh_manage_day_zero()
 			dh_generate_manager_list(arg(1), arg(2));
 		break;
 		case 'seating':
+			$other_course = db_query("select c_combined_seat_course from dh_course where c_id=".arg(2))->fetchField();
+			if ($other_course > 0 )
+				$course = array(arg(2), $other_course);
+			else
+				$course = arg(2);
 			if (isset($_REQUEST['r']))
-				dh_auto_allocate_seats(arg(1), arg(2));
-			return dh_generate_seating_plan(arg(1), arg(2));
+				dh_auto_allocate_seats(arg(1), $course);
+			return dh_generate_seating_plan(arg(1), $course);
 		break;
 		case 'assign-teacher':
 			return dh_assign_teacher(arg(1), arg(2));
@@ -980,6 +985,8 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 function dh_generate_seating_plan($centre, $course, $pdf = '')
 {
 	global $base_url;
+	if (!is_array($course))
+		$course = array($course);
 
 	$out = '<html><head><script src="https://code.jquery.com/jquery-1.12.4.js"></script>
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
@@ -996,9 +1003,15 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 ';
 
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style></head><body>';
-	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
+	if ( is_array($course) )
+	{
+		$course_name = '';
+		$h = db_query("select c_name from dh_course where c_id in (".implode(",", $course).")");
+		while($r = $h->fetchAssoc())
+			$course_name .= $r['c_name']." / ";
+	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
@@ -1169,6 +1182,8 @@ function dh_generate_seating_plan_old($centre, $course, $pdf = '')
 
 function dh_auto_allocate_seats($centre, $course)
 {
+	if (!is_array($course))
+		$course = array($course);
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchAssoc();
 
 	$ini = array();
@@ -1209,7 +1224,7 @@ function dh_auto_allocate_seats($centre, $course)
 	}
 
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course IN (".implode("," , $course).") and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
