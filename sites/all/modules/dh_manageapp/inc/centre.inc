@@ -413,8 +413,12 @@ function upcoming_courses( $centre_id )
 	$s_res = db_query($q);
 	while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];
 
-	$where = " where a_center=$centre_id and  c.c_start >= '".$now."' and c.c_start <= '".$now_plus_1month."'";
-	//drupal_set_message($q);
+	//$where = " where a_center=$centre_id and  c.c_start >= '".$now."' and c.c_start <= '".$now_plus_1month."'";
+	$c_hand = db_query("select c_id from dh_course where c_center=$centre_id  and c_start >= '$now' and c_deleted=0 order by c_start limit 4");
+	$courses = array();
+	while($r = $c_hand->fetchAssoc())
+		$courses[$r['c_id']] = $r['c_id'];
+	$where = " where a_center=$centre_id and  c.c_id in (".implode(",", array_keys($courses) ).")";
 	$out = '<h2>Upcoming Courses</h2>';
 	$out .= course_summary($centre_id, $where, $statuses);
 

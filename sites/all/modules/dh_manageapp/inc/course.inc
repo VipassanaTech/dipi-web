@@ -415,25 +415,10 @@ function dh_manage_course_handler()
         \DataTables\Editor\Field::inst( 'dh_course.c_description' ),
 		\DataTables\Editor\Field::inst( 'dh_course.c_combined_seat_course' )
    	            ->options( function() {
-				  //global $db;
-  				  //return $db->sql(  )->fetchAll();
-
-/*	   	             \DataTables\Editor\Options::inst() 
-	                ->table( 'dh_course' )
-	                ->value( 'c_id' )
-	                ->label( 'c_name' )
-	                ->where( function ($q) {
-			            $q->where( 'c_center', arg(2), '=' );
-			            $q->where( 'c_start', date("Y-m-d"), ">=" );
-			            $q->where( 'c_deleted', '0', '=' );
-			            $q->order( 'c_start');
-        			})
-*/
-   	            	$a = db_query('select c_name as label, c_id as value from dh_course where c_center='.arg(2)." and c_start >= '".date('Y-m-d')."' and c_deleted=0 order by c_start")->fetchAllKeyed();
+					$now_minus_6month = date('Y-m-d',strtotime("-6 month"));
+   	            	$a = db_query('select c_name as label, c_id as value from dh_course where c_center='.arg(2)." and c_start >= '".$now_minus_6month."' and c_deleted=0 order by c_start")->fetchAllKeyed();
    	            	$out = $a;
    	            	$out['None'] = "0";
-        			//$out[] = array("label" => "None", "value" => "");
-        			//$out[] = array("value" => "1", "label" => "Hi there");
         			return $out;
          		}),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),	    
@@ -506,7 +491,7 @@ function course_summary( $centre_id, $where, $statuses )
 		$s_res = db_query($q);
 		while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];		
 	}
-	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type";
+	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type order by c.c_start";
 
 	$out = '';
 	$next_month = db_query($q);
