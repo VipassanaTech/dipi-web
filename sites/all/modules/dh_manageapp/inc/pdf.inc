@@ -73,16 +73,17 @@ function create_d11_report_pdf( $course_id )
 		//$teacher[strtoupper($t_r['t_gender'])][$t_r['ct_group']] = $t_r;
 		$teacher[strtoupper($t_r['t_gender'])][] = $t_r;
 	}
-	$q = "select a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant where a_course=$course_id and a_attended=1 group by a_gender, a_old, a_country";
+	$q = "select a_type, a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant where a_course=$course_id and a_attended=1 group by a_type, a_gender, a_old, a_country";
 	$hand = db_query($q);
-	$totals['M'][0]['IN'] = $totals['M'][1]['IN'] = $totals['F'][0]['IN'] = $totals['F'][1]['IN'] = 0;
-	$totals['M'][0]['NON-IN'] = $totals['M'][1]['NON-IN'] = $totals['F'][0]['NON-IN'] = $totals['F'][1]['NON-IN'] = 0;
+	$totals['STUDENT']['M'][0]['IN'] = $totals['STUDENT']['M'][1]['IN'] = $totals['STUDENT']['F'][0]['IN'] = $totals['STUDENT']['F'][1]['IN'] = 0;
+	$totals['STUDENT']['M'][0]['NON-IN'] = $totals['STUDENT']['M'][1]['NON-IN'] = $totals['STUDENT']['F'][0]['NON-IN'] = $totals['STUDENT']['F'][1]['NON-IN'] = 0;
+	$totals['SEVAK']['M'][1]['IN'] = $totals['SEVAK']['F'][1]['IN'] = $totals['SEVAK']['M'][1]['NON-IN'] = $totals['SEVAK']['F'][1]['NON-IN'] = 0;
 	while( $row = $hand->fetchAssoc())
 	{
 		if ($row['a_country'] == 'IN')
-			$totals[strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
+			$totals[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
 		else
-			$totals[strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
+			$totals[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
 	}
 
 	$q = "select a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and aa_left=1 group by a_gender, a_old, a_country";
@@ -116,28 +117,28 @@ function create_d11_report_pdf( $course_id )
 		$i++;		
 	}
 
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].IN1[0]'] = $totals['M'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].IO1[0]'] = $totals['M'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].FN1[0]'] = $totals['M'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].FO1[0]'] = $totals['M'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].DS1[0]'] = '0';
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].T1[0]'] = $totals['M'][0]['IN'] + $totals['M'][1]['IN'] + $totals['M'][0]['NON-IN'] + $totals['M'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].IN1[0]'] = $totals['STUDENT']['M'][0]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].IO1[0]'] = $totals['STUDENT']['M'][1]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].FN1[0]'] = $totals['STUDENT']['M'][0]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].FO1[0]'] = $totals['STUDENT']['M'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].DS1[0]'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row2[0].T1[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].IN2[0]'] = $totals['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].IO2[0]'] = $totals['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].FN2[0]'] = $totals['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].FO2[0]'] = $totals['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].DS2[0]'] = '0';
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].T2[0]'] = $totals['F'][0]['IN'] + $totals['F'][1]['IN'] + $totals['F'][0]['NON-IN'] + $totals['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].IN2[0]'] = $totals['STUDENT']['F'][0]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].IO2[0]'] = $totals['STUDENT']['F'][1]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].FN2[0]'] = $totals['STUDENT']['F'][0]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].FO2[0]'] = $totals['STUDENT']['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].DS2[0]'] = $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row3[0].T2[0]'] = $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].IN3[0]'] = $totals['M'][0]['IN'] + $totals['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].IO3[0]'] = $totals['M'][1]['IN'] + $totals['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].FN3[0]'] = $totals['M'][0]['NON-IN'] + $totals['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].FO3[0]'] = $totals['M'][1]['NON-IN'] + $totals['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].DS3[0]'] = '0';
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].T3[0]'] = $totals['M'][0]['IN'] + $totals['F'][0]['IN'] + $totals['M'][1]['IN'] + $totals['F'][1]['IN'] + $totals['M'][0]['NON-IN'] + $totals['F'][0]['NON-IN'] + $totals['M'][1]['NON-IN'] + $totals['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].IN3[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].IO3[0]'] = $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].FN3[0]'] = $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].FO3[0]'] = $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].DS3[0]'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];;
+	$fields['form1[0].#subform[0].Table2[0].Row4[0].T3[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
 
 
 	$fields['form1[0].#subform[0].Table2[0].Row5[0].IN4[0]'] = $left['M'][0]['IN'] + $left['F'][0]['IN'];
