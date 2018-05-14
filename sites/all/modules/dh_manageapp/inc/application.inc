@@ -49,11 +49,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form['#attributes'] = array('class' => array('container-inline')); 
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false, '#prefix' => '<h2>'.$course_name.'</h2>');
 	$form[$group]['a_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1, 
-		'#default_value' => isset($edit_data['a_f_name'])?$edit_data['a_f_name']:'', '#required' => 1,  );
+		'#default_value' => isset($edit_data['a_f_name'])?$edit_data['a_f_name']:'', '#required' => 1, '#maxlength' => 50  );
 	$form[$group]['a_m_name'] = array('#title' => 'Middle Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2,
-		'#default_value' => isset($edit_data['a_m_name'])?$edit_data['a_m_name']:'', );
+		'#default_value' => isset($edit_data['a_m_name'])?$edit_data['a_m_name']:'', '#maxlength' => 50);
 	$form[$group]['a_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 3, 
-		'#default_value' => isset($edit_data['a_l_name'])?$edit_data['a_l_name']:'', '#required' => 1, );
+		'#default_value' => isset($edit_data['a_l_name'])?$edit_data['a_l_name']:'', '#required' => 1, '#maxlength' => 50);
 	$form[$group]['a_gender'] = array('#title' => 'Gender', '#type' => 'radios', '#options' => array("M" => 'Male', 'F' => 'Female')  , 
 		'#default_value' => isset($edit_data['a_gender'])?$edit_data['a_gender']:'M', '#weight' => 4, '#required' => 1 , 
 		'#ajax' => array(
@@ -71,19 +71,19 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
     	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); /*'<div class="form-item">DOB Checked<input type="checkbox" id="edit-checked-dob" /></div>'); */
 	$form[$group]['age'] = array('#title' => 'Age', '#type' => 'textfield', '#size' => '5', '#weight' => 11, 
-		'#default_value' => '', '#required' => 0, );
+		'#default_value' => '', '#required' => 0, '#maxlength' => 10 );
 
 	$form[$group]['a_phone_home'] = array('#title' => 'Phone (Home)', '#type' => 'textfield', '#size' => '20', '#weight' => 12, 
-		'#default_value' => isset($edit_data['a_phone_home'])?$edit_data['a_phone_home']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_phone_home'])?$edit_data['a_phone_home']:'', '#required' => 0, '#maxlength' => 20 );
 	$form[$group]['a_phone_mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 13, 
-		'#default_value' => isset($edit_data['a_phone_mobile'])?$edit_data['a_phone_mobile']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_phone_mobile'])?$edit_data['a_phone_mobile']:'', '#required' => 0, '#maxlength' => 15 );
 	$form[$group]['a_phone_office'] = array('#title' => 'Phone (Office)', '#type' => 'textfield', '#size' => '20', '#weight' => 14, 
-		'#default_value' => isset($edit_data['a_phone_office'])?$edit_data['a_phone_office']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_phone_office'])?$edit_data['a_phone_office']:'', '#required' => 0, '#maxlength' => 20 );
 
 
 	$form[$group]['a_address'] = array('#title' => 'Address', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['a_address'])?$edit_data['a_address']:'', '#rows' => 3,  '#weight' => 20, '#required' => 1, 
-		'#suffix' => '' ); 
+		'#suffix' => '', '#maxlength' => 200 ); 
 	$form[$group]['a_old'] = array('#title' => 'Is Old Student', '#type' => 'radios', '#options' => array("0" => 'New', '1' => 'Old')  , 
 		'#default_value' => isset($edit_data['a_old'])?$edit_data['a_old']:'0', '#weight' => 21, '#required' => 1);
 	$form[$group]['a_type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array("Student" => 'Student', 'Sevak' => 'Sevak')  , 
@@ -93,9 +93,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 	$form[$group]['a_zip'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 25, 
-		'#default_value' => (isset($edit_data['a_zip']))?$edit_data['a_zip']:'');
+		'#default_value' => (isset($edit_data['a_zip']))?$edit_data['a_zip']:'', '#maxlength' => 20 );
 	$form[$group]['a_country'] = array('#title' => 'Country', '#type' => 'textfield', '#size' => '20', '#weight' => 26, 
-		'#default_value' => isset($edit_data['a_country'])?$edit_data['a_country']:'', '#required' => 1, 
+		'#default_value' => isset($edit_data['a_country'])?$edit_data['a_country']:'', '#required' => 1, '#maxlength' => 5,
 				'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
@@ -109,9 +109,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			$city_name = db_query("select c_name from dh_city where c_id='".$edit_data['a_city']."'")->fetchField();
 	}
 	$form[$group]['a_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 27, 
-		'#default_value' => isset($edit_data['a_state'])?$edit_data['a_state']:'', '#required' => 1);
+		'#default_value' => isset($edit_data['a_state'])?$edit_data['a_state']:'', '#required' => 1, '#maxlength' => 5 );
 	$form[$group]['a_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 28, 
-		'#default_value' => $add?'':$city_name, '#description' => isset($edit_data['a_city_str'])?$edit_data['a_city_str']:'');
+		'#default_value' => $add?'':$city_name, '#description' => isset($edit_data['a_city_str'])?$edit_data['a_city_str']:'', '#maxlength' => 100);
 	$q = "select td_val1, td_val3 from dh_type_detail where td_key='APPLICATION-MODE' order by td_val1";
 	$modes = db_query($q)->fetchAllKeyed();
 	$modes[''] = 'Choose';
@@ -120,15 +120,15 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 	$form[$group]['a_education'] = array('#title' => 'Education', '#type' => 'textfield', '#size' => '20', '#weight' => 35, 
-		'#default_value' => isset($edit_data['a_education'])?$edit_data['a_education']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_education'])?$edit_data['a_education']:'', '#required' => 0, '#maxlength' => 25 );
 	$form[$group]['a_occupation'] = array('#title' => 'Occupation', '#type' => 'textfield', '#size' => '20', '#weight' => 36, 
-		'#default_value' => isset($edit_data['a_occupation'])?$edit_data['a_occupation']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_occupation'])?$edit_data['a_occupation']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_company'] = array('#title' => 'Company', '#type' => 'textfield', '#size' => '20', '#weight' => 37, 
-		'#default_value' => isset($edit_data['a_company'])?$edit_data['a_company']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_company'])?$edit_data['a_company']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_department'] = array('#title' => 'Dept', '#type' => 'textfield', '#size' => '20', '#weight' => 38, 
-		'#default_value' => isset($edit_data['a_department'])?$edit_data['a_department']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_department'])?$edit_data['a_department']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_designation'] = array('#title' => 'Designation', '#type' => 'textfield', '#size' => '20', '#weight' => 39, 
-		'#default_value' => isset($edit_data['a_designation'])?$edit_data['a_designation']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_designation'])?$edit_data['a_designation']:'', '#required' => 0, '#maxlength' => 50);
 
 
 	$doc_types = array('' => 'Choose', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_aadhar' => 'Aadhar', 'a_voter_id' => 'National ID');
@@ -147,11 +147,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['document_type'] = array('#title' => 'Photo ID', '#type' => 'select', '#multiple' => false,  '#weight' => 41, 
 		'#default_value' => $default_doc_type, '#options' => $doc_types, '#required' => 0, );
 	$form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42, 
-		'#default_value' => $default_doc_id, '#required' => 0, );
+		'#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
-		'#default_value' => isset($edit_data['a_langs'])?$edit_data['a_langs']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_langs'])?$edit_data['a_langs']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 44, 
-		'#default_value' => isset($edit_data['a_email'])?$edit_data['a_email']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_email'])?$edit_data['a_email']:'', '#required' => 0, '#maxlength' => 100 );
 
 	$proficiency = db_query("select td_key, td_key from dh_type_detail where td_type='LANG-PROFICIENCY'")->fetchAllKeyed();
 	$proficiency[''] = 'Choose';
@@ -187,12 +187,14 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Additional Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['ae_desc_physical'] = array('#title' => 'Physical Health', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_physical'])?$edit_data['ae_desc_physical']:'', '#rows' => 3,  '#weight' => 50, '#required' => 0,
-		'#suffix' => $photo);
+		'#suffix' => $photo, '#maxlength' => 160 );
 	$form[$group]['ae_desc_mental'] = array('#title' => 'Mental Health', '#type' => 'textarea',  
-		'#default_value' => isset($edit_data['ae_desc_mental'])?$edit_data['ae_desc_mental']:'', '#rows' => 3,  '#weight' => 51, '#required' => 0);
+		'#default_value' => isset($edit_data['ae_desc_mental'])?$edit_data['ae_desc_mental']:'', '#rows' => 3,  '#weight' => 51, 
+		'#required' => 0, '#maxlength' => 160);
 
 	$form[$group]['ae_desc_addiction_current'] = array('#title' => 'Addiction Details', '#type' => 'textarea',  
-		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52, '#required' => 0);
+		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52, 
+		'#required' => 0, '#maxlength' => 160);
 	$t = '';
 	if (isset($edit_data['ae_desc_other_technique']))
 		$t = $edit_data['ae_desc_other_technique'];
@@ -200,45 +202,49 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$t .= ' '.$edit_data['ae_desc_other_technique_old'];
 
 	$form[$group]['ae_desc_other_technique'] = array('#title' => 'Other Meditation Techniques', '#type' => 'textarea',  
-		'#default_value' => $t?$t:'', '#rows' => 3,  '#weight' => 53, '#required' => 0);
+		'#default_value' => $t?$t:'', '#rows' => 3,  '#weight' => 53, '#required' => 0, '#maxlength' => 160);
 
 	$form[$group]['ae_desc_medication'] = array('#title' => 'Medication', '#type' => 'textarea',  
-		'#default_value' => isset($edit_data['ae_desc_medication'])?$edit_data['ae_desc_medication']:'', '#rows' => 3,  '#weight' => 54, '#required' => 0);
+		'#default_value' => isset($edit_data['ae_desc_medication'])?$edit_data['ae_desc_medication']:'', '#rows' => 3,  '#weight' => 54, 
+		'#required' => 0,'#maxlength' => 160);
 	$form[$group]['ae_pregnant_detail'] = array('#title' => 'Pregnancy Details', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['ae_pregnant_detail'], '#rows' => 3,  '#weight' => 55, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['ae_pregnant_detail'], '#rows' => 3,  '#weight' => 55, '#required' => 0, '#maxlength' => 100);
 
 	$form[$group]['a_emergency_name'] = array('#title' => 'Emergency Name', '#type' => 'textfield',  
-		'#default_value' => isset($edit_data['a_emergency_name'])?$edit_data['a_emergency_name']:'', '#size' => 30,  '#weight' => 56, '#required' => 0);
+		'#default_value' => isset($edit_data['a_emergency_name'])?$edit_data['a_emergency_name']:'', '#size' => 30,  '#weight' => 56, 
+		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_relation'] = array('#title' => 'Emergency Relation', '#type' => 'textfield',  
-		'#default_value' => $add?'':$edit_data['a_emergency_relation'], '#size' => 30,  '#weight' => 57, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['a_emergency_relation'], '#size' => 30,  '#weight' => 57, 
+		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',  
-		'#default_value' => $add?'':$edit_data['a_emergency_num'], '#size' => 20,  '#weight' => 58, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['a_emergency_num'], '#size' => 20,  '#weight' => 58, 
+		'#required' => 0, '#maxlength' => 20);
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 50);
 
 
 	$group = 'Course Information';
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['ac_10d'] = array('#title' => '10 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 60, 
-		'#default_value' => isset($edit_data['ac_10d'])?$edit_data['ac_10d']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_10d'])?$edit_data['ac_10d']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_stp'] = array('#title' => 'STP', '#type' => 'textfield', '#size' => '5', '#weight' => 61, 
-		'#default_value' => isset($edit_data['ac_stp'])?$edit_data['ac_stp']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_stp'])?$edit_data['ac_stp']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_spl'] = array('#title' => 'Special', '#type' => 'textfield', '#size' => '5', '#weight' => 62, 
-		'#default_value' => isset($edit_data['ac_spl'])?$edit_data['ac_spl']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_spl'])?$edit_data['ac_spl']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_20d'] = array('#title' => '20 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 63, 
-		'#default_value' => isset($edit_data['ac_20d'])?$edit_data['ac_20d']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_20d'])?$edit_data['ac_20d']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_30d'] = array('#title' => '30 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 64, 
-		'#default_value' => isset($edit_data['ac_30d'])?$edit_data['ac_30d']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_30d'])?$edit_data['ac_30d']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_45d'] = array('#title' => '45 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 65, 
-		'#default_value' => isset($edit_data['ac_45d'])?$edit_data['ac_45d']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_45d'])?$edit_data['ac_45d']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_60d'] = array('#title' => '60 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 66, 
-		'#default_value' => isset($edit_data['ac_60d'])?$edit_data['ac_60d']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_60d'])?$edit_data['ac_60d']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_tsc'] = array('#title' => 'TSC', '#type' => 'textfield', '#size' => '5', '#weight' => 67, 
-		'#default_value' => isset($edit_data['ac_tsc'])?$edit_data['ac_tsc']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_tsc'])?$edit_data['ac_tsc']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_service'] = array('#title' => 'Service', '#type' => 'textfield', '#size' => '5', '#weight' => 68, 
-		'#default_value' => isset($edit_data['ac_service'])?$edit_data['ac_service']:'0', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_service'])?$edit_data['ac_service']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_teacher'] = array('#title' => '&nbsp;&nbsp;Is a Teacher?', '#type' => 'radios', 
 		'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 69, 
 		'#default_value' => isset($edit_data['ac_teacher'])?$edit_data['ac_teacher']:'0', '#required' => 0, );
@@ -251,9 +257,10 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	for($i=1; $i<=31; $i++ ) $day[$i] = sprintf("%02d", $i);
 
 	$form[$group]['ac_first_location_str'] = array('#title' => 'First Course Location', '#type' => 'textfield', '#size' => '25', '#weight' => 75, 
-		'#default_value' => isset($edit_data['ac_first_location_str'])?$edit_data['ac_first_location_str']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_first_location_str'])?$edit_data['ac_first_location_str']:'', 
+		'#required' => 0, '#maxlength' => 100 );
 	$form[$group]['ac_first_teacher_str'] = array('#title' => 'First Course Teacher', '#type' => 'textfield', '#size' => '25', '#weight' => 76, 
-		'#default_value' => isset($edit_data['ac_first_teacher_str'])?$edit_data['ac_first_teacher_str']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_first_teacher_str'])?$edit_data['ac_first_teacher_str']:'', '#required' => 0, '#maxlength' => 100 );
 	$form[$group]['ac_first_year'] = array('#title' => 'Year', '#type' => 'select', '#multiple' => false, '#options' => $year , '#weight' => 77, 
 		'#default_value' => isset($edit_data['ac_first_year'])?$edit_data['ac_first_year']:'', '#required' => 0, );
 	$form[$group]['ac_first_month'] = array('#title' => 'Month', '#type' => 'select', '#options' => $month , '#multiple' => false, '#weight' => 78, 
@@ -262,9 +269,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['ac_first_day'])?$edit_data['ac_first_day']:'', '#required' => 0, );
 
 	$form[$group]['ac_last_location_str'] = array('#title' => 'Last Course Location', '#type' => 'textfield', '#size' => '25', '#weight' => 80, 
-		'#default_value' => isset($edit_data['ac_last_location_str'])?$edit_data['ac_last_location_str']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_last_location_str'])?$edit_data['ac_last_location_str']:'', '#required' => 0, '#maxlength' => 100 );
 	$form[$group]['ac_last_teacher_str'] = array('#title' => 'Last Course Teacher', '#type' => 'textfield', '#size' => '25', '#weight' => 81, 
-		'#default_value' => isset($edit_data['ac_last_teacher_str'])?$edit_data['ac_last_teacher_str']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['ac_last_teacher_str'])?$edit_data['ac_last_teacher_str']:'', '#required' => 0, '#maxlength' => 100);
 	$form[$group]['ac_last_year'] = array('#title' => 'Year', '#type' => 'select', '#multiple' => false, '#options' => $year , '#weight' => 82, 
 		'#default_value' => isset($edit_data['ac_last_year'])?$edit_data['ac_last_year']:'', '#required' => 0, );
 	$form[$group]['ac_last_month'] = array('#title' => 'Month', '#type' => 'select', '#options' => $month , '#multiple' => false, '#weight' => 83, 
@@ -272,7 +279,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['ac_last_day'] = array('#title' => 'Day', '#type' => 'select', '#options' => $day ,'#multiple' => false, '#weight' => 84, 
 		'#default_value' => isset($edit_data['ac_last_day'])?$edit_data['ac_last_day']:'', '#required' => 0, );
 	$form[$group]['ac_practice_details'] = array('#title' => 'Practice Details', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['ac_practice_details'], '#rows' => 3,  '#weight' => 85, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['ac_practice_details'], '#rows' => 3,  '#weight' => 85, '#required' => 0, '#maxlength' => 100);
 
 	if ( $LC )
 	{
@@ -285,11 +292,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$form[$group]['al_last_lc_type'] = array('#title' => 'Last LC Course', '#type' => 'select', '#weight' => 2, '#options' => $course_types, 
 			'#default_value' => isset($edit_data['al_last_lc_type'])?$edit_data['al_last_lc_type']:'', '#required' => 0, );
 		$form[$group]['al_last_lc_location'] = array('#title' => 'Last LC Course Location', '#type' => 'textfield', '#size' => '25', '#weight' => 3, 
-			'#default_value' => isset($edit_data['al_last_lc_location'])?$edit_data['al_last_lc_location']:'', '#required' => 0, );
+			'#default_value' => isset($edit_data['al_last_lc_location'])?$edit_data['al_last_lc_location']:'', '#required' => 0, '#maxlength' => 30 );
 		$form[$group]['al_last_lc_teacher'] = array('#title' => 'Last LC Course Teacher', '#type' => 'textfield', '#size' => '25', '#weight' => 4, 
-			'#default_value' => isset($edit_data['al_last_lc_teacher'])?$edit_data['al_last_lc_teacher']:'', '#required' => 0, );
+			'#default_value' => isset($edit_data['al_last_lc_teacher'])?$edit_data['al_last_lc_teacher']:'', '#required' => 0, '#maxlength' => 100 );
 		$form[$group]['al_last_lc_date'] = array('#title' => 'LC Date', '#type' => 'textfield', '#weight' => 5, '#size' => 10,
-			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, );
+			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, '#maxlength' => 10 );
 
 		$form[$group]['al_committed'] = array('#title' => 'Fully Committed?', '#type' => 'radios', 
 			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 6, 
@@ -309,13 +316,13 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 		$form[$group]['al_at_year'] = array('#title' => 'If AT Year Apptd?', '#type' => 'textfield', 
-			'#size' => 5, '#weight' => 11, 
+			'#size' => 5, '#weight' => 11, '#maxlength' => 10,
 			'#default_value' => isset($edit_data['al_at_year'])?$edit_data['al_at_year']:'', '#required' => 0, );
 		$form[$group]['al_daily_practice_yrs'] = array('#title' => 'Daily Practice Yrs?', '#type' => 'textfield', 
-			'#size' => 5, '#weight' => 12, 
+			'#size' => 5, '#weight' => 12, '#maxlength' => 10,
 			'#default_value' => isset($edit_data['al_daily_practice_yrs'])?$edit_data['al_daily_practice_yrs']:'', '#required' => 0, );
 		$form[$group]['al_daily_practice_details'] = array('#title' => 'Daily Practice Details?', '#type' => 'textfield', 
-			'#size' => 80, '#weight' => 13, 
+			'#size' => 80, '#weight' => 13, '#maxlength' => 150, 
 			'#default_value' => isset($edit_data['al_daily_practice_details'])?$edit_data['al_daily_practice_details']:'', '#required' => 0, );
 
 
@@ -328,7 +335,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#default_value' => isset($edit_data['al_relationship_lifelong'])?$edit_data['al_relationship_lifelong']:'0', '#required' => 0, 
 			'#suffix' => '');
 		$form[$group]['al_spouse_name'] = array('#title' => 'Spouse Name', '#type' => 'textfield', 
-			'#size' => 40, '#weight' => 16, 
+			'#size' => 40, '#weight' => 16, '#maxlength' => 60, 
 			'#default_value' => isset($edit_data['al_spouse_name'])?$edit_data['al_spouse_name']:'', '#required' => 0,
 			 );
 
@@ -348,34 +355,34 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 		$form[$group]['al_left_course_details'] = array('#title' => 'Refused Admission/Left Course Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 21, 
+			'#rows' => 3, '#weight' => 21, '#maxlength' => 100, 
 			'#default_value' => isset($edit_data['al_left_course_details'])?$edit_data['al_left_course_details']:'', '#required' => 0, );
 		$form[$group]['al_reduce_practice_details'] = array('#title' => 'Asked to reduce meditation Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 22, 
+			'#rows' => 3, '#weight' => 22, '#maxlength' => 100, 
 			'#default_value' => isset($edit_data['al_reduce_practice_details'])?$edit_data['al_reduce_practice_details']:'', '#required' => 0, );
 		$form[$group]['al_personal_tragedy_details'] = array('#title' => 'Personal Tragedy in Last year Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 23, 
+			'#rows' => 3, '#weight' => 23, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_personal_tragedy_details'])?$edit_data['al_personal_tragedy_details']:'', '#required' => 0, );
 		$form[$group]['al_difficulty_details'] = array('#title' => 'Any Difficulties encountered Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 24, 
+			'#rows' => 3, '#weight' => 24, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_difficulty_details'])?$edit_data['al_difficulty_details']:'', '#required' => 0, );
 		$form[$group]['al_special_req_details'] = array('#title' => 'Special Requirement Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 25, 
+			'#rows' => 3, '#weight' => 25, '#maxlength' => 120,
 			'#default_value' => isset($edit_data['al_special_req_details'])?$edit_data['al_special_req_details']:'', '#required' => 0, );
 		$form[$group]['al_additional_info'] = array('#title' => 'Any Additional Information', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 26, 
+			'#rows' => 3, '#weight' => 26, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_additional_info'])?$edit_data['al_additional_info']:'', '#required' => 0, );
 		$form[$group]['al_arrival'] = array('#title' => 'Arrival at Centre?', '#type' => 'textfield', 
-			 '#weight' => 27, 
+			 '#weight' => 27, '#maxlength' => 50,
 			'#default_value' => isset($edit_data['al_arrival'])?$edit_data['al_arrival']:'', '#required' => 0, );	
 		$form[$group]['al_lang_discourse'] = array('#title' => 'Discourse/Instructions Language', '#type' => 'select', '#options' =>  $langs,  '#weight' => 28, 
 			'#default_value' => isset($edit_data['al_lang_discourse'])?$edit_data['al_lang_discourse']:'', '#required' => 0, );
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
-			 '#weight' => 29, 
+			 '#weight' => 29, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 0, );	
 		$form[$group]['al_area_at'] = array('#title' => 'Area Teacher?', '#type' => 'textfield', 
-			 '#weight' => 30, 
+			 '#weight' => 30, '#maxlength' => 100, 
 			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0, );	
 
 	}
@@ -439,7 +446,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'0':$edit_data['aa_cell_fixed'], '#required' => 0, );
 
 
-	$form[$group]['aa_comment'] = array('#title' => 'Comments', '#type' => 'textarea',  
+	$form[$group]['aa_comment'] = array('#title' => 'Comments', '#type' => 'textarea', '#maxlength' => 200,  
 		'#default_value' => $add?'':$edit_data['aa_comment'], '#rows' => 3,  '#weight' => 95, '#required' => 0);
 
 	$special = '';

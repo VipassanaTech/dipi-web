@@ -191,6 +191,53 @@
 				}
 			}
 
+			if ( $("#edit-a-f-name").val().trim().length == 0 )
+			{
+				alert("First Name is required");
+				$("#edit-a-f-name").focus();
+				event.preventDefault();
+				return false;
+			}
+
+			if ( $("#edit-a-l-name").val().trim().length == 0 )
+			{
+				alert("Last Name is required");
+				$("#edit-a-l-name").focus();
+				event.preventDefault();
+				return false;
+			}
+
+			if ( $("#edit-a-address").val().trim().length == 0 )
+			{
+				alert("Address is required");
+				$("#edit-a-address").focus();
+				event.preventDefault();
+				return false;
+			}
+
+			if ( ($("#edit-a-country").val().length > 2) || ($("#edit-a-country").val().trim().length == 0)  )
+			{
+				alert("Country should be 2 character ISO code");
+				$("#edit-a-country").focus();
+				event.preventDefault();
+				return false;
+			}
+
+			if ( ($("#edit-a-state").val().length > 3) || ($("#edit-a-state").val().trim().length == 0 ) )
+			{
+				alert("State should be ISO code");
+				$("#edit-a-state").focus();
+				event.preventDefault();
+				return false;
+			}
+
+			if ( $("#edit-a-source").val().trim().length == 0 )
+			{
+				alert("Please select Application Mode");
+				$("#edit-a-source").focus();
+				event.preventDefault();
+				return false;
+			}
 
 			return true;
 		});
