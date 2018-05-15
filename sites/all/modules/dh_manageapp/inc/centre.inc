@@ -418,7 +418,10 @@ function upcoming_courses( $centre_id )
 	$courses = array();
 	while($r = $c_hand->fetchAssoc())
 		$courses[$r['c_id']] = $r['c_id'];
-	$where = " where a_center=$centre_id and  c.c_id in (".implode(",", array_keys($courses) ).")";
+	if (count($courses) > 0)
+		$where = " where a_center=$centre_id and  c.c_id in (".implode(",", array_keys($courses) ).")";
+	else
+		$where = " where a_center=$centre_id and c.c_id = -1";
 	$out = '<h2>Upcoming Courses</h2>';
 	$out .= course_summary($centre_id, $where, $statuses);
 
