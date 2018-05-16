@@ -458,7 +458,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	else
 		$where = " and l_id=$letter_id";
 	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='".$row['CentreID']."' $where";
-	watchdog('LETTER', $q);
+	//watchdog('LETTER', $q);
 	$result = db_query($q);
 	$letter = $result->fetchAssoc();
 
