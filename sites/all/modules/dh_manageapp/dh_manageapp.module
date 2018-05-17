@@ -838,7 +838,7 @@ function _update_status($app_id, $status, $uid=0 )
 
 	if ( $row['a_status'] <> $status)
 	{
-		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && ($row['a_status'] <> $system_statuses['STATUS-ERROR']) )
+		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && (($row['a_status'] <> $system_statuses['STATUS-ERROR']) || ($conf_no == ''))  )
 		{
 			$conf_no = generate_conf_no($app_id);
 			$fields['a_conf_no'] = $conf_no;
@@ -855,9 +855,27 @@ function _update_status($app_id, $status, $uid=0 )
 function dh_daily_activity_form($form, &$form_state)
 {
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+
+
+	$max_old_courses =  date('Y-m-d',strtotime("-".variable_get('max_old_courses', '6 month')));
+	$q = "select c_id, c_name from dh_course where c_center='".arg(1)."' and c_start >='$max_old_courses' and c_deleted=0  order by c_start";
+	$courses = array();
+	$courses[''] = 'Choose';
+	$courses += db_query($q)->fetchAllKeyed();
+	$form['course'] = array('#title' => 'Select Course', '#type' => 'select', '#options' => $courses, '#weight' => 1, );		
+
 	$form['a'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1)).'</h3>');
 	$form['#attributes'] = array('class' => array('container-inline')); 
-	$form['date'] = array('#title' => 'Select Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 1, 
+	$form['date_start'] = array('#title' => 'Select Start Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 2, 
+		'#default_value' => date('Y-m-d'), '#date_format' => 'Y-m-d', '#datepicker_options' => array(
+    		'maxDate' => 0, '#required' => 1, 
+    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+    	),'#date_year_range' => '-20:0', '#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); 
+
+	$form['date_end'] = array('#title' => 'Select End Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 3, 
 		'#default_value' => date('Y-m-d'), '#date_format' => 'Y-m-d', '#datepicker_options' => array(
     		'maxDate' => 0, '#required' => 1, 
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
@@ -866,15 +884,27 @@ function dh_daily_activity_form($form, &$form_state)
 
 	$q = "select uid, name from users u left join dh_user_center uc on u.uid = uc.uc_user where uc_center=".arg(1);
 	$users = db_query($q)->fetchAllKeyed();
+
+	$events = array('Status Change' => 'Status Change', 'Letter' => 'Letter', 'Deleted' => 'Deleted', '' => 'Choose');
+	$form['event'] = array('#title' => 'Select Event', '#type' => 'select', 
+		'#options' => $events, '#default_value' => '', '#weight' => 4);
+
+
+
+	$system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
+	$users[$system_uids['COURSE-APPLICANT-UID']] = 'Applicant';
+	$users[$system_uids['COURSE-SYSTEM-UID']] = 'System';	
 	$users[''] = 'Choose'; 
 	$form['user'] = array('#title' => 'Select user', '#type' => 'select', 
-		'#options' => $users, '#default_value' => '', '#weight' => 2);
+		'#options' => $users, '#default_value' => '', '#weight' => 5);
+
+
 	$form['sub'] = array('#value' => 'Submit', '#type' => 'submit', '#weight'=> 10);
 
 	if ( isset($form_state['storage']) )
 	{
 		$storage = $form_state['storage'];
-		$out = dh_activity_search_results( arg(1), $storage['date'], $storage['user'] );
+		$out = dh_activity_search_results( arg(1), $storage['date_start'], $storage['date_end'], $storage['event'], $storage['course'], $storage['user'] );
 		$form['out'] = array('#markup' => $out, '#weight' => 100);
 	}
 
@@ -882,6 +912,7 @@ function dh_daily_activity_form($form, &$form_state)
 
 		(function ($) {
 		$(document).ready(function(){
+			$("#edit-course").select2();
 			$("#table-daily-activity").DataTable();
 		})
 	})(jQuery);
@@ -897,19 +928,28 @@ function dh_daily_activity_form_submit($form, &$form_state)
 	$form_state['rebuild'] = TRUE;
 }
 
-function dh_activity_search_results( $centre, $date, $user = '' )
+function dh_activity_search_results( $centre, $date_start, $date_end, $event, $course, $user = '' )
 {
-	if (is_array($date))
-		$date = $date['date'];
+	if (is_array($date_start))
+		$date_start = $date_start['date'];
+	if (is_array($date_end))
+		$date_end = $date_end['date'];
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 
 	$append = '';
 	if ($user <> '' )
-		$append = "and l_user='$user'";
-	$q = "select  CONCAT(a_f_name,' ',a_l_name) as 'Applicant', l_event,l_msg, u.name, l_tstamp from dh_log l left join dh_applicant a on (l.l_identifier=a.a_id and l.l_module='Applicant') left join users u on (l.l_user=u.uid) where DATE_FORMAT(l_tstamp,'%Y-%m-%d') = '$date' and l_center='$centre' and l_module='Applicant' $append order by l_tstamp desc";
+		$append .= " and l_user='$user' ";
 
-	$header = array('Applicant Name', 'Event', 'Message', 'User', 'DateTime');
+	if ($course <> '' )
+		$append .= " and c.c_id='$course' ";
+
+	if ($event <> '' )
+		$append .= " and l_event='$event' ";
+
+	$q = "select CONCAT(a_f_name,' ',a_l_name) as 'Applicant', c.c_name as 'Course Name', l_event,l_msg, u.name, l_tstamp from dh_log l left join dh_applicant a on (l.l_identifier=a.a_id and l.l_module='Applicant') left join dh_course c on (a.a_course=c.c_id) left join users u on (l.l_user=u.uid) where DATE_FORMAT(l_tstamp,'%Y-%m-%d') >= '$date_start' and DATE_FORMAT(l_tstamp,'%Y-%m-%d') <= '$date_end' and l_center='$centre' and l_module='Applicant' $append order by l_tstamp desc";
+
+	$header = array('Applicant Name', 'Course Name', 'Event', 'Message', 'User', 'DateTime');
 	$results = 	db_query($q);
 	$rows = array();
 	while($r = $results->fetchAssoc())
