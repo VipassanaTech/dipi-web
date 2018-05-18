@@ -29,7 +29,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$statuses[''] = 'Choose';
 	$statuses[$system_statues['STATUS-CONFIRMED']] = $system_statues['STATUS-CONFIRMED'];
 	$statuses[$system_statues['STATUS-CANCELLED']] = $system_statues['STATUS-CANCELLED'];
-	$statuses[$system_statues['STATUS-ATTENDED']] = $system_statues['STATUS-ATTENDED'];
+	//$statuses[$system_statues['STATUS-ATTENDED']] = $system_statues['STATUS-ATTENDED'];
 	$statuses[$system_statues['STATUS-CUSTOM']] = $system_statues['STATUS-CUSTOM'];
 
 	$letters = array();
@@ -758,7 +758,7 @@ function dh_manageapp_search_form($form, &$form_state)
 		$centre_append = '';
 		if ( $centre_id <> '' )
 			$centre_append = ' and c_center='.$centre_id.' ';
-		$q = "select c_id, c_name from dh_course where c_start >= '$max_old_courses' $centre_append  order by c_start desc";
+		$q = "select c_id, c_name from dh_course where c_start >= '$max_old_courses' $centre_append and c_deleted=0 order by c_start desc";
 		$courses = db_query($q)->fetchAllKeyed();
 		$courses[''] = 'Choose';
 
