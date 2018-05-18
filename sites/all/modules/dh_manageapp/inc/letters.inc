@@ -643,6 +643,8 @@ function mailgun_webhook()
 				case 'dropped':
 				case 'failed':
 				case 'rejected':
+					if (!isset($_POST['app-id']))
+						break;
 					if ($_POST['test-mode'] == 1)
 						break;
 					$desc = strtoupper($_POST['event'])." - ".$_POST['recipient'];

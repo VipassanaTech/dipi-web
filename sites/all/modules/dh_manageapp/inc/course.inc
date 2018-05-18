@@ -3,6 +3,7 @@
 require_once 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Mailgun\Mailgun;
 
 
 function dh_manage_courses_main()
@@ -483,6 +484,7 @@ function _course_set_default( &$editor, $id, &$values)
 
 function course_summary( $centre_id, $where, $statuses )
 {
+	global $user;
 	if (empty($statuses))
 	{
 		$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
@@ -493,6 +495,7 @@ function course_summary( $centre_id, $where, $statuses )
 		$s_res = db_query($q);
 		while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];		
 	}
+
 	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type order by c.c_start";
 
 	$out = '';
@@ -669,6 +672,44 @@ function course_day11_report()
 	header("Content-Disposition: inline; filename=Day11-Report.pdf");
 	@readfile($pdf);
 
+}
+
+
+function reminder_finalize()
+{
+
+	$body = 'Dear Registrar,
+
+The Course [course-name] has not yet been finalized. 
+
+
+Please update LEFT students and then finalize the course at the earliest.
+Failure to finalize the course will result in loss of applicant information after 3 months. 
+
+
+Thanks,
+- DIPI Automation. 
+
+	';
+	$q = "select c.c_name, c.c_id, cs.cs_email_reply_to from dh_course c left join dh_center_setting cs on (c.c_center=cs.cs_center) left join dh_type_detail td on (c.c_course_type=td.td_id) where date_format(c.c_end, '%Y%m%d') < '".date("Ymd")."' and td.td_val2 > 1 and c.c_deleted=0 and c.c_finalized=0";
+	$result = db_query($q);
+	$mg = Mailgun::create(variable_get('mailgun_key', ''));
+	while($r = $result->fetchAssoc())
+	{
+		$test_mode = variable_get('mode_test', '0');
+		$to = $r['cs_email_reply_to'];
+		if ( $test_mode )
+			$to = variable_get('mode_test_emails', '');
+		$options = array(
+		  'from'    => 'DIPI Automation <noreply@vipassana.co>',
+		  'to'      => $to,  //info@dhamma.net.in
+		  'subject' => 'DIPI Course Finalization Reminder',
+		  'text'    => str_replace('[course-name]', $r['c_name'], $body) ,
+		  'v:test-mode' => $test_mode
+		);
+		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+
+	}
 }
 
 
