@@ -686,6 +686,8 @@ function dh_manageapp_search_form($form, &$form_state)
 		{
 			if ($storage['status'] == 'Attended')
 				$where .= " and a_attended = '1'";
+			elseif ($storage['status'] == 'Confirmed')
+				$where .= " and a_status in ('Confirmed', 'Expected')";
 			else
 				$where .= " and a_status = '".$storage['status']."'";
 		}
