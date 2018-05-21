@@ -78,7 +78,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		if (date('Y-m-d') > $r['c_end'])
 			$rs['allowtransfer'] = 0;
 		if ( $r['a_uri'] <> '' )
-			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri'])).')';
+			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
 		$rs['aid'] = $r['a_id'];
 		$rs['changestatus'] = '' ;
 		$rs['name'] = _ma_make_link($r['Full Name'],'app/'.$r['a_id'].'/edit').$pdf_link;
