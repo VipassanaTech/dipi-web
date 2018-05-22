@@ -518,7 +518,7 @@ function copy_letters_to_centre( $centre_id )
 
 function cron_pc_auto_cancel()
 {
-	$status_cancelled = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CANCELLED'")->fetchField();
+	$status_cancelled = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CANCELLED'")->fetchField();
 	$q = "select cs_center, cs_preconf_days from dh_center_setting where cs_preconf_enable=1 and cs_preconf_days > 0";
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 
@@ -526,7 +526,7 @@ function cron_pc_auto_cancel()
 	while($r = $result->fetchAssoc())
 	{
 		$send_date = date('Y-m-d', strtotime("-".$r['cs_preconf_days']." day"));
-		$q = "select a_id from dh_applicant where a_center=".$r['cs_center']." and a_status='PreConfirmation' and a_pc_date <= '$send_date'";
+		$q = "select a_id from dh_applicant left join dh_course on (a_course=c_id) where a_center=".$r['cs_center']." and a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date'";
 		$res = db_query($q);
 		while($row = $res->fetchAssoc())
 		{
