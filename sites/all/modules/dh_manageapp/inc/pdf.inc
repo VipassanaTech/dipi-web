@@ -80,7 +80,7 @@ function create_d11_report_pdf( $course_id )
 	$totals['SEVAK']['M'][1]['IN'] = $totals['SEVAK']['F'][1]['IN'] = $totals['SEVAK']['M'][1]['NON-IN'] = $totals['SEVAK']['F'][1]['NON-IN'] = 0;
 	while( $row = $hand->fetchAssoc())
 	{
-		if ($row['a_country'] == 'IN')
+		if ( in_array(strtoupper($row['a_country']), array('IN', '') ) )
 			$totals[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
 		else
 			$totals[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
@@ -92,7 +92,7 @@ function create_d11_report_pdf( $course_id )
 	$left['M'][0]['NON-IN'] = $left['M'][1]['NON-IN'] = $left['F'][0]['NON-IN'] = $left['F'][1]['NON-IN'] = 0;
 	while( $row = $hand->fetchAssoc())
 	{
-		if ($row['a_country'] == 'IN')
+		if ( in_array(strtoupper($row['a_country']), array('IN', '') ) )
 			$left[strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
 		else
 			$left[strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
