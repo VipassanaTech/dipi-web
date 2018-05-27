@@ -344,7 +344,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			    var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
 
 				var table = $("#table-applicants").DataTable({
-					dom: "lBfrtip",
+					dom: "lBfr<\"clear\"p>tip",
 					data: dataset,
 			        columns: [
 			            {

@@ -14,3 +14,7 @@ div.slider {
 table.dataTable tbody td.no-padding {
     padding: 0;
 }
+
+.clear {
+	clear: both;
+}
