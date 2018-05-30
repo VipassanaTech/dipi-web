@@ -691,7 +691,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 	//if (trim($app['a_dob']) == '')
 	//	unset($app['a_dob']);
-	$status_confirmed = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
+	$status_ce = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key in ('STATUS-CONFIRMED', 'STATUS-EXPECTED') ")->fetchAllKeyed();
 	
 	if (arg(2) == 'edit')
 	{
@@ -701,11 +701,11 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		$centre_id = $res['a_center'];
 		$old_status = $res['a_status'];
 
-		if ($input['attending'] || $old_status == $status_confirmed)
+		if ($input['attending'] || in_array($old_status, array_values($status_ce) )  )
 		{
 			if ( $app['a_status'] <> 'Left' )
 			{
-				$app['a_status'] =  $status_confirmed;
+				$app['a_status'] =  $status_ce['STATUS-CONFIRMED'];
 				$conf_no = $res['a_conf_no'];
 				if ( strlen($new) == 2 )
 				{
