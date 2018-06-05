@@ -150,6 +150,12 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'3':$edit_data['cs_expected_days'], '#required' => 0, '#size' => 5 );
 
 
+	$group = 'Search Settings';
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['cs_pagination'] = array('#title' => 'Show Pagination on', '#type' => 'radios', '#weight' => 1,
+		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'), 
+		'#default_value' => $add?'bottom':$edit_data['cs_pagination'], '#required' => 0,  );
+
 
 	$group = 'Hall Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);

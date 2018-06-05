@@ -49,6 +49,21 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$courses_j[] = array('id' => $k, 'name' => $v);
 	$courses_json = json_encode($courses_j);
 
+	$pagination = db_query("select cs_pagination from dh_center_setting where cs_center=$centre")->fetchField();
+	if ($pagination == '')
+		$pagination = 'bottom';
+	switch ($pagination) {
+		case 'top':
+			$page_dom = 'lBfr<\"clear\"p>ti';
+			break;
+		case 'both':
+			$page_dom = 'lBfr<\"clear\"p>tip';
+			break;
+		default:
+			$page_dom = 'lBfrtip';
+			break;
+	}
+
 	if ( $type == 'applicant')
 		$q = "select c.c_finalized, a_id, a_type, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, c.c_end, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, ae_desc_other_technique, ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country)  where $where order by a_created,a_vray_id";
 	else
@@ -184,6 +199,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	            	title: "Student Data"
 				} )
 			';
+
 /*
 
 	            $.extend( true, {}, buttonCommon, {
@@ -344,7 +360,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			    var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
 
 				var table = $("#table-applicants").DataTable({
-					dom: "lBfrtip",  /*lBfr<\"clear\"p>tip*/
+					dom: "'.$page_dom.'",  /*lBfr<\"clear\"p>tip*/
 					data: dataset,
 			        columns: [
 			            {
