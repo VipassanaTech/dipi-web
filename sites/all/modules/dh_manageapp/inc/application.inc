@@ -731,6 +731,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			$app['a_status'] =  'Received';
 		else
 		{
+			$status_confirmed = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
 			$new_conf_no = $new.db_query("select nextval('".arg(3)."-$new')")->fetchField();
 			$app['a_status'] =  $status_confirmed;
 			$app['a_conf_no'] = $new_conf_no; 
