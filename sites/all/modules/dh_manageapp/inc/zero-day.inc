@@ -207,7 +207,7 @@ function dh_zero_select_course($form, &$form_state, $with_header = true)
 function dh_get_acco($centre_id, $course_id)
 {
 	$acco['M'] = $acco['F'] = array();
-	$q = "select csa_gender, csa_section, csa_room from dh_center_setting_acco where csa_center=$centre_id";
+	$q = "select csa_gender, csa_section, csa_room from dh_center_setting_acco where csa_center=$centre_id and csa_deleted=0";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
