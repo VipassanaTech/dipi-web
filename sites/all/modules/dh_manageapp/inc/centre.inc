@@ -155,6 +155,12 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['cs_pagination'] = array('#title' => 'Show Pagination on', '#type' => 'radios', '#weight' => 1,
 		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'), 
 		'#default_value' => $add?'bottom':$edit_data['cs_pagination'], '#required' => 0,  );
+	
+	$group = 'Course Settings';
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
+		'#default_value' => $add?"[1-DayOSC]\nDays = \nStatus = \n[2-DayOSC]\nDays = \nStatus = \n[3-DayOSC]\nDays = \nStatus = \n[10-Day]\nDays = \nStatus = \n[10-DayExecutive]\nDays = \nStatus = \n[10-DaySpecial]\nDays = \nStatus = \n[Satipatthana]\nDays = \nStatus = \n[20-DayOSC]\nDays = \nStatus = \n[30-DayOSC]\nDays = \nStatus = \n[45-DayOSC]\nDays = \nStatus = \n[60-DayOSC]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
+		'#description' => 'Keywords: Days, Status. If "Days" is defined then course status will be changed to Course Full/Waitlist, Define Status = Full/Waitlist as per requirement' );
 
 
 	$group = 'Hall Settings';
