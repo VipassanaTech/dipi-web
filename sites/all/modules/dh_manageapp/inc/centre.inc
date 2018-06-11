@@ -155,6 +155,12 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['cs_pagination'] = array('#title' => 'Show Pagination on', '#type' => 'radios', '#weight' => 1,
 		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'), 
 		'#default_value' => $add?'bottom':$edit_data['cs_pagination'], '#required' => 0,  );
+	
+	$group = 'Course Settings';
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
+		'#default_value' => $add?"[10-day]\nDays = \nStatus = \n\n[SPL]\nDays = \nStatus = \n\n[STP]\nDays = \nStatus = \n\n[20-Day]\nDays = \nStatus = \n\n[30-day]\nDays = \nStatus = \n\n[45-day]\nDays = \nStatus = \n\n[60-day]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
+		'#description' => 'Keywords: Days, Status. If "Days" is defined then course status will be changed to Course Full/Waitlist, Define Status = Full/Waitlist as per requirement' );
 
 
 	$group = 'Hall Settings';
