@@ -99,6 +99,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['name'] = _ma_make_link($r['Full Name'],'app/'.$r['a_id'].'/edit').$pdf_link;
 		if ($rs['type'] == 'sevak')
 			$rs['name'] .= ' (Sevak)';
+		if ($r['ac_teacher'] == 1)
+			$rs['name'] .= ' (AT)';
 		if ( in_array($r['ConfNo'], array('NF', 'OF', 'NF0', 'OF0')) )
 			$r['ConfNo'] = '';
 		$rs['course'] = $r['c_name'];
