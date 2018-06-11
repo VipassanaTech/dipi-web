@@ -159,7 +159,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$group = 'Course Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
-		'#default_value' => $add?"[10-day]\nDays = \nStatus = \n\n[SPL]\nDays = \nStatus = \n\n[STP]\nDays = \nStatus = \n\n[20-Day]\nDays = \nStatus = \n\n[30-day]\nDays = \nStatus = \n\n[45-day]\nDays = \nStatus = \n\n[60-day]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
+		'#default_value' => $add?"[1-DayOSC]\nDays = \nStatus = \n[2-DayOSC]\nDays = \nStatus = \n[3-DayOSC]\nDays = \nStatus = \n[10-Day]\nDays = \nStatus = \n[10-DayExecutive]\nDays = \nStatus = \n[10-DaySpecial]\nDays = \nStatus = \n[Satipatthana]\nDays = \nStatus = \n[20-DayOSC]\nDays = \nStatus = \n[30-DayOSC]\nDays = \nStatus = \n[45-DayOSC]\nDays = \nStatus = \n[60-DayOSC]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
 		'#description' => 'Keywords: Days, Status. If "Days" is defined then course status will be changed to Course Full/Waitlist, Define Status = Full/Waitlist as per requirement' );
 
 
