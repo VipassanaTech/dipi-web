@@ -39,7 +39,10 @@ function dh_manage_day_zero()
 		case 'cell-list':
 			if (isset($_REQUEST['r']))
 				generate_cell_list(arg(1), arg(2));
-			return dh_cell_list(arg(1), arg(2));
+			$debug = 0 ;
+			if (isset($_REQUEST['d']) && ($_REQUEST['d'] == 1))
+				$debug = 1;
+			return dh_cell_list(arg(1), arg(2), $debug);
 		break;		
 		case 'laundry-list':
 			return dh_laundry_list(arg(1), arg(2));
@@ -826,7 +829,7 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name, ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 and a_type='Student' order by a_gender, aa_group, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name, ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 and a_type='Student' order by a_gender, aa_group, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1024,7 +1027,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 			$course_name .= $r['c_name']." / ";
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
@@ -1237,7 +1240,7 @@ function dh_auto_allocate_seats($centre, $course)
 	}
 
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course IN (".implode("," , $course).") and a_attended=1 and a_type='Student' order by  a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course IN (".implode("," , $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1455,7 +1458,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	$temp = db_query("select c_name,td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
 	$course_name = $temp['c_name'];
 	$c_type = strtolower($temp['td_val3']);
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no ,a_phone_mobile, a_email,a_learn_about_vip, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_education, a_lang_1, a_lang_2, a_langs, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, co.c_name as 'Country' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected') and a_type='Student' order by a_gender, a_old DESC, a_f_name, a_l_name, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no ,a_phone_mobile, a_email,a_learn_about_vip, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_education, a_lang_1, a_lang_2, a_langs, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, co.c_name as 'Country' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected') and a_type='Student' order by a_gender, a_old DESC, a_f_name, a_l_name, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q); 
 	$data['M']['old'] = $data['M']['new'] = $data['F']['old'] = $data['F']['new'] = array();
 	while($r = $result->fetchAssoc())
@@ -1542,28 +1545,30 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 }
 
 
-function dh_cell_list($centre, $course, $pdf = '' )
+function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 {
 	global $base_url;
 	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, aa_cell_group from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, aa_cell_group from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
-		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']][$r['aa_cell']] = $r['Full Name'];
-		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]) )
+		$name = $r['Full Name'];
+		if ($debug) $name .= ' ('.$r['Age'].')';
+		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']][$r['aa_cell']] = $name;
+		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]) )
 		{
-			$age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['lower'] = $r['Age'];
-			$age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['upper'] = 0;
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] = 0;
 		}
-		if ( $r['Age'] > $age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['upper'] )
-			$age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['upper'] = $r['Age'];
+		if ( $r['Age'] > $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] )
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] = $r['Age'];
 
-		if ( $r['Age'] < $age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['lower'] )
-			$age_range[strtoupper($r['a_gender'])][$r['aa_cell_group']]['lower'] = $r['Age'];
+		if ( $r['Age'] < $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] )
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
 
 	}
 	$out = '<html><head>';
@@ -1581,7 +1586,8 @@ function dh_cell_list($centre, $course, $pdf = '' )
 			foreach( $data[$g][$i] as $cell_group => $cell_data )
 			{
 				//$out .= '<div class="title-info">'.$g.' Batch '.$cell_group.'</div>';
-				asort($cell_data);
+				if ( ! $debug )
+					asort($cell_data);
 				$keys = array_keys($cell_data);
 				$loop = floor(count($cell_data)/($ROWS_PER_PAGE*2));
 				if ( (count($cell_data)%($ROWS_PER_PAGE*2)) > 0 )
@@ -1590,7 +1596,7 @@ function dh_cell_list($centre, $course, $pdf = '' )
 				{
 					$c = 0;
 					$out .= '<div class="title-info">'.($i?'Old':'new').' '.($g=='M'?'Male':'Female').' Batch '.($cell_group+1).
-					' ('.$age_range[$g][$cell_group]['lower'].' - '.$age_range[$g][$cell_group]['upper'].')</div>';
+					' ('.$age_range[$g][$i][$cell_group]['lower'].' - '.$age_range[$g][$i][$cell_group]['upper'].')</div>';
 					$out .= '<table cellspacing="0" class="table-cell-list">';
 					$out .= '<tr><th>Name</th><th>Cell</th><th>&nbsp;</th><th>Name</th><th>Cell</th></tr>';
 
@@ -1660,7 +1666,7 @@ function generate_cell_list($centre, $course)
 		}
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data['MALE']['old'] = $data['MALE']['new'] = $data['FEMALE']['old'] = $data['FEMALE']['new'] = array();
 	while($r = $result->fetchAssoc())
