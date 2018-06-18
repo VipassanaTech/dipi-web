@@ -159,8 +159,9 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$group = 'Course Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
-		'#default_value' => $add?"[1-DayOSC]\nDays = \nStatus = \n[2-DayOSC]\nDays = \nStatus = \n[3-DayOSC]\nDays = \nStatus = \n[10-Day]\nDays = \nStatus = \n[10-DayExecutive]\nDays = \nStatus = \n[10-DaySpecial]\nDays = \nStatus = \n[Satipatthana]\nDays = \nStatus = \n[20-DayOSC]\nDays = \nStatus = \n[30-DayOSC]\nDays = \nStatus = \n[45-DayOSC]\nDays = \nStatus = \n[60-DayOSC]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
-		'#description' => 'Keywords: Days, Status. If "Days" is defined then course status will be changed to Course Full/Waitlist, Define Status = Full/Waitlist as per requirement' );
+		'#default_value' => $add?"update `dh_center_setting`
+set cs_course_config = '[1-DayOSC]\nCapacity = \nStatus = \n[2-DayOSC]\nCapacity = \nStatus = \n[3-DayOSC]\nCapacity = \nStatus = \n[10-Day]\nCapacity = \nStatus = \n[10-DayExecutive]\nCapacity = \nStatus = \n[10-Capacitypecial]\nCapacity = \nStatus = \n[Satipatthana]\nCapacity = \nStatus = \n[20-DayOSC]\nCapacity = \nStatus = \n[30-DayOSC]\nCapacity = \nStatus = \n[45-DayOSC]\nCapacity = \nStatus = \n[60-DayOSC]\nCapacity = \nStatus = \n\n'":$edit_data['cs_course_config'], '#required' => 1,
+		'#description' => 'Keywords: Capacity, Status. If "Capacity" is defined then course status will be changed to Course Full/Waitlist when capacity is reached, Define Status = Full/Waitlist as per requirement' );
 
 
 	$group = 'Hall Settings';
