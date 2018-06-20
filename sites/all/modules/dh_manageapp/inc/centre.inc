@@ -159,8 +159,8 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$group = 'Course Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
-		'#default_value' => $add?"[1-DayOSC]\nDays = \nStatus = \n[2-DayOSC]\nDays = \nStatus = \n[3-DayOSC]\nDays = \nStatus = \n[10-Day]\nDays = \nStatus = \n[10-DayExecutive]\nDays = \nStatus = \n[10-DaySpecial]\nDays = \nStatus = \n[Satipatthana]\nDays = \nStatus = \n[20-DayOSC]\nDays = \nStatus = \n[30-DayOSC]\nDays = \nStatus = \n[45-DayOSC]\nDays = \nStatus = \n[60-DayOSC]\nDays = \nStatus = \n\n":$edit_data['cs_course_config'], '#required' => 1,
-		'#description' => 'Keywords: Days, Status. If "Days" is defined then course status will be changed to Course Full/Waitlist, Define Status = Full/Waitlist as per requirement' );
+		'#default_value' => $add?"[1-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[2-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[3-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[10-Day]\nMaxApps-Male = \nMaxApps-Female = \n[10-DayExecutive]\nMaxApps-Male = \nMaxApps-Female = \n[10-DaySpecial]\nMaxApps-Male = \nMaxApps-Female = \n[Satipatthana]\nMaxApps-Male = \nMaxApps-Female = \n[20-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[30-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[45-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[60-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n\n":$edit_data['cs_course_config'], '#required' => 1,
+		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
 
 	$group = 'Hall Settings';
