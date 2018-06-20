@@ -15,12 +15,15 @@ function dh_manage_day_zero()
 			return dh_zero_main();
 		break;
 		case 'teacher-list':
+			zeroize_new_course_data(arg(1), arg(2));
 			dh_generate_teacher_list(arg(1), arg(2));
 		break;
-		case 'manager-list':
+		case 'manager-list':			
+			zeroize_new_course_data(arg(1), arg(2));
 			dh_generate_manager_list(arg(1), arg(2));
 		break;
 		case 'seating':
+			zeroize_new_course_data(arg(1), arg(2));
 			$other_course = db_query("select c_combined_seat_course from dh_course where c_id=".arg(2))->fetchField();
 			if ($other_course > 0 )
 				$course = array(arg(2), $other_course);
@@ -37,6 +40,7 @@ function dh_manage_day_zero()
 			return dh_zero_day_list(arg(1), arg(2));
 		break;		
 		case 'cell-list':
+			zeroize_new_course_data(arg(1), arg(2));
 			if (isset($_REQUEST['r']))
 				generate_cell_list(arg(1), arg(2));
 			$debug = 0 ;
@@ -1962,6 +1966,14 @@ function course_archive_lists($centre, $course)
 	dh_generate_manager_list($centre, $course);
 	dh_cell_list($centre, $course);
 	dh_generate_seating_plan($centre, $course);
+}
+
+/* Sometimes new students can have course data, when old becomes new etc, a bit crazy  */
+function zeroize_new_course_data($centre, $course)
+{
+	//$q = "update dh_applicant_course left join dh_applicant on ac_applicant=a_id set ac_10d=0, ac_stp=0, ac_spl=0, ac_20d=0, ac_30d=0, ac_tsc=0, ac_45d=0, ac_teacher=0 where a_center=$centre and a_course=$course and a_old=0 and ac_10d IS NOT NULL";
+	$q = "delete dh_applicant_course from dh_applicant_course left join dh_applicant on ac_applicant=a_id where a_center=$centre and a_course=$course and a_old=0 and ac_10d IS NOT NULL";
+	db_query($q);
 }
 
 
