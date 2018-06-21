@@ -1022,6 +1022,15 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
   </script>
 ';
 
+	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
+	$ini = array();
+	if ($settings <> '')
+		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
+	if (!isset($ini['LEFT']['gender']))
+		$ini['LEFT']['gender'] = 'F';
+	if (!isset($ini['RIGHT']['gender']))
+		$ini['RIGHT']['gender'] = 'M';
+
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style></head><body>';
 	if ( is_array($course) )
 	{
@@ -1054,18 +1063,38 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$place = 'RIGHT';
 	//$seats['seats'] = dh_allocate_seats($data['M'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
 	//$seats['chowky'] = dh_allocate_seats($chowky['M'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
+	if ($ini['RIGHT']['gender'] == 'M')
+		$male_dir = LEFT_TO_RIGHT;
+	else
+		$male_dir = RIGHT_TO_LEFT;
+
 	$out .= '<div class="teacher-seat">Seating Plan - MALE<br>'.$course_name.'</div>';	
-	$out .= dh_print_seats($seats['M']['seats'], $max_col['M']+1, LEFT_TO_RIGHT, 'main-div');
-	$out .= dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, LEFT_TO_RIGHT, 'chowky-div');
+	$out_seats = dh_print_seats($seats['M']['seats'], $max_col['M']+1, $male_dir, 'main-div');
+	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div');		
+	if ($male_dir == LEFT_TO_RIGHT)
+		$out .= $out_seats.$out_chowky;
+	else
+		$out .= $out_chowky.$out_seats;
+
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '<div class="footer"></div>';
+
+	if ($ini['LEFT']['gender'] == 'F')
+		$female_dir = RIGHT_TO_LEFT;
+	else
+		$female_dir = LEFT_TO_RIGHT;
 
 	$place = 'LEFT';
 	//$seats['seats'] = dh_get_seats($data['F'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
 	//$seats['chowky'] = dh_get_seats($chowky['F'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
 	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';	
-	$out .= dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, RIGHT_TO_LEFT, 'chowky-div');
-	$out .= dh_print_seats($seats['F']['seats'], $max_col['F']+1, RIGHT_TO_LEFT, 'main-div');
+	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div');
+	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div');
+	if ($female_dir == LEFT_TO_RIGHT)
+		$out .= $out_seats.$out_chowky;
+	else
+		$out .= $out_chowky.$out_seats;
+
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '<div class="footer"></div>';
 
@@ -1241,6 +1270,8 @@ function dh_auto_allocate_seats($centre, $course)
 			}	
 
 		}		
+		if (!isset($ini[$p]['gender']))
+			$ini[$p]['gender'] = ($p == 'RIGHT')?'M':'F';
 	}
 
 
@@ -1267,12 +1298,12 @@ function dh_auto_allocate_seats($centre, $course)
 	}
 
 	$place = 'RIGHT';
-	$seats['seats'] = dh_allocate_seats($data['M'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
-	$seats['chowky'] = dh_allocate_seats($chowky['M'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
+	$seats['seats'] = dh_allocate_seats($data[$ini[$place]['gender']], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
+	$seats['chowky'] = dh_allocate_seats($chowky[$ini[$place]['gender']], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
 
 	$place = 'LEFT';
-	$seats['seats'] = dh_allocate_seats($data['F'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
-	$seats['chowky'] = dh_allocate_seats($chowky['F'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
+	$seats['seats'] = dh_allocate_seats($data[$ini[$place]['gender']], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
+	$seats['chowky'] = dh_allocate_seats($chowky[$ini[$place]['gender']], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
 
 	return $seats;
 } 
