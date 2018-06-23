@@ -114,6 +114,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['note'] = $r['a_internal_note'];
+		$rs['willingtoserve'] = $r['a_willing_to_serve'];
+		$rs['extra'] = $r['a_extra'];
 
 		$rs['course_10d'] = $r['ac_10d']?$r['ac_10d']:"0";
 		$rs['course_stp'] = $r['ac_stp']?$r['ac_stp']:"0";
@@ -281,8 +283,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		            "</tr>"+
 		            "<tr>"+
 		            "<td><label>Internal Note:</label></td>"+
-		            "<td colspan=4>"+d.note+"</td>"+
-		            "</tr>"+		            
+		            "<td>"+d.note+"</td>"+
+			    "<td><label>Willing to Serve:</label></td>"+
+			    "<td>"+d.willingtoserve+"</td>"+
+			    "<td><label>Other Info:</label></td>"+
+			    "<td>"+d.extra+"</td>"
+		            "</tr>"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
