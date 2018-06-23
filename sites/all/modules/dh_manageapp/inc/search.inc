@@ -114,6 +114,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['note'] = $r['a_internal_note'];
+		$rs['willingtoserve'] = $r['a_willing_to_serve'];
+		$rs['extra'] = $r['a_extra'];
 
 		$rs['course_10d'] = $r['ac_10d']?$r['ac_10d']:"0";
 		$rs['course_stp'] = $r['ac_stp']?$r['ac_stp']:"0";
