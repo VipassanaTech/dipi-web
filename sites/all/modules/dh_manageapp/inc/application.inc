@@ -223,6 +223,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 50);
+	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
+		'#default_value' => $add?'':$edit_data['a_extra'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 50);
 
 
 	$group = 'Course Information';
