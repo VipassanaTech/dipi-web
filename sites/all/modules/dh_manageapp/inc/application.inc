@@ -223,6 +223,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 50);
+	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
+ 		'#default_value' => $add?'':$edit_data['a_friend_family_details'], '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
+	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
+ 		'#default_value' => $add?'':$edit_data['a_extra'], '#rows' => 3,  '#weight' => 62, '#required' => 0, '#maxlength' => 50);
+
 
 
 	$group = 'Course Information';
@@ -549,7 +554,7 @@ function _ajax_get_section_options($gender, $centre)
 
 function _ajax_get_acco_options($section, $gender, $centre, $course)
 {
-	watchdog("acco", "Sec - $section, Gen - $gender, Centre - $centre, Course -  $course");
+	//watchdog("acco", "Sec - $section, Gen - $gender, Centre - $centre, Course -  $course");
 	$rooms = array('' => 'Choose');
 
 	$q = "select csa_room from dh_center_setting_acco where csa_center='$centre' and csa_section='$section' and csa_gender='$gender'";

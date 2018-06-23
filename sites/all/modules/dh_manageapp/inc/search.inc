@@ -65,7 +65,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	}
 
 	if ( $type == 'applicant')
-		$q = "select c.c_finalized, a_id, a_type, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, c.c_end, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, ae_desc_other_technique, ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country)  where $where order by a_created,a_vray_id";
+		$q = "select c.c_finalized, a_id, a_type, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, a_willing_to_serve, a_extra, c.c_end, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, ae_desc_other_technique, ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country)  where $where order by a_created,a_vray_id";
 	else
 		$q = "select c.c_finalized, s.s_id as 'a_id', 'Student' as 'a_type', sc_course as 'a_course', sc_conf_no as 'ConfNo', concat(s_f_name, ' ',s_m_name, ' ',s_l_name) as 'Full Name', s_gender as 'a_gender', 'Attended' as 'a_status', ci.c_name as 'City', st.s_name, co.c_name as 'Country', '' as 'a_city_str', c.c_name, s_address as 'a_address', s_zip as 'a_zip', s_email as  'a_email', s_phone_home as  'a_phone_home',s_phone_office as 'a_phone_office',s_phone_mobile as 'a_phone_mobile',s_education as 'a_education',s_occupation as 'a_occupation',s_occupation_past as 'a_occupation_past',s_company as 'a_company', s_designation as 'a_designation', s_department as 'a_department',s_alist as  'a_alist', '' as 'a_uri', s_photo as 'a_photo', TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', s_lang_1 as 'a_lang_1', s_lang_2 as 'a_lang_2', s_lang_3 as  'a_lang_3', s_langs as 'a_langs', 1 as 'a_old', 1 as 'a_attended', c.c_end, sci_10d as 'ac_10d', sci_stp as 'ac_stp', sci_spl as 'ac_spl', sci_20d as  'ac_20d',sci_30d as  'ac_30d', sci_45d as  'ac_45d', sci_60d as 'ac_60d', sci_tsc as 'ac_tsc', sci_teacher as 'ac_teacher', CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', '' as 'ac_practice_details', sc_desc_physical as 'ae_desc_physical', sc_desc_medication  as 'ae_desc_medication',  sc_desc_mental as 'ae_desc_mental', sc_desc_other_technique as 'ae_desc_other_technique', sc_addiction_current 'ae_desc_addiction_current', '' as 'ae_pregnant', '' as 'ae_pregnant_detail', sc_uri as 'a_uri' from dh_student s left join dh_student_course sc on (s.s_id=sc_student) left join dh_student_course_input sci on (s.s_id=sci_student) left join dh_course c on (sc_course=c.c_id) left join dh_country co on (s.s_country=co.c_code) left join dh_city ci on s_city=ci.c_id left join dh_state st on (s.s_state=st.s_code and s.s_country=st.s_country)  where $where order by s_f_name";
 
@@ -114,6 +114,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['note'] = $r['a_internal_note'];
+		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
+		$rs['extra'] = $r['a_extra'];
 
 		$rs['course_10d'] = $r['ac_10d']?$r['ac_10d']:"0";
 		$rs['course_stp'] = $r['ac_stp']?$r['ac_stp']:"0";
@@ -280,10 +282,14 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		                "<td>"+d.addiction+"</td>"+ pregnant +			            	
 		            "</tr>"+
 		            "<tr>"+
-		            "<td><label>Internal Note:</label></td>"+
-		            "<td colspan=4>"+d.note+"</td>"+
-		            "</tr>"+		            
-		            "<tr>"+
+			            "<td><label>Internal Note:</label></td>"+
+			            "<td>"+d.note+"</td>"+
+	 				    "<td><label>Other Info:</label></td>"+
+	 				    "<td>"+d.extra+"</td>"+
+	 				    "<td><label>Willing to Serve:</label></td>"+
+	 				    "<td>"+d.willingtoserve+"</td>"+
+ 		            "</tr>"+		       
+ 		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
 		            "<tr>"+
@@ -327,7 +333,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 3 )
 			                	{
-			                		return tmp[ row ].course_10d; 
+			                		a = "S: "+(+tmp[ row ].course_10d + +tmp[ row ].course_stp)+" L: "+(+tmp[ row ].course_20d + +tmp[ row ].course_30d + +tmp[ row ].course_45d + +tmp[ row ].course_60d + +tmp[ row ].course_spl + +tmp[ row ].course_tsc )+ " Seva: "+ tmp[ row ].course_seva; 
+			                		return a; 
 			                	}
 			                	else if ( column == 4 )
 			                	{
@@ -739,6 +746,10 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_alist=1";
 		if ( isset($storage['is_at']) && ($storage['is_at']) )
 			$where .= " and ac_teacher=1";
+		if ( isset($storage['is_willing_to_serve']) && ($storage['is_willing_to_serve']) )
+			$where .= " and a_willing_to_serve=1";
+		if ( isset($storage['is_pregnant']) && ($storage['is_pregnant']) )
+			$where .= " and ae_pregnant=1";
 
 
 		$out = '<h2>'.l("Back to Search", "search-app/".$centre_id).'</h2>';
@@ -817,8 +828,10 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 13);
 		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 14);
 		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 15);
-		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield',  '#weight' => 16);
-		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#weight' => 17);
+		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 16);
+		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 17);
+		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield',  '#weight' => 18);
+		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#weight' => 19);
 		/*$form['date_from'] = array('#title' => 'Received From', '#type' => 'date_popup', '#size' => '15', '#weight' => 6, 
 			'#default_value' => '', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
 	    		'maxDate' => 0, '#required' => 1, 
