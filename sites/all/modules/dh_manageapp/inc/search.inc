@@ -281,8 +281,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		            "</tr>"+
 		            "<tr>"+
 		            "<td><label>Internal Note:</label></td>"+
-		            "<td colspan=4>"+d.note+"</td>"+
-		            "</tr>"+		            
+		            "<td>"+d.note+"</td>"+
+			    "<td><label>Willing to Serve:</label></td>"+
+			    "<td>"+d.willingtoserve+"</td>"+
+			    "<td><label>Other Info:</label></td>"+
+			    "<td>"+d.extra+"</td>"
+		            "</tr>"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
