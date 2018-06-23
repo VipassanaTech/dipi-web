@@ -311,7 +311,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "Education", "Contact Details", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
+			            		var h = ["Name", "Gender", "Age", "Courses+Seva", "Education", "Contact Details", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -333,7 +333,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 3 )
 			                	{
-			                		return tmp[ row ].course_10d; 
+			                		return tmp[ row ].course_10d + " + " + tmp[ row ].course_seva; 
 			                	}
 			                	else if ( column == 4 )
 			                	{
