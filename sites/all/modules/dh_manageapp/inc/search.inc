@@ -114,6 +114,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['note'] = $r['a_internal_note'];
+		$rs['willingtoserve'] = $r['a_willing_to_serve'];
+		$rs['extra'] = $r['a_extra'];
+		$rs['friendfamily'] = $r['a_friend_family_details'];
 
 		$rs['course_10d'] = $r['ac_10d']?$r['ac_10d']:"0";
 		$rs['course_stp'] = $r['ac_stp']?$r['ac_stp']:"0";
@@ -280,9 +283,16 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		                "<td>"+d.addiction+"</td>"+ pregnant +			            	
 		            "</tr>"+
 		            "<tr>"+
-		            "<td><label>Internal Note:</label></td>"+
-		            "<td colspan=4>"+d.note+"</td>"+
-		            "</tr>"+		            
+		              "<td><label>Internal Note:</label></td>"+
+		               "<td>"+d.note+"</td>"+
+			      "<td><label>Willing to Serve:</label></td>"+
+			      "<td>"+d.willingtoserve+"</td>"+
+			      "<td><label>Other Info:</label></td>"+
+			      "<td>"+d.extra+"</td>"
+		            "</tr>"+
+			    "<tr>"+
+		                "<td><label>Friend/Family attending course:</label></td>"+
+		                "<td colspan=4>"+d.friendfamily+"</td>"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
@@ -305,7 +315,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "Education", "Contact Details", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
+			            		var h = ["Name", "Gender", "Age", "Courses+Seva", "Education", "Contact Details", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -327,7 +337,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 3 )
 			                	{
-			                		return tmp[ row ].course_10d; 
+			                		return tmp[ row ].course_10d + " + " + tmp[ row ].course_seva; 
 			                	}
 			                	else if ( column == 4 )
 			                	{
