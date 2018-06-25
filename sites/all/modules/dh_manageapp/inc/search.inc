@@ -152,7 +152,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['lang'] = trim($r['a_lang_1']." ".$r['a_lang_2']. " ".$r['a_lang_3']." ".$r['a_langs']);
 		$rs['alist'] = $r['a_alist'];
 		$rs['pregnant'] = $r['ae_pregnant']?'Yes':'No';
-		if ($r['ae_pregnant'] && ($r['ae_pregnant_detail'] <> ''))
+		if ($r['ae_pregnant'] && ( ! in_array(strtolower($r['ae_pregnant_detail']), array("-", "no")) ) )
 			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
 		$rs['photo'] = '';
 		if ( $r['a_photo'] <> '')
