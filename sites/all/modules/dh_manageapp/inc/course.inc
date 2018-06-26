@@ -67,6 +67,7 @@ function dh_course_dashboard()
 
 function dh_manage_courses()
 {
+	$c_code = db_query("select c_subdomain from dh_center where c_id=".arg(1))->fetchField();
 	drupal_add_library('system', 'ui.core');
 	drupal_add_library('system', 'ui.dialog');
 	drupal_add_library('system', 'ui.datepicker');
@@ -232,7 +233,7 @@ function dh_manage_courses()
 	
 
 	drupal_add_js($js, 'inline');
-	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'</h2>';
+	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/sch".$c_code, array('attributes' => array("target" => "_blank") )).')</h2>';
 	$out .= '<table id="course-table" class="display">
 				<thead>
 					<tr>
