@@ -697,7 +697,9 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	//if (trim($app['a_dob']) == '')
 	//	unset($app['a_dob']);
 	$status_ce = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key in ('STATUS-CONFIRMED', 'STATUS-EXPECTED') ")->fetchAllKeyed();
-	
+   $app['a_f_name'] = ucwords(strtolower($app['a_f_name']) );
+   $app['a_l_name'] = ucwords(strtolower($app['a_l_name']) );
+
 	if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
