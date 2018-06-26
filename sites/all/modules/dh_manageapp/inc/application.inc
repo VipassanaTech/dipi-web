@@ -755,7 +755,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	if ( $app['a_medication'] || $app['a_problem_physical'] || $app['a_problem_mental'] || 
 		$app['a_addiction_current'] || $app['a_other_technique'] || trim($input['ae_pregnant_detail']) <> '' || arg(2) == 'edit' )
 	{
-		if ($input['ae_pregnant_detail'] <> '')
+		if ( ($input['ae_pregnant_detail'] <> '') && (! in_array(strtolower($input['ae_pregnant_detail']), array("-", "no")) )) 
 			$app_ae['ae_pregnant'] = 1;
 		else
 			$app_ae['ae_pregnant'] = 0;
