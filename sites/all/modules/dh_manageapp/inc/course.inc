@@ -233,7 +233,10 @@ function dh_manage_courses()
 	
 
 	drupal_add_js($js, 'inline');
-	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/sch".$c_code, array('attributes' => array("target" => "_blank") )).')</h2>';
+	$code = "sch".$c_code;
+	if ( strstr($c_code, '.in'))
+		$code = "noncenter/".$c_code;
+	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/".$code, array('attributes' => array("target" => "_blank") )).')</h2>';
 	$out .= '<table id="course-table" class="display">
 				<thead>
 					<tr>
