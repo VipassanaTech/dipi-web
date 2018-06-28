@@ -67,6 +67,17 @@
 
 	}
 
+	function check_teacher()
+	{
+		if($("input[name=ac_teacher]:checked").val() == "1")
+			$("#edit-ac-teacher-code").prop("disabled", false);
+		else
+		{
+			$("#edit-ac-teacher-code").prop("disabled", true);				
+			$("#edit-ac-teacher-code").val("");
+		}
+	}
+
 
 	$(document).ready(function(){
 		//alert("hi");
@@ -76,6 +87,7 @@
 		  	check_oldstudent();
 		  	check_acco();
 		  	check_relationship();
+		  	check_teacher();
 //		  	$("#edit-a-zip").focusout(function(){ 
 //		  		alert("hi");
 //		  		do_pincode($(this).val() ); 
@@ -87,6 +99,7 @@
 		   {
 	  		  check_attending();
 			  check_oldstudent();
+	 	  	  check_teacher();
 			  $("input[name=a_gender]").trigger("change");
 			  check_acco();
 		      clearInterval(checkExist);
@@ -105,6 +118,11 @@
 		$(document).on("change", "input[type=radio][name=al_relationship]", function(){
 			check_relationship();
 		});
+
+		$(document).on("change", "input[type=radio][name=ac_teacher]", function(){
+			check_teacher();
+		});
+
 
 	  	$("#edit-a-zip").focusout(function(){ 
 //		  		alert("hi");
@@ -128,6 +146,26 @@
 		autocomplete_country("#edit-a-country");
 		autocomplete_state("#edit-a-state", "#edit-a-country");
 		autocomplete_city("#edit-a-city", "#edit-a-country", "#edit-a-state");
+
+		$("#edit-ac-teacher-code").autocomplete({
+			source: function( request, response ) {
+				$("#edit-ac-teacher-code").addClass( "throbbing" );
+		        $.ajax({
+		          url: "/autocomplete/get-teacher/" + request.term,
+		          dataType: "json",
+		          success: function( data ) {
+		          	$("#edit-ac-teacher-code").removeClass( "throbbing" );
+		            response( data );
+		          }
+		        });
+			},
+  			minLength: 1,
+  			select: function( event, ui ) {
+        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
+        		$( "#edit-ac-teacher-code" ).val( ui.item.code );
+        		return false;
+      		}
+  		});
 
 
 		$("#dh-ma-applicant-form").submit(function(event){
@@ -177,6 +215,16 @@
 					$("#edit-ac-10d").focus();
 					event.preventDefault();
 					return false;
+				}
+				if($("input[name=ac_teacher]:checked").val() == "1")
+				{
+					if ($("#edit-ac-teacher-code").val() == "")
+					{
+						alert("Please put AT Code");
+						$("#edit-ac-teacher-code").focus();
+						event.preventDefault();
+						return false;						
+					}
 				}
 			}
 

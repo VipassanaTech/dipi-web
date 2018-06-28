@@ -254,6 +254,15 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 69, 
 		'#default_value' => isset($edit_data['ac_teacher'])?$edit_data['ac_teacher']:'0', '#required' => 0, );
 
+	$form[$group]['ac_teacher_code'] = array( '#title' => 'Teacher AT Code',  '#type' => 'textfield', 
+		'#weight' => 1, '#size' => 25, '#required' => 0, '#weight' => 70,
+		'#default_value' => isset($edit_data['ac_teacher_code'])?$edit_data['ac_teacher_code']:'',
+ 		'#attached' => array(
+      		'library' => array(
+        		array('system', 'ui.autocomplete'),
+      	)),
+	 ) ;
+
 	$year = array('' => 'Choose');
 	for($i=1960; $i<=date('Y'); $i++ )	$year[$i] = $i;
 	$month = array('' => 'Choose', '1' => 'Jan', '2' => 'Feb', '3' => 'Mar', '4' => 'Apr', '5' => 'May', '6' => 'Jun', '7' => 'Jul', 
@@ -495,6 +504,16 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$js ='
 		(function ($) {
+			function check_teacher()
+			{
+				if($("input[name=ac_teacher_code]:checked").val() == "1")
+					$("#edit-ac-teacher-code").prop("disabled", false);
+				else
+				{
+					$("#edit-ac-teacher-code").prop("disabled", true);				
+					$("#edit-ac-teacher-code").val("");
+				}
+			}
 			function check_oldstudent()
 			{
 				if($("input[name=a_old]:checked").val() == "1")
@@ -512,12 +531,38 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			}
 			$(document).ready(function(){
 				check_attending();
+				check_teacher();
 				$("input[type=radio][name=attending]").change(function(){
 					check_attending();
 				});
 				$("input[type=radio][name=a_old]").change(function(){
 					check_oldstudent();
 				});
+				$("input[type=radio][name=ac_teacher_code]").change(function(){
+					alert("called");
+					check_teacher();
+				});
+
+				$("#edit-ac-teacher-code").autocomplete({
+					source: function( request, response ) {
+						$("#edit-ac-teacher-code").addClass( "throbbing" );
+				        $.ajax({
+				          url: "/autocomplete/get-teacher/" + request.term,
+				          dataType: "json",
+				          success: function( data ) {
+				          	$("#edit-ac-teacher-code").removeClass( "throbbing" );
+				            response( data );
+				          }
+				        });
+					},
+		  			minLength: 1,
+		  			select: function( event, ui ) {
+		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
+		        		$( "#edit-ac-teacher-code" ).val( ui.item.code );
+		        		return false;
+		      		}
+		  		});
+
 			});
 		})(jQuery);
 	';
