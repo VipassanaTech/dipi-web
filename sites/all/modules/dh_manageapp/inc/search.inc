@@ -113,6 +113,10 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['age'] = $r['Age'];
 		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
+		$rs['contact_home'] = $r['a_phone_home'];
+		$rs['contact_mobile'] = $r['a_phone_mobile'];
+		$rs['contact_office'] = $r['a_phone_office'];
+		$rs['contact_email'] = $r['a_email'];
 		$rs['note'] = $r['a_internal_note'];
 		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
 		$rs['extra'] = $r['a_extra'];
@@ -311,7 +315,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "Education", "Contact Details", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
+			            		var h = ["Name", "Gender", "Age", "Courses", "Education", "PhoneHome", "PhoneMobile", "PhoneOffice", "Email", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -342,21 +346,33 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 5 )
 			                	{
-			                		return jQuery("<span>").html(tmp[ row ].contact).text(); 
+			                		return tmp[ row ].contact_home; 
 			                	}
 			                	else if ( column == 6 )
 			                	{
-			                		return tmp[ row ].Occ; 
+			                		return tmp[ row ].contact_mobile; 
 			                	}
 			                	else if ( column == 7 )
 			                	{
-			                		return tmp[ row ].Designation + " / " + tmp[ row ].Dept; 
+			                		return tmp[ row ].contact_office; 
 			                	}
 			                	else if ( column == 8 )
 			                	{
+			                		return tmp[ row ].contact_email; 
+			                	}
+			                	else if ( column == 9 )
+			                	{
+			                		return tmp[ row ].Occ; 
+			                	}
+			                	else if ( column == 10 )
+			                	{
+			                		return tmp[ row ].Designation + " / " + tmp[ row ].Dept; 
+			                	}
+			                	else if ( column == 11 )
+			                	{
 			                		return tmp[ row ].address; 
 			                	}
-			                	else if (column == 9) {
+			                	else if (column == 12) {
 			                		return ""
 			                	}
 			                	return data;
