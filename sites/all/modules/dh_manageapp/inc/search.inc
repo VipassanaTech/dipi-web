@@ -203,7 +203,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		if ( !($iPad || $iPhone || $iPod) )
 			$button_access = '                        
 				$.extend( true, {}, buttonCommon, {
-	                extend: "excelHtml5",
+      			    extend: "excelHtml5",
 	            	title: "Student Data"
 				} )
 			';
@@ -387,6 +387,13 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				var table = $("#table-applicants").DataTable({
 					dom: "'.$page_dom.'",  /*lBfr<\"clear\"p>tip*/
 					data: dataset,
+					"columnDefs": [
+					            {
+					                "targets": [ 11 ],
+					                "visible": false,
+					                "searchable": false
+					            }
+			        ],					
 			        columns: [
 			            {
 			                "class":          "details-control",
@@ -416,6 +423,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        { data: null, "title" : "Del", render: function(data, type, row) {
 				        	'.$del_action.'	
 				        } },
+				        { data: null, "title": "" }
 		            ],
                   	/*buttons: ["copy","csv","excel","pdf","print"], */ 
 					buttons:   [  
