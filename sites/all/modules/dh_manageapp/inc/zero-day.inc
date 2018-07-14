@@ -1012,10 +1012,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   <script>
   $( function() {
-    $( "#sortable-m" ).sortable({ items: "td" });
-    $( "#sortable-m" ).disableSelection();
-    $( "#sortable-f" ).sortable({ items: "td" });
-    $( "#sortable-f" ).disableSelection();
+    $( ".sortable-m" ).sortable({ items: "td" });
+    $( ".sortable-m" ).disableSelection();
+    $( ".sortable-f" ).sortable({ items: "td" });
+    $( ".sortable-f" ).disableSelection();
     $(".chowky-div").sortable({ items: "td" });
     $(".chowky-div").disableSelection();
   } );
@@ -1267,7 +1267,7 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div)
 //	$seats = $seat_data['seats'];
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
-	$out = '<div class="'.$div.'"><table id="sortable'.$append.'">';
+	$out = '<div class="'.$div.'"><table class="sortable'.$append.'">'; // id=
 //	$out = '<div class="main-div"><ul id="sortable">';
 
 	for ($row = count($seats)-1; $row >= 0; $row--)
