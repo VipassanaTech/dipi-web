@@ -30,8 +30,9 @@ function dh_manage_centre()
 
 	$name = db_query("select c_name from dh_center where c_id=".arg(1))->fetchField();
 	drupal_set_title("Manage $name");
+	$out = '<div style="color:#ff0000; font-size:26px; margin-bottom:10px;">'.variable_get('important_notice', '').'</div>';
 	$modules = array('Centre Settings' => 'centre/'.arg(1).'/edit', 'Manage Courses' => 'manage-course/'.arg(1) , 'Manage Letters' => 'letters/'.arg(1),  'Search' => 'search-app/'.arg(1), 'Daily Activity' => 'daily-activity/'.arg(1)  ); // 'Zero Day' => 'zero-day/'.arg(1)
-	$out = '<ul class="multi-column">';
+	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )
 	{
 		if (drupal_valid_path($val))
@@ -162,6 +163,8 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?"[1-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[2-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[3-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[10-Day]\nMaxApps-Male = \nMaxApps-Female = \n[10-DayExecutive]\nMaxApps-Male = \nMaxApps-Female = \n[10-DaySpecial]\nMaxApps-Male = \nMaxApps-Female = \n[Satipatthana]\nMaxApps-Male = \nMaxApps-Female = \n[20-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[30-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[45-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[60-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n\n":$edit_data['cs_course_config'], '#required' => 1,
 		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
+	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 4,
+		'#default_value' => $add?0:$edit_data['cs_apps_waitlist'], 'type' => 'radios', '#options' => array('1' => 'Yes', '0' => 'No') );
 
 	$group = 'Hall Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
