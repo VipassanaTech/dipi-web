@@ -164,7 +164,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
 	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 4,
-		'#default_value' => $add?0:$edit_data['cs_apps_waitlist'], 'type' => 'radios', '#options' => array('1' => 'Yes', '0' => 'No') );
+		'#default_value' => $add?0:$edit_data['cs_apps_waitlist'], '#type' => 'radios', '#options' => array('1' => 'Yes', '0' => 'No') );
 
 	$group = 'Hall Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
