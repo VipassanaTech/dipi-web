@@ -175,6 +175,8 @@ function create_application_pdf( $application_id )
 {
 	$query = "select c.*, a.*, ac.*, ae.*, aa.*, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ci.c_name as 'City',td_val3, td_val1, al.* from dh_applicant a left join dh_course c on a.a_course=c.c_id left join dh_applicant_course ac on ac.ac_applicant=a.a_id left join dh_applicant_extra ae on ae.ae_applicant=a.a_id left join dh_applicant_attended aa on aa.aa_applicant=a.a_id left join dh_applicant_lc al on al.al_applicant=a.a_id left join dh_city ci on a_city=ci.c_id left join dh_type_detail td on c.c_course_type=td.td_id where a_id='$application_id'";
 	$row = db_query($query)->fetchAssoc(); 
+	if ($row['City'] == '')
+		$row['City'] = $row['a_city_str'];
 	if ( strtolower($row['td_val3']) == 'lc')
 	{
 		$fields = map_application_fields_lc($row);
@@ -185,8 +187,6 @@ function create_application_pdf( $application_id )
 		$fields = map_application_fields($row);
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/applicant-template.pdf";
 	}
-	if ($row['City'] == '')
-		$row['City'] = $row['a_city_str'];
 	$uri = 'private://';
 	$path= drupal_realpath($uri);
 	$dir = $path."/applications/".$row['a_center']."/".$row['c_id'];
