@@ -1201,7 +1201,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 	$seats = array();
 	$row = 0; $col = 0;
 	$total_cushion_seats = count($data['new']) + count($data['old']);
-	$i = 0; $r = 1; $total_rows = 0;
+	$i = 0; $r = 0; $total_rows = 0;
 	$max_col = $cushion_cols;
 	while( $i < $total_cushion_seats )
 	{
