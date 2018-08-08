@@ -722,15 +722,15 @@ function dh_manageapp_search_form($form, &$form_state)
 		if ( $storage['course'] <> '' )
 			$where .= " and a_course='".$storage['course']."'";
 		if ( $storage['f_name'] <> '' )
-			$where .= " and a_f_name like '".$storage['f_name']."%'";
+			$where .= " and a_f_name like '".trim($storage['f_name'])."%'";
 		if ( $storage['l_name'] <> '' )
-			$where .= " and a_l_name like '".$storage['l_name']."%'";
+			$where .= " and a_l_name like '".trim($storage['l_name'])."%'";
 		if ( $storage['conf_no'] <> '' )
-			$where .= " and a_conf_no = '".$storage['conf_no']."'";
+			$where .= " and a_conf_no = '".trim($storage['conf_no'])."'";
 		if ( $storage['phone_home'] <> '' )
-			$where .= " and a_phone_home like '".$storage['phone_home']."%'";
+			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
-			$where .= " and a_phone_mobile like '".$storage['mobile']."%'";
+			$where .= " and a_phone_mobile like '".trim($storage['mobile'])."%'";
 		if ( $storage['status'] <> '' )
 		{
 			if ($storage['status'] == 'Attended')
