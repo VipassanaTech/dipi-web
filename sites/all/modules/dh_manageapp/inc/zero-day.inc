@@ -1878,7 +1878,7 @@ function dh_student_chit($centre, $course)
 			elseif ($r['aa_backrest'])
 				$seat_type = 'Backrest';
 	
-			$out .= '<div class="table-student-chit">'.$seat_type.': '.$r['SeatNo'].'<br>'.$r['a_l_name'].'<br>'.$r['a_f_name'].'<br>Cell: '.$r['aa_cell'].' Acc:'.$r['AccoNo'].'</div>';
+			$out .= '<div class="table-student-chit">'.$seat_type.': '.$r['SeatNo'].'<br>'.$r['a_l_name'].'<br>'.$r['a_f_name'].'<br>Cell: '.$r['aa_cell'].'<br>Room No.:'.$r['AccoNo'].'</div>';
 			$count++;
 		}
 		$out .= '</div>';		
