@@ -1620,7 +1620,7 @@ function generate_cell_list($centre, $course)
 			/* Now fill up new */
 			for( ; $i<count($cell_alloc['Cells'][$g]); $i++ )
 			{
-				if ( !in_array($cell_alloc['Cells'][$g][$i], array_values($cell_alloc['Reserved'][$g]) ) )
+				if ( !in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) ) )
 				{
 					if ( $cell_alloc['Cells'][$g][$c] <> '' )
 						$cell_alloc['New'][$g][] = $cell_alloc['Cells'][$g][$c++];					
