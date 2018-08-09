@@ -110,8 +110,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
 		$rs['location'] = $r['Country'].', '.$r['s_name'].', '.$r['City'];
+		$rs['city'] = $r['City'];
+		$rs['state'] = $r['s_name'];
+		$rs['country'] = $r['Country'];
+		$rs['pin'] = $r['a_zip'];
 		$rs['age'] = $r['Age'];
-		$rs['address'] = $r['a_address']." - ".$r['a_zip'];			
+		$rs['address'] = $r['a_address'];//." - ".$r['a_zip'];			
 		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['contact_home'] = $r['a_phone_home'];
 		$rs['contact_mobile'] = $r['a_phone_mobile'];
@@ -315,7 +319,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "Education", "PhoneHome", "PhoneMobile", "PhoneOffice", "Email", "Occupation", "Designation/Dept", "Address", "", "", "","", ""]; 
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", ""]; 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -342,7 +346,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 4 )
 			                	{
-			                		return tmp[ row ].Education; 
+			                		return tmp[ row ].contact_mobile; 
 			                	}
 			                	else if ( column == 5 )
 			                	{
@@ -350,15 +354,15 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 6 )
 			                	{
-			                		return tmp[ row ].contact_mobile; 
+			                		return tmp[ row ].contact_office; 
 			                	}
 			                	else if ( column == 7 )
 			                	{
-			                		return tmp[ row ].contact_office; 
+			                		return tmp[ row ].contact_email; 
 			                	}
 			                	else if ( column == 8 )
 			                	{
-			                		return tmp[ row ].contact_email; 
+			                		return tmp[ row ].Education; 
 			                	}
 			                	else if ( column == 9 )
 			                	{
@@ -366,14 +370,30 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                	}
 			                	else if ( column == 10 )
 			                	{
-			                		return tmp[ row ].Designation + " / " + tmp[ row ].Dept; 
+			                		return tmp[ row ].Company; 
 			                	}
 			                	else if ( column == 11 )
 			                	{
+			                		return tmp[ row ].Designation + " / " + tmp[ row ].Dept; 
+			                	}
+			                	else if ( column == 12 )
+			                	{
 			                		return tmp[ row ].address; 
 			                	}
-			                	else if (column == 12) {
-			                		return ""
+			                	else if ( column == 13 )
+			                	{
+			                		return tmp[ row ].pin; 
+			                	}
+			                	else if ( column == 14 )
+			                	{
+			                		return tmp[ row ].city; 
+			                	}
+			                	else if ( column == 15 )
+			                	{
+			                		return tmp[ row ].state; 
+			                	}
+			                	else if (column == 16) {
+			                		return tmp[ row ].country; 
 			                	}
 			                	return data;
 			                }
@@ -389,7 +409,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 11 ],
+					                "targets": [ 11, 12, 13, 14, 15, 16 ],
 					                "visible": false,
 					                "searchable": false
 					            }
@@ -423,6 +443,11 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        { data: null, "title" : "Del", render: function(data, type, row) {
 				        	'.$del_action.'	
 				        } },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
 				        { data: null, "title": "" }
 		            ],
                   	/*buttons: ["copy","csv","excel","pdf","print"], */ 
