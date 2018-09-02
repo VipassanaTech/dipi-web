@@ -741,7 +741,7 @@ function dh_manageapp_search_form($form, &$form_state)
 	{
 		$storage = $form_state['storage'];
 		if( $centre_id == '')
-			$storage['centre'] = $centre_id;
+			$centre_id = $storage['centre'];
 
 		$where = "a_center='".$centre_id."'";
 		if ( $storage['course'] <> '' )
