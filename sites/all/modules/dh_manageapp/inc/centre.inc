@@ -565,6 +565,7 @@ function cron_expected()
 		$res_c = db_query($q);
 		while($r_c = $res_c->fetchAssoc())
 		{
+			logit($r['cs_center'], 'CRON-EXPECTED', $r_c['c_id'], 'Running cron for course start date '.$end_date);
 			$q = "select a_id from dh_applicant where a_course=".$r_c['c_id']." and a_status='Confirmed'";
 			$res = db_query($q);
 			while($row = $res->fetchAssoc())
