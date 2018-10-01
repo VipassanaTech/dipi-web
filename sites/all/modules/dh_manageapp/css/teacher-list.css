@@ -20,8 +20,9 @@ table.table-teacher-list {
 }
 
 table.table-manager-list {
-	width: 700px;
+	width: 900px;
 	table-layout:fixed;
+	word-wrap:break-word;
 }
 
 .header-teacher {
