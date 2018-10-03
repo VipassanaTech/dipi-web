@@ -1,0 +1,35 @@
+.form-inline .form-group {
+	vertical-align: top !important;
+	display: block;
+	float: left;
+	margin-right: 25px;
+	margin-bottom: 12px !important;
+}
+
+.form-inline .control-label {
+	float: none;
+	display: block;
+}
+
+.edit-student-f-name,.form-item-student-address1,.form-item-student-address-zip,.form-item-student-subscription,
+.form-item-student-receipt-date,.form-item-student-transaction-type {
+	clear: left;
+}
+
+#edit-submit {
+	clear: left;
+	display: block;
+}
+
+.deleted {
+	text-decoration: line-through;
+	background: #eeeeee;
+}
+
+#edit-cancel {
+	clear: left;
+}
+
+.form-type-radio {
+	margin-right: 10px;
+}

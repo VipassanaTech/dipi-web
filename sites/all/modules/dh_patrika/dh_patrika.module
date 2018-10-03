@@ -1,0 +1,1040 @@
+<?php
+function dh_patrika_menu()
+{
+    global $user;
+	$items['patrika'] = array( 'title' => t('Patrika Management'),
+       'page arguments' => array('dh_patrika_search_form'),
+       'page callback' => 'drupal_get_form',
+       'access arguments' => array('access patrika'),
+    );
+
+ 	$items['patrika/edit/%patrika_id'] = array(
+	    'title' => 'News Letter',
+	    'page callback' => 'dh_manage_patrika',
+	    'access arguments' => array('update subscriber'),
+	    'type' => MENU_CALLBACK
+  	);
+
+ 	$items['patrika/add'] = array( 'title' => t('News Letter Registration'),
+       	'page callback' => 'dh_manage_patrika',
+       	'access arguments' => array('add subscriber'),
+		'type' => MENU_CALLBACK,       
+    );
+
+ 	$items['patrika/payment/add/%patrika_id'] = array( 'title' => t('Add Payment'),
+       	'page callback' => 'dh_manage_patrika_payment',
+       	'access arguments' => array('add payment'),
+		'type' => MENU_CALLBACK,       
+    );
+
+ 	$items['patrika/note/add/%patrika_id'] = array( 'title' => t('Add Note'),
+       	'page callback' => 'dh_manage_patrika_note',
+       	'access arguments' => array('access patrika'),
+		'type' => MENU_CALLBACK,       
+    );
+
+
+/* 	$items['patrika/payment/edit/%patrika_id/%payment_id'] = array(
+	    'title' => 'Edit Payment',
+	    'page callback' => 'dh_manage_patrika_payment',
+	    'access arguments' => array('update payment'),
+	    'type' => MENU_CALLBACK
+  	);
+*/
+ 	$items['patrika/payment/delete/%patrika_id/%payment_id'] = array(
+	    'title' => 'Delete Payment',
+	    'page callback' => 'dh_manage_patrika_payment',
+	    'access arguments' => array('delete payment'),
+	    'type' => MENU_CALLBACK
+  	);
+
+ 	$items['patrika/note/delete/%patrika_id/%payment_id'] = array(
+	    'title' => 'Delete Note',
+	    'page callback' => 'dh_manage_patrika_note',
+	    'access arguments' => array('delete payment'),
+	    'type' => MENU_CALLBACK
+  	);
+
+
+ 	$items['patrika/get-state'] = array(
+		'page callback' => 'dh_patrika_get_state', // Render HTML.
+		'access arguments' => array('access patrika'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['patrika/get-city'] = array(
+		'page callback' => 'dh_patrika_get_city', // Render HTML.
+		'access arguments' => array('access patrika'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['patrika/getDetailsByZipcode'] = array(
+		'page callback' => 'getDetailsByZipcode', // Render HTML.
+		'access arguments' => array('access patrika'),
+		'type' => MENU_CALLBACK,
+	);
+
+	return $items;
+
+}
+
+
+function dh_patrika_permission()
+{
+	$perms['access patrika'] = array('title' => t('Access Patrika') ) ;
+	$perms['administer patrika'] = array('title' => t('Administer Patrika') ) ;
+	$perms['add subscriber'] = array('title' => t('Add Subscriber') ) ;
+	$perms['update subscriber'] = array('title' => t('Update Subscriber') ) ;
+	$perms['add payment'] = array('title' => t('Add Payments') ) ;
+	$perms['delete payment'] = array('title' => t('Delete Payments') ) ;
+
+	return $perms;
+}
+
+
+function patrika_id_load( $id )
+{
+	$res = db_query("select p_id from dh_patrika where p_id='$id'")->fetchField();
+	if ($res <> $id)
+		return false;
+	return $id;
+}
+
+function payment_id_load( $id )
+{
+	$res = db_query("select pp_id from dh_patrika_payment where pp_id='$id'")->fetchField();
+	if ($res <> $id)
+		return false;
+	return $id;
+}
+
+
+function dh_manage_patrika()
+{
+	switch( arg(1) )
+	{
+		case 'add':
+			return drupal_get_form('dh_patrika_addedit');
+			break;
+		case 'edit':
+			$row = db_query("select * from dh_patrika where p_id=".arg(2))->fetchAssoc();
+			$form = drupal_get_form('dh_patrika_addedit', $row);
+			$out = drupal_render($form);
+
+			$rows = array();
+			$q = "select pn_id, pn_note, pn_tstamp, u.name, pn_deleted from dh_patrika_note left join users u on (pn_created_by=u.uid) where pn_patrika=".arg(2)." order by pn_tstamp desc";
+			$result = db_query($q);
+			while( $r = $result->fetchAssoc() )
+			{
+				$r1 = $r;
+				if (!$r['pn_deleted'])
+				{
+					if (user_access("delete payment"))
+						$r1[] = l('Delete', "patrika/note/delete/".arg(2)."/".$r['pn_id'], array('attributes' => array("pid" => $r['pn_id'], 'class' => array('delete-nid') ) ) );
+					else
+						$r1[] = "No Access";
+
+				}
+				else
+					$r1[] = "";
+				unset($r1['pn_id']);
+				unset($r1['pn_deleted']);
+				if ($r['pn_deleted'] )
+					$rows[] = array('data' => $r1, 'class' => 'deleted');
+				else
+					$rows[] = $r1;
+			}
+			$header = array('Note', 'DateTime', 'User', 'Action');
+			$out_notes = theme('table', array('header' => $header, 'rows' => $rows));			
+			$out .= "<h3>Notes&nbsp;&nbsp;(".(l("Add a note", "patrika/note/add/".arg(2))).")</h3>"; 
+			$out .= $out_notes;
+
+			$rows = array();			
+			$q = "select pp_id, pp_amt, pp_type, pp_receipt_no, pp_receipt_date, pp_txn_no, pp_txn_bank, pp_txn_date , u.name, pp_deleted from dh_patrika_payment left join users u on (pp_user=u.uid) where pp_patrika=".arg(2)." order by pp_id desc";
+			$result = db_query($q);
+			while( $r = $result->fetchAssoc() )
+			{
+				$r1 = $r;
+				if (!$r['pp_deleted'])
+				{
+					if (user_access("delete payment"))
+						$r1[] = l('Delete', "patrika/payment/delete/".arg(2)."/".$r['pp_id'], array('attributes' => array("pid" => $r['pp_id'], 'class' => array('delete-pid') ) ) );
+					else
+						$r1[] = "No Access";
+
+				}
+				else
+					$r1[] = "";
+				unset($r1['pp_deleted']);
+				if ($r['pp_deleted'] )
+					$rows[] = array('data' => $r1, 'class' => 'deleted');
+				else
+					$rows[] = $r1;
+			}
+
+			$header = array('Id', 'Amount', 'Txn Type', 'ReceiptNo', 'ReceiptDate', 'Txn No', 'Txn Bank', 'Txn Date', 'User', 'Action');
+			$out_payments = theme('table', array('header' => $header, 'rows' => $rows));
+			$out .= "<h3>Payments&nbsp;&nbsp;(".(l("Add Payment", "patrika/payment/add/".arg(2))).")</h3>"; 
+			$out .= $out_payments;
+
+
+			$rows = array();
+			$q = "select pl_tstamp, pl_msg, u.name from dh_patrika_log left join users u on (pl_user=u.uid) where pl_patrika=".arg(2)." order by pl_tstamp desc";
+			$result = db_query($q);
+			while( $r = $result->fetchAssoc() )
+				$rows[] = $r;
+			$header = array('DateTime', 'Log Message', 'User');
+			$out_changelog = theme('table', array('header' => $header, 'rows' => $rows));			
+			$out .= "<h3>ChangeLog</h3>"; 
+			$out .= $out_changelog;
+			return $out;
+			break;
+	}
+}
+
+function dh_manage_patrika_payment()
+{
+	switch( arg(2) )
+	{
+		case 'add':
+			return drupal_get_form('dh_patrika_payment_addedit');
+			break;
+		case 'delete':
+			db_query("update dh_patrika_payment set pp_deleted=1 where pp_id=".arg(4));
+			drupal_goto("patrika/edit/".arg(3));
+			return $out;
+			break;
+	}
+}
+
+function dh_manage_patrika_note()
+{
+	switch( arg(2) )
+	{
+		case 'add':
+			return drupal_get_form('dh_patrika_note_addedit');
+			break;
+		case 'delete':
+			db_query("update dh_patrika_note set pn_deleted=1 where pn_id=".arg(4));
+			drupal_goto("patrika/edit/".arg(3));
+			return $out;
+			break;
+	}
+}
+
+
+
+function dh_patrika_get_state()
+{
+		$CountryCode = $_POST['Country'];
+		$q = "select s_name,s_code FROM dh_state where s_country='".$CountryCode."' order by s_name ASC";
+		$result = db_query($q);
+		$rows = array();
+				while( $r = $result->fetchAssoc() )
+				{
+					$rows[]=$r;
+			  	}
+		echo json_encode($rows);
+}
+
+function dh_patrika_get_city()
+{
+		$State=$_POST['State'];
+		 $q = "select c_id,c_name FROM dh_city where c_state='".$State."' order by c_name ASC";
+		
+		$result = db_query($q);
+		$rows = array();
+				while( $r = $result->fetchAssoc() )
+				{
+					$rows[]=$r;
+			  	}
+		echo json_encode($rows);
+}
+
+function dh_patrika_search_form($form, &$form_state)
+{
+	drupal_add_css(drupal_get_path( 'module', 'dh_patrika').'/patrika.css');
+	drupal_add_library('system', 'ui.datepicker');
+
+	$form['#attributes'] = array('class' => array('container-inline')); 
+ 	$breadcrumb = '';
+	$breadcrumb .= l("New Subscriber", "patrika/add");
+	$form['a'] = array('#markup' => '<h3 style="">'.$breadcrumb.'</h3>');
+
+	$form['patrika_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Patrika ID'),
+		'#attributes' => array('placeholder' => t('Enter Patrika ID')),
+		'#size' => 15,
+	);
+	$form['student_f_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('First Name'),
+		'#attributes' => array('placeholder' => t('First name')),
+		'#size' => 30,
+	);
+	$form['student_l_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Last Name'),
+		'#attributes' => array('placeholder' => t('Last name')),
+		'#size' => 30,
+	);
+
+	$form['receipt_number'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Receipt Number'),
+		'#attributes' => array('placeholder' => t('Enter Receipt Number')),
+		'#size' => 20,
+	);
+
+	$form['receipt_date'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Receipt Date'),
+		'#attributes' => array('class' => array('datepicker'),'placeholder' => t('Receipt Date')),
+		'#size' => 15,
+		
+	);
+
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+		'#weight' => 10
+	);
+
+	$form['submit'] = array
+	(
+	'#type' => 'submit',
+	'#value' => t('Search'),
+	);
+
+
+	if ( isset($form_state['storage']) )
+	{
+		$storage = $form_state['storage'];
+		$f_name = trim($storage['student_f_name']);
+		$l_name = trim($storage['student_l_name']);
+ 		$patrika_id = $storage['patrika_id'];
+		
+		$receipt_number = trim($storage['receipt_number']);
+		$receipt_date = $storage['receipt_date'];
+		
+		$append = ''; 
+		if ( $f_name <> '')
+			$append .= "and p_f_name like '$f_name%'";
+
+		if ( $l_name <> '')
+		 	$append .= " and p_l_name like '$l_name%'";
+
+		if ( $patrika_id <> '')
+		 	$append .= " and p_vray_id = '$patrika_id'";
+
+		if ( $receipt_number <> '')
+		 	$append .= " and pp_receipt_no = '$receipt_number'";
+
+		if ( $receipt_date <> '')
+		 	$append .= " and pp_receipt_date = '$receipt_date'";
+
+		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
+
+
+		drupal_add_library('system', 'ui.datepicker');
+		drupal_add_js("(function ($) { $('.datepicker').datepicker({ dateFormat: 'yyyy-mm-dd' }); })(jQuery);", array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+
+		if($append == '')
+		{
+			drupal_set_message(t('Please enter the student name or mobile no or etc..'), 'error');
+			return $form;
+		}
+
+	   	$result = db_query($q);
+
+	   	$rows = array();
+		while( $r = $result->fetchAssoc() )
+		{
+			$row = array();
+			$row[] = $r['p_vray_id'];
+			$row[] = $r['p_f_name'];
+			$row[] = $r['p_l_name'];
+			$row[] = $r['p_subscription_type'];
+			$status = '<b>Active</b>';
+			if ( $r['p_cancelled'])
+				$status = '<b>Cancelled</b>';
+			$row[] = $status;
+			$row[] = $r['p_address'];
+			$link = l("View/Edit", "patrika/edit/".$r['p_id']);
+			$row[] = $link;
+			$rows[] = $row;
+	  	}
+	
+		$header = array('Patrika Id', 'FirstName', 'LastName', 'Subscription', 'Status', 'Address', 'Action');
+		
+		$form['myfieldset']['mytable'] = array(
+		  '#theme' => 'table',
+		  '#header' => $header,
+		  '#rows' => $rows,
+		  '#prefix' => '<div style="clear: both"><br />'
+		);
+		
+	}
+	drupal_add_js("(function ($) { $('.datepicker').datepicker({ dateFormat: 'dd/mm/yy' }); })(jQuery);", array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+
+	return $form;
+
+}
+
+function dh_patrika_search_form_submit($form, &$form_state)
+{
+	$form_state['storage'] = $form_state['input'];
+	$form_state['rebuild'] = TRUE;
+}
+
+
+function dh_patrika_payment_addedit($form, &$form_state, $edit_data = array()) 
+{
+	drupal_add_css(drupal_get_path( 'module', 'dh_patrika').'/patrika.css');
+	drupal_add_library('system', 'ui.datepicker');
+
+	$form['#attributes'] = array('class' => array('container-inline')); 
+	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id=".arg(3))->fetchField();
+	$breadcrumb = '<h3>Transactions of '.$name.'</h3>';
+	$breadcrumb .= '<h3>'.l("Back to Patrika", "patrika/edit/".arg(3))."&nbsp;&nbsp;|&nbsp;&nbsp;".l("Back To Search", "patrika").'</h3>';
+	$form['a'] = array('#markup' => $breadcrumb);
+
+	$add = 0;
+	if (count($edit_data) == 0)
+		$add = 1;
+
+	$form['student_receipt_date'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Date on Receipt'),
+		'#default_value' => date('d/m/Y'),
+		'#attributes' => array('placeholder' => t('Enter Date'),'class' => array('datepicker')),
+		'#required' => TRUE,
+		'#size' => 15,
+	);
+
+	$form['student_receipt_no'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Receipt No'),
+		'#attributes' => array('placeholder' => t('Enter Receipt No')),
+		'#required' => TRUE,
+		'#size' => 20,
+	);
+
+	$form['amt'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Amount'),
+		'#attributes' => array('placeholder' => t('Amount')),
+		'#required' => TRUE,
+		'#size' => 15,
+	);
+
+	$transaction=array('Cash'=>'Cash', 'Cheque' => 'Cheque', 'NEFT'=>'NEFT', 'UPI'=>'UPI', ''=>'Choose');
+	$form['student_transaction_type'] = array(
+		'#title' => 'Transaction Type', 
+		'#type' => 'select', 
+		'#options' => $transaction,
+		'#attributes' => array('id' => 'student_transaction_type')
+	);
+
+	$form['student_transaction_date'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Txn Date'),
+		'#default_value' => date('d/m/Y'),	
+		'#attributes' => array('placeholder' => t('Txn Date'),'class' => array('datepicker')),
+		'#size' => 15,
+	);
+
+	$form['student_transaction_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Txn/Cheque No'),
+		'#attributes' => array('placeholder' => t('Txn/Chq No')),
+		'#size' => 20,
+	);
+	$form['student_chq_bank'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Bank Name'),
+		'#attributes' => array('placeholder' => t('Enter Bank Name')),
+		'#size' => 30,
+	);
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => t('Add Payment'),
+	);
+
+	return $form;
+}
+
+
+function dh_patrika_payment_addedit_submit($form, &$form_state) 
+{
+	global $user;
+	$input = $form_state['input'];
+	$add = 0;
+	$patrika_id = arg(3);		
+	if (arg(2) == 'add')
+	{
+		$add = 1;
+		$action = "added";		
+	}
+	else
+	{
+		$action = "updated";
+		$pid = arg(4);
+	}
+
+
+	if ($add)
+	{
+		$p_rec['pp_patrika'] = $patrika_id;
+		$p_rec['pp_amt'] = $input['amt'];
+		$p_rec['pp_receipt_no'] = $input['student_receipt_no'];
+		$p_rec['pp_receipt_date'] = dmy_to_ymd($input['student_receipt_date']);
+		$p_rec['pp_type'] = $input['student_transaction_type'];
+		$p_rec['pp_txn_no'] = $input['student_transaction_id'];
+		$p_rec['pp_txn_bank'] = $input['student_chq_bank'];
+		$p_rec['pp_txn_date'] = $input['student_transaction_date']?dmy_to_ymd($input['student_transaction_date']):NULL;
+		$p_rec['pp_user']  = $user->uid;
+		$pid = db_insert('dh_patrika_payment')->fields($p_rec)->execute();
+	}
+	else
+	{
+		db_update('dh_patrika_payment')->fields($p_rec)->condition('pp_id', $pid )->execute();
+	}
+
+	drupal_set_message(t("Payment $action successfully"));
+	drupal_goto('patrika/edit/'.$patrika_id);
+
+}
+
+
+function dh_patrika_note_addedit($form, &$form_state, $edit_data = array()) 
+{
+	drupal_add_css(drupal_get_path( 'module', 'dh_patrika').'/patrika.css');
+	drupal_add_library('system', 'ui.datepicker');
+
+	$form['#attributes'] = array('class' => array('container-inline')); 
+	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id=".arg(3))->fetchField();
+	$breadcrumb = '<h3>Notes for '.$name.'</h3>';
+	$breadcrumb .= '<h3>'.l("Back to Patrika", "patrika/edit/".arg(3))."&nbsp;&nbsp;|&nbsp;&nbsp;".l("Back To Search", "patrika").'</h3>';
+	$form['a'] = array('#markup' => $breadcrumb);
+
+	$add = 0;
+	if (count($edit_data) == 0)
+		$add = 1;
+
+	$form['note'] = array(
+		'#type' => 'textarea',
+		'#rows' => 2,
+		'#title' => t('Note'),
+		'#default_value' => '',
+		'#attributes' => array('placeholder' => t('Enter Note')),
+		'#required' => TRUE,
+	);
+
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => t('Add Note'),
+	);
+
+	return $form;
+}
+
+function dh_patrika_note_addedit_submit($form, &$form_state) 
+{
+	global $user;
+	$input = $form_state['input'];
+	$add = 0;
+	$patrika_id = arg(3);		
+	if (arg(2) == 'add')
+	{
+		$add = 1;
+		$action = "added";		
+	}
+	else
+	{
+		$action = "updated";
+		$pid = arg(4);
+	}
+
+
+	if ($add)
+	{
+		$p_rec['pn_patrika'] = $patrika_id;
+		$p_rec['pn_note']  = $input['note'];
+		$p_rec['pn_created_by']  = $user->uid;
+		$pid = db_insert('dh_patrika_note')->fields($p_rec)->execute();
+	}
+	else
+	{
+		db_update('dh_patrika_note')->fields($p_rec)->condition('pn_id', $pid )->execute();
+	}
+
+	drupal_set_message(t("Note $action successfully"));
+	drupal_goto('patrika/edit/'.$patrika_id);
+
+}
+
+
+function dh_patrika_addedit($form, &$form_state, $edit_data = array()) 
+{
+	drupal_add_css(drupal_get_path( 'module', 'dh_patrika').'/patrika.css');
+	drupal_add_library('system', 'ui.datepicker');
+
+	$form['#attributes'] = array('class' => array('container-inline')); 
+
+	$breadcrumb = '';
+	$breadcrumb .= l("Back To Search", "patrika");
+
+	$add = 0;
+	if (count($edit_data) == 0)
+		$add = 1;
+	else
+	{
+		if ($edit_data['p_cancelled'])
+			$breadcrumb .= '&nbsp;&nbsp;|&nbsp;&nbsp;Status: <font color="red">Cancelled</font>';
+		else
+			$breadcrumb .= "&nbsp;&nbsp;|&nbsp;&nbsp;Status: Active";
+	}
+
+	$form['a'] = array('#markup' => '<h3 style="">'.$breadcrumb.'</h3>');
+
+	$form['student_f_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('First Name'),
+		'#required' => TRUE,
+		'#attributes' => array('placeholder' => t('Enter First name')),
+		'#default_value' => isset($edit_data['p_f_name'])?$edit_data['p_f_name']:'',
+		'#size' => 40,
+	);
+	$form['student_m_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Middle Name'),
+		'#attributes' => array('placeholder' => t('Enter Middle name')),
+		'#default_value' => isset($edit_data['p_m_name'])?$edit_data['p_m_name']:'',
+		'#size' => 40,
+	);
+	$form['student_l_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Last Name'),
+		'#required' => TRUE,
+		'#attributes' => array('placeholder' => t('Enter Last name')),
+		'#default_value' => isset($edit_data['p_l_name'])?$edit_data['p_l_name']:'',
+		'#size' => 40,
+	);
+	$temp = array();
+	if ( isset($edit_data['p_address']))
+		$temp = explode(";", $edit_data['p_address']);
+	if ( count($temp) < 3 )
+		for($i=count($temp)-1; $i<3; $i++)
+			$temp[$i] = '';
+	$form['student_address1'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Address Line 1'),
+		'#required' => TRUE,
+		'#attributes' => array('placeholder' => t('Address Line 1')),
+		'#default_value' => $add?'':$temp[0],		
+		'#maxlength' => 50,
+		'#size' => 40,
+	);
+
+	$form['student_address2'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Address Line 2'),
+		'#attributes' => array('placeholder' => t('Address Line 2')),
+		'#default_value' => $add?'':$temp[1],
+		'#maxlength' => 50,
+		'#size' => 40,
+	);
+
+	$form['student_address3'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Address Line 3'),
+		'#attributes' => array('placeholder' => t('Address Line 3')),
+		'#default_value' => $add?'':$temp[2],
+		'#maxlength' => 50,
+		'#size' => 40,
+	);
+
+
+	$form['student_address_zip'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Pincode'),
+		'#attributes' => array('placeholder' => t('Enter Pincode'),'id' => 'student_regi_zip',),
+		'#default_value' => $add?'':$edit_data['p_zip'],				
+		'#size' => 15,
+	);
+
+	$q = "select c_code,c_name FROM dh_country order by c_code ASC";
+	$courses = db_query($q)->fetchAllKeyed();
+	$courses[''] = 'Choose';
+
+	$form['student_country'] = array(
+		'#title' => 'Country', 
+		'#type' => 'select', 
+		'#required' => TRUE,
+		'#options' => $courses,
+		'#default_value' => $add?'':$edit_data['p_country'],
+	    '#attributes' => array('id' => 'student_regi_country',));
+	
+	$State['']='Choose';
+
+	$form['student_state'] = array(
+		'#title' => 'State', 
+		'#type' => 'select', 
+		'#options' => $State,
+		'#default_value' => $add?'':$edit_data['p_state'],
+		'#required' => TRUE,
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'student_regi_state',));
+	
+	$City['']='Choose';
+	$City['Other']='Other';
+
+	$form['student_city'] = array(
+		'#title' => 'City', 
+		'#type' => 'select', 
+		'#options' => $City,
+		'#default_value' => $add?'':$edit_data['p_city'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'student_regi_city',));
+	
+	$form['student_other_city'] = array(
+		'#type' => 'textfield',
+		'#attributes' => array('placeholder' => t('Enter city name'),'style'=>t('display:none'),'id' => 'student_regi_other_city'),
+		'#size' => 40,
+	);
+	
+	// $subscription['']='choose';
+	$subscription=array('Life Long'=>'Life Long','Yearly'=>'Yearly','Privilage'=>'Privilege',''=>'Choose');
+	$form['student_subscription'] = array(
+		'#title' => 'Subscription', 
+		'#type' => 'select', 
+		'#required' => TRUE,
+		'#options' => $subscription,
+		'#default_value' => $add?'':$edit_data['p_subscription_type'],
+		'#attributes' => array('id' => 'student_subscription')
+	);
+	$start_date = '';
+	if (!$add)
+		$start_date = date('d/m/Y', strtotime($edit_data['p_start_date']));
+	$form['student_sub_start_date'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Start Date'),
+		'#attributes' => array('placeholder' => t('Enter Start Date'),'id'=>'student_sub_start_date','class' => array('student_sub_start_date')),
+		'#default_value' => $add?'':$start_date,
+		'#required' => TRUE,
+		'#size' => 15,
+	);
+
+	$end_date = '';
+	if (!$add)
+		$end_date = date('d/m/Y', strtotime($edit_data['p_end_date']));
+	$form['student_sub_end_date'] = array(
+		'#type' => 'textfield',
+		'#title' => t('End Date'),
+		'#attributes' => array('placeholder' => t('Enter End Date'),'id'=>'student_sub_end_date','class' => array('student_sub_end_date','datepicker')),
+		'#default_value' => $add?'':$end_date,
+		'#required' => TRUE,
+		'#size' => 15,
+	);
+
+	$q = "select td_key, td_val1 FROM dh_type_detail where td_type='PATRIKA-LANGS'";
+	$language = db_query($q)->fetchAllKeyed();
+	$language[''] = 'Choose';
+
+	$form['language'] = array(
+		'#title' => 'Language', 
+		'#type' => 'select', 
+		'#required' => TRUE,
+		'#options' => $language,
+		'#default_value' => $add?'':$edit_data['p_language'],
+	    '#attributes' => array('id' => 'student_language'));
+
+	if ($add)
+	{
+		$form['student_receipt_date'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Date on Receipt'),
+			'#default_value' => date('d/m/Y'),
+			'#attributes' => array('placeholder' => t('Enter Date'),'class' => array('datepicker')),
+			'#required' => TRUE,
+			'#size' => 15,
+		);
+
+		$form['student_receipt_no'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Receipt No'),
+			'#attributes' => array('placeholder' => t('Enter Receipt No')),
+			'#required' => TRUE,
+			'#size' => 20,
+		);
+
+		$form['amt'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Amount'),
+			'#attributes' => array('placeholder' => t('Amount')),
+			'#required' => TRUE,
+			'#size' => 15,
+		);
+
+		$transaction=array('Cash'=>'Cash', 'Cheque' => 'Cheque', 'NEFT'=>'NEFT', 'UPI'=>'UPI', ''=>'Choose');
+		$form['student_transaction_type'] = array(
+			'#title' => 'Transaction Type', 
+			'#type' => 'select', 
+			'#options' => $transaction,
+			'#attributes' => array('id' => 'student_transaction_type')
+		);
+
+		$form['student_transaction_date'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Txn Date'),
+			'#default_value' => date('d/m/Y'),	
+			'#attributes' => array('placeholder' => t('Txn Date'),'class' => array('datepicker')),
+			'#size' => 15,
+		);
+
+		$form['student_transaction_id'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Txn/Cheque No'),
+			'#attributes' => array('placeholder' => t('Txn/Chq No')),
+			'#size' => 20,
+		);
+		$form['student_chq_bank'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Bank Name'),
+			'#attributes' => array('placeholder' => t('Enter Bank Name')),
+			'#size' => 30,
+		);
+
+	}
+	else
+	{
+		$cancelled = !$edit_data['p_cancelled'];
+		$form['cancel'] = array('#type' => 'fieldset', '#title' => 'Cancel Information', '#collapsible' => true, '#collapsed' => $cancelled);
+		$form['cancel']['p_cancelled'] = array(
+			'#type' => 'radios',
+			'#title' => t('Cancel Patrika'),
+			'#default_value' => $edit_data['p_cancelled'],
+			'#options' => array('0' => 'No', '1' => 'Yes'),	
+			'#size' => 15,
+		);
+
+		$cancel_reasons = db_query("select td_key, td_val1 from dh_type_detail where td_type='PATRIKA-CANCELLATION' order by td_key")->fetchAllKeyed();
+		$cancel_reasons[''] = 'Choose';
+
+		$form['cancel']['p_cancel_reason'] = array(
+			'#type' => 'select',
+			'#multiple' => 0,
+			'#title' => t('Cancel Reason'),
+			'#default_value' => $edit_data['p_cancel_reason'],
+			'#options' => $cancel_reasons,	
+		);
+
+		$form['cancel']['p_cancel_date'] = array(
+			'#type' => 'textfield',
+			'#title' => 'Cancellation Date',
+			'#default_value' => $edit_data['p_cancel_date']?date('d/m/Y', strtotime($edit_data['p_cancel_date'])):'',	
+			'#attributes' => array('placeholder' => t('Cancel Date'),'class' => array('datepicker')),
+			'#size' => 20,
+		);
+	}
+
+	$form['submit'] = array
+	(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+	);
+	
+
+	$InlineJS="(function ($) { 
+
+		$(document).ready(function(){
+
+			$('.datepicker').datepicker({ dateFormat: 'dd/mm/yy' });
+
+			$('.student_sub_start_date').datepicker({ dateFormat: 'dd/mm/yy', 
+				minDate: 0,
+        		onSelect: function (selectedDate ) {
+            		var dt2 = $('.student_sub_end_date');
+            			var SubVal=$('#student_subscription').val();
+            			var date2 = $('.student_sub_start_date').datepicker('getDate', '+1d'); 
+  						if(SubVal == 'Life Long')
+  						{
+  							date2.setFullYear(date2.getFullYear()+25); 
+  							dt2.datepicker( 'option', 'maxDate', date2);
+  							$('.student_sub_end_date').datepicker('setDate', date2);
+  						
+  						}
+  						if(SubVal == 'Yearly')
+  						{
+  							date2.setFullYear(date2.getFullYear()+1); 
+  							dt2.datepicker( 'option', 'maxDate', date2);
+  							$('.student_sub_end_date').datepicker('setDate', date2);
+  						}
+  						if(SubVal == 'Privilage')
+  						{
+  							date2.setFullYear(date2.getFullYear()+25); 
+  							dt2.datepicker( 'option', 'maxDate', date2);
+  						}
+  						
+            	       dt2.datepicker( 'option', 'minDate', selectedDate);
+            	
+            		}
+            	});
+    	});        	
+  	})(jQuery);";
+
+
+
+	drupal_add_js($InlineJS, array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+	return $form;
+}
+
+
+function dh_patrika_addedit_validate($form, &$form_state)
+{
+	$student_address1 = $form_state['input']['student_address1'];
+	$student_address2 = $form_state['input']['student_address2'];
+	$student_address3 = $form_state['input']['student_address3'];
+
+	$AddressLength1=strlen($student_address1);
+	if ($AddressLength1>50)
+		form_set_error('student_address1', t('You must enter an address less than 50 characters.'));
+
+	$AddressLength2=strlen($student_address2);
+	if ($AddressLength2>50)
+		form_set_error('student_address2', t('You must enter an address less than 50 characters.'));
+
+
+	$AddressLength3=strlen($student_address3);
+	if ($AddressLength3>50)
+		form_set_error('student_address3', t('You must enter an address less than 50 characters.'));
+}
+
+function dh_patrika_addedit_submit($form, &$form_state) 
+{
+	global $user;
+	$input = $form_state['input'];
+	$add = 0;
+	if (arg(1) == 'add')
+	{
+		$add = 1;
+		$action = "added";		
+	}
+	else
+	{
+		$action = "updated";
+		$patrika_id = arg(2);		
+	}
+	$city_id = $input['student_city'];
+	if ( ($input['student_city'] == '') && ($input['student_other_city'] <> '' ))
+	{
+		$f['c_country'] = $input['student_country'];
+		$f['c_state'] = $input['student_state'];
+		$f['c_name'] = $input['student_other_city'];
+		$city_id = db_insert('dh_city')->fields($f)->execute();
+	}
+	$rec['p_student'] = 0;
+	$rec['p_special'] = 0;
+	$rec['p_f_name'] = $input['student_f_name'];
+	$rec['p_m_name'] = $input['student_m_name'];
+	$rec['p_l_name'] = $input['student_l_name'];
+	$rec['p_address'] = $input['student_address1'].';'.$input['student_address2'].';'.$input['student_address3'];
+	$rec['p_country'] = $input['student_country'];
+	$rec['p_state'] = $input['student_state'];
+	$rec['p_city'] = $city_id;
+	$rec['p_language'] = $input['language'];
+	$rec['p_zip'] = $input['student_address_zip'];
+	$rec['p_subscription_type'] = $input['student_subscription'];
+	$rec['p_start_date'] = dmy_to_ymd($input['student_sub_start_date']);
+	$rec['p_end_date'] = dmy_to_ymd($input['student_sub_end_date']);
+	$rec['p_updated_by'] = $user->uid;
+	$rec['p_updated'] = date('Y-m-d H:i:s');
+	if ($add)
+	{
+		$rec['p_created_by'] = $user->uid;
+		$vray_id = db_query("select nextval('patrika')")->fetchField();
+		$rec['p_vray_id'] = $vray_id;
+		$patrika_id = db_insert('dh_patrika')->fields($rec)->execute();
+
+		$p_rec['pp_patrika'] = $patrika_id;
+		$p_rec['pp_amt'] = $input['amt'];
+		$p_rec['pp_receipt_no'] = $input['student_receipt_no'];
+		$p_rec['pp_receipt_date'] = dmy_to_ymd($input['student_receipt_date']);
+		$p_rec['pp_type'] = $input['student_transaction_type'];
+		$p_rec['pp_txn_no'] = $input['student_transaction_id'];
+		$p_rec['pp_txn_bank'] = $input['student_chq_bank'];
+		$p_rec['pp_txn_date'] = $input['student_transaction_date']?dmy_to_ymd($input['student_transaction_date']):NULL;
+		$p_rec['pp_user']  = $user->uid;
+
+		$patrika_id = db_insert('dh_patrika_payment')->fields($p_rec)->execute();
+	}
+	else
+	{
+		$vray_id = '';	
+		if ( $input['p_cancelled'] )
+		{
+			$rec['p_cancelled'] = $input['p_cancelled'];
+			$rec['p_cancel_date'] = dmy_to_ymd($input['p_cancel_date']);
+			$rec['p_cancel_reason'] = $input['p_cancel_reason'];
+		}
+		db_update('dh_patrika')->fields($rec)->condition('p_id', $patrika_id )->execute();
+	}
+
+	drupal_set_message(t("Patrika ID $vray_id $action successfully"));
+	drupal_goto('patrika');
+}
+
+
+function dmy_to_ymd( $date )
+{
+	$temp = explode("/", $date);
+	return date("Y-m-d", mktime(0,0,0, $temp[1], $temp[0], $temp[2]));
+}
+
+
+
+function getDetailsByZipcode()
+{
+		 $PinCode=$_POST['PinCode'];
+		 $DBCityID='';
+		 $DBState='';
+		 $DBCountry='';
+		 $q = " SELECT pc.pc_pin, c.c_name, s.s_name, c.c_country,c.c_state,c.c_id
+				 from dh_pin_code pc left join dh_city c on pc.pc_city=c.c_id left join dh_state s on c.c_state=s.s_code 
+				 where pc.pc_pin = '".$PinCode."' LIMIT 1";
+		
+		$result = db_query($q);
+		$rows = array();
+		$rows['count']=$result->rowCount();
+		while( $r = $result->fetchAssoc() )
+		{
+			$rows['data'][]=$r;
+			$DBCityID=$r['c_id'];
+			$DBStateID=$r['c_state'];
+			$DBState=$r['c_state'];
+			$DBCountry=$r['c_country'];
+		}
+
+		$StateQuery="SELECT * FROM dh_state where s_country='$DBCountry'";
+		$StateResult = db_query($StateQuery);
+		$rows['StateCount']=$StateResult->rowCount();
+		while( $r = $StateResult->fetchAssoc() )
+		{
+			$rows['state'][]=$r;
+		}
+
+		$CityQuery="SELECT * FROM dh_city where c_country='$DBCountry' and c_state='$DBState'";
+		$CityResult = db_query($CityQuery);
+		$rows['CityCount']=$CityResult->rowCount();
+		while( $r = $CityResult->fetchAssoc() )
+		{
+			$rows['city'][]=$r;
+		}
+		echo json_encode($rows);
+}
+
+
+

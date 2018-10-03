@@ -1,0 +1,4 @@
+core = "7.x"
+description = "Patrika module used to subscription of newsletter."
+name = "Patrika Module"
+scripts[] = patrika.js
