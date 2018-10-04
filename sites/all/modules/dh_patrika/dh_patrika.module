@@ -72,6 +72,18 @@ function dh_patrika_menu()
 		'type' => MENU_CALLBACK,
 	);
 
+	$items['patrika/generate/IN'] = array(
+		'page callback' => 'dh_patrika_generate_label',
+		'page arguments' => array('IN'),
+		'access arguments' => array('generate label'),	
+	);
+
+	$items['patrika/generate/NON-IN'] = array(
+		'page callback' => 'dh_patrika_generate_label',
+		'page arguments' => array('NON-IN'),
+		'access arguments' => array('generate label'),	
+	);
+
 	return $items;
 
 }
@@ -85,6 +97,7 @@ function dh_patrika_permission()
 	$perms['update subscriber'] = array('title' => t('Update Subscriber') ) ;
 	$perms['add payment'] = array('title' => t('Add Payments') ) ;
 	$perms['delete payment'] = array('title' => t('Delete Payments') ) ;
+	$perms['generate label'] = array('title' => t('Generate Labels') ) ;
 
 	return $perms;
 }
@@ -253,10 +266,19 @@ function dh_patrika_search_form($form, &$form_state)
 {
 	drupal_add_css(drupal_get_path( 'module', 'dh_patrika').'/patrika.css');
 	drupal_add_library('system', 'ui.datepicker');
+	drupal_add_library('system', 'ui.dialog');
+	drupal_add_js(drupal_get_path('module', 'dh_patrika').'/jquery.fileDownload.js');
 
 	$form['#attributes'] = array('class' => array('container-inline')); 
  	$breadcrumb = '';
 	$breadcrumb .= l("New Subscriber", "patrika/add");
+	if (user_access("generate label"))
+	{
+		$breadcrumb .= "&nbsp;&nbsp;|&nbsp;&nbsp;".
+		l("Generate Labels (IN)", "patrika/generate/IN", array('attributes' => array('class' => array('filedownload'))))."&nbsp;&nbsp;|&nbsp;&nbsp;".
+		l("Generate Labels (Foreign)", "patrika/generate/NON-IN", array('attributes' => array('class' => array('filedownload'))));
+
+	}
 	$form['a'] = array('#markup' => '<h3 style="">'.$breadcrumb.'</h3>');
 
 	$form['patrika_id'] = array(
@@ -376,6 +398,19 @@ function dh_patrika_search_form($form, &$form_state)
 		
 	}
 	drupal_add_js("(function ($) { $('.datepicker').datepicker({ dateFormat: 'dd/mm/yy' }); })(jQuery);", array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+
+
+	drupal_add_js('
+		(function ($) {
+			$(document).on("click", "a.filedownload", function () {
+			    $.fileDownload($(this).prop("href"), {
+			        preparingMessageHtml: "We are preparing the labels, please wait...",
+			        failMessageHtml: "There was a problem generating the labels, please try again."
+			    });
+			    return false; //this is critical to stop the click event which will trigger a normal file download!
+			});
+		})(jQuery);
+	', 'inline');
 
 	return $form;
 
@@ -1036,5 +1071,32 @@ function getDetailsByZipcode()
 		echo json_encode($rows);
 }
 
+
+function dh_patrika_generate_label( $type )
+{
+	$cur = getcwd();
+	chdir("/dhamma/web/domains/dipi/patrika");
+	$out = "/tmp/patrika-$type-".date("Y-m-d").".zip";
+	$cmd = "/usr/bin/php patrika-cron.php $type $out";
+	exec($cmd);
+	chdir($cur);
+	if (file_exists($out)) 
+	{
+	    header("Set-Cookie: fileDownload=true; path=/");
+	    header('Content-Description: File Transfer');
+	    header('Content-Type: application/octet-stream');
+	    header('Content-Disposition: attachment; filename='.basename($out));
+	    header('Content-Transfer-Encoding: binary');
+	    header('Expires: 0');
+	    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+	    header('Pragma: public');
+	    header('Content-Length: ' . filesize($out));
+	    ob_clean();
+	    flush();
+	    readfile($out);
+	    unlink($out);
+	}
+	exit;
+}
 
 
