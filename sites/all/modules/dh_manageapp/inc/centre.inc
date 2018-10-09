@@ -552,16 +552,22 @@ function cron_pc_auto_cancel()
 }
 
 
-function cron_expected()
+function cron_expected($centre_id=0, $course_id=0)
 {
 	$status_expected = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-EXPECTED'")->fetchField();
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$q = "select cs_center, cs_expected_days from dh_center_setting where cs_expected_enable=1 and cs_expected_days > 0 ";
+	if ($centre_id > 0 )
+		$q .=  " and cs_center = '$centre_id'";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
 		$end_date = date('Y-m-d', strtotime("+".$r['cs_expected_days']." day"));
-		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_start='$end_date' and c_deleted=0";
+		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_deleted=0";
+		if ($course_id > 0 )
+			$q .=  " and c_id = '$course_id'";
+		else
+			$q .= " and c_start='$end_date'";
 		$res_c = db_query($q);
 		while($r_c = $res_c->fetchAssoc())
 		{
