@@ -948,7 +948,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by aa_group, a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_seat_row, aa_seat_col, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 and a_type='Student' order by aa_group, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_seat_row, aa_seat_col, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 and a_type in ('Student','Sevak') order by a_type desc, aa_group, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -977,7 +977,10 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 					$group = 'O';
 				$group .= $g;
 				$row[] = $i++;
-				$row[] = $r['Full Name'];
+				$sevak = '';
+				if ($r['a_type'] == 'Sevak')
+			      $sevak .= ' (Sevak)';
+				$row[] = $r['Full Name'].$sevak;
 				//$row[] = $r['c_name'];
 				$row[] = $r['Age'];
 				$row[] = $r['aa_section'].'-'.$r['aa_acco'];
