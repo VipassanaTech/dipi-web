@@ -355,7 +355,7 @@ function dh_patrika_search_form($form, &$form_state)
 		if ( $receipt_date <> '')
 		 	$append .= " and pp_receipt_date = '$receipt_date'";
 
-		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
+		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on p.p_state=ps.s_code where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
 
 
 		drupal_add_library('system', 'ui.datepicker');
@@ -382,12 +382,14 @@ function dh_patrika_search_form($form, &$form_state)
 				$status = '<b>Cancelled</b>';
 			$row[] = $status;
 			$row[] = $r['p_address'];
+			$row[] = $r['c_name'].'/'.$r['s_name'];
+			$row[] = $r['p_language'];
 			$link = l("View/Edit", "patrika/edit/".$r['p_id']);
 			$row[] = $link;
 			$rows[] = $row;
 	  	}
 	
-		$header = array('Patrika Id', 'FirstName', 'LastName', 'Subscription', 'Status', 'Address', 'Action');
+		$header = array('Patrika Id', 'FirstName', 'LastName', 'Subscription', 'Status', 'Address', 'City/State', 'Lang', 'Action');
 		
 		$form['myfieldset']['mytable'] = array(
 		  '#theme' => 'table',
@@ -623,6 +625,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 	$breadcrumb .= l("Back To Search", "patrika");
 
 	$add = 0;
+	$id = $edit_data['p_vray_id'];
 	if (count($edit_data) == 0)
 		$add = 1;
 	else
@@ -631,7 +634,10 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 			$breadcrumb .= '&nbsp;&nbsp;|&nbsp;&nbsp;Status: <font color="red">Cancelled</font>';
 		else
 			$breadcrumb .= "&nbsp;&nbsp;|&nbsp;&nbsp;Status: Active";
+		$breadcrumb .= "&nbsp;&nbsp;|&nbsp;&nbsp;Patrika ID:&nbsp" .$id;
 	}
+
+	
 
 	$form['a'] = array('#markup' => '<h3 style="">'.$breadcrumb.'</h3>');
 
