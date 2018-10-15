@@ -741,6 +741,23 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#size' => 40,
 	);
 	
+	$form['p_mode'] = array(
+		'#title' => 'Mode of Patrika', 
+		'#type' => 'radios', 
+		'#options' => array('PAPER' => 'PAPER', 'EMAIL' => 'EMAIL'),
+		'#default_value' => $add?'PAPER':$edit_data['p_mode'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'p_mode'));
+
+	$form['p_email'] = array(
+		'#title' => 'Email', 
+		'#type' => 'textfield', 
+		'#size' => 60,
+		'#default_value' => $add?'':$edit_data['p_email'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'p_email'));
+
+
 	// $subscription['']='choose';
 	$subscription=array('Life Long'=>'Life Long','Yearly'=>'Yearly','Privilage'=>'Privilege',''=>'Choose');
 	$form['student_subscription'] = array(
@@ -946,6 +963,14 @@ function dh_patrika_addedit_validate($form, &$form_state)
 	$AddressLength3=strlen($student_address3);
 	if ($AddressLength3>50)
 		form_set_error('student_address3', t('You must enter an address less than 50 characters.'));
+
+	if ($form_state['input']['p_email'] <> '')
+	{
+		if (!filter_var($form_state['input']['p_email'], FILTER_VALIDATE_EMAIL)) {
+			form_set_error('p_email', t('Please enter a valid email address'));
+		}
+	}
+
 }
 
 function dh_patrika_addedit_submit($form, &$form_state) 
@@ -982,6 +1007,8 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	$rec['p_city'] = $city_id;
 	$rec['p_language'] = $input['language'];
 	$rec['p_zip'] = $input['student_address_zip'];
+	$rec['p_email'] = $input['p_email'];
+	$rec['p_mode'] = $input['p_mode'];
 	$rec['p_subscription_type'] = $input['student_subscription'];
 	$rec['p_start_date'] = dmy_to_ymd($input['student_sub_start_date']);
 	$rec['p_end_date'] = dmy_to_ymd($input['student_sub_end_date']);
