@@ -625,11 +625,11 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 	$breadcrumb .= l("Back To Search", "patrika");
 
 	$add = 0;
-	$id = $edit_data['p_vray_id'];
 	if (count($edit_data) == 0)
 		$add = 1;
 	else
 	{
+		$id = $edit_data['p_vray_id'];
 		if ($edit_data['p_cancelled'])
 			$breadcrumb .= '&nbsp;&nbsp;|&nbsp;&nbsp;Status: <font color="red">Cancelled</font>';
 		else
