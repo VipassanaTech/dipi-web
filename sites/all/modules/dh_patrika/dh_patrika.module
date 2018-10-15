@@ -355,7 +355,7 @@ function dh_patrika_search_form($form, &$form_state)
 		if ( $receipt_date <> '')
 		 	$append .= " and pp_receipt_date = '$receipt_date'";
 
-		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on p.p_state=ps.s_code where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
+		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
 
 
 		drupal_add_library('system', 'ui.datepicker');
@@ -1071,7 +1071,7 @@ function getDetailsByZipcode()
 		 $DBState='';
 		 $DBCountry='';
 		 $q = " SELECT pc.pc_pin, c.c_name, s.s_name, c.c_country,c.c_state,c.c_id
-				 from dh_pin_code pc left join dh_city c on pc.pc_city=c.c_id left join dh_state s on c.c_state=s.s_code 
+				 from dh_pin_code pc left join dh_city c on pc.pc_city=c.c_id left join dh_state s on (c.c_state=s.s_code and c.c_country=s.s_country) 
 				 where pc.pc_pin = '".$PinCode."' LIMIT 1";
 		
 		$result = db_query($q);
