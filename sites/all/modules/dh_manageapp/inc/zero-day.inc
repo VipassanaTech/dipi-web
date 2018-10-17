@@ -241,7 +241,7 @@ function dh_get_alloted($centre_id, $course_id)
 
 function dh_manageapp_list($centre_id, $course_id)
 {
-	$q = "select a_id, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, c_name, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_center='$centre_id' and a_course='$course_id' and a_attended=0 order by a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_uri, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, c_name, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_center='$centre_id' and a_course='$course_id' and a_attended=0 order by a_f_name, a_m_name, a_l_name";
 //and a_status='Confirmed' 
 	$result = db_query($q);
 	$rows = array();
@@ -251,7 +251,10 @@ function dh_manageapp_list($centre_id, $course_id)
 
 		$rs[] = $r['a_id'];
 		$rs[] = $r['ConfNo'];
-		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit', array('attributes' => array('appid' => $r['a_id'] )) );
+		$pdf_link = '';
+		if ( $r['a_uri'] <> '' )
+			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit', array('attributes' => array('appid' => $r['a_id'] )) ).$pdf_link;
 		$rs[] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		$rs[] = $r['c_name'];
 		$rs[] = $r['Age'];
