@@ -726,7 +726,7 @@ function dh_manageapp_search_form($form, &$form_state)
 
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
 	$statuses = db_query($q)->fetchAllKeyed();
-	$statuses[''] = 'Choose';
+	$statuses[''] = '';
 
 	$statuses[$system_statuses['STATUS-RECEIVED']] = $system_statuses['STATUS-RECEIVED'];
 	$statuses[$system_statuses['STATUS-LEFT']] = $system_statuses['STATUS-LEFT'];
@@ -799,7 +799,12 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_willing_to_serve=1";
 		if ( isset($storage['is_pregnant']) && ($storage['is_pregnant']) )
 			$where .= " and ae_pregnant=1";
-
+		if ( $storage['pincodes'] <> '' )
+			$where .= " and a_zip LIKE '".$storage['pincodes']."%'";
+		if ( $storage['occupations'] <> '' )
+			$where .= " and a_occupation LIKE '" ."%".$storage['occupations']."%'";
+		if ( $storage['designations'] <> '' )
+			$where .= " and a_designation LIKE '" ."%".$storage['designations']."%'";
 
 		$out = '<h2>'.l("Back to Search", "search-app/".$centre_id).'</h2>';
 		//if ($storage['course'] <> '')
@@ -866,7 +871,7 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#weight' => 3);
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#weight' => 4 );
 		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#size' => 15, '#weight' => 5 );
-		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#default_value' => '',  '#weight' => 6);
+		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#default_value' => '','#multiple' =>true, '#weight' => 6);
 		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak'), '#default_value' => 'Student',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => '',  '#weight' => 8);
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => '', '#weight' => 9);
@@ -896,6 +901,18 @@ function dh_manageapp_search_form($form, &$form_state)
 		*/
 		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
 
+		$group = 'Advanced';
+		$form['#attributes'] = array('class' => array('container-inline'),'#collapsible' => true, '#collapsed' => false);
+		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
+			$form[$group]['pincodes'] = array('#title' => 'PinCodes', '#type' => 'textarea', '#size' => '15', '#weight' => 1,);
+			$form[$group]['occupations'] = array('#title' => 'Occupations', '#type' => 'textarea', '#size' => '15', '#weight' => 2,);
+			$form[$group]['designations'] = array('#title' => 'Designations', '#type' => 'textarea', '#size' => '15', '#weight' => 3,);
+			
+
+		//if ( user_access("Administrator") )
+		//{
+		
+		//}
 
 		$js = '
 			(function ($) {

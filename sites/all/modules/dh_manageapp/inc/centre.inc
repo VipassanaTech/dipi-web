@@ -97,14 +97,16 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['c_name'] = array('#title' => 'Centre Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
 		'#default_value' => $add?'':$edit_data['c_name'], '#required' => 1, '#suffix' => $identifier.$qr_code_img  );
 	if ($add)
-		$form[$group]['c_subdomain'] = array('#title' => 'Dhamma.org Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 2,
+		{$form[$group]['c_subdomain'] = array('#title' => 'Dhamma.org Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 2,
 			'#default_value' => $add?'':$edit_data['c_subdomain'], );
-	$form[$group]['c_trust'] = array('#title' => 'Trust Name', '#type' => 'textfield', '#size' => '50', '#weight' => 3, 
+		$form[$group]['c_dana'] = array('#title' => '&nbsp;Enable Dana?', '#type' => 'checkbox',
+      		'#default_value' => $add?'':$edit_data['c_dana'],  '#weight' => 3);}
+	$form[$group]['c_trust'] = array('#title' => 'Trust Name', '#type' => 'textfield', '#size' => '50', '#weight' => 4, 
 		'#default_value' => $add?'':$edit_data['c_trust'], '#required' => 0, );
-	$form[$group]['c_pincode'] = array('#title' => 'PinCode', '#type' => 'textfield', '#size' => '15', '#weight' => 4, 
+	$form[$group]['c_pincode'] = array('#title' => 'PinCode', '#type' => 'textfield', '#size' => '15', '#weight' => 5, 
 		'#default_value' => $add?'':$edit_data['c_pincode'], '#required' => 1, );
 
-	$form[$group]['c_country'] = array('#title' => 'Country', '#type' => 'textfield', '#size' => '40', '#weight' => 5, 
+	$form[$group]['c_country'] = array('#title' => 'Country', '#type' => 'textfield', '#size' => '40', '#weight' => 6, 
 		'#default_value' => $add?'':$edit_data['c_country'], '#required' => 1,
 				'#attached' => array(
       				'library' => array(
@@ -112,27 +114,27 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
       		)),
 
 		 );
-	$form[$group]['c_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '40', '#weight' => 6, 
+	$form[$group]['c_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '40', '#weight' => 7, 
 		'#default_value' => $add?'':$edit_data['c_state'], '#required' => 1, );
-	$form[$group]['c_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '40', '#weight' => 7, 
+	$form[$group]['c_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '40', '#weight' => 8, 
 		'#default_value' => $add?'':$city_name, '#required' => 1, );
 
-	$form[$group]['c_address'] = array('#title' => 'Address', '#type' => 'textarea', '#rows' => '2', '#weight' => 8, 
+	$form[$group]['c_address'] = array('#title' => 'Address', '#type' => 'textarea', '#rows' => '2', '#weight' => 9, 
 		'#default_value' => $add?'':$edit_data['c_address'], '#required' => 1, );
 
-	$form[$group]['c_phone'] = array('#title' => 'Phone', '#type' => 'textfield', '#size' => '50', '#weight' => 8, 
+	$form[$group]['c_phone'] = array('#title' => 'Phone', '#type' => 'textfield', '#size' => '50', '#weight' => 9, 
 		'#default_value' => $add?'':$edit_data['c_phone'], '#required' => 1, );
-	$form[$group]['c_fax'] = array('#title' => 'Fax', '#type' => 'textfield', '#size' => '50', '#weight' => 9, 
+	$form[$group]['c_fax'] = array('#title' => 'Fax', '#type' => 'textfield', '#size' => '50', '#weight' => 10, 
 		'#default_value' => $add?'':$edit_data['c_fax'], '#required' => 0, );
 
-	$form[$group]['c_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '50', '#weight' => 10, 
+	$form[$group]['c_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '50', '#weight' => 11, 
 		'#default_value' => $add?'':$edit_data['c_email'], '#required' => 1, );
-	$form[$group]['c_url'] = array('#title' => 'Website', '#type' => 'textfield', '#size' => '50', '#weight' => 11, 
+	$form[$group]['c_url'] = array('#title' => 'Website', '#type' => 'textfield', '#size' => '50', '#weight' => 12, 
 		'#default_value' => $add?'':$edit_data['c_url'], '#required' => 1, );
 	
-	$form[$group]['cs_email_from_name'] = array('#title' => 'Email From Name', '#type' => 'textfield', '#size' => '50', '#weight' => 12, 
+	$form[$group]['cs_email_from_name'] = array('#title' => 'Email From Name', '#type' => 'textfield', '#size' => '50', '#weight' => 13, 
 		'#default_value' => $add?'':$edit_data['cs_email_from_name'], '#required' => 1, );
-	$form[$group]['cs_email_reply_to'] = array('#title' => 'Email Reply to', '#type' => 'textfield', '#size' => '50', '#weight' => 13, 
+	$form[$group]['cs_email_reply_to'] = array('#title' => 'Email Reply to', '#type' => 'textfield', '#size' => '50', '#weight' => 14, 
 		'#default_value' => $add?'':$edit_data['cs_email_reply_to'], '#required' => 1, );
 
 
