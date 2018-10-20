@@ -641,7 +641,7 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 
     $teacher_code = $form_state['input']['ac_teacher_code'];
     if (!preg_match("/-/",$teacher_code)) {
-        form_set_error('ac_teacher_code', t('Incorrect AT code, Please choose AT name from drop down list'));
+        form_set_error('ac_teacher_code', t('Incorrect AT code. Please choose AT name from drop down list'));
     }
 
 }
