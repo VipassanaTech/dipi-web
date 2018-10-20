@@ -322,7 +322,7 @@ function map_application_fields($row)
 
 	if ( $row['a_problem_physical'])
 	{
-		$fields['physical'] = $row['ae_desc_physical']; 	
+		$fields['physical'] = $row['ae_desc_physical']."\n".$row['ae_desc_medication']; 	
 		$fields['medical_yes'] = 'Yes';	
 	}
 	else
