@@ -639,6 +639,11 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 	if ($form_state['input']['a_gender'] == '')
         form_set_error('a_gender', t('Gender not selected'));
 
+    $teacher_code = $form_state['input']['ac_teacher_code'];
+    if (!preg_match("/-/",$teacher_code) && (strpos($teacher_code, " ") !== false)) {
+        form_set_error('ac_teacher_code', t('Incorrect AT code.	Please choose AT name from the drop down list'));
+    }
+
 }
 
 function dh_ma_applicant_form_submit($form, &$form_state)
