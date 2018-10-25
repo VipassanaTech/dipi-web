@@ -11,6 +11,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
 	if ( !($iPad || $iPhone || $iPod) )
 	{
 		//drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.min.js");
@@ -121,6 +122,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['contact_mobile'] = $r['a_phone_mobile'];
 		$rs['contact_office'] = $r['a_phone_office'];
 		$rs['contact_email'] = $r['a_email'];
+		$rs['occupation'] = $r['a_occupation'];
+		$rs['designation'] = $r['a_designation'];
+		$rs['company'] = $r['a_company'];
 		$rs['note'] = $r['a_internal_note'];
 		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
 		$rs['extra'] = $r['a_extra'];
@@ -726,7 +730,7 @@ function dh_manageapp_search_form($form, &$form_state)
 
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
 	$statuses = db_query($q)->fetchAllKeyed();
-	$statuses[''] = 'Choose';
+	$statuses[''] = '';
 
 	$statuses[$system_statuses['STATUS-RECEIVED']] = $system_statuses['STATUS-RECEIVED'];
 	$statuses[$system_statuses['STATUS-LEFT']] = $system_statuses['STATUS-LEFT'];
@@ -763,7 +767,8 @@ function dh_manageapp_search_form($form, &$form_state)
 			elseif ($storage['status'] == 'Confirmed')
 				$where .= " and a_status in ('Confirmed', 'Expected')";
 			else
-				$where .= " and a_status = '".$storage['status']."'";
+				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
+				//"'" . implode ( "', '", $temp ) . "'";
 		}
 		if ( $storage['type'] <> '' )
 			$where .= " and a_type = '".$storage['type']."'";
@@ -787,8 +792,23 @@ function dh_manageapp_search_form($form, &$form_state)
 
 		if ( $storage['state'] <> '' )
 			$where .= " and s_name LIKE '".$storage['state']."%'";
-		if ( $storage['email'] <> '' )
-			$where .= " and a_email LIKE '".$storage['email']."%'";
+		if ( $storage['pin'] <> '' )
+			$where .=  " and a_zip in (".$storage['pin'].")";
+		if ( $storage['occupation'] <> '' )
+		{
+			$temp = explode("\r\n", $storage['occupation']);
+			$where .=  " and a_occupation in ('".implode("', '",$temp)."'".")";
+		}
+		if ( $storage['designation'] <> '' )
+		{
+			$temp = explode("\r\n", $storage['designation']);
+			$where .=  " and a_designation in ('".implode("', '",$temp)."'".")";
+		}
+		if ( $storage['company'] <> '' )
+		{
+			$temp = explode("\r\n", $storage['company']);
+			$where .=  " and a_company in ('".implode("', '",$temp)."'".")";
+		}
 		if ( $storage['mode'] <> '' )
 			$where .= " and a_source = '".$storage['mode']."'";
 		if ( isset($storage['alist']) && ($storage['alist']) )
@@ -866,12 +886,18 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#weight' => 3);
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#weight' => 4 );
 		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#size' => 15, '#weight' => 5 );
-		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#default_value' => '',  '#weight' => 6);
+		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#multiple' => True,'#default_value' => '', '#weight' => 6);
 		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak'), '#default_value' => 'Student',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => '',  '#weight' => 8);
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => '', '#weight' => 9);
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
-		$form['state'] = array('#title' => 'State', '#type' => 'textfield', '#weight' => 10);
+		$form['state'] = array('#title' => 'State', '#type' => 'textfield','#weight' => 10);
+		
+		$q = "select l_id, l_name, l_event from dh_letter where l_center = $centre_id order by l_event";
+		$letters = db_query($q)->fetchAllKeyed();
+		$letters[''] = 'Choose';
+		$form['letters'] = array('#title' => 'Letters', '#type' => 'select', '#options' => $letters, '#weight' => 11);	
+
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#weight' => 11);
 		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#options' => $modes, '#weight' => 12 );
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 13);
@@ -895,7 +921,19 @@ function dh_manageapp_search_form($form, &$form_state)
 			'#theme_wrappers' => array('date_popup'), '#suffix' => '');
 		*/
 		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
+		$form['mail'] = array('#type' => 'button', '#value' => 'Mass Mail', '#weight' => 101);
 
+		if (user_access('mass mail'))
+		{		
+		$group = 'Advanced';
+		$form['#attributes'] = array('class' => array('container-inline'),'#collapsible' => true, '#collapsed' => false);
+		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
+			$form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
+			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2);
+			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
+			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
+			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
+		}
 
 		$js = '
 			(function ($) {
