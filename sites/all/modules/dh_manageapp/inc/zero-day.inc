@@ -1599,11 +1599,15 @@ function generate_cell_list($centre, $course)
 	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data['MALE']['old'] = $data['MALE']['new'] = $data['FEMALE']['old'] = $data['FEMALE']['new'] = array();
+	$reserved['Reserved-old']['MALE'] = $reserved['Reserved-new']['MALE'] = $reserved['Reserved-old']['FEMALE'] = $reserved['Reserved-new']['FEMALE'] = array();
 	while($r = $result->fetchAssoc())
 	{
 		$data[strtoupper($r['a_gender']) == 'M'?'MALE':'FEMALE'][$r['a_old']?'old':'new'][] = $r;
 		if ($r['aa_cell_fixed'])
+		{
 			$cell_alloc['Reserved'][$r['a_gender'] == 'M'?'MALE':'FEMALE'][] = $r['aa_cell'];
+			$reserved['Reserved-'.($r['a_old']?'old':'new')][$r['a_gender'] == 'M'?'MALE':'FEMALE'][] = $r['aa_cell'];						
+		}
 	}
 
 	/* Remove reserved cells from the list */
@@ -1614,7 +1618,7 @@ function generate_cell_list($centre, $course)
 		{
 			/* Cells are given, so we fill up from old to new, no reservation for old/new separately */
 			$c = 0;
-			for($i=0; $i<count($data[$g]['old']); $i++ )
+			for($i=0; $i<count($data[$g]['old']) - count($reserved['Reserved-old'][$g]); $i++ )
 			{
 				if ( !in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) ) )
 				{
@@ -1661,7 +1665,10 @@ function generate_cell_list($centre, $course)
 		}	
 	}
 
-	//print_r($cell_alloc);
+	if ( isset($_REQUEST['d']) && ($_REQUEST['d'] == 1))
+	{
+		print_r($cell_alloc);		
+	}
 	//exit;
 
 	$cells[0]['MALE'] = $cells[0]['FEMALE'] = array();

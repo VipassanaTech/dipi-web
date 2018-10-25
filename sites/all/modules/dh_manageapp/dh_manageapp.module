@@ -1214,6 +1214,8 @@ function dh_app_update_attended()
 	$fields['aa_cell'] = $_REQUEST['c'];
 
 	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
+	if ($fields['aa_cell_fixed'])
+		$fields['aa_cell_group'] = '0';
 	$fields['aa_chowky'] = ($_REQUEST['chow'] == 'true')?1:0;
 	$fields['aa_chair'] = ($_REQUEST['chai'] == 'true')?1:0;
 	$fields['aa_backrest'] = ($_REQUEST['back'] == 'true')?1:0;
