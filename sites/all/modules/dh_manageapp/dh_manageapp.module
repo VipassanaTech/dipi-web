@@ -52,6 +52,7 @@ function dh_manageapp_permission()
 	$perms['view teachers list'] = array('title' => t('Access Teachers List'));
 	$perms['received applications block'] = array('title' => t('View Received Applications Block'));
 	$perms['upcoming courses block'] = array('title' => t('View Upcoming Courses Block'));
+	$perms['mass mail'] = array('title' => t('Send mass mails'));
 	return $perms;
 }
 
