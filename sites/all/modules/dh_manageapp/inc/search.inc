@@ -794,20 +794,26 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and s_name LIKE '".$storage['state']."%'";
 		if ( $storage['pin'] <> '' )
 			$where .=  " and a_zip in (".$storage['pin'].")";
+
+		if ( $storage['city'] <> '' )
+		{
+			$temp = explode("\r\n", $storage['city']);
+			$where .=  " and (a_city or a_city_str) in ('".trim(implode("', '",$temp))."'".")";
+		}
 		if ( $storage['occupation'] <> '' )
 		{
 			$temp = explode("\r\n", $storage['occupation']);
-			$where .=  " and a_occupation in ('".implode("', '",$temp)."'".")";
+			$where .=  " and a_occupation in ('".trim(implode("', '",$temp))."'".")";
 		}
 		if ( $storage['designation'] <> '' )
 		{
 			$temp = explode("\r\n", $storage['designation']);
-			$where .=  " and a_designation in ('".implode("', '",$temp)."'".")";
+			$where .=  " and a_designation in ('".trim(implode("', '",$temp))."'".")";
 		}
 		if ( $storage['company'] <> '' )
 		{
 			$temp = explode("\r\n", $storage['company']);
-			$where .=  " and a_company in ('".implode("', '",$temp)."'".")";
+			$where .=  " and a_company in ('".trim(implode("', '",$temp))."'".")";
 		}
 		if ( $storage['mode'] <> '' )
 			$where .= " and a_source = '".$storage['mode']."'";
@@ -929,7 +935,7 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['#attributes'] = array('class' => array('container-inline'),'#collapsible' => true, '#collapsed' => false);
 		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
 			$form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
-			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2);
+			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2, '#description' => 'Enter values in separate lines');
 			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
 			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
 			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
