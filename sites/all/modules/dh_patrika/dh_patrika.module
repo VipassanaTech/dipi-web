@@ -775,13 +775,11 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#attributes' => array('id' => 'student_subscription')
 	);
 
-	//$years=array('1'=>'1','2'=>'2','3'=>'3', '4'=>'4', '5'=>'5', '25'=>'25', ''=>'Choose');
 	$form['years'] = array(
 		'#title' => 'Years', 
 		'#type' => 'textfield',
-		'#default_value' => $add?'':$edit_data['p_years'],
+		'#default_value' => '',
 		'#size' => 2,
-		'#attributes' => array('id' => 'p_years')
 	);
 
 	$start_date = '';
@@ -938,13 +936,13 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   						}
   						if(SubVal == 'Yearly')
   						{
-  							date2.setFullYear(date2.getFullYear() + parseInt($('#p_years').val())); 
+  							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val())); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
   						if(SubVal == 'Privilage')
   						{
-  							date2.setFullYear(date2.getFullYear()+25); 
+  							date2.setFullYear(date2.getFullYear()+1); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   						}
   						
