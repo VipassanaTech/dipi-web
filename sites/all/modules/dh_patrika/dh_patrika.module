@@ -355,7 +355,7 @@ function dh_patrika_search_form($form, &$form_state)
 		if ( $receipt_date <> '')
 		 	$append .= " and pp_receipt_date = '$receipt_date'";
 
-		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_years, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
+		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
 
 
 		drupal_add_library('system', 'ui.datepicker');
@@ -1025,7 +1025,6 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	$rec['p_email'] = $input['p_email'];
 	$rec['p_mode'] = $input['p_mode'];
 	$rec['p_subscription_type'] = $input['student_subscription'];
-	$rec['p_years'] = $input['years'];
 	$rec['p_start_date'] = dmy_to_ymd($input['student_sub_start_date']);
 	$rec['p_end_date'] = dmy_to_ymd($input['student_sub_end_date']);
 	$rec['p_updated_by'] = $user->uid;
