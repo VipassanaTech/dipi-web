@@ -760,11 +760,11 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
 			$where .= " and a_phone_mobile like '".trim($storage['mobile'])."%'";
-		if ( $storage['status'] <> '' )
+		if ( count($storage['status']) > 1 )
 		{
-			if ($storage['status'] == 'Attended')
+			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 2) )
 				$where .= " and a_attended = '1'";
-			elseif ($storage['status'] == 'Confirmed')
+			elseif ( in_array('Confirmed', $storage['status']) && (count($storage['status']) == 2) )
 				$where .= " and a_status in ('Confirmed', 'Expected')";
 			else
 				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
