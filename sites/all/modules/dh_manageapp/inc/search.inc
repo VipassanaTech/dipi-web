@@ -730,7 +730,7 @@ function dh_manageapp_search_form($form, &$form_state)
 
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
 	$statuses = db_query($q)->fetchAllKeyed();
-	$statuses[''] = '';
+//	$statuses[''] = '';
 
 	$statuses[$system_statuses['STATUS-RECEIVED']] = $system_statuses['STATUS-RECEIVED'];
 	$statuses[$system_statuses['STATUS-LEFT']] = $system_statuses['STATUS-LEFT'];
@@ -760,11 +760,11 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
 			$where .= " and a_phone_mobile like '".trim($storage['mobile'])."%'";
-		if ( count($storage['status']) > 1 )
+		if ( count($storage['status']) > 0 )
 		{
-			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 2) )
+			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 1) )
 				$where .= " and a_attended = '1'";
-			elseif ( in_array('Confirmed', $storage['status']) && (count($storage['status']) == 2) )
+			elseif ( in_array('Confirmed', $storage['status']) && (count($storage['status']) == 1) )
 				$where .= " and a_status in ('Confirmed', 'Expected')";
 			else
 				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
