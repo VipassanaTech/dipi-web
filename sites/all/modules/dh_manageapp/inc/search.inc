@@ -932,8 +932,8 @@ function dh_manageapp_search_form($form, &$form_state)
 		if (user_access('mass mail'))
 		{		
 		$group = 'Advanced';
-		$form['#attributes'] = array('class' => array('container-inline'),'#collapsible' => true, '#collapsed' => false);
-		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
+		$form['#attributes'] = array('class' => array('container-inline'));
+		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true, '#weight' => 101);
 			$form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
 			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2, '#description' => 'Enter values in separate lines');
 			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
