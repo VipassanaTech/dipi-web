@@ -795,22 +795,22 @@ function dh_manageapp_search_form($form, &$form_state)
 		if ( $storage['pin'] <> '' )
 			$where .=  " and a_zip in (".$storage['pin'].")";
 
-		if ( $storage['city'] <> '' )
+		if ( isset($storage['city']) && ( $storage['city'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['city']);
 			$where .=  " and (a_city or a_city_str) in ('".trim(implode("', '",$temp))."'".")";
 		}
-		if ( $storage['occupation'] <> '' )
+		if ( isset($storage['occupation']) && ( $storage['occupation'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['occupation']);
 			$where .=  " and a_occupation in ('".trim(implode("', '",$temp))."'".")";
 		}
-		if ( $storage['designation'] <> '' )
+		if ( isset($storage['designation']) && ( $storage['designation'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['designation']);
 			$where .=  " and a_designation in ('".trim(implode("', '",$temp))."'".")";
 		}
-		if ( $storage['company'] <> '' )
+		if ( isset($storage['company']) && ( $storage['company'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['company']);
 			$where .=  " and a_company in ('".trim(implode("', '",$temp))."'".")";
