@@ -792,6 +792,10 @@ function dh_manageapp_search_form($form, &$form_state)
 
 		if ( $storage['state'] <> '' )
 			$where .= " and s_name LIKE '".$storage['state']."%'";
+
+		if ( $storage['email'] <> '' )
+			$where .= " and a_email LIKE '".$storage['email']."%'";
+
 		if ( isset($storage['pin']) && ($storage['pin'] <> '') )
 			$where .=  " and a_zip in (".$storage['pin'].")";
 
