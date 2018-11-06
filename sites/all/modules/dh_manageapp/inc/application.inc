@@ -838,6 +838,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 		$app_ac['ac_updated_by'] = $user->uid;
 		$app_ac['ac_updated'] = date('Y-m-d H:i:s');
+		if ($app_ac['ac_teen'] == '') $app_ac['ac_teen'] = 0;
 		if ($app_ac['ac_10d'] == '') $app_ac['ac_10d'] = 0;
 		if ($app_ac['ac_20d'] == '') $app_ac['ac_20d'] = 0;
 		if ($app_ac['ac_30d'] == '') $app_ac['ac_30d'] = 0;
