@@ -232,6 +232,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$group = 'Course Information';
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Information',  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['ac_teen'] = array('#title' => 'Teenagers', '#type' => 'textfield', '#size' => '5', '#weight' => 59, 
+		'#default_value' => isset($edit_data['ac_teen'])?$edit_data['ac_teen']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_10d'] = array('#title' => '10 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 60, 
 		'#default_value' => isset($edit_data['ac_10d'])?$edit_data['ac_10d']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_stp'] = array('#title' => 'STP', '#type' => 'textfield', '#size' => '5', '#weight' => 61, 
