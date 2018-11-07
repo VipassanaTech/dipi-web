@@ -232,6 +232,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$group = 'Course Information';
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Information',  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['ac_teen'] = array('#title' => 'Teenagers', '#type' => 'textfield', '#size' => '5', '#weight' => 59, 
+		'#default_value' => isset($edit_data['ac_teen'])?$edit_data['ac_teen']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_10d'] = array('#title' => '10 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 60, 
 		'#default_value' => isset($edit_data['ac_10d'])?$edit_data['ac_10d']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_stp'] = array('#title' => 'STP', '#type' => 'textfield', '#size' => '5', '#weight' => 61, 
@@ -836,6 +838,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 		$app_ac['ac_updated_by'] = $user->uid;
 		$app_ac['ac_updated'] = date('Y-m-d H:i:s');
+		if ($app_ac['ac_teen'] == '') $app_ac['ac_teen'] = 0;
 		if ($app_ac['ac_10d'] == '') $app_ac['ac_10d'] = 0;
 		if ($app_ac['ac_20d'] == '') $app_ac['ac_20d'] = 0;
 		if ($app_ac['ac_30d'] == '') $app_ac['ac_30d'] = 0;
