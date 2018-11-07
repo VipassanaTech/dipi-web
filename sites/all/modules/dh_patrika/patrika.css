@@ -12,7 +12,7 @@
 }
 
 .edit-student-f-name,.form-item-student-address1,.form-item-student-address-zip,.form-item-student-subscription,
-.form-item-student-receipt-date,.form-item-student-transaction-type {
+.form-item-student-receipt-date,.form-item-student-transaction-type,.form-item-p-mode {
 	clear: left;
 }
 
