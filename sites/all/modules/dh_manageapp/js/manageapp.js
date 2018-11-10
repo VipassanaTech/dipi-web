@@ -209,10 +209,11 @@
 			if($("input[name=a_old]:checked").val() == "1")
 			{
 				var t = parseInt($("#edit-ac-10d").val()) || 0;
-				if ( t <= 0 )
+				var t1 = parseInt($("#edit-ac-teen").val()) || 0;
+				if ( (t <= 0) && (t1 <=0) )
 				{
-					alert("Old Student must have attened at least one 10 day course");
-					$("#edit-ac-10d").focus();
+					alert("Old Student must have attened at least one Teenager/10 day course");
+					$("#edit-ac-teen").focus();
 					event.preventDefault();
 					return false;
 				}
