@@ -10,15 +10,14 @@ function dh_manage_at_schedule()
 	$course = db_query("select c_id from dh_course where c_center=$centre_id")->fetchAssoc();
 	
 
-	$q = "Select ct_id, c_id, c_start, c_end, c_name, CONCAT(t_f_name, ' ', t_l_name) as 'teacher', ct_type as 'Type', t_gender from dh_course_teacher left join dh_teacher on ct_teacher=t_id left join dh_course as c on ct_course=c_id where c_start >= ((CURDATE() - INTERVAL 1 YEAR)) and c.c_center=$centre_id order by c_start asc, ct_type desc";
+	$q = "Select ct_id, c_id, c_start, c_end, c_name, CONCAT(t_f_name, ' ', t_l_name) as 'teacher', ct_type as 'Type', t_gender from dh_course left join dh_course_teacher on ct_course=c_id left join dh_teacher on ct_teacher=t_id where c_start >= ((CURDATE() - INTERVAL 1 YEAR)) and c_center=$centre_id order by c_start asc, ct_type desc";
 
 	$result = db_query($q);
 	$data = array();
-	$i = 1;
 
 	while($r = $result->fetchAssoc())
 	{	
-		$data[$r['c_id'].'||||'.$r['c_name'].'||||'.$r['c_end']][$r['t_gender']][] = array('type' => $r['Type'], 'teacher' => $r['teacher']) ;
+		$data[$r['c_id'].'||||'.$r['c_name'].'||||'.$r['c_start']][$r['t_gender']][] = array('type' => $r['Type'], 'teacher' => $r['teacher']) ;
 		
 	}
 	$old_rows = $upcoming_rows = array();
@@ -43,14 +42,11 @@ function dh_manage_at_schedule()
 		}
 
 		$row[] = l("View", "assign-teacher/$centre_id/".$t[0]);
-		if ( $t[2]  < date('Y-m-d') ) 
-
+		if ( $t[2]  <= date('Y-m-d') ) 
 
 			$old_rows[] = $row;
 		else
 			$upcoming_rows[] = $row;
-
-
 			
 	}
 	
