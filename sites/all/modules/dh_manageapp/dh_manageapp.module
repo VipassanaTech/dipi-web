@@ -6,6 +6,7 @@ include_once(dirname(__FILE__)."/inc/zero-day.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
+include_once(dirname(__FILE__)."/inc/reports.inc");
 
 
 function dh_manageapp_help($path, $arg)
@@ -53,6 +54,7 @@ function dh_manageapp_permission()
 	$perms['received applications block'] = array('title' => t('View Received Applications Block'));
 	$perms['upcoming courses block'] = array('title' => t('View Upcoming Courses Block'));
 	$perms['mass mail'] = array('title' => t('Send mass mails'));
+	$perms['at scheduling'] = array('title' => t('AT scheduling'));
 	return $perms;
 }
 
@@ -280,6 +282,11 @@ function dh_manageapp_menu()
 	$items['report-day11/%centre_id/%course_id'] = array( 'title' => t('Day 11 Report'),
 	       'page callback' => 'course_day11_report',
 	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/%centre_id'] = array('title' => t('AT scheduling'),
+	       'page callback' => 'dh_manage_at_schedule',
+	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
 
 	$items['assign-teacher/%centre_id/%course_id'] = array( 'title' => t('Assign Teachers'),
