@@ -787,7 +787,7 @@ function dh_assign_teacher($centre, $course)
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	$temp = drupal_get_form('dh_assign_teacher_form');
 	$out = '<h2>'.$course_name.'</h2>';
-	$out .= '<h2>'.l("Back to Course", "course/$centre/$course")."&nbsp;&nbsp; | &nbsp;&nbsp; ".l("Back to Zero Day", "zero-day/$centre/$course").'</h2>';
+	$out .= '<h2>'.l("Back to Course", "course/$centre/$course")."&nbsp;&nbsp; | &nbsp;&nbsp; ".l("Back to Zero Day", "zero-day/$centre/$course")."&nbsp;&nbsp; | &nbsp;&nbsp; ".l("Back to AT Schedule", "at-schedule/$centre").'</h2>';
 	$out .= drupal_render( $temp );
 	$q = "select CONCAT(t_f_name, ' ', t_l_name ) as 'teacher', ct_type, ct_group, ct_id from dh_course_teacher left join dh_teacher on ct_teacher=t_id where ct_course=$course";
 	$res = db_query($q);
