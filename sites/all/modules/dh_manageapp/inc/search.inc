@@ -776,7 +776,7 @@ function dh_manageapp_search_form($form, &$form_state)
 				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
 				//"'" . implode ( "', '", $temp ) . "'";
 		}
-		if ( $storage['type'] <> '' )
+		if ($storage['type'] <> 'Both')
 			$where .= " and a_type = '".$storage['type']."'";
 
 		if ( ! (user_access("access male") && (user_access("access female"))) )
@@ -903,7 +903,7 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#weight' => 4 );
 		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#size' => 15, '#weight' => 5 );
 		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#multiple' => True,'#default_value' => '', '#weight' => 6);
-		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak'), '#default_value' => 'Student',  '#weight' => 7);
+		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => 'Both',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => '',  '#weight' => 8);
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => '', '#weight' => 9);
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
