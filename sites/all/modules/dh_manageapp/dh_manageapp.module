@@ -782,19 +782,20 @@ function _search_student()
 	else
 		$append = " and a_dob='".$d['a_dob']."'";
 
-	$q = "select c_name, a_address, a_attended,a_status from dh_applicant left join dh_course on a_course=c_id where a_f_name='".$d['a_f_name']."' and a_l_name='".$d['a_l_name']."' $append order by c_created desc limit 15";
+	$q = "select c_name, a_address, a_attended, a_type, a_status from dh_applicant left join dh_course on a_course=c_id where a_f_name='".$d['a_f_name']."' and a_l_name='".$d['a_l_name']."' $append order by c_created desc limit 15";
 	$result = db_query($q);
 	$rows = array();
 	while($r = $result->fetchAssoc())
 	{
 		$row = array();
 		$row[] = $r['c_name']; 
+		$row[] =$r['a_type'];
 		$row[] = $r['a_status']; 
 		$row[] = $r['a_attended']?'True':'False'; 
 		$row[] = $r['a_address']; 
 		$rows[] = $row;
 	}
-	$header = array('Course', 'Status', 'Attended', 'Address');
+	$header = array('Course', 'Type', 'Status', 'Attended', 'Address');
 	$out = theme('table', array('header' => $header, 'rows' => $rows));
 	print $out;
 	exit;
