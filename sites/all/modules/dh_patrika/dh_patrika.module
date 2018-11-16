@@ -924,7 +924,6 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 				minDate: 0,
         		onSelect: function (selectedDate ) {
             		var dt2 = $('.student_sub_end_date');
-            			var years = $('#years').val();
             			var SubVal=$('#student_subscription').val();
             			var date2 = $('.student_sub_start_date').datepicker('getDate', '+1d'); 
   						if(SubVal == 'Life Long')
@@ -936,6 +935,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   						}
   						if(SubVal == 'Privilage')
   						{
+	            			var years = $('#years').val();
   							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val())); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
@@ -944,6 +944,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   						{
   							date2.setFullYear(date2.getFullYear()+1); 
   							dt2.datepicker( 'option', 'maxDate', date2);
+  							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
   						
             	       dt2.datepicker( 'option', 'minDate', selectedDate);
