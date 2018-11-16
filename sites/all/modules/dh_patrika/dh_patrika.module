@@ -934,13 +934,13 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						
   						}
-  						if(SubVal == 'Yearly')
+  						if(SubVal == 'Privilage')
   						{
   							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val())); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
-  						if(SubVal == 'Privilage')
+  						if(SubVal == 'Yearly')
   						{
   							date2.setFullYear(date2.getFullYear()+1); 
   							dt2.datepicker( 'option', 'maxDate', date2);
