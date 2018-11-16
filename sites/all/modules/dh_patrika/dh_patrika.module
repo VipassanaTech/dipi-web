@@ -1057,6 +1057,11 @@ function dh_patrika_addedit_submit($form, &$form_state)
 			$rec['p_cancel_date'] = dmy_to_ymd($input['p_cancel_date']);
 			$rec['p_cancel_reason'] = $input['p_cancel_reason'];
 		}
+		else
+		{
+			$rec['p_cancelled'] = 0;
+			$rec['p_cancel_reason'] = '';
+		}
 		db_update('dh_patrika')->fields($rec)->condition('p_id', $patrika_id )->execute();
 	}
 
