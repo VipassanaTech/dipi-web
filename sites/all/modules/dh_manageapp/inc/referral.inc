@@ -2,17 +2,22 @@
 
 function dh_referral_form($form, &$form_state, $edit_data = array()) 
 {	
+  	drupal_add_library('system', 'ui.autocomplete');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');  	
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
     drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 
+ 	$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1)).'</h3>');
+ 	if ( !empty($edit_data) )
+ 	{
+ 		$q = "select CONCAT(t_code,'-',t_gender) from dh_teacher where t_id=".$edit_data['r_listed_by'];
+		$referal = db_query($q)->fetchField();
+ 	}
 
-
- $form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1)).'</h3>');
-
- $add = 0;
+	$add = 0;
  
 
-$group = 'Personal Information';
+	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline')); 
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['s_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1, 
@@ -55,7 +60,7 @@ $group = 'Personal Information';
 		'#default_value' => isset($edit_data['s_address'])?$edit_data['s_address']:'', '#rows' => 3,  '#weight' => 20, '#required' => 1, 
 		'#suffix' => '', '#maxlength' => 200 ); 
 
-	$form[$group]['a_zip'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 25, 
+	$form[$group]['s_zip'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 25, 
 		'#default_value' => (isset($edit_data['s_zip']))?$edit_data['s_zip']:'', '#maxlength' => 20 );
 	$form[$group]['a_country'] = array('#title' => 'Country', '#type' => 'textfield', '#size' => '20', '#weight' => 26, 
 		'#default_value' => isset($edit_data['s_country'])?$edit_data['s_country']:'', '#required' => 1, '#maxlength' => 5,
@@ -65,9 +70,9 @@ $group = 'Personal Information';
       	))
 		);
 	$city_name = '';
-	if (!$add)
+	if (!empty($edit_data))
 	{
-		if ($edit_data['s_city'] <> '')
+		if ((isset($edit_data['s_city'])) && ($edit_data['s_city'] <> ''))
 			$city_name = db_query("select c_name from dh_city where c_id='".$edit_data['s_city']."'")->fetchField();
 	}
 	$form[$group]['s_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 27, 
@@ -78,7 +83,8 @@ $group = 'Personal Information';
 	$doc_types = array('' => 'Choose', 's_passport' => 'Passport', 's_pancard' => 'Pancard', 's_aadhar' => 'Aadhar', 's_voter_id' => 'National ID');
 	$default_doc_type = '';
 	$default_doc_id = '';
-	if (!$add || (isset($edit_data['s_passport'])) )
+	//if (!$add || (isset($edit_data['s_passport'])) )
+	if ( !empty($edit_data) )
 	{
 		if ( $edit_data['s_passport'] <> '' ) $default_doc_type = 's_passport';
 		if ( $edit_data['s_pancard'] <> '' ) $default_doc_type = 's_pancard';
@@ -100,6 +106,8 @@ $group = 'Personal Information';
       '#default_value' => isset($edit_data['r_listed_10d'])?$edit_data['r_listed_10d']:'0',  '#weight' => 13);
 	$form[$group]['r_listed_stp'] = array('#title' => '&nbsp;STP', '#type' => 'checkbox',
       '#default_value' => isset($edit_data['r_listed_stp'])?$edit_data['r_listed_stp']:'0',  '#weight' => 14);
+	$form[$group]['r_listed_spl'] = array('#title' => '&nbsp;10D-SPL', '#type' => 'checkbox',
+      '#default_value' => isset($edit_data['r_listed_stp'])?$edit_data['r_listed_spl']:'0',  '#weight' => 14.1);
     $form[$group]['r_listed_20d'] = array('#title' => '&nbsp;20-Day', '#type' => 'checkbox',
       '#default_value' => isset($edit_data['r_listed_20d'])?$edit_data['r_listed_20d']:'0',  '#weight' => 15);
     $form[$group]['r_listed_30d'] = array('#title' => '&nbsp;30-Day', '#type' => 'checkbox',
@@ -125,7 +133,7 @@ $group = 'Personal Information';
   
     $form[$group]['r_listed_by'] = array( '#title' => 'Referred By',  '#type' => 'textfield', 
 		'#weight' => 1, '#size' => 25, '#required' => 0, '#weight' => 70,
-		'#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'',
+		'#default_value' => isset($edit_data['r_listed_by'])?$referal:'',
  		'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
@@ -133,18 +141,37 @@ $group = 'Personal Information';
 	 );
 
    $js ='
+	    function checkUncheckAll(theElement){
+	      var theForm = theElement.form, z = 0;
+	      for(z=0; z<theForm.length;z++){
+	        if(theForm[z].type == "checkbox" && theForm[z].name != "checkall"){
+	          theForm[z].checked = theElement.checked;
+	        }
+	      }
+	    }
+
 		(function ($) {
 			
 			$(document).ready(function(){
 
-				$("#edit-r-teacher-code").autocomplete({
+				autocomplete_country("#edit-a-country");
+				autocomplete_state("#edit-s-state", "#edit-a-country");
+				autocomplete_city("#edit-s-city", "#edit-a-country", "#edit-s-state");
+
+			  	$("#edit-s-zip").focusout(function(){ 
+		//		  		alert("hi");
+			  		do_pincode($(this).val(), "#edit-a-country", "#edit-s-state", "#edit-s-city" ); 
+			  	});
+
+
+				$("#edit-r-listed-by").autocomplete({
 					source: function( request, response ) {
-						$("#edit-r-teacher-code").addClass( "throbbing" );
+						$("#edit-r-listed-by").addClass( "throbbing" );
 				        $.ajax({
 				          url: "/autocomplete/get-teacher/" + request.term,
 				          dataType: "json",
 				          success: function( data ) {
-				          	$("#edit-r-teacher-code").removeClass( "throbbing" );
+				          	$("#edit-r-listed-by").removeClass( "throbbing" );
 				            response( data );
 				          }
 				        });
@@ -152,7 +179,7 @@ $group = 'Personal Information';
 		  			minLength: 1,
 		  			select: function( event, ui ) {
 		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
-		        		$( "#edit-r-teacher-code" ).val( ui.item.code );
+		        		$( "#edit-r-listed-by" ).val( ui.item.code );
 		        		return false;
 		      		}
 		  		});
@@ -161,19 +188,10 @@ $group = 'Personal Information';
 		})(jQuery);
 	';
 
-drupal_add_js("
-    function checkUncheckAll(theElement){
-      var theForm = theElement.form, z = 0;
-      for(z=0; z<theForm.length;z++){
-        if(theForm[z].type == 'checkbox' && theForm[z].name != 'checkall'){
-          theForm[z].checked = theElement.checked;
-        }
-      }
-    }
-  ", 'inline');
 
 
-if (arg(1) == $add)
+	drupal_add_js($js, 'inline');
+	if (arg(1) == $add)
 		$action = 'Add Referral';
 	else
 		$action = 'Update';
@@ -242,7 +260,7 @@ function dh_referral_form_submit($form, &$form_state)
 	$app['s_updated'] = date('Y-m-d H:i:s');
     $app['s_f_name'] = ucwords(strtolower($app['s_f_name']) );
     $app['s_l_name'] = ucwords(strtolower($app['s_l_name']) );
-    $app['s_r_listed'] = '1';
+    //$app['s_r_listed'] = '1';
     if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
@@ -258,13 +276,18 @@ function dh_referral_form_submit($form, &$form_state)
 	}
 
 	/*insert or update dh_referral*/
-	$app['r_teacher_code'] = $app['r_listed_by'];
+	$temp = explode("-", $app_r['r_listed_by']);
+	$q = "select t_id from dh_teacher where t_code='".$temp[0]."' and t_gender='".$temp[1]."'";
+	$referal = db_query($q)->fetchField();
+	$app_r['r_listed_by'] = $referal; 
+
+	$app['r_teacher_code'] = $app_r['r_listed_by'];
 
 	if ( arg(2) == 'edit')
 	{
 		$app_r['r_student'] = $app_id;
 		$app_r['r_updated_by'] = $user->uid;
-		$app['r_updated'] = date('Y-m-d H:i:s');
+		$app_r['r_updated'] = date('Y-m-d H:i:s');
 		db_update('dh_referral')->fields($app_r)->condition('r_student', $app_id )->execute();
 	}
 
@@ -272,7 +295,7 @@ function dh_referral_form_submit($form, &$form_state)
 	{
 		$app_r['r_student'] = $app_id;
 		$app_r['r_created_by'] = $user->uid;
-		$app['r_created'] = date('Y-m-d H:i:s');
+		$app_r['r_created'] = date('Y-m-d H:i:s');
 		db_insert('dh_referral')->fields($app_r)->execute();
 	}
 
@@ -300,20 +323,6 @@ function dh_addedit_referral()
 
 }
 
-function dh_referral_results_form($form, &$form_state)
-{
-	global $user;
-	$centre_id = '';
-	if (arg(1) <> '')
-		$centre_id = arg(1);
-	
-	$out = '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Add", "referral/add").'</h3>';
-	
-	$out .= dh_referral_results();
-	$form['out'] = array('#markup' => $out, '#weight' => 100);
-	return $form;
-
-}
 
 function dh_referral_results()
 {

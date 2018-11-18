@@ -41,7 +41,7 @@
 .form-item-c-trust, .form-item-c-country, .form-item-c-phone, .form-item-c-email,
 .form-item-cs-seating-dir-male, .form-item-cs-email-from-name, .form-item-c-address,
 .form-item-cs-seat-per-row-male, .form-item-cs-chowky-per-row-male, .form-item-cs-cells-config, 
-.form-item-cs-seat-config {
+.form-item-cs-seat-config, .form-item-s-zip, .form-item-s-address  {
 	clear: left;
 }
 
