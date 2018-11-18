@@ -7,7 +7,7 @@ include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
-
+include_once(dirname(__FILE__)."/inc/referral.inc");
 
 function dh_manageapp_help($path, $arg)
 {
@@ -55,6 +55,10 @@ function dh_manageapp_permission()
 	$perms['upcoming courses block'] = array('title' => t('View Upcoming Courses Block'));
 	$perms['mass mail'] = array('title' => t('Send mass mails'));
 	$perms['at scheduling'] = array('title' => t('AT scheduling'));
+	$perms['view referral list'] = array('title' => t('View referral list'));
+	$perms['manage referral list'] = array('title' => t('Manage referral list'));
+	$perms['delete referral list'] = array('title' => t('Delete referral list'));
+	
 	return $perms;
 }
 
@@ -287,6 +291,21 @@ function dh_manageapp_menu()
     $items['at-schedule/%centre_id'] = array('title' => t('AT scheduling'),
 	       'page callback' => 'dh_manage_at_schedule',
 	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['referral/add'] = array('title' => t('Referral List'),
+	       'page callback' => 'dh_addedit_referral',
+	       'access arguments' => array('manage referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['referral/%centre_id'] = array('title' => t('Referral List'),
+	       'page callback' => 'dh_referral_results_form',
+	       'access arguments' => array('view referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['referral/referral/%id/delete'] = array('title' => t('Referral List'),
+	       'page callback' => 'referral_delete',
+	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
 
 	$items['assign-teacher/%centre_id/%course_id'] = array( 'title' => t('Assign Teachers'),
