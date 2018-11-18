@@ -319,6 +319,13 @@ function dh_referral_results()
 {
 	global $user;
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
+
+  	$centre_id = '';
+	if (arg(1) <> '')
+		$centre_id = arg(1);
+	
+	$out = '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Add", "referral/add").'</h3>';
+
 	//drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/datatables.min.js' );
 	//drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/datatables.min.css' );
 	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
@@ -431,7 +438,7 @@ function dh_referral_results()
 	//$header = array('Detail', 'Applicant Name', 'Course Name', 'Status', 'ConfNo' , 'Gender', 'Country/State/City', 'Age');
 	$header = array();
 	$attributes = array('id' => 'table-applicants');
-	$out = theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
+	$out .= theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
 	$data = json_encode($rows);
 
 	if (user_access('delete referral list'))

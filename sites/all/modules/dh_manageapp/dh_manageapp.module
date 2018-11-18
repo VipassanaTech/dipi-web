@@ -299,7 +299,7 @@ function dh_manageapp_menu()
 	       'type' => MENU_CALLBACK);
 
     $items['referral/%centre_id'] = array('title' => t('Referral List'),
-	       'page callback' => 'dh_referral_results_form',
+	       'page callback' => 'dh_referral_results',
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
