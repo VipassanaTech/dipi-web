@@ -8,6 +8,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 
  	$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Referral List", "referral/".arg(1)).'</h3>');
+ 	
  	if ( !empty($edit_data) )
  	{
  		$q = "select CONCAT(t_code,'-',t_gender) from dh_teacher where t_id=".$edit_data['r_listed_by'];
@@ -372,7 +373,12 @@ function dh_referral_results()
 	if (arg(1) <> '')
 		$centre_id = arg(1);
 	
-	$out = '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Add", "referral/".arg(1).'/add').'</h3>';
+	$out = '<h2>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp;&nbsp;";
+
+ 	if (user_access ('manage referral list'))
+ 		$out .= "|&nbsp;&nbsp;".l("Add Referral", "referral/".arg(1).'/add');
+ 	$out .= '</h2>';
+
 
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/datatables.min.js' );
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/datatables.min.css' );
