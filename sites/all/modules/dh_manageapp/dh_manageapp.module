@@ -293,7 +293,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/add'] = array('title' => t('Referral List'),
+    $items['referral/%centre_id/add'] = array('title' => t('Referral List'),
+	       'page callback' => 'dh_addedit_referral',
+	       'access arguments' => array('manage referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['referral/%centre_id/%app_id/edit'] = array('title' => t('Referral List'),
 	       'page callback' => 'dh_addedit_referral',
 	       'access arguments' => array('manage referral list'),
 	       'type' => MENU_CALLBACK);
@@ -303,7 +308,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/referral/%id/delete'] = array('title' => t('Referral List'),
+    $items['referral/%app_id/delete'] = array('title' => t('Referral List'),
 	       'page callback' => 'referral_delete',
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
