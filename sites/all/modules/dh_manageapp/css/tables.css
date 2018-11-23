@@ -15,6 +15,11 @@ table.dataTable tbody td.no-padding {
     padding: 0;
 }
 
+.referral {
+	background: #F79F81 !important;
+}
+
 .clear {
 	clear: both;
 }
+

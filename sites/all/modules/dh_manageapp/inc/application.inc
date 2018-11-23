@@ -218,7 +218,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',  
 		'#default_value' => $add?'':$edit_data['a_emergency_num'], '#size' => 20,  '#weight' => 58, 
-		'#required' => 0, '#maxlength' => 20);
+		'#required' => 0, '#maxlength' => 40);
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
