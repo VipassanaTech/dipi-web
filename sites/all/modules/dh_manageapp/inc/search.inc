@@ -261,7 +261,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			{
 				photo = "<td colspan=2><img width=\"150\" src=\""+d.photo+"\" /></td>";
 			}
-			if ( d.referral )
+			if ( parseInt(d.referral) > 0  )
 			{
 				referral = "<tr><td class=\"referral\"><label>RefListed by:</label></td><td class=\"referral\">"+d.ref_listed_by+"</td>"+
 					"<td class=\"referral\"><label>From:</label></td><td class=\"referral\">"+d.ref_start+"</td>"+
