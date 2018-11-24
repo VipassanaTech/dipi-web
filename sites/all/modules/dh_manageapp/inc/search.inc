@@ -174,7 +174,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['referral'] = $r['a_referral'];
 		if ($r['a_referral'])
 		{
-			$q = "select r.*, CONCAT(t.t_f_name, ' ', t.t_l_name) as 'ListedBy1', CONCAT(t2.t_f_name, ' ', t2.t_l_name) as 'ListedBy2', CONCAT(t3.t_f_name, ' ', t3.t_l_name) as 'ListedBy3' from dh_referral r left join dh_teacher t on (r.r_listed_by=t.t_id ) where r_id=".$r['a_referral'];
+			$q = "select r.*, CONCAT(t.t_f_name, ' ', t.t_l_name) as 'ListedBy1', CONCAT(t2.t_f_name, ' ', t2.t_l_name) as 'ListedBy2', CONCAT(t3.t_f_name, ' ', t3.t_l_name) as 'ListedBy3' from dh_referral r left join dh_teacher t on (r.r_listed_by=t.t_id ) left join dh_teacher t2 on (r.r_listed_by_2=t.t_id ) left join dh_teacher t3 on (r.r_listed_by_3=t.t_id ) where r_id=".$r['a_referral'];
 			$r_ref = db_query($q)->fetchAssoc();
 
 			$rs['ref_reason'] = $r_ref['r_reason'];
