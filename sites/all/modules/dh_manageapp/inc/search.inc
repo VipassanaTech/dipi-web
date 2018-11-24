@@ -174,7 +174,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['referral'] = $r['a_referral'];
 		if ($r['a_referral'])
 		{
-			/*$q = "select r.*, CONCAT(t.t_f_name, ' ', t.t_l_name) as 'ListedBy1', CONCAT(t2.t_f_name, ' ', t2.t_l_name) as 'ListedBy2', CONCAT(t3.t_f_name, ' ', t3.t_l_name) as 'ListedBy3' from dh_referral r left join dh_teacher t on (r.r_listed_by=t.t_id ) where r_id=".$r['a_referral'];
+			$q = "select r.*, CONCAT(t.t_f_name, ' ', t.t_l_name) as 'ListedBy1', CONCAT(t2.t_f_name, ' ', t2.t_l_name) as 'ListedBy2', CONCAT(t3.t_f_name, ' ', t3.t_l_name) as 'ListedBy3' from dh_referral r left join dh_teacher t on (r.r_listed_by=t.t_id ) where r_id=".$r['a_referral'];
 			$r_ref = db_query($q)->fetchAssoc();
 
 			$rs['ref_reason'] = $r_ref['r_reason'];
@@ -189,7 +189,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				if ($r_ref['r_listed_'.$a])
 					$listed_for .= strtoupper($a)." | ";
 			$rs['ref_listed_for'] = $listed_for;
-			*/
+			
 		}
 
 		//$rows[] = array_values($rs);
@@ -490,7 +490,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        { data: null, "title": "" }
 		            ],
 		            "fnRowCallback": function (nrow, data, display_index) {
-		            	if (data.referral == "1")
+		            	if (parseInt(data.referral) > 0 )
 		            	{
  					   		$(nrow).addClass("referral");
 		            	}

@@ -752,6 +752,8 @@ function dh_ma_applicant_form_submit($form, &$form_state)
    $app['a_f_name'] = ucwords(strtolower($app['a_f_name']) );
    $app['a_l_name'] = ucwords(strtolower($app['a_l_name']) );
 
+   $referal = is_in_referal_list($app);
+   $app['a_referral'] = $referal?$referal:"0";
 	if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
@@ -1021,5 +1023,16 @@ function app_delete( $id )
 	$q = "delete from dh_applicant where a_id=$id";
 	db_query($q);
 }
+
+function is_in_referal_list( $row )
+{
+	$referal = 0;
+	$q = "select r_id from dh_referral r left join dh_student s on (r.r_student=s.s_id) 
+		where s_f_name = '".$row['a_f_name']."' and s_l_name='".$row['a_l_name']."' and 
+		( s_email='".$row['a_email']."' or s_phone_mobile='".$row['a_phone_mobile']."' ) limit 1";
+	$referal = db_query($q)->fetchField();
+	return $referal;
+}
+
 
 
