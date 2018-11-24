@@ -134,14 +134,14 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['r_start'])?$edit_data['r_start']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
     		'maxDate' => 0, '#required' => 1, 
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
+    	),'#date_year_range' => '-100:0', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
 
     $form[$group]['r_end'] = array('#title' => 'End Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 23.2, 
 		'#default_value' => isset($edit_data['r_end'])?$edit_data['r_end']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
     		'maxDate' => 0, '#required' => 1, 
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
+    	),'#date_year_range' => '-100:0', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
   
     $form[$group]['r_reason'] = array('#title' => 'Referral Reason', '#type' => 'textarea',  
@@ -380,8 +380,6 @@ function dh_referral_results()
  	$out .= '</h2>';
 
 
-	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/datatables.min.js' );
-	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/datatables.min.css' );
 	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
 	$iPhone  = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
 	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
