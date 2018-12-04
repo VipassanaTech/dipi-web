@@ -1,0 +1,72 @@
+<?php
+
+/**
+* Implementation of hook_schema().
+*/
+function restrict_by_ip_schema() {
+  $schema['restrict_by_ip'] = array(
+    'description' => t('The Restrict By IP Table'),
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE
+      ),
+      'restrict_by_ip_address' => array(
+        'type'  => 'varchar',
+        'length' => 256,
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function restrict_by_ip_uninstall() {
+  // Drop variables.
+  $variables = array(
+    'restrict_by_ip_user_registration',
+    'restrict_by_ip_error_page',
+    'restrict_by_ip_login_range',
+    'restrict_by_ip_header',
+  );
+  foreach ($variables as $variable) {
+    variable_del($variable);
+  }
+  // Clean up role-based variables
+  db_query("DELETE FROM {variable} WHERE name LIKE 'restrict_by_ip_role%'");
+
+  drupal_set_message(t('Restrict Logon By IP module uninstalled successfully.'));
+}
+
+/**
+ * Convert role restriction variables to use role names instead of role IDs.
+ */
+function restrict_by_ip_update_7300() {
+  $query = <<<EOL
+  select v.name, r.rid, r.name as role from {variable} v
+  left join {role} r on SUBSTR(v.name, 20) = r.rid
+  where v.name like 'restrict_by_ip_role%'
+EOL;
+
+  $rows = db_query($query);
+  foreach ($rows as $row) {
+    db_query("UPDATE {variable} SET name = :new WHERE name = :old", array(':new' =>
+      'restrict_by_ip_role_' . $row->role, ':old' => $row->name));
+  }
+}
+
+/**
+ * Convert role restriction variables to use hashed role names.
+ */
+function restrict_by_ip_update_7301() {
+  $query = <<<EOL
+  update {variable}
+  set name = CONCAT('restrict_by_ip_role_', MD5(SUBSTR(name, 21)))
+  where name like 'restrict_by_ip_role%'
+EOL;
+
+  db_query($query);
+}

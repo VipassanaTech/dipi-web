@@ -1,0 +1,652 @@
+<?php
+
+/**
+ * @file
+ * Allows the admin to select which ip addresses role or a user  can login from for this site
+ * Some of the code below is taken from the cck_ipaddress_module
+*/
+
+/**
+ * Implementation of hook_help()
+ */
+function restrict_by_ip_help($section) {
+  $output = '';
+
+  switch ($section) {
+    case 'admin/help#restrict_by_ip':
+      $output = '<p>The site administrator can limit a user to only be able to login from certain IP Addresses or ranges of IP Addresses using CIDR notation. Individual roles may also be limited to a those from specified IP addresses and rangers.</p>';
+      break;
+    }
+  return $output;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function restrict_by_ip_menu() {
+  $items = array();
+  $items['admin/config/people/restrict_by_ip'] = array(
+    'title' => t('Restrict by IP'),
+    'description' => t('General settings for Restrict by IP module.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('restrict_by_ip_general_settings'),
+    'access arguments' => array('administer restrict by ip'),
+  );
+  $items['admin/config/people/restrict_by_ip/general'] = array(
+    'title' => t('General settings'),
+    'description' => t('General settings for Restrict by IP module.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('restrict_by_ip_general_settings'),
+    'access arguments' => array('administer restrict by ip'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/config/people/restrict_by_ip/login'] = array(
+    'title' => t('Restrict login by IP'),
+    'description' => t('Limit the IP address a user is allowed to login from.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('restrict_by_ip_login_settings'),
+    'access arguments' => array('administer restrict by ip'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/config/people/restrict_by_ip/login/add'] = array(
+    'title' => t('Add new login IP restriction'),
+    'description' => t('Add a new IP restriction to a user.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('restrict_by_ip_login_add_edit_user'),
+    'access arguments' => array('administer restrict by ip'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/people/restrict_by_ip/login/edit/%user'] = array(
+    'title' => t('Edit existing login IP restriction'),
+    'description' => t('Edit an existing IP restriction for a user.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('restrict_by_ip_login_add_edit_user', 6),
+    'access arguments' => array('administer restrict by ip'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/people/restrict_by_ip/role'] = array(
+    'title' => t('Restrict role by IP'),
+    'description' => t('Limit the IP address range roles may accessed from.'),
+    'page callback' => t('drupal_get_form'),
+    'page arguments' => array('restrict_by_ip_role_settings'),
+    'access arguments' => array('administer restrict by ip'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_permission().
+ */
+function restrict_by_ip_permission() {
+  return array(
+    'administer restrict by ip' => array(
+      'title' => t('Administer restrict by ip'),
+      'description' => t('Create, edit and delete rules for restricted IP login.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implmentation of hook_init().
+ */
+function restrict_by_ip_init() {
+  global $user;
+  // Login restriction check moved here to prevent access from stale session data
+  _restrict_by_ip_login($user);
+}
+
+/**
+ * Implementation of hook_boot().
+ */
+function restrict_by_ip_boot() {
+  global $user;
+  // Call the function early in boot process to check/strip roles
+  restrict_by_ip_role_check($user);
+}
+
+/**
+ * Implementation of hook_user_login().
+ */
+function restrict_by_ip_user_login(&$edit, &$account) {
+  _restrict_by_ip_login($account);
+}
+
+/**
+ * Implementation of hook_user_insert().
+ */
+function restrict_by_ip_user_insert(&$edit, $account, $category) {
+  if (isset($edit['restrict_by_ip_address']) && strlen($edit['restrict_by_ip_address']) > 0) {
+    // If an IP restriction is set, add it to database
+    db_query("INSERT INTO {restrict_by_ip} (uid, restrict_by_ip_address) VALUES (:uid, :ip)", array(':uid' => $edit['uid'], ':ip' => $edit['restrict_by_ip_address']));
+  }
+}
+
+/**
+ * Implementation of hook_user_delete().
+ */
+function restrict_by_ip_user_delete($account) {
+  if ($account->uid != 0) {
+    db_query("DELETE FROM {restrict_by_ip} WHERE uid = :uid", array(':uid' => $account->uid));
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function restrict_by_ip_theme($existing, $type, $theme, $path) {
+  return array(
+    'restrict_by_ip_login_list' => array(),
+  );
+}
+
+/**
+ * Implmentation of hook_form_alter().
+ */
+function restrict_by_ip_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_profile_form' || $form_id == 'user_register_form') {
+    // Add restrict by ip form fields to user add/edit form
+    if (user_access('administer site configuration') || user_access('administer restrict by ip')) {
+      $address_entry = '';
+
+      if ($form_id == 'user_profile_form') {
+        $uid = $form['#user']->uid;
+        $form['#validate'][] = 'restrict_by_ip_user_profile_validate';
+        $form['#submit'][] = 'restrict_by_ip_user_profile_submit';
+
+        $usrdata_restrict_by_ip_address = "";
+        // Grab the current restrict by ip data if it exists
+        $address_entry = db_query('SELECT restrict_by_ip_address FROM {restrict_by_ip} WHERE uid = :uid', array(
+          ':uid' => $uid
+        ))->fetchField();
+      }
+      else {
+        $form['#validate'][] = 'restrict_by_ip_user_profile_validate';
+      }
+
+      $form['rip'] = array(
+        '#type'          => 'fieldset',
+        '#attributes'    => array('class' => array('restrict-by-ip')),
+        '#title'         => t('Restrict by IP settings'),
+        '#weight'        => 5,
+        '#collapsible'   => FALSE,
+      );
+      $form['rip']['restrict_by_ip_address'] = array(
+        '#type'          => 'textfield',
+        '#default_value' => $address_entry,
+        '#maxlength'     => NULL,
+        '#description'   => t('Enter IP Address Ranges in CIDR Notation seperated with semi-colons, with no trailing semi-colon. E.G. 10.20.30.0/24;192.168.199.1/32;1.0.0.0/8<br />For more information on CIDR notation <a href="http://www.brassy.net/2007/mar/cidr_basic_subnetting" target="_blank">click here</a>.<br /><strong>Leave field empty to disable IP restrictions for this user.</strong>'),
+      );
+    }
+  }
+}
+
+/**
+ * Menu callback for general module settings
+ */
+function restrict_by_ip_general_settings() {
+  drupal_set_title(t('Restrict by IP'));
+  $form = array();
+  $form['restrict_by_ip_header'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Header to check'),
+    '#description' => t("This is the HTTP request header that contains the client IP Address.  It is sometimes re-written by reverse proxies and Content Distribution Networks.  If it is left blank it will be default to REMOTE_ADDR.  In most cases you can leave this blank."),
+    '#default_value' => variable_get('restrict_by_ip_header', 'REMOTE_ADDR'),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Menu callback for restrict login settings
+ */
+function restrict_by_ip_login_settings() {
+  drupal_set_title(t('Restrict login by IP'));
+  $form = array();
+  $form['current_ip'] = array(
+    '#markup' => t('Your current IP address is %ipaddress. If this is wrong, make sure you have the correct header configured in general settings.', array('%ipaddress' => _restrict_by_ip_get_ip())),
+    '#prefix' => '<p>',
+    '#suffix' => '</p>',
+  );
+  $form['restrict_by_ip_error_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Login denied error page'),
+    '#description'    => t("This the address of the page to which the user will be redirected if they are not allowed to login. If you don't set this the user will not know why they couldn't login"),
+    '#default_value' => variable_get('restrict_by_ip_error_page', ''),
+  );
+  $form['restrict_by_ip_login_range'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Restrict global login to allowed IP range'),
+    '#maxlength' => NULL,
+    '#description' => t('To restrict login for ALL users, enter global IP Address Ranges in CIDR Notation seperated with semi-colons, with no trailing semi-colon. E.G. 10.20.30.0/24;192.168.199.1/32;1.0.0.0/8<br />For more information on CIDR notation click <a href="http://www.brassy.net/2007/mar/cidr_basic_subnetting">here</a>.<br />Leave field blank to disable IP restrictions for user login.'),
+    '#default_value' => variable_get('restrict_by_ip_login_range', ''),
+  );
+  $form['restrict_login_by_ip_list'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Current login restrictions'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['restrict_login_by_ip_list']['list'] = array(
+    '#markup' => theme('restrict_by_ip_login_list'),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Validation function for global ip restriction settings
+ */
+function restrict_by_ip_login_settings_validate($form, &$form_state) {
+  if (strlen($form_state['values']['restrict_by_ip_login_range']) > 0) {
+    $ret = _restrict_by_ip_validate_ip($form_state['values']['restrict_by_ip_login_range']);
+    if ($ret['result'] == FALSE) {
+      form_set_error('restrict_by_ip_login_range', t(implode('<br />', $ret['messages'])));
+    }
+  }
+}
+
+/**
+ * Form callback to add/edit user IP restriction.
+ */
+function restrict_by_ip_login_add_edit_user($form, &$form_state, $account = NULL) {
+  $form = array();
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#maxlength' => 60,
+    '#autocomplete_path' => $account ? NULL : 'user/autocomplete',
+  );
+  $form['restriction'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Allowed IP range'),
+    '#description' => t('Enter IP Address Ranges in CIDR Notation seperated with semi-colons, with no trailing semi-colon. E.G. 10.20.30.0/24;192.168.199.1/32;1.0.0.0/8<br />For more information on CIDR notation click <a href="http://www.brassy.net/2007/mar/cidr_basic_subnetting">here</a>.'),
+    '#maxlength' => NULL,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save restriction'),
+    '#suffix' => l('[Cancel]', 'admin/config/people/restrict_by_ip/login'),
+  );
+  // Set up defaults if editing an existing restriction
+  if ($account) {
+    $restriction = db_query("SELECT restrict_by_ip_address FROM {restrict_by_ip} WHERE uid = :uid", array(':uid' => $account->uid))->fetchField();
+    $form['name']['#value'] = $account->name;
+    $form['name']['#disabled'] = TRUE;
+    $form['name']['autocomplete_path'] = NULL;
+    $form['restriction']['#default_value'] = $restriction;
+    $form['restriction']['#description'] .= t('<br />Leave field blank to remove restriction.');
+  }
+  return $form;
+}
+
+/**
+ * Validation function for add/edit login IP restriction form.
+ */
+function restrict_by_ip_login_add_edit_user_validate($form, &$form_state) {
+  // Check for valid user
+  $uid = db_query("SELECT uid FROM {users} WHERE name= :name", array(':name' => $form_state['values']['name']))->fetchField();
+  if (!$uid) {
+    form_set_error('name', t('Invalid user.'));
+  }
+  if (strlen($form_state['values']['restriction']) > 0) {
+    $ret = _restrict_by_ip_validate_ip($form_state['values']['restriction']);
+    if ($ret['result'] == FALSE) {
+      form_set_error('restriction', t(implode('<br />', $ret['messages'])));
+    }
+  }
+}
+
+/**
+ * Submit function for add/edit new login IP restriction form.
+ */
+function restrict_by_ip_login_add_edit_user_submit($form, &$form_state) {
+  $uid = db_query("SELECT uid FROM {users} WHERE name = :name", array(':name' => $form_state['values']['name']))->fetchField();
+  // Remove any existing settings
+  db_query("DELETE FROM {restrict_by_ip} WHERE uid = :uid", array(':uid' => $uid));
+  // Insert new settings
+  if (strlen($form_state['values']['restriction']) > 0) {
+    db_query("INSERT INTO {restrict_by_ip} (uid, restrict_by_ip_address) VALUES (:uid, :ip)", array(':uid' => $uid, ':ip' => $form_state['values']['restriction']));
+  }
+  drupal_set_message("User restriction has been saved.");
+}
+
+/**
+ * Menu callback for restrict role settings
+ */
+function restrict_by_ip_role_settings() {
+  drupal_set_title(t('Restrict role by IP'));
+  $form = array();
+  $user_roles = user_roles(TRUE); // Get all roles except anonymous
+  unset($user_roles[array_search(t('authenticated user'), $user_roles)]); // Remove default authenticated user role
+
+  if (count($user_roles) === 0) {
+    $form['no_roles'] = array(
+      '#markup' => t('No roles configured. <a href="@add-role">Add a role</a>.', array('@add-role' => url('admin/people/permissions/roles'))),
+      '#prefix' => '<p>',
+      '#suffix' => '</p>',
+    );
+  }
+
+  foreach ($user_roles as $rid => $name) {
+    $form_name = _restrict_by_ip_hash_role_name($name);
+    $form['restrict_role_by_ip_' . $form_name] = array(
+      '#type' => 'fieldset',
+      '#title' => t($name),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    $form['restrict_role_by_ip_' . $form_name]['restrict_by_ip_role_' . $form_name] = array(
+      '#type' => 'textfield',
+      '#title' => t('Allowed IP range'),
+      '#maxlength' => NULL,
+      '#description' => t('Enter IP Address Ranges in CIDR Notation seperated with semi-colons, with no trailing semi-colon. E.G. 10.20.30.0/24;192.168.199.1/32;1.0.0.0/8<br />For more information on CIDR notation click <a href="http://www.brassy.net/2007/mar/cidr_basic_subnetting">here</a>.<br />Leave field blank to disable IP restrictions for ' . $name),
+      '#default_value' => variable_get('restrict_by_ip_role_' . $form_name, ''),
+    );
+  }
+
+  return system_settings_form($form);
+}
+
+/**
+ * Validation function for role ip restriction settings
+ */
+function restrict_by_ip_role_settings_validate($form, &$form_state) {
+  foreach ($form_state['values'] as $key => $value) {
+    if (strpos($key, 'restrict_by_ip_role_') !== FALSE && strlen($value) > 0) {
+      $ret = _restrict_by_ip_validate_ip($value);
+      if ($ret['result'] == FALSE) {
+        form_set_error($key, t(implode('<br />', $ret['messages'])));
+      }
+    }
+  }
+}
+
+/**
+ * Custom validation function for the user_profile_form page.
+ */
+function restrict_by_ip_user_profile_validate($form, &$form_state) {
+  if (strlen($form_state['values']['restrict_by_ip_address']) > 0) {
+    $ret = _restrict_by_ip_validate_ip($form_state['values']['restrict_by_ip_address']);
+    if ($ret['result'] == FALSE) {
+      form_set_error('restrict_by_ip_address', t(implode('<br />', $ret['messages'])));
+    }
+  }
+}
+
+/**
+ * Custom submit function for the user_profile_form page.
+ */
+function restrict_by_ip_user_profile_submit($form, &$form_state) {
+  // Remove any existing restrictions
+  db_query("DELETE FROM {restrict_by_ip} WHERE uid = :uid", array(':uid' => $form['#user']->uid));
+  if (strlen($form_state['values']['restrict_by_ip_address']) > 0) {
+    // Add new restrictions
+    db_query("INSERT INTO {restrict_by_ip} (uid, restrict_by_ip_address) VALUES (:uid, :ip)", array(':uid' => $form['#user']->uid, ':ip' => $form_state['values']['restrict_by_ip_address']));
+  }
+}
+
+/**
+ * Delete role IP restirctions when a role is deleted.
+ * Implements hook_user_role_delete().
+ */
+function restrict_by_ip_user_role_delete($role) {
+  variable_del('restrict_by_ip_role_' . _restrict_by_ip_hash_role_name($role->name));
+}
+
+/**
+ * Statically save role name before it's updated.
+ * Implements hook_user_role_presave().
+ * @see restrict_by_ip_user_role_update().
+ */
+function restrict_by_ip_user_role_presave($role) {
+  if (!empty($role->rid) && $role->name) {
+    // Load the role as it exists in the database to get what the original
+    // role name was.
+    $old_role = user_role_load($role->rid);
+
+    // Save the old name statically so that restrict_by_ip_user_role_update()
+    // can know what it is.
+    $role_old_names = &drupal_static(__FUNCTION__);
+    $role_old_names[$old_role->rid] = $old_role->name;
+  }
+}
+
+/**
+ * Update role IP restrictions when a role name changes.
+ * Implements hook_user_role_update().
+ * @see restrict_by_ip_user_role_presave().
+ */
+function restrict_by_ip_user_role_update($role) {
+  // Get any old role names saved by restrict_by_ip_user_role_presave().
+  $role_old_names = &drupal_static('restrict_by_ip_user_role_presave');
+
+  $old_name = _restrict_by_ip_hash_role_name($role_old_names[$role->rid]);
+  $new_name = _restrict_by_ip_hash_role_name($role->name);
+
+  if ($old_name !== $new_name) {
+    $old_restrictions = variable_get('restrict_by_ip_role_' . $old_name, '');
+    variable_set('restrict_by_ip_role_' . $new_name, $old_restrictions);
+    variable_del('restrict_by_ip_role_' . $old_name);
+  }
+}
+
+/**
+ * Perform an IP restriction check for all roles belonging to the given user.
+ */
+function restrict_by_ip_role_check(&$user){
+  $ip2check = _restrict_by_ip_get_ip();
+  // Check each role belonging to specified user
+  foreach ($user->roles as $rid => $name) {
+    $form_name = _restrict_by_ip_hash_role_name($name);
+    $ranges = variable_get('restrict_by_ip_role_' . $form_name, '');
+    // Only check IP if an IP restriction is set for this role
+    if (strlen($ranges) > 0) {
+      $ipaddresses = explode(';', $ranges);
+      $match = FALSE;
+      foreach ($ipaddresses as $ipaddress) {
+        if (_restrict_by_ip_cidrcheck($ip2check, $ipaddress)) {
+          $match = TRUE;
+        }
+      }
+      if (!$match) {
+        unset($user->roles[$rid]);
+      }
+    }
+  }
+}
+
+/**
+ * Login function
+ * Checks the user's ip address on login
+ * If they are not restricted, or logging in from the appropriate address
+ * allow logon to continue. If not redirect to a designated page
+ */
+function _restrict_by_ip_login(&$user) {
+  if ($user->uid != 0) {
+    $ip2check = _restrict_by_ip_get_ip();
+
+    // Check for global login IP restrictions and validate against
+    $global_data = variable_get('restrict_by_ip_login_range', '');
+    if (strlen($global_data) > 0) {
+      $valid = FALSE;
+      $ipaddresses = explode(';', $global_data);
+      if (is_array($ipaddresses)) {
+        foreach ($ipaddresses as $ipaddress) {
+          if (_restrict_by_ip_cidrcheck($ip2check, $ipaddress)) {
+            $valid = TRUE;
+          }
+        }
+      }
+      if (!$valid) {
+        // Log the error with the ip address
+        watchdog('user', t('Session closed for %name - Invalid IP. '.$ip2check, array('%name' => $user->name)));
+        // Destroy the current session
+        session_destroy();
+        module_invoke_all('user', 'logout', NULL, $user);
+        // Load the anonymous user
+        $user = drupal_anonymous_user();
+        // unset destination required to force them to the ip page during drupal_goto()
+        if (isset($_GET['destination'])) {
+          unset($_GET['destination']);
+        }
+        // Goto the page detailed in the site configuration - restrict by ip - settings page
+        drupal_goto(variable_get('restrict_by_ip_error_page', ''));
+      }
+    }
+
+    // Check for individual user IP restrictions and validate against them
+    $usrdata = db_query('SELECT * FROM {restrict_by_ip} WHERE uid = :uid', array(':uid' => $user->uid))->fetchObject();
+    $logonvalid = FALSE;
+    // If the user has restrict by ip address set
+    if ($usrdata) {
+      $ipaddresses = explode(";", $usrdata->restrict_by_ip_address);
+      // Check each valid ip address in database against users ip address
+      // If one matches allow logon
+      foreach ($ipaddresses as $ipaddress) {
+        if (_restrict_by_ip_cidrcheck($ip2check, $ipaddress)) {
+          $logonvalid = TRUE;
+        }
+      }
+      // Restrict by ip address is set and no addresses match users ip address
+      if (!$logonvalid) {
+        // Log the error with the ip address
+        watchdog('user', t('Session closed for %name - Invalid IP. '.$ip2check, array('%name' => $user->name)));
+        // Destroy the current session
+        session_destroy();
+        module_invoke_all('user', 'logout', NULL, $user);
+        // Load the anonymous user
+        $user = drupal_anonymous_user();
+        // unset destination required to force them to the ip page during drupal_goto()
+        if (isset($_GET['destination'])) {
+          unset($_GET['destination']);
+        }
+        // Goto the page detailed in the site configuration - restrict by ip - settings page
+        drupal_goto(variable_get('restrict_by_ip_error_page', ''));
+      }
+    }
+  }
+}
+
+/**
+ * Returns the IP address of the user, taking into account header configuration.
+ */
+function _restrict_by_ip_get_ip() {
+  $header = variable_get('restrict_by_ip_header', 'REMOTE_ADDR');
+  $ip_address = '';
+
+  if (!empty($_SERVER[$header])) {
+    $ip_address = $_SERVER[$header];
+  }
+
+  return $ip_address;
+}
+
+/**
+ * This function just makes sure the user input for the ip address
+ * section is valid.
+ */
+function _restrict_by_ip_validate_ip($ip_address) {
+  $ret = array('result' => TRUE, 'messages' => '');
+  $ipaddresses = explode(";", $ip_address);
+
+  // Check each ip address individually
+  foreach ($ipaddresses as $ipaddress) {
+    // Seperate in to address and cidr mask
+    $cidr = explode("/", $ipaddress);
+    // Check address and cidr mask entered
+    if (count($cidr) == 2) {
+      $ipaddr = explode(".", $cidr[0]);
+      // Check four octets entered
+      if (count($ipaddr) == 4) {
+        // Check each octet is valid - numeric and 0 < value < 255
+        for ($i=0; $i<count($ipaddr); $i++) {
+          if ((!is_numeric($ipaddr[$i])) || ($ipaddr[$i] < 0) || ($ipaddr[$i] > 255)) {
+            $ret['messages'][] .= 'Illegal value for an IP Address. Each IP Address must be valid.  Check IP Address ' . $ipaddress;
+            $ret['result'] = FALSE;
+          }
+        }
+        // Check cidr mask value - numeric and 0 < value < 33
+        if((!is_numeric($cidr[1])) || ($cidr[1]<1) || ($cidr[1]>32)) {
+          $ret['messages'][] .= 'Illegal value for CIDR. Please correct CIDR with value of ' . $ipaddress;
+          $ret['result'] = FALSE;
+        }
+      }
+      else {
+        $ret['messages'][] .= 'IP Address Incorrect Number of Octets. Check IP Address ' . $ipaddress;
+        $ret['result'] = FALSE;
+      }
+    }
+    else {
+      $ret['messages'][] .= 'IP Address in Incorrect Format. Check IP Address ' . $ipaddress;
+      $ret['result'] = FALSE;
+    }
+
+    // Check the validity of the network address in the given CIDR block,
+    // by ensuring that the network address part is valid within the
+    // CIDR block itself. If it's not, the notation is invalid.
+    if ($ret['result'] && !_restrict_by_ip_cidrcheck($cidr[0], $ipaddress)) {
+      $ret['messages'][] .= 'The network address in the "'. $ipaddress . '" block is not valid.';
+      $ret['result'] = FALSE;
+    }
+
+  }
+  return $ret;
+}
+
+/**
+ * Check ip address against a network in cidr notation. E.g:
+ * _restrict_by_ip_cidrcheck('192.168.10.100','192.168.10.0/24'); returns 1
+ * _restrict_by_ip_cidrcheck('192.168.10.100','192.168.12.0/24'); returns 0
+ */
+function _restrict_by_ip_cidrcheck($iptocheck, $ipslashcidr) {
+  // Seperate ip address and cidr mask
+  $netmask = explode("/", $ipslashcidr);
+  // Get valid network as long
+  $ip_net = ip2long($netmask[0]);
+  // Get valid network mask as long
+  $ip_mask = ~((1 << (32 - $netmask[1])) - 1);
+  // Get ip address to check as long
+  $ip_ip = ip2long($iptocheck);
+  // Mask ip address to check to get subnet
+  $ip_ip_net = $ip_ip & $ip_mask;
+  // Only returns 1 if the valid network
+  //and the subnet of the ip address
+  //to check are the same
+  return ($ip_ip_net == $ip_net);
+}
+
+/**
+ * Certain characters will be automatically converted to underscores by PHP when
+ * included in a form name. Example <input name="a.b" /> becomes $_POST["a_b"].
+ *
+ * We can hash the role name to avoid discrepancies between the form elements
+ * and $_POST and still allow exportability of the configuration between sites.
+ *
+ * @see http://php.net/manual/en/language.variables.external.php
+ */
+function _restrict_by_ip_hash_role_name($name) {
+  return md5($name);
+}
+
+/**
+ * Theme function to return a list of existing IP restrictions on user login.
+ */
+function theme_restrict_by_ip_login_list() {
+  $header = array(t("Username"), t("IP Restriction"), t("Edit"));
+  $rows = array();
+  $output = '';
+
+  // Handle user one as a special case
+  $row = db_query("SELECT u.name, rbi.restrict_by_ip_address as restriction FROM {users} u LEFT JOIN {restrict_by_ip} rbi ON rbi.uid = u.uid WHERE u.uid = 1 ")->fetchObject();
+  $rows[] = array($row->name . ' (DRUPAL USER 1)', isset($row->restriction) ? $row->restriction : '<strong><span style="color: red">No Restriction</span></strong>', l('edit', 'admin/config/people/restrict_by_ip/login/edit/1', array('query' => array('destination' => 'admin/config/people/restrict_by_ip/login'))));
+
+  // Grab all other restrictions and list beneath
+  $result = db_query("SELECT u.name, rbi.uid, rbi.restrict_by_ip_address as restriction FROM {restrict_by_ip} rbi INNER JOIN {users} u ON rbi.uid = u.uid WHERE u.uid != 1 ORDER BY rbi.uid ASC");
+  foreach ($result as $row) {
+    $rows[] = array($row->name, $row->restriction, l('edit', 'admin/config/people/restrict_by_ip/login/edit/' . $row->uid, array('query' => array('destination' => 'admin/config/people/restrict_by_ip/login'))));
+  }
+
+  $output = theme('table', array('header' => $header, 'rows' => $rows));
+  $output .= l('Add new IP restriction for user', 'admin/config/people/restrict_by_ip/login/add', array('query' => array('destination' => 'admin/config/people/restrict_by_ip/login')));
+  return $output;
+}

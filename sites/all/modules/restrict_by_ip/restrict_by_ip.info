@@ -1,0 +1,13 @@
+name = Restrict By IP
+package = Access control
+description = Enables limiting user login and role access to specific IP Addresses.
+core = 7.x
+configure = "admin/config/people/restrict_by_ip"
+files[] = restrict_by_ip.test
+
+; Information added by Drupal.org packaging script on 2015-07-12
+version = "7.x-3.1"
+core = "7.x"
+project = "restrict_by_ip"
+datestamp = "1436699642"
+
