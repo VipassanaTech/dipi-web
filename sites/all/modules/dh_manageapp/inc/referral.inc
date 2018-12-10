@@ -9,11 +9,8 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 
  	$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Referral List", "referral/".arg(1)).'</h3>');
  	
- 	if ( !empty($edit_data) )
- 	{
- 		$q = "select CONCAT(t_code,'-',t_gender) from dh_teacher where t_id=".$edit_data['r_listed_by'];
-		$referral = db_query($q)->fetchField();
- 	}
+ 	//print_r($referral);
+ 	//exit;
 
 	$add = 0;
  
@@ -55,6 +52,9 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 
 	$form[$group]['s_phone_mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 14, 
 		'#default_value' => isset($edit_data['s_phone_mobile'])?$edit_data['s_phone_mobile']:'', '#required' => 0, '#maxlength' => 15 );
+
+	$form[$group]['s_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '20', '#weight' => 15, 
+		'#default_value' => isset($edit_data['s_email'])?$edit_data['s_email']:'', '#required' => 0, '#maxlength' => 50);
 
 
 	$form[$group]['s_address'] = array('#title' => 'Address', '#type' => 'textarea',  
@@ -148,14 +148,10 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 	  '#default_value' => isset($edit_data['r_reason'])?$edit_data['r_reason']:'', '#rows' => 3,  '#weight' => 24, '#required' => 1, 
 		'#suffix' => '', '#maxlength' => 200 );
   
-    $form[$group]['r_listed_by'] = array( '#title' => 'Referred By',  '#type' => 'textfield', 
-		'#weight' => 1, '#size' => 25, '#required' => 0, '#weight' => 70,
-		'#default_value' => isset($edit_data['r_listed_by'])?$referral:'',
- 		'#attached' => array(
-      		'library' => array(
-        		array('system', 'ui.autocomplete'),
-      	)),
-	 );
+    $form[$group]['r_listed_by'] = array('#title' => 'Referred By', '#type' => 'textarea',  
+		'#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'', '#rows' => 3,  '#weight' => 25, '#required' => 1, 
+		'#suffix' => '', '#maxlength' => 200 );
+
 
    $js ='
 	    function checkUncheckAll(theElement){
@@ -180,29 +176,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 			  		do_pincode($(this).val(), "#edit-s-country", "#edit-s-state", "#edit-s-city" ); 
 			  	});
 
-
-				$("#edit-r-listed-by").autocomplete({
-					source: function( request, response ) {
-						$("#edit-r-listed-by").addClass( "throbbing" );
-				        $.ajax({
-				          url: "/autocomplete/get-teacher/" + request.term,
-				          dataType: "json",
-				          success: function( data ) {
-				          	$("#edit-r-listed-by").removeClass( "throbbing" );
-				            response( data );
-				          }
-				        });
-					},
-		  			minLength: 1,
-		  			select: function( event, ui ) {
-		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
-		        		$( "#edit-r-listed-by" ).val( ui.item.code );
-		        		return false;
-		      		}
-		  		});
-
-			});
-		})(jQuery);
+	(jQuery);
 	';
 
 
@@ -316,12 +290,6 @@ function dh_referral_form_submit($form, &$form_state)
 	}
 
 	/*insert or update dh_referral*/
-	$temp = explode("-", $app_r['r_listed_by']);
-	$q = "select t_id from dh_teacher where t_code='".$temp[0]."' and t_gender='".$temp[1]."'";
-	$referral = db_query($q)->fetchField();
-	$app_r['r_listed_by'] = $referral; 
-
-	$app['r_teacher_code'] = $app_r['r_listed_by'];
 
 	if ( arg(3) == 'edit')
 	{
@@ -355,11 +323,13 @@ function dh_addedit_referral()
 	{
 	
 		$row = db_query("select * from dh_referral left join dh_student on r_student=s_id 
-		  left join dh_student_course on r_student=sc_student left join dh_teacher on r_listed_by=t_id
-			where s_id='".arg(2)."'")->fetchAssoc();
-			}
+		  left join dh_student_course on r_student=sc_student
+			where r_id='".arg(2)."'")->fetchAssoc();
 
-		return drupal_get_form('dh_referral_form', $row);
+	}
+		
+	return drupal_get_form('dh_referral_form', $row);
+	
 
 }
 
@@ -399,7 +369,7 @@ function dh_referral_results()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
-	$q = "select a.s_id, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, concat(t_f_name,' ',t_l_name) as 'Referred By', r_reason, r_start, r_end, r_deleted from dh_student a left join dh_student_course sc on (a.s_id=sc_student) left join dh_student_course_input sci on (a.s_id=sci_student) left join dh_referral r on (a.s_id=r_student) left join dh_country co on (s_country=co.c_code) left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code) left join dh_city ci on (s_city=ci.c_id) left join dh_teacher on (t_id=r_listed_by) where  (a.s_id=r_student) and (r_deleted = 0) group by a.s_id order by r.r_created";
+	$q = "select a.s_id, r_id, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted from dh_student a left join dh_student_course sc on (a.s_id=sc_student) left join dh_student_course_input sci on (a.s_id=sci_student) left join dh_referral r on (a.s_id=r_student) left join dh_country co on (s_country=co.c_code) left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code) left join dh_city ci on (s_city=ci.c_id) where  (a.s_id=r_student) and (r_deleted = 0) group by a.s_id order by r.r_created";
 
 	//c.c_name as 'last_course'
 	//drupal_set_message($q);
@@ -413,14 +383,12 @@ function dh_referral_results()
 	while( $r = $result->fetchAssoc() )
 	{
 		unset($rs);
-		$pdf_link = '';
-		if ( $r['sc_uri'] <> '' )
-			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['sc_uri']), array('attributes' => array("target" => "_blank") ) ).')';
 		
 		$rs['sid'] = $r['s_id'];
+		$rs['ref_id'] = $r['r_id'];
 
 		if (user_access('manage referral list'))
-		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/'.$r['s_id'].'/edit').$pdf_link;
+		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/'.$r['r_id'].'/edit');
 		else
 		  $rs['name'] = $r['Full Name'];
 		$rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
@@ -466,7 +434,7 @@ function dh_referral_results()
 		$rs['ref_10dseva'] = $r['r_listed_10d_seva']?"Yes":"No";
 		$rs['ref_lcseva'] = $r['r_listed_lc_seva']?"Yes":"No";
 		$rs['ref_10dseva'] = $r['r_listed_longseva']?"Yes":"No";
-		$rs['ref_by'] = $r['Referred By'];
+		$rs['ref_by'] = $r['r_listed_by'];
 		$rs['ref_reason'] = $r['r_reason'];
 		$rs['ref_start'] = $r['r_start'];
 		$rs['ref_end'] = $r['r_end'];
@@ -702,7 +670,7 @@ function dh_referral_results()
 			            { data: "city", "title" : "City" },
 			            { data: "state", "title" : "State" },
 			            { data: "country", "title" : "Country" },
-				        { data: "ref_by", "title" : "Referral By" },
+				        { data: "ref_by", "title" : "Referred By" },
 				        { data: "ref_start", "title" : "Referred On" },
 				        { data: null, "title" : "Delete", render: function(data, type, row) {
 				        	'.$del_action.'	
@@ -751,7 +719,7 @@ function dh_referral_results()
 				$("#table-applicants tbody").on("click", ".applicant-del", function() {
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
-			        var id = row.data().sid;
+			        var id = row.data().ref_id;
 					var r = confirm("Are you sure you want to delete applicant "+$("<div/>").html(row.data().name).text()+" ?");
 					if (r == true)
 					{

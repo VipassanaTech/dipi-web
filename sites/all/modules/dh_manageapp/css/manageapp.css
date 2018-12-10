@@ -29,6 +29,9 @@
 	float: left;
 }
 
+.form-item-s-dob {
+	margin-right: 10px !important;
+}
 .form-item-a-address, .form-item-a-zip, .form-item-a-education, 
 .form-item-document-type, .form-item-ac-first-location-str, 
 .form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,

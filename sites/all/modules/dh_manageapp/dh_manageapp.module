@@ -298,7 +298,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage referral list'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/%centre_id/%app_id/edit'] = array('title' => t('Referral List'),
+    $items['referral/%centre_id/%ref_id/edit'] = array('title' => t('Referral List'),
 	       'page callback' => 'dh_addedit_referral',
 	       'access arguments' => array('manage referral list'),
 	       'type' => MENU_CALLBACK);
