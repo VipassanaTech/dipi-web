@@ -56,6 +56,17 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 	$form[$group]['s_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '20', '#weight' => 15, 
 		'#default_value' => isset($edit_data['s_email'])?$edit_data['s_email']:'', '#required' => 0, '#maxlength' => 50);
 
+	$form[$group]['s_education'] = array('#title' => 'Education', '#type' => 'textfield', '#size' => '20', '#weight' => 15.1, 
+		'#default_value' => isset($edit_data['s_education'])?$edit_data['s_education']:'', '#required' => 0, '#maxlength' => 25 );
+	$form[$group]['s_occupation'] = array('#title' => 'Occupation', '#type' => 'textfield', '#size' => '20', '#weight' => 15.2, 
+		'#default_value' => isset($edit_data['s_occupation'])?$edit_data['s_occupation']:'', '#required' => 0, '#maxlength' => 50 );
+	$form[$group]['s_company'] = array('#title' => 'Company', '#type' => 'textfield', '#size' => '20', '#weight' => 15.3, 
+		'#default_value' => isset($edit_data['s_company'])?$edit_data['s_company']:'', '#required' => 0, '#maxlength' => 50 );
+	$form[$group]['s_department'] = array('#title' => 'Dept', '#type' => 'textfield', '#size' => '20', '#weight' => 15.4, 
+		'#default_value' => isset($edit_data['s_department'])?$edit_data['s_department']:'', '#required' => 0, '#maxlength' => 50 );
+	$form[$group]['s_designation'] = array('#title' => 'Designation', '#type' => 'textfield', '#size' => '20', '#weight' => 15.5, 
+		'#default_value' => isset($edit_data['s_designation'])?$edit_data['s_designation']:'', '#required' => 0, '#maxlength' => 50);
+
 
 	$form[$group]['s_address'] = array('#title' => 'Address', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['s_address'])?$edit_data['s_address']:'', '#rows' => 3,  '#weight' => 20, '#required' => 1, 
@@ -99,6 +110,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $default_doc_type, '#options' => $doc_types, '#required' => 0, );
 	$form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 30, 
 		'#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
+
   
   $group = 'Referral Information';
   $form[$group] = array('#type' => 'fieldset', '#title' => 'Referral Information', '#collapsible' => true, '#collapsed' => false);
@@ -139,9 +151,9 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 
     $form[$group]['r_end'] = array('#title' => 'End Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 23.2, 
 		'#default_value' => isset($edit_data['r_end'])?$edit_data['r_end']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
-    		'maxDate' => 0, '#required' => 1, 
+    		'maxDate' => "+50Y", '#required' => 1, 
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:0', '#date_label_position' => 'above',
+    	),'#date_year_range' => '-50:+50', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
   
     $form[$group]['r_reason'] = array('#title' => 'Referral Reason', '#type' => 'textarea',  
@@ -151,6 +163,29 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     $form[$group]['r_listed_by'] = array('#title' => 'Referred By', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'', '#rows' => 3,  '#weight' => 25, '#required' => 1, 
 		'#suffix' => '', '#maxlength' => 200 );
+
+  $group = 'Course Info';
+	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Information',  '#collapsible' => true, '#collapsed' => true);
+	$form[$group]['sci_teen'] = array('#title' => 'Teenagers', '#type' => 'textfield', '#size' => '5', '#weight' => 59, 
+		'#default_value' => isset($edit_data['sci_teen'])?$edit_data['sci_teen']:'0', '#required' => 0, '#maxlength' => 3 );
+	$form[$group]['sci_10d'] = array('#title' => '10 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 60, 
+		'#default_value' => isset($edit_data['sci_10d'])?$edit_data['sci_10d']:'0', '#required' => 0, '#maxlength' => 3 );
+	$form[$group]['sci_stp'] = array('#title' => 'STP', '#type' => 'textfield', '#size' => '5', '#weight' => 61, 
+		'#default_value' => isset($edit_data['sci_stp'])?$edit_data['sci_stp']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_spl'] = array('#title' => 'Special', '#type' => 'textfield', '#size' => '5', '#weight' => 62, 
+		'#default_value' => isset($edit_data['sci_spl'])?$edit_data['sci_spl']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_20d'] = array('#title' => '20 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 63, 
+		'#default_value' => isset($edit_data['sci_20d'])?$edit_data['sci_20d']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_30d'] = array('#title' => '30 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 64, 
+		'#default_value' => isset($edit_data['sci_30d'])?$edit_data['sci_30d']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_45d'] = array('#title' => '45 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 65, 
+		'#default_value' => isset($edit_data['sci_45d'])?$edit_data['sci_45d']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_60d'] = array('#title' => '60 Day', '#type' => 'textfield', '#size' => '5', '#weight' => 66, 
+		'#default_value' => isset($edit_data['sci_60d'])?$edit_data['sci_60d']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_tsc'] = array('#title' => 'TSC', '#type' => 'textfield', '#size' => '5', '#weight' => 67, 
+		'#default_value' => isset($edit_data['sci_tsc'])?$edit_data['sci_tsc']:'0', '#required' => 0, '#maxlength' => 2 );
+	$form[$group]['sci_service'] = array('#title' => 'Service', '#type' => 'textfield', '#size' => '5', '#weight' => 68, 
+		'#default_value' => isset($edit_data['sci_service'])?$edit_data['sci_service']:'0', '#required' => 0, '#maxlength' => 3 );
 
 
    $js ='
@@ -174,15 +209,16 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 			  	$("#edit-s-zip").focusout(function(){ 
 		//		  		alert("hi");
 			  		do_pincode($(this).val(), "#edit-s-country", "#edit-s-state", "#edit-s-city" ); 
-			  	});
-
-	(jQuery);
+			  
+		  		});
+			});
+		})(jQuery);
 	';
 
 
 
 	drupal_add_js($js, 'inline');
-	if (arg(2) == $add)
+	if (arg(2) == 'add')
 		$action = 'Add Referral';
 	else
 		$action = 'Update';
@@ -199,9 +235,11 @@ function dh_referral_form_submit($form, &$form_state)
 	$input = $form_state['input'];
 	
 	$ajax = '';
-	if (arg(3) == 'edit')
+	if (arg(2) == 'edit')
 		$form_state['redirect'] = 'referral/'.arg(1);
 	elseif ( arg(2) == 'add')
+		$form_state['redirect'] = 'referral/'.arg(1);
+	elseif ( arg(2) == 'delete')
 		$form_state['redirect'] = 'referral/'.arg(1);
 
 	foreach ($form_state['input'] as $key => $value) 
@@ -210,6 +248,8 @@ function dh_referral_form_submit($form, &$form_state)
 			$app[$key] = $value;
 		if ( substr($key,0,2) == 'r_')
 			$app_r[$key] = $value;
+		if ( substr($key,0,4) == 'sci_')
+			$app_s[$key] = $value;
 	}
 	
 	if ($app_r['r_listed_10d'] == '')
@@ -275,10 +315,10 @@ function dh_referral_form_submit($form, &$form_state)
     $app['s_f_name'] = ucwords(strtolower($app['s_f_name']) );
     $app['s_l_name'] = ucwords(strtolower($app['s_l_name']) );
     //$app['s_r_listed'] = '1';
-    if (arg(3) == 'edit')
+    if (arg(2) == 'edit')
 	{
-		$app_id = arg(1);
-		db_update('dh_student')->fields($app)->condition('s_id', $app_id )->execute();
+		$ref_id = arg(3);
+		db_update('dh_student')->fields($app)->condition('s_id', $ref_id )->execute();
 
 	}
 
@@ -286,25 +326,39 @@ function dh_referral_form_submit($form, &$form_state)
 	{
 		$app['s_created_by'] = $user->uid;
 	    $app['s_created'] = date('Y-m-d H:i:s');
-		$app_id = db_insert('dh_student')->fields($app)->execute();
+		$ref_id = db_insert('dh_student')->fields($app)->execute();
 	}
 
 	/*insert or update dh_referral*/
 
-	if ( arg(3) == 'edit')
+	if ( arg(2) == 'edit')
 	{
-		$app_r['r_student'] = $app_id;
+		$app_r['r_student'] = $ref_id;
 		$app_r['r_updated_by'] = $user->uid;
 		$app_r['r_updated'] = date('Y-m-d H:i:s');
-		db_update('dh_referral')->fields($app_r)->condition('r_student', $app_id )->execute();
+		db_update('dh_referral')->fields($app_r)->condition('r_student', $ref_id )->execute();
 	}
 
 	else 
 	{
-		$app_r['r_student'] = $app_id;
+		$app_r['r_student'] = $ref_id;
 		$app_r['r_created_by'] = $user->uid;
 		$app_r['r_created'] = date('Y-m-d H:i:s');
 		db_insert('dh_referral')->fields($app_r)->execute();
+	}
+
+	/*insert or update dh_student_course_input*/
+
+	if ( arg(2) == 'edit')
+	{
+		$app_s['sci_student'] = $ref_id;
+		db_update('dh_student_course_input')->fields($app_s)->condition('sci_student', $ref_id )->execute();
+	}
+
+	else 
+	{
+		$app_s['sci_student'] = $ref_id;
+		db_insert('dh_student_course_input')->fields($app_s)->execute();
 	}
 
 	drupal_set_message(t("Details updated successfully"), 'status');
@@ -319,12 +373,11 @@ function dh_addedit_referral()
 		
 			return drupal_get_form('dh_referral_form');
 
-	if (arg(3) == 'edit')
+	if (arg(2) == 'edit')
 	{
-	
 		$row = db_query("select * from dh_referral left join dh_student on r_student=s_id 
-		  left join dh_student_course on r_student=sc_student
-			where r_id='".arg(2)."'")->fetchAssoc();
+		  left join dh_student_course on r_student=sc_student left join dh_student_course_input on r_student = sci_student
+			where r_student='".arg(3)."'")->fetchAssoc();
 
 	}
 		
@@ -367,7 +420,7 @@ function dh_referral_results()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
-	$q = "select a.s_id, r_id, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted from dh_student a left join dh_student_course sc on (a.s_id=sc_student) left join dh_student_course_input sci on (a.s_id=sci_student) left join dh_referral r on (a.s_id=r_student) left join dh_country co on (s_country=co.c_code) left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code) left join dh_city ci on (s_city=ci.c_id) where  (a.s_id=r_student) and (r_deleted = 0) group by a.s_id order by r.r_created";
+	$q = "select a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted from dh_student a left join dh_student_course sc on (a.s_id=sc_student) left join dh_student_course_input sci on (a.s_id=sci_student) left join dh_referral r on (a.s_id=r_student) left join dh_country co on (s_country=co.c_code) left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code) left join dh_city ci on (s_city=ci.c_id) where  (a.s_id=r_student) and (r_deleted = 0) group by a.s_id order by r.r_created";
 
 	//c.c_name as 'last_course'
 	//drupal_set_message($q);
@@ -383,10 +436,10 @@ function dh_referral_results()
 		unset($rs);
 		
 		$rs['sid'] = $r['s_id'];
-		$rs['ref_id'] = $r['r_id'];
+		$rs['ref_id'] = $r['r_student'];
 
 		if (user_access('manage referral list'))
-		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/'.$r['r_id'].'/edit');
+		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/edit/'.$r['r_student']);
 		else
 		  $rs['name'] = $r['Full Name'];
 		$rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
@@ -409,6 +462,7 @@ function dh_referral_results()
 		$rs['passport'] = $r['s_passport'];
 		$rs['voter_id'] = $r['s_voter_id'];
 
+		$rs['course_teen'] = $r['sci_teen']?$r['sci_teen']:"0";
 		$rs['course_10d'] = $r['sci_10d']?$r['sci_10d']:"0";
 		$rs['course_stp'] = $r['sci_stp']?$r['sci_stp']:"0";
 		$rs['course_spl'] = $r['sci_spl']?$r['sci_spl']:"0";
@@ -453,6 +507,7 @@ function dh_referral_results()
 		if ( $r['s_photo'] <> '')
 			$rs['photo'] = file_create_url($r['s_photo']);
 		//$rows[] = array_values($rs);
+		
 		$rows[] = $rs;
 	}
 	//$header = array('Detail', 'Applicant Name', 'Course Name', 'Status', 'ConfNo' , 'Gender', 'Country/State/City', 'Age');
@@ -462,9 +517,9 @@ function dh_referral_results()
 	$data = json_encode($rows);
 
 	if (user_access('delete referral list'))
-		$del_action = 'return "<a href=\"#\" action=\"Del\" class=\"applicant-del\">Delete</a>";';
+		$del_action = 'return "<a href=\"#\" action=\"Del\" class=\"ref-del\">Delete</a>";';
 	else
-		$del_action = 'return "No access"';
+		$del_action = 'return "No access"'; 
 
 	$button_access = '';
 	if (user_access('export data'))
@@ -528,17 +583,9 @@ function dh_referral_results()
 		                "<td>"+d.ref_by+"</td>"+			            	
 		            "</tr>"+
 		            "<tr>"+
-		                "<td><label>Mental Heath:</label></td>"+
-		                "<td>"+d.mental+"</td>"+			            	
-		                "<td><label>Physical Health:</label></td>"+
-		                "<td>"+d.physical+"</td>"+			            	
-		            "</tr>"+
-		            "<tr>"+
 			            "<td><label>Course Information:</label></td>"+
-		                "<td><table><tr><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
-		                "<tr><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
-		                "<td><label>Course Details:</label></td>"+
-		                "<td>First: "+d.first_course+"<br>Last: "+d.last_course+"</td>"+
+		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
+		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
 		            "</tr>"+
 		            "<tr>"+
 			            "<td><label>Remarks:</label></td>"+
@@ -565,13 +612,7 @@ function dh_referral_results()
 			                body: function ( data, row, column, node ) {
 			                	var tmp = table.rows().data();
 			                	var a;
-			                	if ( column == 0 )
-			                	{
-			                		a = jQuery("<span>").html(tmp[ row ].name).text();
-			                		a = a.replace("(PDF)", "");
-			                		return a;
-			                	}
-			                	else if ( column == 1 )
+			                	if ( column == 1 )
 			                	{
 			                		return tmp[ row ].gender; 
 			                	}
@@ -679,11 +720,7 @@ function dh_referral_results()
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" }
-		            ],
-                  	/*buttons: ["copy","csv","excel","pdf","print"], */ 
-					buttons:   [  
-						'.$button_access.'                        
-			         ]                  	
+		            ],   	
 				});
 
 			    // Add event listener for opening and closing details
@@ -707,18 +744,12 @@ function dh_referral_results()
 			        }
 			    });
 
-				$("#table-applicants tbody").on("change", ".status-select", function() {
-					var s = $(this);
-					//alert($(this).val());
-					var tmp = $(this).val();
-			        var tr = s.closest("tr");
-			        var row = table.row( tr );
 	                
-				$("#table-applicants tbody").on("click", ".applicant-del", function() {
+				$("#table-applicants tbody").on("click", ".ref-del", function() {
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
 			        var id = row.data().ref_id;
-					var r = confirm("Are you sure you want to delete applicant "+$("<div/>").html(row.data().name).text()+" ?");
+					var r = confirm("Are you sure you want to delete record?");
 					if (r == true)
 					{
        					$(tr).loading();
@@ -738,11 +769,11 @@ function dh_referral_results()
 						    var err = textStatus + ", " + error;
 						    alert("Error updating "+err);
 						    $(tr).loading("stop");
-						});
-						}
-						});						
-		});
-		});
+						});			
+					}
+						
+				});
+			});
 		})(jQuery);
 
 	';
@@ -751,22 +782,13 @@ function dh_referral_results()
 
 }
 
+
 function referral_delete( $id )
 {
 	global $user; 
-	$temp = db_query("select a_center, CONCAT(a_f_name, ' ', a_l_name) as 'name' from dh_studnet where s_id=$id");
-	$row = $temp->fetchAssoc();
-	$fields = array();
-	$fields['l_center'] = $row['a_center'];
-	$fields['l_module'] = 'Applicant';
-	$fields['l_identifier'] = $id;
-	$fields['l_event'] = 'Deleted';
-	$fields['l_msg'] = 'Applicant '.$row['name']." ($id) Deleted";
-	$fields['l_user'] = $user->uid;
-	db_insert('dh_log')->fields( $fields )->execute();
-
-	$q = "update dh_referral set r_deleted = 1 where r_student=$id";
-	db_query($q);
+	$id = arg(1);
+	db_query("update dh_referral set r_deleted = 1 where r_student=$id");
+	drupal_goto ("referral/");
 	
 }
 

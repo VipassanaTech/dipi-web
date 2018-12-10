@@ -298,7 +298,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage referral list'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/%centre_id/%ref_id/edit'] = array('title' => t('Referral List'),
+    $items['referral/%centre_id/edit/%ref_id'] = array('title' => t('Referral List'),
 	       'page callback' => 'dh_addedit_referral',
 	       'access arguments' => array('manage referral list'),
 	       'type' => MENU_CALLBACK);
@@ -308,7 +308,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/%app_id/delete'] = array('title' => t('Referral List'),
+    $items['referral/%ref_id/delete'] = array('title' => t('Referral List'),
 	       'page callback' => 'referral_delete',
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
@@ -478,6 +478,20 @@ function app_id_load( $id )
 	if (($gender == 'F') && (! user_access('access female')))
 		return false;
 
+	return $id;
+}
+
+function ref_id_load( $id )
+{
+	global $user;
+
+	if (!is_numeric($id))
+		return false;
+	
+	if (user_access("manage referral list"))
+		$temp = db_query("select r_student from dh_referral where r_student=$id")->fetchField();
+	if ( $temp <> $id )
+		return false;
 	return $id;
 }
 
