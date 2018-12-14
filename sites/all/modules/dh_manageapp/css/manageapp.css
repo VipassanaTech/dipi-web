@@ -157,4 +157,5 @@ textarea#comments {
 #centre-acco-table,#course-table { width: 100% !important; }
 #centre-acco-table td,#course-table td { word-wrap: break-word; word-break: break-all; }
 
+.amcha-small { font-size: 19px; font-family: "Arial";  font-style: italic; font-weight: bold !important;  } 
 
