@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file
+ * Provides functionality to search by username on people screen.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function find_people_menu() {
+  $items['admin/config/find_people'] = array(
+    'title' => 'Find People Settings',
+    'page callback' => 'drupal_get_form',
+    'description' => 'Configure the search by username or email or both.',
+    'page arguments' => array('find_people_config_search'),
+    'access arguments' => array('administer users'),
+    'file' => 'find_people.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function find_people_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_filter_form') {
+    $search_key = '';
+    if (isset($_SESSION['user_search_key'])) {
+      $search_key = $_SESSION['user_search_key'];
+    }
+
+    $search_title = t('Search by username or email');
+    $search_placeholder = t('Username or E-mail');
+    if (variable_get('find_people_name') == 1 && variable_get('find_people_email') == 0) {
+      $search_title = t('Search by username');
+      $search_placeholder = t('Username');
+    }
+    elseif (variable_get('find_people_name') == 0 && variable_get('find_people_email') == 1) {
+      $search_title = t('Search by email');
+      $search_placeholder = t('E-mail');
+    }
+    $form['search'] = array(
+      '#type' => 'fieldset',
+      '#title' => check_plain($search_title),
+      '#access' => TRUE,
+      '#weight' => 1,
+    );
+    $form['search']['search_key'] = array(
+      '#type' => 'textfield',
+      '#size' => 60,
+      '#default_value' => $search_key,
+      '#attributes' => array('placeholder' => $search_placeholder),
+    );
+    $form['search']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Search',
+    );
+    $form['search']['clear'] = array(
+      '#type' => 'submit',
+      '#value' => 'Clear',
+    );
+    $form['#submit'][] = '_find_people_submit';
+  }
+}
+
+/**
+ * Submit function for search form.
+ */
+function _find_people_submit($form, &$form_state) {
+  switch ($form_state['clicked_button']['#value']) {
+    case 'Clear':
+      unset($_SESSION['user_search_key']);
+      break;
+
+    default:
+      $search_key = $form['search']['search_key']['#value'];
+      $_SESSION['user_search_key'] = $search_key;
+      break;
+  }
+}
+
+/**
+ * Implements hook_query_alter().
+ */
+function find_people_query_alter(QueryAlterableInterface $query) {
+  if (isset($_SESSION['user_search_key']) && $_GET['q'] == 'admin/people') {
+    foreach ($query->getTables() as $table) {
+      if ($table['table'] == 'users') {
+        if (variable_get('find_people_name') == 1 && variable_get('find_people_email') == 0) {
+          $query->condition('name', '%' . $_SESSION['user_search_key'] . '%', 'LIKE');
+        }
+        elseif (variable_get('find_people_name') == 0 && variable_get('find_people_email') == 1) {
+          $query->condition('mail', '%' . $_SESSION['user_search_key'] . '%', 'LIKE');
+        }
+        else {
+          $db_or = db_or();
+          $db_or->condition('name', '%' . $_SESSION['user_search_key'] . '%', 'LIKE');
+          $db_or->condition('mail', '%' . $_SESSION['user_search_key'] . '%', 'LIKE');
+          $query->condition($db_or);
+        }
+      }
+    }
+  }
+}
