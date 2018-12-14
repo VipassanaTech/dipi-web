@@ -371,6 +371,7 @@ function dh_addedit_referral()
 
 	if ( arg(2) == 'add')
 	{
+		$new_row = array();
 		if (isset($_REQUEST['aid']) && ($_REQUEST['aid'] <> '') )
 		{
 			$row = db_query("select * from dh_applicant where a_id='".$_REQUEST['aid']."'")->fetchAssoc();
