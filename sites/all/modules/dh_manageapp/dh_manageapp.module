@@ -308,8 +308,9 @@ function dh_manageapp_menu()
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
-    $items['referral/%ref_id/delete'] = array('title' => t('Referral List'),
+    $items['referral/%centre_id/%ref_id/delete'] = array('title' => t('Referral List'),
 	       'page callback' => 'referral_delete',
+	       'page arguments' => array(2),
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
 
@@ -1133,7 +1134,7 @@ function _get_activity()
 	$header = array('DateTime', 'Activity', 'User');
 	$out = '<h4>Activity Log</h4>';
 	if (!empty($rows))
-		$out .= theme('table', array('header' => $header, 'rows' => $rows));
+		$out .= theme('table', array('header' => $header, 'rows' => $rows)) ;
 	print $out;
 	exit;
 }

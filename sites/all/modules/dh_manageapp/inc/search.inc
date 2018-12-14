@@ -87,6 +87,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$pdf_link = '';
 		$rs['allowtransfer'] = 1;
 		$rs['type'] = strtolower($r['a_type']);
+		$rs['o_n'] = $r['a_old']?"Old":"New";
 		$rs['courseid'] = $r['a_course'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
 		if ( $r['a_attended'] || ($r['a_status'] == $system_statues['STATUS-LEFT'] ))
@@ -104,13 +105,14 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$rs['name'] .= ' (AT)';
 		if ( in_array($r['ConfNo'], array('NF', 'OF', 'NF0', 'OF0')) )
 			$r['ConfNo'] = '';
-		$rs['course'] = $r['c_name'];
+		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
+		$rs['course'] = implode(" / ", $temp);
 		$rs['status'] = $r['a_status'];
 		$rs['confno'] = $r['ConfNo'];
 		$rs['gender'] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
-		$rs['location'] = $r['Country'].', '.$r['s_name'].', '.$r['City'];
+		$rs['location'] =  $r['City'].', '.$r['s_name'].', '.$r['Country'];
 		$rs['city'] = $r['City'];
 		$rs['state'] = $r['s_name'];
 		$rs['country'] = $r['Country'];
@@ -128,6 +130,15 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['note'] = $r['a_internal_note'];
 		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
 		$rs['extra'] = $r['a_extra'];
+		$rs['physical'] = $r['ae_desc_physical']?$r['ae_desc_physical']:"";
+		$rs['mental'] = $r['ae_desc_mental']?$r['ae_desc_mental']:"";
+		$rs['medication'] = $r['ae_desc_medication']?$r['ae_desc_medication']:"";
+		$rs['addiction'] = $r['ae_desc_addiction_current']?$r['ae_desc_addiction_current']:"";
+		$rs['othertechnique'] = $r['ae_desc_other_technique']?$r['ae_desc_other_technique']:"";
+
+		$temp = "";
+		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>':"");
+
 
 		$rs['course_teen'] = $r['ac_teen']?$r['ac_teen']:"0";
 		$rs['course_10d'] = $r['ac_10d']?$r['ac_10d']:"0";
@@ -158,11 +169,6 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		if ($r['a_occupation'] == '')
 			$rs['Occ'] = $r['a_occupation_past'];
 		$rs['Designation'] = $r['a_designation'];
-		$rs['othertechnique'] = $r['ae_desc_other_technique']?$r['ae_desc_other_technique']:"";
-		$rs['physical'] = $r['ae_desc_physical']?$r['ae_desc_physical']:"";
-		$rs['mental'] = $r['ae_desc_mental']?$r['ae_desc_mental']:"";
-		$rs['medication'] = $r['ae_desc_medication']?$r['ae_desc_medication']:"";
-		$rs['addiction'] = $r['ae_desc_addiction_current']?$r['ae_desc_addiction_current']:"";
 		$rs['lang'] = trim($r['a_lang_1']." ".$r['a_lang_2']. " ".$r['a_lang_3']." ".$r['a_langs']);
 		$rs['alist'] = $r['a_alist'];
 		$rs['pregnant'] = $r['ae_pregnant']?'Yes':'No';
@@ -174,15 +180,13 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['referral'] = $r['a_referral']?1:0;
 		if ($r['a_referral'])
 		{
-			$q = "select r.*, CONCAT(t.t_f_name, ' ', t.t_l_name) as 'ListedBy1', CONCAT(t2.t_f_name, ' ', t2.t_l_name) as 'ListedBy2', CONCAT(t3.t_f_name, ' ', t3.t_l_name) as 'ListedBy3' from dh_referral r left join dh_teacher t on (r.r_listed_by=t.t_id ) left join dh_teacher t2 on (r.r_listed_by_2=t.t_id ) left join dh_teacher t3 on (r.r_listed_by_3=t.t_id ) where r_id=".$r['a_referral'];
+			$q = "select r.*, r_listed_by as 'ListedBy' from dh_referral r where r_id=".$r['a_referral'];
 			$r_ref = db_query($q)->fetchAssoc();
 
 			$rs['ref_reason'] = $r_ref['r_reason'];
 			$rs['ref_start'] = $r_ref['r_start'];
 			$rs['ref_end'] = $r_ref['r_end'];
-			$rs['ref_listed_by'] = $r_ref['ListedBy1'];
-			if (trim($r_ref['ListedBy2']) <> '') $rs['ref_listed_by'] .= " / ".$r_ref['ListedBy2'];	
-			if (trim($r_ref['ListedBy3']) <> '') $rs['ref_listed_by'] .= " / ".$r_ref['ListedBy3'];
+			$rs['ref_listed_by'] = $r_ref['ListedBy'];
 			$listed_for = "";
 			$temp = array('10d', 'stp', 'spl', '20d', '30d', '45d', '60d', 'tsc', '10d_seva', 'lc_seva', 'longseva');
 			foreach( $temp as $a )
@@ -213,21 +217,28 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	else
 		$status_action = 'return "No access";';
 
-	if (user_access('transfer course'))
-		$transfer_action = 'return "<a href=\"#\" action=\"Transfer\" class=\"course-transfer\">Transfer</a>";';
-	else
-		$transfer_action = 'return "No access"';
+	
+//	$add_action = 'return "<a href=\"#\" action=\"Add\" class=\"applicant-add\">Add</a>";';
 
-	if (user_access('add application'))
-		$add_action = 'return "<a href=\"#\" action=\"Add\" class=\"applicant-add\">Add</a>";';
+	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')))
+	{	
+		$action_select = '<option value=\"\" selected=\"selected\">Choose</option>';
+		if (user_access("transfer course"))
+			$action_select .='<option value=\"Transfer\" >Transfer</option>';
+		if (user_access("add application"))
+			$action_select .='<option value=\"Add\">Add</option>';
+		if (user_access("manage referral list"))
+			$action_select .='<option value=\"Add-referral\">Add Referral</option>';
+		if (user_access("delete application"))
+			$action_select .='<option value=\"Delete\">Delete</option>';
+		$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
+		
+//		$action_select .='<option value="Add">'.$add_action.'</option>';
+		//$action_select .= 'return "<a href=\"#\" action=\"Transfer\" class=\"course-transfer\">Transfer</a>";';
+	}
 	else
-		$add_action = 'return "No access"';
+		$action = 'return "No access"';
 
-
-	if (user_access('delete application'))
-		$del_action = 'return "<a href=\"#\" action=\"Del\" class=\"applicant-del\">Del</a>";';
-	else
-		$del_action = 'return "No access"';
 
 	$button_access = '';
 	if (user_access('export data'))
@@ -275,54 +286,37 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		            "<td colspan=6><div class=\"clarification-response-"+d.aid+"\">Loading Clarification Data...</div></td>"+
 		            "</tr>"+ referral +
 		            "<tr>"+
-		                "<td><label>Address:</label></td>"+
-		                "<td colspan=\"4\">"+d.address+"</td>"+
-		                "<td>"+d.location+"</td>"+
+		                "<td colspan=\"5\">"+d.address+", "+d.location+" / "+d.contact+"</td>"+
 		             "</tr>"+
-		             "<tr>"+
-		                "<td><label>Contact:</label></td>"+
-		                "<td colspan=\"3\">"+d.contact+"</td>"+
-		                "<td><label>Languages:</label></td>"+
-		                "<td>"+d.lang+"</td>"+
-		            "</tr>"+
-		            "<tr>"+
-		                "<td><label>Occupation/Edu:</label></td>"+
-		                "<td>"+d.Occ+"/"+d.Education +"</td>"+
-		                "<td><label>Company:</label></td>"+
-		                "<td>"+d.Company+"</td>"+
-		                "<td><label>A-List?</label></td>"+
-		                "<td>"+(d.alist == 1? "Yes": "No")+"</td>"+
-		            "</tr>"+
-		            "<tr>"+
-			            "<td><label>Designation:</label></td>"+
-		                "<td>"+d.Designation+"</td>"+
-		                "<td><label>Department:</label></td>"+
-		                "<td>"+d.Dept+"</td>"+photo+
-		            "</tr>"+
 		            "<tr>"+
 			            "<td><label>Courses:</label></td>"+
 		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
 		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
-		                "<td><label>Course Details:</label></td>"+
-		                "<td>First: "+d.first_course+"<br>Last: "+d.last_course+"</td>"+
+		                "<td><label>Dept:</label></td>"+
+		                "<td>"+d.Dept+"</td>"+
+		                "<td><label>A-List?</label></td>"+
+		                "<td>"+(d.alist == 1? "Yes": "No")+"</td>"+
 		            "</tr>"+
 		            "<tr>"+
-		                "<td><label>Practice Details:</label></td>"+
-		                "<td>"+d.practice_details+"</td>"+
+		                "<td><label>Details:</label></td>"+
+		                "<td>First: "+d.first_course+", Last: "+d.last_course+"</td>"+
+		                "<td><label>Practice Details:</label></td>"+ 
+		                "<td>"+d.practice_details+"</td>" + pregnant +
+		            "</tr>"+ 
+		            "<tr>"+
+		                "<td><label>Physical:</label></td>"+
+		                "<td>"+d.physical+"</td>"+			            	
+		                			            	
 		                "<td><label>Other Techniques:</label></td>"+
 		                "<td>"+d.othertechnique+"</td>"+			            	
 		            "</tr>"+
 		            "<tr>"+
-		                "<td><label>Mental Heath:</label></td>"+
-		                "<td>"+d.mental+"</td>"+			            	
-		                "<td><label>Physical Health:</label></td>"+
-		                "<td>"+d.physical+"</td>"+			            	
-		            "</tr>"+
-		            "<tr>"+
+		            	"<td><label>Mental:</label></td>"+
+		                "<td>"+d.mental+"</td>"+
  			            "<td><label>Medication:</label></td>"+
 		                "<td>"+d.medication+"</td>"+			            	
  			            "<td><label>Intoxicants:</label></td>"+
-		                "<td>"+d.addiction+"</td>"+ pregnant +			            	
+		                "<td>"+d.addiction+"</td>" +			            	
 		            "</tr>"+
 		            "<tr>"+
 			            "<td><label>Internal Note:</label></td>"+
@@ -448,7 +442,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 11, 12, 13, 14, 15, 16 ],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16 ],
 					                "visible": false,
 					                "searchable": false
 					            }
@@ -462,32 +456,25 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                "defaultContent": ""
 			            },				        
 			            { data: "name", "title" : "Applicant Name" },
-			            { data: "course", "title" : "Course Name" },
+			            { data: "eocd", "title" : "Occ/Edu/Comp/Desig" },
 			            { data: "status", "title" : "Status" },
+			            { data: "o_n", "title" : "Type" },
 			            { data: "confno", "title" : "Conf No" },
 			            { data: "gender", "title" : "Gender" },
 				        { data: "age", "title" : "Age"},
 				        { data: null, "title" : "ChangeStatus", render: function(data, type, row) {
 				        	'.$status_action.'	
 				        } },
-				        { data: null, "title" : "Transfer", render: function(data, type, row) {
-				        	if (data.allowtransfer )
-				        		'.$transfer_action.'
-				        	else
-				        		return "NA";	
-				        } },
-				        { data: null, "title" : "Add", render: function(data, type, row) {
-				        	'.$add_action.'	
-				        } },
-				        { data: null, "title" : "Del", render: function(data, type, row) {
-				        	'.$del_action.'	
+				        { data: null, "title" : "Action", render: function(data, type, row) {
+				        		'.$action.'
 				        } },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
-				        { data: null, "title": "" }
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
 		            ],
 		            "fnRowCallback": function (nrow, data, display_index) {
 		            	if (parseInt(data.referral) > 0 )
@@ -629,8 +616,10 @@ function dh_manageapp_search_results( $type, $where, $centre )
 
 				});
 
-				$("#table-applicants tbody").on("click", ".applicant-del", function() {
-			        var tr = $(this).closest("tr");
+				//$("#table-applicants tbody").on("click", ".applicant-del", function() {
+				function app_del( s )
+				{
+			        var tr = $(s).closest("tr");
 			        var row = table.row( tr );
 			        var id = row.data().aid;
 					var r = confirm("Are you sure you want to delete applicant "+$("<div/>").html(row.data().name).text()+" ?");
@@ -656,13 +645,36 @@ function dh_manageapp_search_results( $type, $where, $centre )
 						});			
 					}
 
-				});
+				}
+				function add_referral( s )
+				{
+			        var tr = $(s).closest("tr");
+			        var row = table.row( tr );
+			        var id = row.data().aid;
+					
+					window.location.href = "/referral/'.arg(1).'/add?aid="+id;					
+				}
 
-				$("#table-applicants tbody").on("click", ".course-transfer,.applicant-add", function() {
+
+				//$("#table-applicants tbody").on("click", ".course-transfer,.applicant-add", function() {
+				$("#table-applicants tbody").on("change", "#action-type", function() {
 					var s = $(this);
-					var action = s.attr("action");
+					//var action = s.attr("action");
+					var action = $(this).val();					
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
+			        if ( action == "" )
+			        	exit;
+			        if (action == "Add-referral")
+			        {
+			        	add_referral(s);
+			        	exit;
+			        }
+			        if ( action == "Delete" )
+			        {
+			        	app_del(s);
+			        	exit;
+			        }
 			        var comment_transfer = "";
 			        if ( action == "Transfer")
 			        	comment_transfer = "<label>Comment</label><br><textarea name=\"comment\" id=\"trf-comment\" size=\"30\"></textarea>";

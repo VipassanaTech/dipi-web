@@ -370,15 +370,20 @@ function dh_addedit_referral()
 {
 
 	if ( arg(2) == 'add')
-		
-			return drupal_get_form('dh_referral_form');
-
-	if (arg(2) == 'edit')
 	{
+		if (isset($_REQUEST['aid']) && ($_REQUEST['aid'] <> '') )
+		{
+			$row = db_query("select * from dh_applicant where a_id='".$_REQUEST['aid']."'")->fetchAssoc();
+			foreach( $row as $k => $v)
+				$new_row[ str_replace("a_", "s_", $k) ] = $v;			
+		} 
+
+		return drupal_get_form('dh_referral_form', $new_row);
+	}		
+	elseif (arg(2) == 'edit') {
 		$row = db_query("select * from dh_referral left join dh_student on r_student=s_id 
 		  left join dh_student_course on r_student=sc_student left join dh_student_course_input on r_student = sci_student
 			where r_student='".arg(3)."'")->fetchAssoc();
-
 	}
 		
 	return drupal_get_form('dh_referral_form', $row);
@@ -442,6 +447,11 @@ function dh_referral_results()
 		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/edit/'.$r['r_student']);
 		else
 		  $rs['name'] = $r['Full Name'];
+		if (user_access('delete referral list'))
+			$rs['del'] = l("Delete", "referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))) ;
+		else
+			$rs['del'] = 'return "No access"'; 
+
 		$rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
 		//if ($r['City'] == '')
 		//	$r['City'] = $r['s_city_str'];
@@ -516,10 +526,6 @@ function dh_referral_results()
 	$out .= theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
 	$data = json_encode($rows);
 
-	if (user_access('delete referral list'))
-		$del_action = 'return "<a href=\"#\" action=\"Del\" class=\"ref-del\">Delete</a>";';
-	else
-		$del_action = 'return "No access"'; 
 
 	$button_access = '';
 	if (user_access('export data'))
@@ -711,9 +717,7 @@ function dh_referral_results()
 			            { data: "country", "title" : "Country" },
 				        { data: "ref_by", "title" : "Referred By" },
 				        { data: "ref_start", "title" : "Referred On" },
-				        { data: null, "title" : "Delete", render: function(data, type, row) {
-				        	'.$del_action.'	
-				        } },
+				        { data: "del", "title" : "Delete" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
@@ -749,28 +753,7 @@ function dh_referral_results()
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
 			        var id = row.data().ref_id;
-					var r = confirm("Are you sure you want to delete record?");
-					if (r == true)
-					{
-       					$(tr).loading();
-						$.getJSON( "/referral/"+id+"/delete", {} )
-						  .done(function( json ) {
-						  	if (json.status == "OK")
-						  	{
-						  		//row.delete();
-								tr.css("background-color", "#ff0000");						  		
-						  	}
-						  	else
-						  		alert("Update failed "+json.msg);
-						  	$(tr).loading("stop");
-						  	//row.remove();
-						  })
-						  .fail(function( jqxhr, textStatus, error ) {
-						    var err = textStatus + ", " + error;
-						    alert("Error updating "+err);
-						    $(tr).loading("stop");
-						});			
-					}
+					return confirm("Are you sure you want to delete record?");
 						
 				});
 			});
@@ -786,9 +769,9 @@ function dh_referral_results()
 function referral_delete( $id )
 {
 	global $user; 
-	$id = arg(1);
+	//$id = arg(1);
 	db_query("update dh_referral set r_deleted = 1 where r_student=$id");
-	drupal_goto ("referral/");
+	drupal_goto ("referral/".arg(1));
 	
 }
 
