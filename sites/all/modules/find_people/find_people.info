@@ -1,0 +1,12 @@
+name = Find People
+description = Find people by Username or E-mail at people page
+core = 7.x
+configure = admin/config/find_people
+package = Fields
+
+; Information added by Drupal.org packaging script on 2016-10-19
+version = "7.x-1.0"
+core = "7.x"
+project = "find_people"
+datestamp = "1476899640"
+
