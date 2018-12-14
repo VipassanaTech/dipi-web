@@ -27,10 +27,12 @@
 .container-inline-date {
 	display: block;
 	float: left;
-	clear: left;
 }
 
-.form-item-a-address, .form-item-a-zip, .form-item-a-education, 
+.form-item-s-dob {
+	margin-right: 10px !important;
+}
+.form-item-a-address, .form-item-a-zip, .form-item-a-education, .form-item-s-education, 
 .form-item-document-type, .form-item-ac-first-location-str, 
 .form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,
 .form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile,
@@ -41,10 +43,22 @@
 .form-item-c-trust, .form-item-c-country, .form-item-c-phone, .form-item-c-email,
 .form-item-cs-seating-dir-male, .form-item-cs-email-from-name, .form-item-c-address,
 .form-item-cs-seat-per-row-male, .form-item-cs-chowky-per-row-male, .form-item-cs-cells-config, 
-.form-item-cs-seat-config {
+.form-item-cs-seat-config, .form-item-s-zip, .form-item-s-address {
 	clear: left;
 }
 
+.form-item-r-start {
+	margin-top: 12px !important;
+}
+
+.form-item-r-end {
+	display: block !important;
+	clear: none !important;
+}
+
+.form-item-r-reason {
+	clear: left;
+}
 .form-submit {
 	display: block !important;
 	clear: left;
@@ -143,4 +157,5 @@ textarea#comments {
 #centre-acco-table,#course-table { width: 100% !important; }
 #centre-acco-table td,#course-table td { word-wrap: break-word; word-break: break-all; }
 
+.amcha-small { font-size: 19px; font-family: "Arial";  font-style: italic; font-weight: bold !important;  } 
 
