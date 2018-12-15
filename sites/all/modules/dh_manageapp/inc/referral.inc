@@ -453,7 +453,7 @@ function dh_referral_results()
 		if (user_access('delete referral list'))
 			$rs['del'] = l("Delete", "referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))) ;
 		else
-			$rs['del'] = 'return "No access"'; 
+			$rs['del'] = "No access"; 
 
 		$rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
 		//if ($r['City'] == '')
