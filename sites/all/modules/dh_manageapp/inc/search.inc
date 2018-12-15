@@ -87,7 +87,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$pdf_link = '';
 		$rs['allowtransfer'] = 1;
 		$rs['type'] = strtolower($r['a_type']);
+		$rs['gender'] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		$rs['o_n'] = $r['a_old']?"Old":"New";
+		$rs['o_n'] .= '<br>'.$rs['gender'];
 		$rs['courseid'] = $r['a_course'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
 		if ( $r['a_attended'] || ($r['a_status'] == $system_statues['STATUS-LEFT'] ))
@@ -107,9 +109,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$r['ConfNo'] = '';
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
 		$rs['course'] = implode(" / ", $temp);
-		$rs['status'] = $r['a_status'];
+		$rs['status'] = $r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
 		$rs['confno'] = $r['ConfNo'];
-		$rs['gender'] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
 		$rs['location'] =  $r['City'].', '.$r['s_name'].', '.$r['Country'];
@@ -137,7 +138,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['othertechnique'] = $r['ae_desc_other_technique']?$r['ae_desc_other_technique']:"";
 
 		$temp = "";
-		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>':"");
+		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>':"");
 
 
 		$rs['course_teen'] = $r['ac_teen']?$r['ac_teen']:"0";
@@ -262,15 +263,19 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	//$out .= '<div id="replace-me"></div>';
 	$js = '
 		function format ( d ) {
-			var pregnant = "", photo = "", referral = "";
+			var pregnant = "", photo = "", referral = "", left_reason = "";
 			if (d.gender == "Female")
 			{
- 			    pregnant =   "<td><label>Pregnant:</label></td>"+
-		                "<td>"+d.pregnant+"</td>";
+ 			    pregnant =   "<label>Pregnant:</label>"+
+		                "&nbsp;"+d.pregnant;
 			}
 			if ( d.photo )
 			{
-				photo = "<td colspan=2><img width=\"150\" src=\""+d.photo+"\" /></td>";
+				photo = "<td rowspan=2><img width=\"150\" src=\""+d.photo+"\" /></td>";
+			}
+			if ( d.left_reason )
+			{
+				left_reason = "<td><label>Left Reason:</label><br>"+d.left_reason+"</td>";
 			}
 			if ( parseInt(d.referral) > 0  )
 			{
@@ -289,48 +294,41 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		                "<td colspan=\"5\">"+d.address+", "+d.location+" / "+d.contact+"</td>"+
 		             "</tr>"+
 		            "<tr>"+
-			            "<td><label>Courses:</label></td>"+
-		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
+			            "<td><label>Courses:</label>"+
+		                "<table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
 		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
-		                "<td><label>Dept:</label></td>"+
-		                "<td>"+d.Dept+"</td>"+
-		                "<td><label>A-List?</label></td>"+
-		                "<td>"+(d.alist == 1? "Yes": "No")+"</td>"+
+		                "<td><label>Details:</label>"+
+		                "<br>First: "+d.first_course+", Last: "+d.last_course+"</td>"+
+		                "<td><label>Practice Details:</label>"+ 
+		                "<br>"+d.practice_details+"</td>"+ photo +
 		            "</tr>"+
 		            "<tr>"+
-		                "<td><label>Details:</label></td>"+
-		                "<td>First: "+d.first_course+", Last: "+d.last_course+"</td>"+
-		                "<td><label>Practice Details:</label></td>"+ 
-		                "<td>"+d.practice_details+"</td>" + photo +
-		            "</tr>"+ 
-		            "<tr>"+
-		                "<td><label>Physical:</label></td>"+
-		                "<td>"+d.physical+"</td>"+			            			                			            	
-		                "<td><label>Other Techniques:</label></td>"+
-		                "<td>"+d.othertechnique+"</td>"+			            	
+		                "<td><label>Physical:</label>"+
+		                "&nbsp;"+d.physical+"</td>"+			            			                			            	
+		                "<td><label>Other Techniques:</label>"+
+		                "<br>"+d.othertechnique+"</td>"+			            	
+		                "<td><label>Dept:</label>"+
+		                "<br>"+d.Dept+"</td>"+
 		            "</tr>"+
 		            "<tr>"+
-		            	"<td><label>Mental:</label></td>"+
-		                "<td>"+d.mental+"</td>"+
- 			            "<td><label>Medication:</label></td>"+
-		                "<td>"+d.medication+"</td>"+			            	
- 			            "<td><label>Intoxicants:</label></td>"+
-		                "<td>"+d.addiction+"</td>" +			            	
+		            	"<td><label>Mental:</label>"+
+		                "&nbsp;"+d.mental+"</td>"+
+ 			            "<td><label>Medication:</label>"+
+		                "<br>"+d.medication+"</td>"+			            	
+ 			            "<td><label>Intoxicants:</label>"+
+		                "<br>"+d.addiction+"</td>" +			            	
+		                left_reason + 
 		            "</tr>"+
 		            "<tr>"+
-			            "<td><label>Internal Note:</label></td>"+
-			            "<td>"+d.note+"</td>"+
-	 				    "<td><label>Other Info:</label></td>"+
-	 				    "<td>"+d.extra+"</td>"+
-	 				    "<td><label>Willing to Serve:</label></td>"+
-	 				    "<td>"+d.willingtoserve+"</td>"+
+			            "<td><label>Internal Note:</label>"+
+			            "&nbsp;"+d.note+"</td>"+
+	 				    "<td><label>Other Info:</label>"+
+	 				    "<br>"+d.extra+"</td>"+
+	 				    "<td><label>Willing to Serve:</label>"+
+	 				    "<br>"+d.willingtoserve+"</td>"+ 
+			            "<td><label>Langs:</label>"+
+			            "<br>"+d.lang+"</td>"+ 			            		                
  		            "</tr>"+
- 		            "<tr>"+
-			            "<td><label>Left Reason:</label></td>"+
-			            "<td>"+d.left_reason+"</td>"+ 
-			            "<td><label>Langs:</label></td>"+
-			            "<td>"+d.lang+"</td>"+ pregnant
- 		            "</tr>"+		       
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
@@ -443,7 +441,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 10, 11, 12, 13, 14, 15, 16 ],
+					                "targets": [ 8, 9, 10, 11, 12, 13, 14, 15, 16 ],
 					                "visible": false,
 					                "searchable": false
 					            }
@@ -460,8 +458,6 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			            { data: "eocd", "title" : "Occ/Edu/Comp/Desig" },
 			            { data: "status", "title" : "Status" },
 			            { data: "o_n", "title" : "Type" },
-			            { data: "confno", "title" : "Conf No" },
-			            { data: "gender", "title" : "Gender" },
 				        { data: "age", "title" : "Age"},
 				        { data: null, "title" : "ChangeStatus", render: function(data, type, row) {
 				        	'.$status_action.'	
@@ -469,6 +465,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        { data: null, "title" : "Action", render: function(data, type, row) {
 				        		'.$action.'
 				        } },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
