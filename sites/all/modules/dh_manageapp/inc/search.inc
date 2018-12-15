@@ -301,12 +301,11 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		                "<td><label>Details:</label></td>"+
 		                "<td>First: "+d.first_course+", Last: "+d.last_course+"</td>"+
 		                "<td><label>Practice Details:</label></td>"+ 
-		                "<td>"+d.practice_details+"</td>" + pregnant +
+		                "<td>"+d.practice_details+"</td>" + photo +
 		            "</tr>"+ 
 		            "<tr>"+
 		                "<td><label>Physical:</label></td>"+
-		                "<td>"+d.physical+"</td>"+			            	
-		                			            	
+		                "<td>"+d.physical+"</td>"+			            			                			            	
 		                "<td><label>Other Techniques:</label></td>"+
 		                "<td>"+d.othertechnique+"</td>"+			            	
 		            "</tr>"+
@@ -328,7 +327,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
  		            "</tr>"+
  		            "<tr>"+
 			            "<td><label>Left Reason:</label></td>"+
-			            "<td>"+d.left_reason+"</td>"+
+			            "<td>"+d.left_reason+"</td>"+ 
+			            "<td><label>Langs:</label></td>"+
+			            "<td>"+d.lang+"</td>"+ pregnant
  		            "</tr>"+		       
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
