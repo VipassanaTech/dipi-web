@@ -39,6 +39,11 @@ table.dataTable tbody td.no-padding {
 .red {   color: #ff0000; display: inline-block; }
 .blue {  color: #0000ff;  display: inline-block; }
 .purple {  color: #6B49DB;  display: inline-block; }
+.pink {  color: #F96BEA;  display: inline-block; }
+.black {  color: #000000;  display: inline-block; }
 
 
 .slider table td { padding: 0px 3px !important;  }
+.slider table tr { vertical-align: top; }
+
+
