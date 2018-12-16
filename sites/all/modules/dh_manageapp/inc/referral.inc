@@ -156,7 +156,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     	),'#date_year_range' => '-50:+50', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
   
-    $form[$group]['r_reason'] = array('#title' => 'Referral Reason', '#type' => 'textarea',  
+    $form[$group]['r_reason'] = array('#title' => 'Referral Reason/Remarks', '#type' => 'textarea',  
 	  '#default_value' => isset($edit_data['r_reason'])?$edit_data['r_reason']:'', '#rows' => 3,  '#weight' => 24, '#required' => 1, 
 		'#suffix' => '', '#maxlength' => 200 );
   
@@ -498,7 +498,7 @@ function dh_referral_results()
 		$rs['ref_tsc'] = $r['r_listed_tsc']?"Yes":"No";
 		$rs['ref_10dseva'] = $r['r_listed_10d_seva']?"Yes":"No";
 		$rs['ref_lcseva'] = $r['r_listed_lc_seva']?"Yes":"No";
-		$rs['ref_10dseva'] = $r['r_listed_longseva']?"Yes":"No";
+		$rs['ref_longseva'] = $r['r_listed_longseva']?"Yes":"No";
 		$rs['ref_by'] = $r['r_listed_by'];
 		$rs['ref_reason'] = $r['r_reason'];
 		$rs['ref_start'] = $r['r_start'];
@@ -583,10 +583,10 @@ function dh_referral_results()
 		            "<tr>"+
 			            "<td><label>Referral listed for:</label></td>"+
 		                "<td><table><tr><td>10d</td><td>STP</td><td>SPL</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>TSC</td><td>10-Day Seva</td><td>LC Seva</td><td>Long Term Seva</td></tr>"+
-		                "<tr><td>"+d.ref_10d+"</td><td>"+d.ref_stp+"</td><td>"+d.ref_spl+"</td><td>"+d.ref_20d+"</td><td>"+d.ref_30d+"</td><td>"+d.ref_45d+"</td><td>"+d.ref_60d+"</td><td>"+d.ref_tsc+"</td><td>"+d.ref_10dseva+"</td><td>"+d.ref_lcdseva+"</td><td>"+d.ref_longseva+"</td></tr></table></td>"+
+		                "<tr><td>"+d.ref_10d+"</td><td>"+d.ref_stp+"</td><td>"+d.ref_spl+"</td><td>"+d.ref_20d+"</td><td>"+d.ref_30d+"</td><td>"+d.ref_45d+"</td><td>"+d.ref_60d+"</td><td>"+d.ref_tsc+"</td><td>"+d.ref_10dseva+"</td><td>"+d.ref_lcseva+"</td><td>"+d.ref_longseva+"</td></tr></table></td>"+
 		            "</tr>"+
 		            "<tr>"+
-		                "<td><label>Reason:</label></td>"+
+		                "<td><label>Reason/Remarks:</label></td>"+
 		                "<td>"+d.ref_reason+"</td>"+
 		                "<td><label>Referral By:</label></td>"+
 		                "<td>"+d.ref_by+"</td>"+			            	
@@ -595,11 +595,7 @@ function dh_referral_results()
 			            "<td><label>Course Information:</label></td>"+
 		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
 		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
-		            "</tr>"+
-		            "<tr>"+
-			            "<td><label>Remarks:</label></td>"+
-			            "<td>"+d.ref_remarks+"</td>"+
- 		            "</tr>"+		       
+		            "</tr>"+		       
  		            "<tr>"+
 		        "</table>"+
 		    "</div>";
@@ -695,14 +691,7 @@ function dh_referral_results()
 			    var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
 
 				var table = $("#table-applicants").DataTable({
-					data: dataset,
-					"columnDefs": [
-					            {
-					                "targets": [ 11, 12, 13, 14, 15, 16 ],
-					                "visible": false,
-					                "searchable": false
-					            }
-			        ],					
+					data: dataset,					
 			        columns: [
 			            {
 			                "class":          "details-control",
@@ -714,19 +703,11 @@ function dh_referral_results()
 			            { data: "name", "title" : "Applicant Name" },
 			            { data: "gender", "title" : "Gender" },
 				        { data: "age", "title" : "Age"},
-			   			{ data: "contact_email", "title" : "Email" },
-			            { data: "city", "title" : "City" },
-			            { data: "state", "title" : "State" },
-			            { data: "country", "title" : "Country" },
+			   			{ data: "contact", "title" : "Email" },
 				        { data: "ref_by", "title" : "Referred By" },
-				        { data: "ref_start", "title" : "Referred On" },
+				        { data: "ref_start", "title" : "Start Date" },
+				        { data: "ref_end", "title" : "End Date" },
 				        { data: "del", "title" : "Delete" },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" }
 		            ],   	
 				});
 
