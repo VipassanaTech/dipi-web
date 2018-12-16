@@ -455,7 +455,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                "defaultContent": ""
 			            },				        
 			            { data: "name", "title" : "Applicant Name" },
-			            { data: "eocd", "title" : "Occ/Edu/Comp/Desig" },
+			            { data: "eocd", "title" : "Edu/Occ/Comp/Desig" },
 			            { data: "status", "title" : "Status" },
 			            { data: "o_n", "title" : "Type" },
 				        { data: "age", "title" : "Age"},
