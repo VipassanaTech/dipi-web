@@ -54,7 +54,7 @@ function dh_manageapp_permission()
 	$perms['received applications block'] = array('title' => t('View Received Applications Block'));
 	$perms['upcoming courses block'] = array('title' => t('View Upcoming Courses Block'));
 	$perms['mass mail'] = array('title' => t('Send mass mails'));
-	$perms['at scheduling'] = array('title' => t('AT scheduling'));
+	$perms['at scheduling'] = array('title' => t('AT Scheduling'));
 	$perms['view referral list'] = array('title' => t('View referral list'));
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
@@ -288,7 +288,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
-    $items['at-schedule/%centre_id'] = array('title' => t('AT scheduling'),
+    $items['at-schedule/%centre_id'] = array('title' => t('AT Scheduling'),
 	       'page callback' => 'dh_manage_at_schedule',
 	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
