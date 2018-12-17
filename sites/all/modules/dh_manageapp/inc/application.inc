@@ -172,6 +172,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['a_lang_3_level'] = array('#title' => 'Lang 3 Proficiency', '#type' => 'select', '#options' =>  $proficiency,  '#weight' => 50, 
 		'#default_value' => isset($edit_data['a_lang_3_level'])?$edit_data['a_lang_3_level']:'', '#required' => 0, );
 
+	$form[$group]['a_lang_discourse'] = array('#title' => 'Discourse/Instructions Language', '#type' => 'select', '#options' =>  $langs,  '#weight' => 51, 
+		'#default_value' => isset($edit_data['a_lang_discourse'])?$edit_data['a_lang_discourse']:'', '#required' => 0, );
+	$form[$group]['a_lang_discourse_level'] = array('#title' => 'Disc Lang Proficiency', '#type' => 'select', '#options' =>  $proficiency,  '#weight' => 52, 
+		'#default_value' => isset($edit_data['a_lang_discourse_level'])?$edit_data['a_lang_discourse_level']:'', '#required' => 0, );
+
 
 	$photo = '';
 	if (!$add)
@@ -391,8 +396,6 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$form[$group]['al_arrival'] = array('#title' => 'Arrival at Centre?', '#type' => 'textfield', 
 			 '#weight' => 27, '#maxlength' => 50,
 			'#default_value' => isset($edit_data['al_arrival'])?$edit_data['al_arrival']:'', '#required' => 0, );	
-		$form[$group]['al_lang_discourse'] = array('#title' => 'Discourse/Instructions Language', '#type' => 'select', '#options' =>  $langs,  '#weight' => 28, 
-			'#default_value' => isset($edit_data['al_lang_discourse'])?$edit_data['al_lang_discourse']:'', '#required' => 0, );
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
 			 '#weight' => 29, '#maxlength' => 100,
