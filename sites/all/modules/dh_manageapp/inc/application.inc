@@ -223,7 +223,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',  
 		'#default_value' => $add?'':$edit_data['a_emergency_num'], '#size' => 20,  '#weight' => 58, 
-		'#required' => 0, '#maxlength' => 20);
+		'#required' => 0, '#maxlength' => 40);
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
@@ -755,6 +755,8 @@ function dh_ma_applicant_form_submit($form, &$form_state)
    $app['a_f_name'] = ucwords(strtolower($app['a_f_name']) );
    $app['a_l_name'] = ucwords(strtolower($app['a_l_name']) );
 
+   $referral = is_in_referal_list($app);
+   $app['a_referral'] = $referral?$referral:"0";
 	if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
@@ -1024,5 +1026,16 @@ function app_delete( $id )
 	$q = "delete from dh_applicant where a_id=$id";
 	db_query($q);
 }
+
+function is_in_referal_list( $row )
+{
+	$referral = 0;
+	$q = "select r_id from dh_referral r left join dh_student s on (r.r_student=s.s_id) 
+		where s_f_name = '".$row['a_f_name']."' and s_l_name='".$row['a_l_name']."' and 
+		( s_email='".$row['a_email']."' or s_phone_mobile='".$row['a_phone_mobile']."' ) limit 1";
+	$referral = db_query($q)->fetchField();
+	return $referral;
+}
+
 
 

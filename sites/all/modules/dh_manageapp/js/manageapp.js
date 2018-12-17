@@ -136,6 +136,9 @@
 			//console.log(a + $("#edit-a-dob-datepicker-popup-0").val());
 			if ( $("#edit-a-dob-datepicker-popup-0").val() == "" )
 				$("#edit-a-dob-datepicker-popup-0").val(a+"-01-01"); 
+			if ( $("#edit-s-dob-datepicker-popup-0").val() == "" )
+				$("#edit-s-dob-datepicker-popup-0").val(a+"-01-01"); 
+
 		})		 
 		
 		$(document).on("click", "#change-room", function(){
