@@ -271,7 +271,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			}
 			if ( d.photo )
 			{
-				photo = "<td rowspan=2><img width=\"150\" src=\""+d.photo+"\" /></td>";
+				photo = "<td rowspan=3><img width=\"150\" src=\""+d.photo+"\" /></td>";
 			}
 			if ( d.left_reason )
 			{
@@ -598,7 +598,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					  	{
 					  		if ( s != "'.$system_statues['STATUS-CUSTOM'].'")
 								row1.data().status = s;
-							row1.data().confno = json.confno;
+							if ( json.confno != "" )
+								row1.data().status = s + " ("+json.confno+")";
+							//row1.data().confno = json.confno;
 							var d = row1.data().status;
 							row1.invalidate().draw("page");
 							tr1.css("background-color", "#bdcdea");						  		
