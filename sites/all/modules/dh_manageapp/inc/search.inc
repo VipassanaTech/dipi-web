@@ -267,7 +267,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			if (d.gender == "Female")
 			{
  			    pregnant =   "<label>Pregnant:</label>"+
-		                "&nbsp;"+d.pregnant+;
+		                "&nbsp;"+d.pregnant+
 			}
 			if ( d.photo )
 			{
