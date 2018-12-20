@@ -266,8 +266,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			var pregnant = "", photo = "", referral = "", left_reason = "";
 			if (d.gender == "Female")
 			{
- 			    pregnant =   "<label>Pregnant:</label>"+
-		                "&nbsp;"+d.pregnant+
+ 			    pregnant =   "<td><label>Pregnant:</label>"+
+		                "&nbsp;"+d.pregnant+"</td>";
 			}
 			if ( d.photo )
 			{
