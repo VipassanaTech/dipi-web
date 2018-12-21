@@ -136,6 +136,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['medication'] = $r['ae_desc_medication']?$r['ae_desc_medication']:"";
 		$rs['addiction'] = $r['ae_desc_addiction_current']?$r['ae_desc_addiction_current']:"";
 		$rs['othertechnique'] = $r['ae_desc_other_technique']?$r['ae_desc_other_technique']:"";
+		$rs['pregnant'] = $r['ae_pregnant']?'Yes':'No';
+		if ($r['ae_pregnant'] && ( ! in_array(strtolower($r['ae_pregnant_detail']), array("-", "no")) ) )
+			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
 
 		$temp = "";
 		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>':"");
@@ -172,9 +175,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['Designation'] = $r['a_designation'];
 		$rs['lang'] = trim($r['a_lang_1']." ".$r['a_lang_2']. " ".$r['a_lang_3']." ".$r['a_langs']);
 		$rs['alist'] = $r['a_alist'];
-		$rs['pregnant'] = $r['ae_pregnant']?'Yes':'No';
-		if ($r['ae_pregnant'] && ( ! in_array(strtolower($r['ae_pregnant_detail']), array("-", "no")) ) )
-			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
+		
 		$rs['photo'] = '';
 		if ( $r['a_photo'] <> '')
 			$rs['photo'] = file_create_url($r['a_photo']);
@@ -264,10 +265,11 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$js = '
 		function format ( d ) {
 			var pregnant = "", photo = "", referral = "", left_reason = "";
+			
 			if (d.gender == "Female")
 			{
- 			    pregnant =   "<td><label>Pregnant:</label>"+
-		                "&nbsp;"+d.pregnant+"</td>";
+ 			    pregnant =   "<label>Pregnant:</label>"+
+		                "<br>"+d.pregnant;
 			}
 			if ( d.photo )
 			{
@@ -316,8 +318,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
  			            "<td><label>Medication:</label>"+
 		                "<br>"+d.medication+"</td>"+			            	
  			            "<td><label>Intoxicants:</label>"+
-		                "<br>"+d.addiction+"</td>" +			            	
-		                left_reason + 
+		                "<br>"+d.addiction+"</td>" + left_reason + 
 		            "</tr>"+
 		            "<tr>"+
 			            "<td><label>Internal Note:</label>"+
@@ -327,7 +328,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	 				    "<td><label>Willing to Serve:</label>"+
 	 				    "<br>"+d.willingtoserve+"</td>"+ 
 			            "<td><label>Langs:</label>"+
-			            "<br>"+d.lang+"</td>"+ 			            		                
+			            "<br>"+d.lang +"</td>" + "<td>" + pregnant + "</td>" +      		                
  		            "</tr>"+
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
