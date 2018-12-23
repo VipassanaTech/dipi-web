@@ -301,6 +301,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['ac_last_day'])?$edit_data['ac_last_day']:'', '#required' => 0, );
 	$form[$group]['ac_practice_details'] = array('#title' => 'Practice Details', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['ac_practice_details'], '#rows' => 3,  '#weight' => 85, '#required' => 0, '#maxlength' => 100);
+	$form[$group]['ae_seva_details'] = array('#title' => 'Seva Details', '#type' => 'textarea',  
+		'#default_value' => $add?'':$edit_data['ae_seva_details'], '#rows' => 3,  '#weight' => 86, '#required' => 0, '#maxlength' => 300);
 
 	if ( $LC )
 	{
