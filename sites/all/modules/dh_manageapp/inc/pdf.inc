@@ -182,6 +182,11 @@ function create_application_pdf( $application_id )
 		$fields = map_application_fields_lc($row);
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/lc-applicant-template.pdf";
 	}
+	elseif ( $row['a_type'] == 'Sevak')
+	{
+		$fields = map_application_fields_seva($row);
+		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
+	}
 	else
 	{
 		$fields = map_application_fields($row);
@@ -544,6 +549,164 @@ function map_application_fields_lc($row)
 	$fields['form1[0].#subform[4].Table4[0].Row2[0].recomat[0]'] = $row['al_recommending'];
 	$fields['form1[0].#subform[4].Table4[0].Row3[0].areat[0]'] = $row['al_area_at'];
 
+	return $fields;
+
+}
+
+function map_application_fields_seva($row)
+{
+	$fields = array();
+	$temp = explode("/", $row['c_name']);
+	$fields['centre'] = trim($temp[0]);
+	if ( $row['aa_acco'] )
+		$fields['acc'] = $row['aa_section']."-".$row['aa_acco'];
+	if ( $row['aa_group'] )
+		$fields['group'] = $row['aa_group'];
+
+	$fields['conf'] = $row['a_conf_no'];
+	$fields['age'] = $row['Age'];
+
+	if ( $row['a_old'] )  $fields['Old Student'] = 'Yes'; else	$fields['New Student'] = 'Yes';
+
+	$fields['From'] = $row['c_start']; 	$fields['To'] = $row['c_end'];
+	if ($row['a_gender'] == 'M')  $fields['Male'] = 'Yes';	else  $fields['Female'] = 'Yes';
+
+	$temp = explode("-", $row['a_dob']);	
+	$fields['dd'] = $temp[2]; 	$fields['mm'] = $temp[1];	$fields['yyyy'] = $temp[0];
+
+	$fields['First Name'] = $row['a_f_name']; 	$fields['Last Name'] = $row['a_l_name'];	$fields['Middle Name'] = $row['a_m_name'];
+	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['a_state'].', '.$row['a_country']; 	$fields['pincode'] = $row['a_zip'];
+	$fields['home'] = $row['a_phone_home']; 	$fields['work'] = $row['a_phone_office'];	$fields['mobile'] = $row['a_phone_mobile']; 
+	$fields['email'] = $row['a_email'];
+
+	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
+	if ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
+	if ($row['a_voter_id']) { $fields['voter id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
+	if ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
+//	$fields['Photo ID'] = ''; 	
+
+	$occupation = strtolower($row['a_occupation']);
+	if ( $row['a_occupation_past'] )
+	{
+		$occupation = $row['a_occupation_past'];
+		$fields['past'] = 'Yes';		
+	}
+	else
+	 	$fields['present'] = 'Yes'; // Occupation
+	$arr_occ = array('doctor', 'lawyer', 'engineer', 'it', 'business', 'ca', 'ngo', 'student', 'defense', 'govt class 1', 'govt class 2', 'real estate', 'agriculture', 'teacher', 'politician' );
+	if ($occupation == 'doctor') $fields['Doctor'] = 'Yes';
+	if ($occupation == 'lawyer') $fields['lawyer'] = 'Yes'; 	
+	if ($occupation == 'engineer') $fields['engg'] = 'Yes';	
+	if ($occupation == 'it') $fields['it'] = 'Yes'; 
+	if ($occupation == 'business') $fields['bus'] = 'Yes'; 
+	if ($occupation == 'ca') $fields['ca'] = 'Yes';	
+	if ($occupation == 'ngo') $fields['ngo'] = 'Yes';		
+	if ($occupation == 'student') $fields['student'] = 'Yes'; 	
+	if ($occupation == 'defense') $fields['defence'] = 'Yes'; 
+	if ($occupation == 'govt class 1') $fields['class1'] = 'Yes';	
+	if ($occupation == 'govt class 2') $fields['class2'] = 'Yes';
+	if ($occupation == 'real estate') $fields['real est'] = 'Yes';
+	if ($occupation == 'agriculture') $fields['agri'] = 'Yes';
+	if ($occupation == 'teacher') $fields['teacher'] = 'Yes';	
+	if ($occupation == 'politician') $fields['politician'] = 'Yes';
+	if ( ! in_array($occupation, $arr_occ) ) 
+	{
+		$fields['other'] = 'Yes';
+		$fields['Other occupation'] = $occupation;
+	}
+
+	$fields['Education'] = $row['a_education']; 	
+	$fields['Name of Organization'] = $row['a_company'];		$fields['Designation'] = $row['a_designation'];
+
+	$fields['spouse occupation'] = $row['a_occupation_relation'];
+	if ($row['a_friend_family'])	
+	{
+		$fields['frnd_yes'] = 'Yes';
+		$fields['friend or family'] = $row['a_friend_family_details'] ; // .'( '.$row['a_family_relation'].' )';
+	}
+	else
+		$fields['frnd_no'] = 'Yes';	
+
+	$fields['emergency contact info'] = $row['a_emergency_name'].'('.$row['a_emergency_relation'].') - '.$row['a_emergency_num'];
+
+	//if ($row['a_lang_1']) $fields['hi_inter'] = 'Yes'; //else $fields['hi_none'] = 'Yes';	
+	//$fields['hi_basic'] = ''; 		$fields['hi_exp'] = ''; 	
+
+	//if ($row['a_lang_2']) $fields['eng_inter'] = 'Yes'; //else $fields['eng_none'] = 'Yes';
+	//$fields['eng_basic'] = ''; 	  $fields['eng_exp'] = ''; 	
+
+	$fields['language fluency'] = $row['a_lang_1'].', '.$row['a_langs'];
+
+	if ($row['a_old'])
+	{
+		$fields['First Course Date'] = $row['ac_first_year'].'-'.$row['ac_first_month'].'-'.$row['ac_first_day']; 
+		$fields['Location'] = $row['ac_first_location_str'];	$fields['Teachers'] = $row['ac_first_teacher_str'];
+
+		$fields['Most Recent Course Sat  Date'] = $row['ac_last_year'].'-'.$row['ac_last_month'].'-'.$row['ac_last_day'];; 	
+		$fields['Location_2'] = $row['ac_last_location_str'];	$fields['Teachers_2'] = $row['ac_last_teacher_str'];
+
+		$fields['10'] = $row['ac_10d'];		$fields['stp'] = $row['ac_stp'];	$fields['20'] = $row['ac_20d'];		$fields['spl'] = $row['ac_spl'];		
+		$fields['tsc'] = $row['ac_tsc']; 	$fields['30'] = $row['ac_30d'];		$fields['45'] = $row['ac_45d'];		$fields['60'] = $row['ac_60d'];
+		$fields['seva'] = $row['ac_service'];				
+	}
+
+	if ( $row['a_old'] )
+	{
+		if ($row['ac_practice_details'])
+		{
+			$fields['dailymed_yes'] = 'Yes';		
+			$fields['If yes please give details how much time daily etc'] = $row['ac_practice_details'];
+		}
+		else
+			$fields['dailymed_no'] = 'Yes'; 		
+	}
+
+
+	if ( $row['a_type'] == 'Sevak')
+	{
+		$fields['seva_details'] = $row['ae_seva_details']; 	
+		$fields['seva_yes'] = 'Yes';	
+	}
+	else
+		$fields['seva_no'] = 'Yes';
+
+	if ( $row['a_problem_mental'] || $row['a_problem_physical'])
+	{
+		$fields['psychological'] = $row['ae_desc_mental']."\n".$row['ae_desc_physical']."\n".$row['ae_desc_medication']; 
+		$fields['psychological_yes'] = 'Yes';
+	}
+	else
+		$fields['psychological_no'] = 'Yes';
+
+	if ( $row['a_addiction_current'])
+	{
+		$fields['current use intoxicants'] = $row['ae_desc_addiction_current']; 	
+		$fields['curr_alco_yes'] = 'Yes';	
+	}
+	else
+		$fields['curr_alco_no'] = 'Yes';	
+	
+	if ( $row['a_addiction_past'])
+	{
+		$fields['addiction'] = $row['ae_desc_addiction_past'];
+		$fields['alco_yes'] = 'Yes';
+	}
+	else
+		$fields['alco_no'] = 'Yes';
+
+	if ($row['ae_pregnant_detail'])
+		$fields['Text1'] = $row['ae_pregnant_detail']; // Pregnancy
+
+	if ( $row['a_other_technique'] || ($row['a_other_technique_old']))
+	{
+		$fields['meditation_yes'] = 'Yes'; 
+		$fields['reiki'] = $row['ae_desc_other_technique'].' '.$row['ae_desc_other_technique_old'].' '.$row['ae_teach_other_details'];
+	}
+	else
+		$fields['meditation_no'] = 'Yes'; 	
+
+	//$fields['Signature'] = ''; 
+	$fields['Date'] = $row['c_start'];	
 	return $fields;
 
 }
