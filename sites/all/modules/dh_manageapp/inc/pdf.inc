@@ -317,7 +317,46 @@ function map_application_fields($row)
 	//if ($row['a_lang_2']) $fields['eng_inter'] = 'Yes'; //else $fields['eng_none'] = 'Yes';
 	//$fields['eng_basic'] = ''; 	  $fields['eng_exp'] = ''; 	
 
-	$fields['language fluency'] = $row['a_lang_1'].', '.$row['a_langs'];
+	$fields['lang1'] = $row['a_lang_1'];
+	$fields['lang2'] = $row['a_lang_2'];
+	$fields['lang3'] = $row['a_lang_3'];
+	$fields['lang4'] = $row['a_lang_discourse'];
+
+	if strtolower($row['a_lang_1_level']=='none')
+		$fields['l1_none']=='Yes';
+	elseif strtolower(str($row['a_lang_1_level']=='basic')
+		$fields['l1_basic']=='Yes';
+	elseif strtolower($row['a_lang_1_level']=='intermediate')
+		$fields['l1_int']=='Yes';
+	elseif strtolower($row['a_lang_1_level']=='expert')
+		$fields['l1_exp']=='Yes';
+
+	if strtolower($row['a_lang_2_level']=='none')
+		$fields['l2_none']=='Yes';
+	elseif strtolower(str($row['a_lang_2_level']=='basic')
+		$fields['l2_basic']=='Yes';
+	elseif strtolower($row['a_lang_2_level']=='intermediate')
+		$fields['l2_int']=='Yes';
+	elseif strtolower($row['a_lang_2_level']=='expert')
+		$fields['l2_exp']=='Yes';
+
+	if strtolower($row['a_lang_3_level']=='none')
+		$fields['l3_none']=='Yes';
+	elseif strtolower(str($row['a_lang_3_level']=='basic')
+		$fields['l3_basic']=='Yes';
+	elseif strtolower($row['a_lang_3_level']=='intermediate')
+		$fields['l3_int']=='Yes';
+	elseif strtolower($row['a_lang_3_level']=='expert')
+		$fields['l3_exp']=='Yes';
+
+	if strtolower($row['a_lang_discourse_level']=='none')
+		$fields['l4_none']=='Yes';
+	elseif strtolower(str($row['a_lang_discourse_level']=='basic')
+		$fields['l4_basic']=='Yes';
+	elseif strtolower($row['a_lang_discourse_level']=='intermediate')
+		$fields['l4_int']=='Yes';
+	elseif strtolower($row['a_lang_discourse_level']=='expert')
+		$fields['l4_exp']=='Yes';
 
 	if ($row['a_old'])
 	{
