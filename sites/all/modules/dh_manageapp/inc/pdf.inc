@@ -194,6 +194,8 @@ function create_application_pdf( $application_id )
 		else
 			$fields['seva_no'] = 'Yes';
 
+		$fields['psychological_yes'] = 'No';
+		$fields['psychological_no'] = 'No';
 		if ( $row['a_problem_mental'] || $row['a_problem_physical'])
 		{
 			$fields['psychological'] = $row['ae_desc_mental']."\n".$row['ae_desc_physical']."\n".$row['ae_desc_medication']; 
@@ -201,6 +203,7 @@ function create_application_pdf( $application_id )
 		}
 		else
 			$fields['psychological_no'] = 'Yes';
+			
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
 	}
 	else
