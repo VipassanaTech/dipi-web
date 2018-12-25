@@ -322,40 +322,40 @@ function map_application_fields($row)
 	$fields['lang3'] = $row['a_lang_3'];
 	$fields['lang4'] = $row['a_lang_discourse'];
 
-	if (strtolower($row['a_lang_1_level']=='none'))
+	if (strtolower($row['a_lang_1_level'])=='none')
 		$fields['l1_none']=='Yes';
-	elseif (strtolower($row['a_lang_1_level']=='basic'))
+	elseif (strtolower($row['a_lang_1_level'])=='basic')
 		$fields['l1_basic']=='Yes';
-	elseif (strtolower($row['a_lang_1_level']=='intermediate'))
+	elseif (strtolower($row['a_lang_1_level'])=='intermediate')
 		$fields['l1_int']=='Yes';
-	elseif (strtolower($row['a_lang_1_level']=='expert'))
+	elseif (strtolower($row['a_lang_1_level'])=='expert')
 		$fields['l1_exp']=='Yes';
 
-	if (strtolower($row['a_lang_2_level']=='none'))
+	if (strtolower($row['a_lang_2_level'])=='none')
 		$fields['l2_none']=='Yes';
-	elseif (strtolower($row['a_lang_2_level']=='basic'))
+	elseif (strtolower($row['a_lang_2_level'])=='basic')
 		$fields['l2_basic']=='Yes';
-	elseif (strtolower($row['a_lang_2_level']=='intermediate'))
+	elseif (strtolower($row['a_lang_2_level'])=='intermediate')
 		$fields['l2_int']=='Yes';
-	elseif (strtolower($row['a_lang_2_level']=='expert'))
+	elseif (strtolower($row['a_lang_2_level'])=='expert')
 		$fields['l2_exp']=='Yes';
 
-	if (strtolower($row['a_lang_3_level']=='none'))
+	if (strtolower($row['a_lang_3_level'])=='none')
 		$fields['l3_none']=='Yes';
-	elseif (strtolower($row['a_lang_3_level']=='basic'))
+	elseif (strtolower($row['a_lang_3_level'])=='basic')
 		$fields['l3_basic']=='Yes';
-	elseif (strtolower($row['a_lang_3_level']=='intermediate'))
+	elseif (strtolower($row['a_lang_3_level'])=='intermediate')
 		$fields['l3_int']=='Yes';
-	elseif (strtolower($row['a_lang_3_level']=='expert'))
+	elseif (strtolower($row['a_lang_3_level'])=='expert')
 		$fields['l3_exp']=='Yes';
 
-	if (strtolower($row['a_lang_discourse_level']=='none'))
+	if (strtolower($row['a_lang_discourse_level'])=='none')
 		$fields['l4_none']=='Yes';
-	elseif (strtolower($row['a_lang_discourse_level']=='basic'))
+	elseif (strtolower($row['a_lang_discourse_level'])=='basic')
 		$fields['l4_basic']=='Yes';
-	elseif (strtolower($row['a_lang_discourse_level']=='intermediate'))
+	elseif (strtolower($row['a_lang_discourse_level'])=='intermediate')
 		$fields['l4_int']=='Yes';
-	elseif (strtolower($row['a_lang_discourse_level']=='expert'))
+	elseif (strtolower($row['a_lang_discourse_level'])=='expert')
 		$fields['l4_exp']=='Yes';
 
 	if ($row['a_old'])
