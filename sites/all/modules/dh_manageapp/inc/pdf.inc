@@ -186,8 +186,13 @@ function create_application_pdf( $application_id )
 	{
 
 		$fields = map_application_fields($row);
+		if ( $row['ae_seva_details'])
+		{
 		$fields['seva_details'] = $row['ae_seva_details']; 	
 		$fields['seva_yes'] = 'Yes';	
+		}
+		else
+			$fields['seva_no'] = 'Yes';
 
 		if ( $row['a_problem_mental'] || $row['a_problem_physical'])
 		{
