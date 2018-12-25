@@ -182,6 +182,22 @@ function create_application_pdf( $application_id )
 		$fields = map_application_fields_lc($row);
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/lc-applicant-template.pdf";
 	}
+	elseif ( $row['a_type'] == 'Sevak')
+	{
+
+		$fields = map_application_fields($row);
+		$fields['seva_details'] = $row['ae_seva_details']; 	
+		$fields['seva_yes'] = 'Yes';	
+
+		if ( $row['a_problem_mental'] || $row['a_problem_physical'])
+		{
+			$fields['psychological'] = $row['ae_desc_mental']."\n".$row['ae_desc_physical']."\n".$row['ae_desc_medication']; 
+			$fields['psychological_yes'] = 'Yes';
+		}
+		else
+			$fields['psychological_no'] = 'Yes';
+		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
+	}
 	else
 	{
 		$fields = map_application_fields($row);
@@ -547,4 +563,5 @@ function map_application_fields_lc($row)
 	return $fields;
 
 }
+
 

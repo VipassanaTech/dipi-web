@@ -1,0 +1,5 @@
+name = DIPI API
+description = API for external applications to access DIPI Data
+core = 7.x
+package = Dhamma
+dependencies[] = services
