@@ -186,9 +186,16 @@ function create_application_pdf( $application_id )
 	{
 
 		$fields = map_application_fields($row);
+		if ( $row['ae_seva_details'])
+		{
 		$fields['seva_details'] = $row['ae_seva_details']; 	
 		$fields['seva_yes'] = 'Yes';	
+		}
+		else
+			$fields['seva_no'] = 'Yes';
 
+		unset($fields['psychological_yes']);
+		unset($fields['psychological_no']);
 		if ( $row['a_problem_mental'] || $row['a_problem_physical'])
 		{
 			$fields['psychological'] = $row['ae_desc_mental']."\n".$row['ae_desc_physical']."\n".$row['ae_desc_medication']; 
@@ -196,6 +203,7 @@ function create_application_pdf( $application_id )
 		}
 		else
 			$fields['psychological_no'] = 'Yes';
+			
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
 	}
 	else
