@@ -726,7 +726,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#type' => 'select', 
 		'#options' => $State,
 		'#default_value' => $add?'':$edit_data['p_state'],
-		'#required' => TRUE,
+		'#required' => FALSE,
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'student_regi_state',));
 	
@@ -1145,6 +1145,80 @@ function dh_patrika_generate_label( $type )
 	    unlink($out);
 	}
 	exit;
+}
+
+function _split_address( $data )
+{
+	/* First check with semicolon, some voodo magic has it split already */
+	$temp = explode(";", $data);
+	$len = strlen($data);
+	$max_len = 0;
+	foreach($temp as $str)
+		if ( strlen($str) > $max_len )
+			$max_len = strlen($str);
+
+	$new = $data;
+	if ( (count($temp) > 3 ) || ($max_len > 45) )
+	{
+		$data = str_replace(";", " ", $data);
+		if ($len < 80)
+			$chunk = 30;
+		elseif ($len < 105)
+			$chunk = 35;
+		else
+			$chunk = 40;
+	
+		$new = wordwrap($data, $chunk, ";" );
+	}
+
+	return $new;
+}
+
+function dh_patrika_add_course_students($course)
+{
+	$system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
+	$center = db_query('select c_center from dh_course where c_id=$course')->fetchField();
+	if ($center <> 1 ) // Only for Dhammagiri
+		return;
+
+	$q = "select s_id, s_f_name, s_m_name, s_l_name, s_city, s_state, s_country, s_address, s_zip, s_email  
+		from dh_student s left join dh_student_course sc on s.s_id=sc.sc_student where sc_course=$course and s_first=1 and s_country='IN'";
+	$res = db_query($q);
+	while( $row = $res->fetchAssoc() )
+	{
+		$r = array();
+		$r['p_student'] = $row['s_id'];
+		$r['p_f_name'] = $row['s_f_name'];
+		$r['p_m_name'] = $row['s_m_name'];
+		$r['p_l_name'] = $row['s_l_name'];
+		$r['p_state'] = $row['s_state'];
+		$r['p_country'] = $row['s_country'];
+		$r['p_zip'] = $row['s_zip'];
+		$r['p_city'] = $row['s_city'];
+		if (!$r['p_city'])
+			$r['p_city'] = db_query("select pc_city from dh_pin_code where pc_pin='".$r['p_zip']."' limit 1")->fetchField();
+		$r['p_email'] = $row['s_email'];
+		$r['p_address'] = _split_address($row['s_address']);
+		echo $r['p_address']."\n\n";
+
+		$r['p_mode'] = 'PAPER';
+		$r['p_language'] = 'hi';		
+		$r['p_subscription_type'] = 'Privilage';
+		$r['p_start_date'] = date('Y-m-d');
+		$r['p_end_date'] = date('Y-m-d', strtotime("+1 year") );
+		$r['p_updated'] = date('Y-m-d H:i:s');
+		$r['p_created_by'] = $system_uids['COURSE-SYSTEM-UID'];
+		$r['p_updated_by'] = $system_uids['COURSE-SYSTEM-UID'];
+
+		$pid = db_insert('dh_patrika')->fields($r)->execute();
+
+		$pn['pn_patrika'] = $pid;
+		$pn['pn_note'] = 'Added by Cron';
+		$pn['pn_created_by'] = $system_uids['COURSE-SYSTEM-UID'];
+		db_insert('dh_patrika_note')->fields($pn)->execute();
+		
+
+ 	}
 }
 
 

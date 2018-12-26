@@ -1,0 +1,174 @@
+<?php
+
+
+/**
+ * Implements hook_permission().
+ */
+function dipi_api_permission() {
+
+    $perms['get all centres'] = array('title' => t('Access all centres') ) ;
+    $perms['get all courses'] = array('title' => t('Access all courses') ) ;
+    $perms['post application'] = array('title' => t('Post an application to a course') ) ;
+
+    return $perms;
+}
+
+/**
+ * Implements hook_services_resources().
+ */
+function dipi_api_services_resources() {
+
+  $resources = array(
+    '#api_version' => '3001',
+    'dipi' => array(
+    	'actions' => array(
+    		'centres-updated-last-n-hours' => array(
+    			    'help' => t("Get Centres"),
+    			    'access arguments' => array('get all centres'),
+	            'access arguments append' => FALSE,
+    			    'callback' => '_api_centres_get',
+              'args' => array(
+                array(
+                  'name' => 'lastupdated',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Centres updated in last n hours',
+                ),
+              ),
+    		),
+
+        'courses-updated-last-n-hours' => array(
+              'help' => t("Get Courses"),
+              'access arguments' => array('get all courses'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_courses_get',
+              'args' => array(
+                array(
+                  'name' => 'centre',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'CentreID',
+                ),
+                array(
+                  'name' => 'lastupdated',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'int',
+                  'description' => 'Courses updated in last n hours',
+                ),
+              ),
+        ),
+
+        'post-application' => array(
+              'help' => t("Post an application to course"),
+              'access arguments' => array('post application'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_post_application',
+              'args' => array(
+                array(
+                  'name' => 'centre',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Centre ID',
+                ),
+                array(
+                  'name' => 'course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Base64 Encoded Query string key value pairs',
+                ),
+              ),
+        ),
+
+
+    	),
+     )
+  );
+
+  return $resources;
+}
+
+
+function _api_centres_get( $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $q = "select c.c_id as 'CentreID', c.c_name as 'CentreName', c.c_trust as 'TrustName', ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', 
+      c.c_address as 'Address', c.c_pincode as 'Pincode', c.c_phone as 'Phone', c.c_email as 'Email', c.c_url as 'URL' from dh_center c 
+      left join dh_country co on (c.c_country=co.c_code) 
+      left join dh_state s on (c.c_country=s.s_country and c.c_state=s.s_code) 
+      left join dh_city ci on (c.c_city = ci.c_id) where date_format(c_updated, '%Y%m%d%H%i') > $last order by c.c_name";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;
+}
+
+
+
+
+function _api_courses_get( $centre, $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    if (!$centre)
+      return array('Error' => 'Invalid Centre');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $today = date('Ymd');
+    $q = "select co.c_id as 'CourseID', c.c_name as 'CentreName', c.c_id as 'CentreID', td.td_val1 as 'CourseType', co.c_start as 'StartDate', co.c_end as 'EndDate',
+    co.c_enrol_date as 'EnrollmentDate', co.c_status_om as 'StatusOldMale', co.c_status_of as 'StatusOldFemale', 
+    co.c_status_nm as 'StatusNewMale', co.c_status_nf as 'StatusNewFemale', co.c_status_svr_m as 'StatusServerMale', co.c_status_svr_f as 'StatusServerFemale',    
+    co.c_list_only as 'ListOnly', c_comments as 'Comments', c_description as 'Description', c_status as 'CourseStatus' 
+    from dh_course co left join dh_center c on co.c_center=c.c_id  
+    left join dh_type_detail td on (co.c_course_type=td.td_id) 
+    where co.c_center=$centre and date_format(co.c_start, '%Y%m%d') > $today and date_format(co.c_updated, '%Y%m%d%H%i') > $last order by co.c_start";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;
+}
+
+
+function _api_post_application( $centre, $course, $data )
+{
+    if (!$centre)
+      return array( "Result" => "Error", 'Message' => 'Invalid Centre');
+
+    if (!$course)
+      return array( "Result" => "Error", "Message" => 'Invalid Course');
+
+    if (!$data)
+      return array( "Result" => "Error", "Message" => 'Invalid Data');
+
+    $vals = array();
+    parse_str($data, $vals);
+
+    //$unencoded = base64_decode($data);
+    //if (!$unencoded)
+     // return array( "Result" => "Error", "Message" => 'Invalid Data Encoding');
+
+
+    return array("Result" => "Success", "Message" => $data );
+
+}
+
+
