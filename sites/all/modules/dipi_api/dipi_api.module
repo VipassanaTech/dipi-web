@@ -8,6 +8,8 @@ function dipi_api_permission() {
 
     $perms['get all centres'] = array('title' => t('Access all centres') ) ;
     $perms['get all courses'] = array('title' => t('Access all courses') ) ;
+    $perms['post application'] = array('title' => t('Post an application to a course') ) ;
+
     return $perms;
 }
 
@@ -59,6 +61,36 @@ function dipi_api_services_resources() {
               ),
         ),
 
+        'post-application' => array(
+              'help' => t("Post an application to course"),
+              'access arguments' => array('post application'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_post_application',
+              'args' => array(
+                array(
+                  'name' => 'centre',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Centre ID',
+                ),
+                array(
+                  'name' => 'course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Base64 Encoded Query string key value pairs',
+                ),
+              ),
+        ),
+
 
     	),
      )
@@ -100,7 +132,7 @@ function _api_courses_get( $centre, $lastupdated )
 
     $last = date("YmdHi", strtotime("-$lastupdated hours"));
     $today = date('Ymd');
-    $q = "select c.c_name as 'CentreName', c.c_id as 'CentreID', td.td_val1 as 'CourseType', co.c_start as 'StartDate', co.c_end as 'EndDate',
+    $q = "select co.c_id as 'CourseID', c.c_name as 'CentreName', c.c_id as 'CentreID', td.td_val1 as 'CourseType', co.c_start as 'StartDate', co.c_end as 'EndDate',
     co.c_enrol_date as 'EnrollmentDate', co.c_status_om as 'StatusOldMale', co.c_status_of as 'StatusOldFemale', 
     co.c_status_nm as 'StatusNewMale', co.c_status_nf as 'StatusNewFemale', co.c_status_svr_m as 'StatusServerMale', co.c_status_svr_f as 'StatusServerFemale',    
     co.c_list_only as 'ListOnly', c_comments as 'Comments', c_description as 'Description', c_status as 'CourseStatus' 
@@ -114,3 +146,29 @@ function _api_courses_get( $centre, $lastupdated )
 
     return $rows;
 }
+
+
+function _api_post_application( $centre, $course, $data )
+{
+    if (!$centre)
+      return array( "Result" => "Error", 'Message' => 'Invalid Centre');
+
+    if (!$course)
+      return array( "Result" => "Error", "Message" => 'Invalid Course');
+
+    if (!$data)
+      return array( "Result" => "Error", "Message" => 'Invalid Data');
+
+    $vals = array();
+    parse_str($data, $vals);
+
+    //$unencoded = base64_decode($data);
+    //if (!$unencoded)
+     // return array( "Result" => "Error", "Message" => 'Invalid Data Encoding');
+
+
+    return array("Result" => "Success", "Message" => $data );
+
+}
+
+
