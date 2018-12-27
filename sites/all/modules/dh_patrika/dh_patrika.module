@@ -732,7 +732,8 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 	
 	$City['']='Choose';
 	$City['Other']='Other';
-
+	$City[$edit_data['p_city']]='Main';
+	
 	$form['student_city'] = array(
 		'#title' => 'City', 
 		'#type' => 'select', 
