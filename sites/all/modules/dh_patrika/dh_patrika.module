@@ -1177,7 +1177,7 @@ function _split_address( $data )
 function dh_patrika_add_course_students($course)
 {
 	$system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
-	$center = db_query('select c_center from dh_course where c_id=$course')->fetchField();
+	$center = db_query('select c_center from dh_course where c_id='.$course)->fetchField();
 	if ($center <> 1 ) // Only for Dhammagiri
 		return;
 
