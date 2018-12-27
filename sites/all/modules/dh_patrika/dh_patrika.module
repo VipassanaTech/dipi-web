@@ -942,7 +942,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   						}
   						if(SubVal == 'Yearly')
   						{
-  							date2.setFullYear(date2.getFullYear()+1); 
+  							date2.setFullYear(date2.getFullYear()+parseInt($('#edit-years').val()); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
