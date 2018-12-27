@@ -1199,9 +1199,10 @@ function dh_patrika_add_course_students($course)
 			$r['p_city'] = db_query("select pc_city from dh_pin_code where pc_pin='".$r['p_zip']."' limit 1")->fetchField();
 		$r['p_email'] = $row['s_email'];
 		$r['p_address'] = _split_address($row['s_address']);
-		echo $r['p_address']."\n\n";
+		//echo $r['p_address']."\n\n";
 
 		$r['p_mode'] = 'PAPER';
+		$r['p_vray_id'] = db_query("select nextval('patrika')")->fetchField();
 		$r['p_language'] = 'hi';		
 		$r['p_subscription_type'] = 'Privilage';
 		$r['p_start_date'] = date('Y-m-d');

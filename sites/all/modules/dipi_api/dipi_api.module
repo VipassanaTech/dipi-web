@@ -21,12 +21,12 @@ function dipi_api_services_resources() {
   $resources = array(
     '#api_version' => '3001',
     'dipi' => array(
-    	'actions' => array(
-    		'centres-updated-last-n-hours' => array(
-    			    'help' => t("Get Centres"),
-    			    'access arguments' => array('get all centres'),
-	            'access arguments append' => FALSE,
-    			    'callback' => '_api_centres_get',
+        'actions' => array(
+            'centres-updated-last-n-hours' => array(
+                    'help' => t("Get Centres"),
+                    'access arguments' => array('get all centres'),
+                'access arguments append' => FALSE,
+                    'callback' => '_api_centres_get',
               'args' => array(
                 array(
                   'name' => 'lastupdated',
@@ -36,7 +36,7 @@ function dipi_api_services_resources() {
                   'description' => 'Centres updated in last n hours',
                 ),
               ),
-    		),
+            ),
 
         'courses-updated-last-n-hours' => array(
               'help' => t("Get Courses"),
@@ -92,7 +92,7 @@ function dipi_api_services_resources() {
         ),
 
 
-    	),
+        ),
      )
   );
 
@@ -159,15 +159,308 @@ function _api_post_application( $centre, $course, $data )
     if (!$data)
       return array( "Result" => "Error", "Message" => 'Invalid Data');
 
+    $course_data = db_query("select c_id,c_status_nf,c_status_nm,c_status_of,c_status_om,c_status_svr_f,c_status_svr_m, c_status from 
+        dh_course where c_center=$centre and c_id=$course")->fetchAssoc();
+
+    if ( isset($course_data) && ( $course_data['c_id'] <> $course) )
+        return array("Result" => "Error", "Message" => "Course or Centre ID Invalid");
+
     $vals = array();
-    parse_str($data, $vals);
+    parse_str($data['data'], $vals);
+    $r = array();
 
-    //$unencoded = base64_decode($data);
-    //if (!$unencoded)
-     // return array( "Result" => "Error", "Message" => 'Invalid Data Encoding');
+    $check_field = 'c_status_svr_'.strtolower($vals['gender']);
+    if ( in_array( strtolower($course_data[$check_field]), array('full', 'course full', 'closed') ) || ( in_array( strtolower($course_data['c_status']), array('closed') ) ) )
+        return array("Result" => "Error", "Message" => "Cannot accept applications as status is full/closed");
+
+    if (!isset($vals['fname']) || (strlen($vals['fname']) > 50)  )
+      return array("Result" => "Error", "Message" => 'First Name not present or more than 50 chars' );
+    $r['a_f_name'] = $vals['fname'];
+
+    if (!isset($vals['lname']) || (strlen($vals['lname']) > 50) )
+      return array("Result" => "Error", "Message" => 'Last Name not present or more than 50 chars');
+    $r['a_m_name'] = $vals['mname'];
+
+    if (isset($vals['mname']) && (strlen($vals['mname']) > 50) )
+      return array("Result" => "Error", "Message" => 'Middle Name more than 50 chars');
+    $r['a_l_name'] = $vals['lname'];
+
+    if (!isset($vals['gender']) || (!in_array($vals['gender'], array("M", "F")) ) )
+      return array("Result" => "Error", "Message" => 'Gender not present or not "M"/"F" ');
+    $r['a_gender'] = $vals['gender'];
+
+    if (!isset($vals['age']) && ( !isset($vals['dob']) ) )
+      return array("Result" => "Error", "Message" => 'Age/DOB not present');
+
+    if (isset($vals['age']) && (($vals['age'] < 15) || ($vals['age'] > 95)) )
+      return array("Result" => "Error", "Message" => "Age incorrect");
+    else
+      $r['a_dob'] = date("Y", strtotime("-".$vals['age']." year"))."-01-01";
+
+    if (isset($vals['dob']) && (!preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/",$vals['dob'])) )
+      return array("Result" => "Error", "Message" => "DOB not in yyyy-mm-dd format");
+    else
+      $r['a_dob'] = $vals['dob'];
+
+    if (!isset($vals['mobile']) || (!preg_match("/^[0-9]{10}$/", $vals['mobile']) ) )
+      return array("Result" => "Error", "Message" => 'Mobile not present or more than 10 chars');
+    $r['a_phone_mobile'] = $vals['mobile'];
+
+    if (!isset($vals['email']) || ( !filter_var($vals['email'], FILTER_VALIDATE_EMAIL) ) )
+      return array("Result" => "Error", "Message" => 'Email not present or not a valid email');
+    $r['a_email'] = $vals['email'];
+
+    if (!isset($vals['zip']) )
+      return array("Result" => "Error", "Message" => 'Zipcode not present');
+    $r['a_zip'] = $vals['zip'];
+
+    if (!isset($vals['country']) || (strlen($vals['country']) > 2 ) )  
+      return array("Result" => "Error", "Message" => 'Country not present or not ISO code');
+    $r['a_country'] = $vals['country'];
+
+    if (!isset($vals['state']) || (strlen($vals['state']) > 2) )  
+      return array("Result" => "Error", "Message" => 'State not present or not ISO code');
+    $r['a_state'] = $vals['state'];
+
+    if (!isset($vals['city']) || (strlen($vals['city']) > 100) )  
+      return array("Result" => "Error", "Message" => 'City not present or more than 100 chars');
+    $r['a_city'] = $vals['city'];
+
+    if (!isset($vals['address']) || ( strlen($vals['address']) > 130 ) )
+      return array("Result" => "Error", "Message" => 'Address not present or more than 160 chars');
+    $r['a_address'] = $vals['address'];
+
+    if (!isset($vals['education']) || ( strlen($vals['education']) > 25 ) )
+      return array("Result" => "Error", "Message" => 'Education not present or more than 25 chars');
+    $r['a_education'] = $vals['education'];
+
+    if (!isset($vals['occupation']) || ( strlen($vals['occupation']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Occupation not present or more than 50 chars');
+    $r['a_occupation'] = $vals['occupation'];
+
+    if (!isset($vals['designation']) || ( strlen($vals['designation']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Designation not present or more than 50 chars');
+    $r['a_designation'] = $vals['designation'];
+
+    if (!isset($vals['company']) || ( strlen($vals['company']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Company not present or more than 50 chars');
+    $r['a_company'] = $vals['company'];
 
 
-    return array("Result" => "Success", "Message" => $data );
+
+    $r['ac_10d'] = $r['ac_stp'] = $r['ac_20d'] = $r['ac_30d'] = $r['ac_45d'] = $r['ac_60d'] = $r['ac_spl'] = $r['ac_tsc'] = $r['ac_service'] = 0;
+    if (isset($vals['10d'])  && ((!is_numeric($vals['10d'])) || ($vals['10d'] <= 0)) )
+        return array("Result" => "Error", "Message" => "10day courses must be greater than 0");
+    if (isset($vals['10d'])) $r['ac_10d'] = $vals['10d'];
+
+    if (isset($vals['stp'])  && (!is_numeric($vals['stp']) ) )
+        return array("Result" => "Error", "Message" => "STP courses must be numeric");
+    if (isset($vals['stp'])) $r['ac_stp'] = $vals['stp'];
+
+    if (isset($vals['10d_spl'])  && (!is_numeric($vals['10d_spl']) ) )
+        return array("Result" => "Error", "Message" => "10D Spl courses must be numeric");
+    if (isset($vals['10d_spl'])) $r['ac_spl'] = $vals['10d_spl'];
+
+    if (isset($vals['20d'])  && (!is_numeric($vals['20d']) ) )
+        return array("Result" => "Error", "Message" => "20 Day courses must be numeric");
+    if (isset($vals['20d'])) $r['ac_20d'] = $vals['20d'];
+
+    if (isset($vals['30d'])  && (!is_numeric($vals['30d']) ) )
+        return array("Result" => "Error", "Message" => "30 Day courses must be numeric");
+    if (isset($vals['30d'])) $r['ac_30d'] = $vals['30d'];
+
+    if (isset($vals['45d'])  && (!is_numeric($vals['45d']) ) )
+        return array("Result" => "Error", "Message" => "45 Day courses must be numeric");
+    if (isset($vals['45d'])) $r['ac_45d'] = $vals['45d'];
+
+    if (isset($vals['60d'])  && (!is_numeric($vals['60d']) ) )
+        return array("Result" => "Error", "Message" => "60 Day courses must be numeric");
+    if (isset($vals['60d'])) $r['ac_60d'] = $vals['60d'];
+
+    if (isset($vals['tsc'])  && (!is_numeric($vals['tsc']) ) )
+        return array("Result" => "Error", "Message" => "TSC courses must be numeric");
+    if (isset($vals['tsc'])) $r['ac_tsc'] = $vals['tsc'];
+
+    if (isset($vals['service'])  && (!is_numeric($vals['service']) ) )
+        return array("Result" => "Error", "Message" => "Service Courses must be numeric");
+    if (isset($vals['service'])) $r['ac_service'] = $vals['service'];
+
+
+    if (!isset($vals['first_course_location']) || ( strlen($vals['first_course_location']) > 100 ) )
+      return array("Result" => "Error", "Message" => 'First Course Location not present or more than 100 chars');
+    $r['ac_first_location_str'] = $vals['first_course_location'];
+
+    if (!isset($vals['first_course_teacher']) || ( strlen($vals['first_course_teacher']) > 100 ) )
+      return array("Result" => "Error", "Message" => 'First Course teacher not present or more than 100 chars');
+    $r['ac_first_teacher_str'] = $vals['first_course_teacher'];
+
+    if (!isset($vals['last_course_location']) || ( strlen($vals['last_course_location']) > 100 ) )
+      return array("Result" => "Error", "Message" => 'Last Course Location not present or more than 100 chars');
+    $r['ac_last_location_str'] = $vals['last_course_location'];
+
+    if (!isset($vals['last_course_teacher']) || ( strlen($vals['last_course_teacher']) > 100 ) )
+      return array("Result" => "Error", "Message" => 'Last Course teacher not present or more than 100 chars');
+    $r['ac_last_teacher_str'] = $vals['last_course_teacher'];
+
+
+    if (!isset($vals['first_course_year']) || ( !is_numeric($vals['first_course_year']) ) )
+      return array("Result" => "Error", "Message" => 'First Course Year not present or not numeric');
+    $r['ac_first_year'] = $vals['first_course_year'];
+
+    if (isset($vals['first_course_month']) && ( !is_numeric($vals['first_course_month']) ) )
+      return array("Result" => "Error", "Message" => 'First Course Month not present or not numeric');
+    if (isset($vals['first_course_month'])) $r['ac_first_month'] = $vals['first_course_month'];
+
+    if (!isset($vals['last_course_year']) || ( !is_numeric($vals['last_course_year']) ) )
+      return array("Result" => "Error", "Message" => 'Last Course Year not present or not numeric');
+    $r['ac_last_year'] = $vals['last_course_year'];
+
+    if (isset($vals['last_course_month']) && ( !is_numeric($vals['last_course_month']) ) )
+      return array("Result" => "Error", "Message" => 'Last Course Month not present or not numeric');
+    if (isset($vals['last_course_month'])) $r['last_first_month'] = $vals['last_course_month'];
+
+
+    if (!isset($vals['lang1']) || ( strlen($vals['lang1']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Lang1 not present or more than 50 chars');
+    $r['a_lang_1'] = $vals['lang1'];
+
+    if (!isset($vals['lang1_level']) || ( strlen($vals['lang1_level']) > 15 ) )
+      return array("Result" => "Error", "Message" => 'Lang1 Level not present or more than 15 chars');
+    $r['a_lang_1_level'] = $vals['lang1_level'];
+
+    if (!isset($vals['lang2']) || ( strlen($vals['lang2']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Lang2 not present or more than 50 chars');
+    $r['a_lang_2'] = $vals['lang2'];
+
+    if (!isset($vals['lang2_level']) || ( strlen($vals['lang2_level']) > 15 ) )
+      return array("Result" => "Error", "Message" => 'Lang2 Level not present or more than 15 chars');
+    $r['a_lang_2_level'] = $vals['lang2_level'];
+
+
+    if (!isset($vals['seva_details']) || ( strlen($vals['seva_details']) > 300 ) )
+      return array("Result" => "Error", "Message" => 'Seva Detais not present or more than 300 chars');
+    if (trim($vals['seva_details']) <> '')
+        $r['ae_seva_details'] = $vals['seva_details'];
+
+
+    if (!isset($vals['mental']) || ( strlen($vals['mental']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Mental not present or more than 160 chars');
+    if (trim($vals['mental']) <> '')
+    {
+        $r['a_problem_mental'] = 1;
+        $r['ae_desc_mental'] = $vals['mental'];
+    }
+    else
+        $r['a_problem_mental'] = 0;
+
+    if (!isset($vals['physical']) || ( strlen($vals['physical']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Physical not present or more than 160 chars');
+    if (trim($vals['physical']) <> '')
+    {
+        $r['a_problem_physical'] = 1;
+        $r['ae_desc_physical'] = $vals['physical'];
+    }
+    else
+        $r['a_problem_physical'] = 0;
+
+    if (!isset($vals['medication']) || ( strlen($vals['medication']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Medication not present or more than 160 chars');
+    if (trim($vals['medication']) <> '')
+    {
+        $r['a_medication'] = 1;
+        $r['ae_desc_medication'] = $vals['medication'];
+    }
+    else
+        $r['a_medication'] = 0;
+
+    if (!isset($vals['intox']) || ( strlen($vals['intox']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Intox not present or more than 160 chars');
+    if (trim($vals['intox']) <> '')
+    {
+        $r['a_addiction_current'] = 1;
+        $r['ae_desc_addiction_current'] = $vals['intox'];
+    }
+    else
+        $r['a_addiction_current'] = 0;
+
+    if (!isset($vals['othermeditaion']) || ( strlen($vals['othermeditaion']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Othermeditation not present or more than 160 chars');
+    if (trim($vals['othermeditaion']) <> '')
+    {
+        $r['a_other_technique'] = 1;
+        $r['ae_desc_other_technique'] = $vals['othermeditaion'];
+    }
+    else
+        $r['a_other_technique'] = 0;
+
+    $app['a_old'] = 1; // Assuming old student, since first phase is only for seva
+    $app['a_type'] = 'Sevak';
+    $app['a_status'] =  'Received';
+    $app['a_source'] = 'ExtApp';
+    $system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();    
+    $app['a_center'] = $centre;
+    $app['a_course'] = $course;
+    $app['a_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
+    $app['a_created'] = date('Y-m-d H:i:s');
+    $app['a_updated_by'] = $system_uids['COURSE-APPLICANT-UID'];
+    $app['a_updated'] = date('Y-m-d H:i:s');
+    $app['a_attended'] = 0;
+
+    foreach ($r as $key => $value) 
+    {
+        if ( substr($key,0,2) == 'a_')
+            $app[$key] = $value;
+        if ( substr($key,0,3) == 'ac_')
+            $app_ac[$key] = $value;
+        if ( substr($key,0,3) == 'ae_')
+            $app_ae[$key] = $value;
+    }
+    if ($app['a_city'] <> '')
+    {   
+        $q = "select c_id from dh_city where c_country='".$app['a_country']."' and c_state='".$app['a_state']."' and c_name='".$app['a_city']."' limit 1";
+        $city_id = db_query($q)->fetchField();
+        if ( $city_id <> '')
+            $app['a_city'] = $city_id;
+        else
+        {
+            $q = "select ci.c_id from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join 
+                dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where 
+                pc_pin='".$app['a_zip']."' limit 0,1";
+            $city = db_query($q)->fetchField();
+            if ($city > 0)
+                $app['a_city'] = $city;
+            else
+            {
+                /* We just could not find the city, so lets just add it */
+                $f['c_country'] = $app['a_country'];
+                $f['c_state'] = $app['a_state'];
+                $f['c_name'] = $app['a_city'];
+                $city = db_insert('dh_city')->fields($f)->execute();
+                $app['a_city'] = $city;
+            }
+        }
+    }
+
+    $app_id = db_insert('dh_applicant')->fields($app)->execute();
+    dh_send_letter('applicant', $app_id, $app['a_status'] );
+    if ( isset($app_ae) )
+    {
+        $app_ae['ae_applicant'] = $app_id;
+        $app_ae['ae_updated_by'] = $app_ae['ae_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
+        $app_ae['ae_updated'] = $app_ae['ae_created'] = date('Y-m-d H:i:s');
+        db_insert('dh_applicant_extra')->fields($app_ae)->execute();                
+    }
+
+    if (isset($app_ac))
+    {
+        $app_ac['ac_applicant'] = $app_id;
+        $app_ac['ac_updated_by'] = $app_ac['ac_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
+        $app_ac['ac_updated'] = $app_ac['ac_created'] = date('Y-m-d H:i:s');        
+        db_insert('dh_applicant_course')->fields($app_ac)->execute();               
+    }
+
+    $msg = "Application submitted successfully";
+    return array("Result" => "Success", "Message" => $msg, 'ID' => $app_id );
 
 }
 
