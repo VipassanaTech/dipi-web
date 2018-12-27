@@ -765,7 +765,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 
 
 	// $subscription['']='choose';
-	$subscription=array('Life Long'=>'Life Long','Yearly'=>'Yearly','Privilage'=>'Privilege',''=>'Choose');
+	$subscription=array('Life Long'=>'Life Long','Yearly'=>'Yearly','Privilege'=>'Privilege',''=>'Choose');
 	$form['student_subscription'] = array(
 		'#title' => 'Subscription', 
 		'#type' => 'select', 
@@ -933,7 +933,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						
   						}
-  						if(SubVal == 'Privilage')
+  						if(SubVal == 'Privilege')
   						{
 	            			var years = $('#years').val();
   							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val())); 
@@ -1205,7 +1205,7 @@ function dh_patrika_add_course_students($course)
 		$r['p_mode'] = 'PAPER';
 		$r['p_vray_id'] = db_query("select nextval('patrika')")->fetchField();
 		$r['p_language'] = 'hi';		
-		$r['p_subscription_type'] = 'Privilage';
+		$r['p_subscription_type'] = 'Privilege';
 		$r['p_start_date'] = date('Y-m-d');
 		$r['p_end_date'] = date('Y-m-d', strtotime("+1 year") );
 		$r['p_updated'] = date('Y-m-d H:i:s');
