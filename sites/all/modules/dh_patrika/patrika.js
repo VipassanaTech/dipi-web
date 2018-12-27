@@ -43,11 +43,11 @@
 		           	if(obj.CityCount > 0)
 		           	{
 		           		BindDropdown='';
+		        		if (city == "")
+		        			city = obj['data'][0]['c_id'];
 		           		$('#student_regi_city').html('');
 			        	jQuery.each(obj.city,function(key,val)
 			        	{
-			        		if (city == "")
-			        			city = obj['data'][0]['c_id'];
 			        		if(val.c_id == city )
 			        		{
 									BindDropdown += '<option value="' + val.c_id+ '" selected="selected">' +val.c_name + '</option>';
@@ -60,7 +60,7 @@
            				});
         				BindDropdown += '<option value="">Choose</option><option value="Other">Other</option>';
         				jQuery('#student_regi_city').html(BindDropdown);
-        				jQuery('#student_regi_city').val(obj['data'][0]['c_id']).change();
+        				jQuery('#student_regi_city').val(city).change();
 
 
 		           	}
