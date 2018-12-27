@@ -936,13 +936,13 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
   						if(SubVal == 'Privilege')
   						{
 	            			var years = $('#years').val();
-  							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val())); 
+  							date2.setFullYear(date2.getFullYear() + parseInt($('#edit-years').val()) ); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
   						if(SubVal == 'Yearly')
   						{
-  							date2.setFullYear(date2.getFullYear()+ parseInt($('#edit-years').val()); 
+  							date2.setFullYear(date2.getFullYear()+ parseInt($('#edit-years').val()) ); 
   							dt2.datepicker( 'option', 'maxDate', date2);
   							$('.student_sub_end_date').datepicker('setDate', date2);
   						}
