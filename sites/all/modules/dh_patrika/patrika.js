@@ -79,8 +79,8 @@
 
   $(document).ready(function(){
     // alert("HELLO");
-     if ($("#student_regi_zip").length)
-     	check_pincode($("#student_regi_zip").val());
+     //if ($("#student_regi_zip").length)
+     //	check_pincode($("#student_regi_zip").val());
 
      $(".delete-pid").click(function(){
      	var result = confirm("Are you sure you want to delete payment id "+$(this).attr("pid")+" ?");
