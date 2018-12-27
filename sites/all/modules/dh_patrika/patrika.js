@@ -1,10 +1,10 @@
 (function ($) {
 
-	function check_pincode( pin )
+	function check_pincode( pin, city )
 	{
 		var PinLength=pin.length;
 		var url = Drupal.settings.basePath+"patrika/getDetailsByZipcode"; // the script where you handle the form input.
- 	
+
 		if(PinLength == 6)
 		{
 			var PinCode=pin;
@@ -46,8 +46,9 @@
 		           		$('#student_regi_city').html('');
 			        	jQuery.each(obj.city,function(key,val)
 			        	{
-
-			        		if(val.c_id == obj['data'][0]['c_id'])
+			        		if (city == "")
+			        			city = obj['data'][0]['c_id'];
+			        		if(val.c_id == city )
 			        		{
 									BindDropdown += '<option value="' + val.c_id+ '" selected="selected">' +val.c_name + '</option>';
 			        		}
@@ -79,8 +80,8 @@
 
   $(document).ready(function(){
     // alert("HELLO");
-     //if ($("#student_regi_zip").length)
-     //	check_pincode($("#student_regi_zip").val());
+     if ($("#student_regi_zip").length)
+     	check_pincode($("#student_regi_zip").val(), $("#student_regi_city").val() );
 
      $(".delete-pid").click(function(){
      	var result = confirm("Are you sure you want to delete payment id "+$(this).attr("pid")+" ?");
@@ -178,7 +179,7 @@
   							dt2.datepicker( 'option', 'maxDate', date2);
   							jQuery('.student_resub_end_date').datepicker('setDate', date2);
   						}
-  						if(SubVal == 'Privilage')
+  						if(SubVal == 'Privilege')
   						{
   							date2.setFullYear(date2.getFullYear()+25); 
   							dt2.datepicker( 'option', 'maxDate', date2);
@@ -195,7 +196,7 @@
 
 
     	jQuery("#student_regi_zip").keyup(function(){
-    		check_pincode(jQuery(this).val());
+    		check_pincode(jQuery(this).val(), "");
     	});
 
     	jQuery("#student_regi_city").change(function(){
