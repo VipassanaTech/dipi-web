@@ -1197,6 +1197,7 @@ function dh_patrika_add_course_students($course)
 		$r['p_city'] = $row['s_city'];
 		if (!$r['p_city'])
 			$r['p_city'] = db_query("select pc_city from dh_pin_code where pc_pin='".$r['p_zip']."' limit 1")->fetchField();
+		if (!$r['p_city']) unset($r['p_city']);
 		$r['p_email'] = $row['s_email'];
 		$r['p_address'] = _split_address($row['s_address']);
 		//echo $r['p_address']."\n\n";
