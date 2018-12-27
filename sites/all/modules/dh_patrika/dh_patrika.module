@@ -668,7 +668,7 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 	if ( isset($edit_data['p_address']))
 		$temp = explode(";", $edit_data['p_address']);
 	if ( count($temp) < 3 )
-		for($i=count($temp)-1; $i<3; $i++)
+		for($i=count($temp); $i<3; $i++)
 			$temp[$i] = '';
 	$form['student_address1'] = array(
 		'#type' => 'textfield',
