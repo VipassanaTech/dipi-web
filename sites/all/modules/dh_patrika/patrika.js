@@ -45,7 +45,6 @@
 		           		BindDropdown='';
 		        		if (city == "")
 		        			city = obj['data'][0]['c_id'];
-		        		alert(city);
 		           		$('#student_regi_city').html('');
 			        	jQuery.each(obj.city,function(key,val)
 			        	{
@@ -81,7 +80,6 @@
 
   $(document).ready(function(){
     // alert("HELLO");
-    alert($("#student_regi_city").val());
      if ($("#student_regi_zip").length)
      	check_pincode($("#student_regi_zip").val(), $("#student_regi_city").val() );
 
