@@ -45,6 +45,7 @@
 		           		BindDropdown='';
 		        		if (city == "")
 		        			city = obj['data'][0]['c_id'];
+		        		alert(city);
 		           		$('#student_regi_city').html('');
 			        	jQuery.each(obj.city,function(key,val)
 			        	{
