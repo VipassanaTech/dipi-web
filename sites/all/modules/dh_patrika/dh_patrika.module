@@ -1020,7 +1020,9 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	$rec['p_address'] = $input['student_address1'].';'.$input['student_address2'].';'.$input['student_address3'];
 	$rec['p_country'] = $input['student_country'];
 	$rec['p_state'] = $input['student_state'];
-	$rec['p_city'] = $city_id;
+	if ($city_id)
+		$rec['p_city'] = $city_id;
+
 	$rec['p_language'] = $input['language'];
 	$rec['p_zip'] = $input['student_address_zip'];
 	$rec['p_email'] = $input['p_email'];
