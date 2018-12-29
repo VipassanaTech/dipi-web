@@ -906,7 +906,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			$app_al['al_special_req'] = 0;
 
 		if ($app_al['al_at_year'] == '')
-			unset($app_al['al_at_year']);
+			$app_al['al_at_year'] = null;
 
 		if ($app_lc_id > 0)
 		{				
