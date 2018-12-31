@@ -159,7 +159,7 @@ function dh_manage_courses()
 							if (data.dh_course.c_finalized == "1")
 							    return "Yes (<a href=\"/course/'.arg(1).'/"+data.dh_course.c_id+"\">View</a>)"
 							else
-								return "No";
+								return "No (<a href=\"/course/'.arg(1).'/"+data.dh_course.c_id+"\">View</a>)";
 						} },
 					],
 				    select: true,
