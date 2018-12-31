@@ -135,7 +135,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$doc_types = array('' => 'Choose', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_aadhar' => 'Aadhar', 'a_voter_id' => 'National ID');
 	$default_doc_type = '';
-	$default_doc_id = '';
+	$default_doc_id = '';	
 	if (!$add || (isset($edit_data['a_passport'])) )
 	{
 		if ( $edit_data['a_passport'] <> '' ) $default_doc_type = 'a_passport';
@@ -769,7 +769,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
-		$res = db_query("select a_course, a_conf_no, a_center, a_status from dh_applicant where a_id=$app_id")->fetchAssoc();
+		$res = db_query("select a_course, a_status, a_conf_no, a_center, a_status from dh_applicant where a_id=$app_id")->fetchAssoc();
 		$course_id = $res['a_course'];
 		$centre_id = $res['a_center'];
 		$old_status = $res['a_status'];
