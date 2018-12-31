@@ -90,6 +90,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_type'])?$edit_data['a_type']:'Student', '#weight' => 22, '#required' => 1);
 	$form[$group]['a_alist'] = array('#title' => 'A-List?', '#type' => 'checkbox',  '#weight' => 23, 
 		'#default_value' => isset($edit_data['a_alist'])?$edit_data['a_alist']:'' );
+	$form[$group]['a_monk'] = array('#title' => 'Non-householder?', '#type' => 'checkbox',  '#weight' => 24, 
+		'#default_value' => isset($edit_data['a_monk'])?$edit_data['a_monk']:'' );
 
 
 	$form[$group]['a_zip'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 25, 
@@ -695,6 +697,11 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		$app['a_alist'] = 1;
 	else
 		$app['a_alist'] = 0;
+
+	if (isset($input['a_monk']) && ($input['a_monk']))
+		$app['a_monk'] = 1;
+	else
+		$app['a_monk'] = 0;
 
 
 	if ($app['a_city'] <> '')
