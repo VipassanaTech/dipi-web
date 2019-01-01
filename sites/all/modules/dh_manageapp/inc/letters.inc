@@ -448,7 +448,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[UserInput]'] 		= $comment;
 	if ((date('Y-m-d') > $row['c_end']) && $row['ct_teacher'] <> '')
 	{
-		$q = "select CONCAT(t_f_name,' ',t_l_name,', ', 'Contact -',' ', t_mob_phone,' ','Email -',' ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender order by t_f_name asc ";
+		$q = "select CONCAT(t_f_name,' ',t_l_name,' | ','Contact: ',t_mob_phone,' | ','Email: ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender order by t_f_name asc ";
 		$rows = db_query($q);
 		foreach( $rows as $r )
 			$search['[ATDetails]'] .= $r->teacher."\n";
