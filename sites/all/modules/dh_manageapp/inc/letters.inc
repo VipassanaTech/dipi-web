@@ -379,8 +379,8 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	switch( $type )
 	{
 		case 'applicant':
-			$q = "select a.a_id, a.a_type, a.a_center, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type 
-				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where a.a_id='$id' ";
+			$q = "select a.a_id, a.a_type, a.a_center, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher
+				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id where a.a_id='$id' ";
 			break;
 		case 'student':
 			break;
@@ -446,7 +446,17 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[ConfirmationNo]'] = $row['a_conf_no'];
 	$search['[ApplicantType]']  = $row['a_type'];
 	$search['[UserInput]'] 		= $comment;
-
+	if ((date('Y-m-d') > $row['c_end']) && $row['ct_teacher'] <> '')
+	{
+		$q = "select CONCAT(t_f_name,' ',t_l_name,' | ','Contact: ',t_mob_phone,' | ','Email: ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender order by t_f_name asc ";
+		$rows = db_query($q);
+		foreach( $rows as $r )
+			$search['[ATDetails]'] .= $r->teacher."\n";
+	}
+	else
+	{
+		$search['[ATDetails]']  = '';
+	}
 
 	$q = "select lf_name, lf_value from dh_letter_fields where lf_center=".$row['CentreID']." and lf_deleted=0";
 	$merge_fields = db_query($q)->fetchAllKeyed();
@@ -613,7 +623,7 @@ function _get_letter_fields( $centre )
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[CourseType]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]', 
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[Applicant_id]', '[ConfirmationNo]', '[UserInput]', 
-		'[LetterDetailURL]', '[ApplicantType]');
+		'[LetterDetailURL]', '[ApplicantType]', '[ATDetails]');
 
 	$q = "select lf_name from dh_letter_fields where lf_center = $centre  and lf_deleted =0  order by lf_name"; //(0, $centre)
 	$custom_fields = db_query($q)->fetchCol();
