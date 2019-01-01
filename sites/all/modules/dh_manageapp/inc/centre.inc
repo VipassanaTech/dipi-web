@@ -345,6 +345,9 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		if ( substr($key,0,3) == 'cs_')
 			$centre_setting[$key] = $value;
 	}
+	if ($centre['c_dana'] == '')
+		$centre['c_dana'] = 0;
+
 	if ($centre['c_city'] <> '')
 	{	
 		$q = "select c_id from dh_city where c_country='".$centre['c_country']."' and c_state='".$centre['c_state']."' and c_name='".$centre['c_city']."' limit 1";
