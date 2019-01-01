@@ -446,7 +446,17 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[ConfirmationNo]'] = $row['a_conf_no'];
 	$search['[ApplicantType]']  = $row['a_type'];
 	$search['[UserInput]'] 		= $comment;
-
+	if (date('Y-m-d') > $row['c_end'])
+	{
+		$q = "select CONCAT(t_f_name,' ',t_l_name,', ', 'Contact -',' ', t_mob_phone,' ','Email -',' ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender order by t_f_name asc ";
+		$rows = db_query($q);
+		foreach( $rows as $r )
+			$search['[ATDetails]'] .= $r->teacher."\n";
+	}
+	else
+	{
+		$search['[ATDetails]']  = '';
+	}
 
 	$q = "select lf_name, lf_value from dh_letter_fields where lf_center=".$row['CentreID']." and lf_deleted=0";
 	$merge_fields = db_query($q)->fetchAllKeyed();
@@ -613,7 +623,7 @@ function _get_letter_fields( $centre )
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[CourseType]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]', 
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[Applicant_id]', '[ConfirmationNo]', '[UserInput]', 
-		'[LetterDetailURL]', '[ApplicantType]');
+		'[LetterDetailURL]', '[ApplicantType]', '[ATDetails]');
 
 	$q = "select lf_name from dh_letter_fields where lf_center = $centre  and lf_deleted =0  order by lf_name"; //(0, $centre)
 	$custom_fields = db_query($q)->fetchCol();
