@@ -270,23 +270,23 @@ function map_application_fields($row)
 	$occupation = strtolower($row['a_occupation']);
 	if ( $row['a_occupation_past'] )
 	{
-		$occupation = $row['a_occupation_past'];
+		$occupation = strtolower($row['a_occupation_past']);
 		$fields['past'] = 'Yes';		
 	}
 	else
 	 	$fields['present'] = 'Yes'; // Occupation
-	$arr_occ = array('doctor', 'lawyer', 'engineer', 'it', 'business', 'ca', 'ngo', 'student', 'defense', 'govt class 1', 'govt class 2', 'real estate', 'agriculture', 'teacher', 'politician' );
+	$arr_occ = array('doctor', 'lawyer', 'engineer', 'it', 'business', 'ca/acct.', 'ngo', 'student', 'defense', 'govt. (class-1)', 'govt. (class-2)', 'real estate', 'agriculture', 'teacher', 'politician' );
 	if ($occupation == 'doctor') $fields['Doctor'] = 'Yes';
 	if ($occupation == 'lawyer') $fields['lawyer'] = 'Yes'; 	
 	if ($occupation == 'engineer') $fields['engg'] = 'Yes';	
 	if ($occupation == 'it') $fields['it'] = 'Yes'; 
 	if ($occupation == 'business') $fields['bus'] = 'Yes'; 
-	if ($occupation == 'ca') $fields['ca'] = 'Yes';	
+	if ($occupation == 'ca/acct.') $fields['ca'] = 'Yes';	
 	if ($occupation == 'ngo') $fields['ngo'] = 'Yes';		
 	if ($occupation == 'student') $fields['student'] = 'Yes'; 	
 	if ($occupation == 'defense') $fields['defence'] = 'Yes'; 
-	if ($occupation == 'govt class 1') $fields['class1'] = 'Yes';	
-	if ($occupation == 'govt class 2') $fields['class2'] = 'Yes';
+	if ($occupation == 'govt. (class-1)') $fields['class1'] = 'Yes';	
+	if ($occupation == 'govt. (class-2)') $fields['class2'] = 'Yes';
 	if ($occupation == 'real estate') $fields['real est'] = 'Yes';
 	if ($occupation == 'agriculture') $fields['agri'] = 'Yes';
 	if ($occupation == 'teacher') $fields['teacher'] = 'Yes';	
