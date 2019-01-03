@@ -1217,12 +1217,15 @@ function dh_app_update_attended()
 {
 	global $user;
 	$app_id = arg(1);
-	$r = db_query("select a_course, a_center, a_gender from dh_applicant where a_id=$app_id")->fetchAssoc();
+	$r = db_query("select a_course, a_center, a_gender, c_start from dh_applicant left join dh_course on c_id = a_course where a_id=$app_id")->fetchAssoc();
 	$course_id = $r['a_course'];
 	$centre_id = $r['a_center'];
 	$gender = $r['a_gender'];
 	$res = false;
 	$out = array();
+
+	if (date('Y-m-d')== $r['c_start'])
+	{
 	if ( $_REQUEST['a'] == 'false' )
 	{
 		$app['a_attended'] = 0;
@@ -1253,7 +1256,7 @@ function dh_app_update_attended()
 		drupal_json_output($out);
 		exit;
 	}
-
+	}
 	$fields['aa_section'] = $_REQUEST['s'];
 	$fields['aa_acco'] = $_REQUEST['r'];
 	$fields['aa_group'] = $_REQUEST['g'];
@@ -1280,7 +1283,7 @@ function dh_app_update_attended()
 	}
 
 	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and a_gender='$gender' and  aa_section='".$fields['aa_section']."' and aa_acco='".$fields['aa_acco']."' and aa_applicant <> '$app_id'")->fetchField();
-	if ($check_id > 0 )
+	if ($check_id > 0 && date('Y-m-d')== $r['c_start'])
 	{
 		$out['status'] = false; 
 		$out['msg'] = 'Room has already been alloted';
