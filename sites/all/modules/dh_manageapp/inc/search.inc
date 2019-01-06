@@ -50,6 +50,14 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$courses_j[] = array('id' => $k, 'name' => $v);
 	$courses_json = json_encode($courses_j);
 
+	$centres = array();
+	$q = "select c_id, c_name from dh_center order by c_name";
+	$centres = db_query($q)->fetchAllKeyed();
+	$centres_j = array();
+	foreach( $centres as $k => $v)
+		$centres_j[] = array('id' => $k, 'name' => $v);
+	$centres_json = json_encode($centres_j);
+
 	$pagination = db_query("select cs_pagination from dh_center_setting where cs_center=$centre")->fetchField();
 	if ($pagination == '')
 		$pagination = 'bottom';
@@ -66,7 +74,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	}
 
 	if ( $type == 'applicant')
-		$q = "select c.c_finalized, a_id, a_type, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_monk, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, a_willing_to_serve, a_extra, a_referral, c.c_end, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, aa_left_comment, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, ae_desc_other_technique, ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant)  left join dh_applicant_attended aa on (a_id=aa_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country)  where $where order by a_created,a_vray_id";
+		$q = "select c.c_finalized, a_id, a_type, a_center, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_monk, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, a_willing_to_serve, a_extra, a_referral, c.c_end, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, aa_left_comment, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, ae_desc_other_technique, ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant)  left join dh_applicant_attended aa on (a_id=aa_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country) left join dh_center ce on (a_center=ce.c_id)  where $where order by a_created,a_vray_id";
 	else
 		$q = "select c.c_finalized, s.s_id as 'a_id', 'Student' as 'a_type', sc_course as 'a_course', sc_conf_no as 'ConfNo', concat(s_f_name, ' ',s_m_name, ' ',s_l_name) as 'Full Name', s_gender as 'a_gender', 'Attended' as 'a_status', ci.c_name as 'City', st.s_name, co.c_name as 'Country', '' as 'a_city_str', c.c_name, s_address as 'a_address', s_zip as 'a_zip', s_email as  'a_email', s_phone_home as  'a_phone_home',s_phone_office as 'a_phone_office',s_phone_mobile as 'a_phone_mobile',s_education as 'a_education',s_occupation as 'a_occupation',s_occupation_past as 'a_occupation_past',s_company as 'a_company', s_designation as 'a_designation', s_department as 'a_department',s_alist as  'a_alist', s_monk as 'a_monk', s_photo as 'a_photo', TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', s_lang_1 as 'a_lang_1', s_lang_2 as 'a_lang_2', s_lang_3 as  'a_lang_3', s_langs as 'a_langs', 1 as 'a_old', 1 as 'a_attended', c.c_end, sci_teen as 'ac_teen',sci_10d as 'ac_10d', sci_stp as 'ac_stp', sci_spl as 'ac_spl', sci_20d as  'ac_20d',sci_30d as  'ac_30d', sci_45d as  'ac_45d', sci_60d as 'ac_60d', sci_tsc as 'ac_tsc', sci_teacher as 'ac_teacher', CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', '' as 'ac_practice_details', sc_desc_physical as 'ae_desc_physical', sc_desc_medication  as 'ae_desc_medication',  sc_desc_mental as 'ae_desc_mental', sc_desc_other_technique as 'ae_desc_other_technique', sc_addiction_current 'ae_desc_addiction_current', '' as 'ae_pregnant', '' as 'ae_pregnant_detail', sc_uri as 'a_uri' from dh_student s left join dh_student_course sc on (s.s_id=sc_student) left join dh_student_course_input sci on (s.s_id=sci_student) left join dh_course c on (sc_course=c.c_id) left join dh_country co on (s.s_country=co.c_code) left join dh_city ci on s_city=ci.c_id left join dh_state st on (s.s_state=st.s_code and s.s_country=st.s_country)  where $where order by s_f_name";
 
@@ -91,6 +99,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['o_n'] = $r['a_old']?"Old":"New";
 		$rs['o_n'] .= '<br>'.$rs['gender'];
 		$rs['courseid'] = $r['a_course'];
+		$rs['centreid'] = $r['a_center'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
 		if ( $r['a_attended'] || ($r['a_status'] == $system_statues['STATUS-LEFT'] ))
 			$rs['allowtransfer'] = 0;
@@ -253,6 +262,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				} )
 			';
 
+	$allow_other_centers = user_access('access other center courses')?1:0;
+
 /*
 
 	            $.extend( true, {}, buttonCommon, {
@@ -346,8 +357,10 @@ function dh_manageapp_search_results( $type, $where, $centre )
 
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
-				var courses = '.$courses_json.';	
+				var courses = '.$courses_json.';
+				var centres = '.$centres_json.';	
 				var comment = "";			
+		        var allow_other_centers = '.$allow_other_centers.';
 
 			    var buttonCommon = {
 			        exportOptions: {
@@ -658,6 +671,24 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					window.location.href = "/referral/'.arg(1).'/add?aid="+id;					
 				}
 
+				$(document).on("change", "#centre-select", function(){
+
+					  ///alert("I am called");
+					$.getJSON( "/get-courses/"+$(this).val(), {} )
+					  .done(function( courses ) {
+					        $(".course-select").empty();
+					        var i = 0;
+					        for(l = courses.length; i < l; i++) 
+					        {
+					        	$(".course-select").append($("<option>", { value : courses[i].id }).text( courses[i].name ));
+					        }
+
+					  })
+					  .fail(function( jqxhr, textStatus, error ) {
+					    var err = textStatus + ", " + error;
+					    alert("Error getting courses "+err);
+					  });			
+				});
 
 				//$("#table-applicants tbody").on("click", ".course-transfer,.applicant-add", function() {
 				$("#table-applicants tbody").on("change", "#action-type", function() {
@@ -666,6 +697,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					var action = $(this).val();					
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
+			        var centre_id = row.data().centreid;
+
 			        if ( action == "" )
 			        	exit;
 			        if (action == "Add-referral")
@@ -682,12 +715,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        if ( action == "Transfer")
 			        	comment_transfer = "<label>Comment</label><br><textarea name=\"comment\" id=\"trf-comment\" size=\"30\"></textarea>";
 					$.confirm({
-					    title: "Select Course",
+					    title: "",
 					    content: "" +
 					    "<form action=\"\" class=\"formName\">" +
 					    "<div class=\"form-group\">" +
-					    "<label>"+action+" "+row.data().name+" To course</label>" +
-					    "<select class=\"course-select form-control\" name=\"course_select\" required><option value=\"\">Choose</option></select>" +
+					    "<label>"+action+" "+row.data().name+" To Centre</label>" +
+					    "<select class=\"centre-select form-control\" name=\"centre_select\" id=\"centre-select\" required><option value=\"\">Choose</option></select>" + "<label>To Course </label><select class=\"course-select form-control\" name=\"course_select\" required><option value=\"\">Choose</option></select>" +
 					    comment_transfer +
 					    "</div>" +
 					    "</form>",
@@ -698,6 +731,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					            action: function () {
 					                var course = this.$content.find(".course-select").val();
 					                var course_txt = this.$content.find(".course-select :selected").text();
+					            	var centre = this.$content.find(".centre-select").val();
+					                var centre_txt = this.$content.find(".centre-select :selected").text();
 					                var c = this.$content.find("#trf-comment").val();
 
 					                if(!course){
@@ -716,7 +751,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					                //$.alert("Your selected " + course + " - " + row.data().aid );
 					                if ( action == "Transfer")
 					                {
-										$.getJSON( "/move-to-course/"+id+"/"+course, {c: c} )
+										$.getJSON( "/move-to-course/"+id+"/"+course+"/"+centre, {c: c} )
 										  .done(function( json ) {
 										  	if (json.status == "OK")
 										  	{
@@ -755,7 +790,19 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					        {
 					        	$(".course-select").append($("<option>", { value : courses[i].id }).text( courses[i].name ));
 					        }
-					        this.$content.find("form").on("submit", function (e) {
+					        i = 0;
+					        for(l = centres.length; i < l; i++) 
+					        {
+					        	if (allow_other_centers)
+					     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
+					     	 	else
+					     	 	{
+					     	 		if (centres[i].id == centre_id)
+						     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
+					     	 	}
+					        }
+					        $(".centre-select").val(centre_id);
+					        this.$content.find("form").on("submti", function (e) {
 					            // if the user submits the form by pressing enter in the field.
 					            e.preventDefault();
 					            jc.$$formSubmit.trigger("click"); // reference the button and click it

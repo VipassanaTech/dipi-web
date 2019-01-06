@@ -58,7 +58,9 @@ function dh_manageapp_permission()
 	$perms['view referral list'] = array('title' => t('View referral list'));
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
-	
+	$perms['access other center courses'] = array('title' => t('Access other center course list'));
+
+
 	return $perms;
 }
 
@@ -237,8 +239,8 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
-	$items['move-to-course/%app_id/%course_id'] = array( 'title' => t('Move To Course'),
-	       'page callback' => '_move_to_course',
+	$items['move-to-course/%app_id/%course_id/%centre_id'] = array( 'title' => t('Move To Course'),
+	       'page callback' => '_move_to_centre_course',
 	       'access arguments' => array('access course'),
 	       'type' => MENU_CALLBACK);
 
@@ -328,6 +330,11 @@ function dh_manageapp_menu()
            'page arguments' => array('dh_daily_activity_form'),
            'page callback' => 'drupal_get_form',
 	       'access arguments' => array('access daily activity'),
+	       'type' => MENU_CALLBACK);
+
+	$items['get-courses/%centre_id'] = array( 'title' => t('Get Courses'),
+	       'page callback' => '_get_courses',
+	       'access arguments' => array('access other center courses'),
 	       'type' => MENU_CALLBACK);
 
 
@@ -726,6 +733,20 @@ function dh_get_course_types()
 	exit;
 }
 
+
+function _get_courses()
+{
+	$centre = arg(1);
+	$q = "select c_name as 'name', c_id as 'id' from dh_course where c_center=$centre";
+	$hand = db_query($q);
+	$out = array();
+	while($row = $hand->fetchAssoc())
+	{
+		$out[] = $row;
+	}
+	drupal_json_output($out);
+	exit;
+}
 
 
 
@@ -1139,13 +1160,25 @@ function _get_activity()
 	exit;
 }
 
-function _move_to_course()
+function _move_to_centre_course()
 {
 	global $user;
 	$app_id = arg(1);
 	$new_course = arg(2);
+	$new_centre = arg(3);
 	$rs = db_query("select a_center, a_course from dh_applicant where a_id=".$app_id)->fetchAssoc();
+
+	if ( (!user_access("access other center courses")) && ($new_centre <> $rs['a_center']))
+	{
+		$out = array();
+		$out['status'] = 'Failed';
+		$out['msg'] = 'No access to other centre';
+		drupal_json_output($out);
+		exit;
+	}
+
 	$course_name = db_query("select c_name from dh_course where c_id=".$rs['a_course'])->fetchField();
+	$centre_name = db_query("select c_name from dh_center where c_id =".$rs['a_center'])->fetchField();
 
 	$SYSTEM_RECEIVED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-RECEIVED'")->fetchField();
 	$comment = '';
@@ -1166,6 +1199,7 @@ function _move_to_course()
 
 	$fields = array();
 	$fields['a_course'] = $new_course;
+	$fields['a_center'] = $new_centre;
 	$fields['a_status'] = $SYSTEM_RECEIVED; //STATUS_RECEIVED;
 	$fields['a_conf_no'] = '';
 	db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
