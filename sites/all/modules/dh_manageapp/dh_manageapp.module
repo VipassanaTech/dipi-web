@@ -737,7 +737,7 @@ function dh_get_course_types()
 function _get_courses()
 {
 	$centre = arg(1);
-	$q = "select c_name as 'name', c_id as 'id' from dh_course where c_center=$centre";
+	$q = "select c_name as 'name', c_id as 'id' from dh_course where c_center=$centre and c_deleted = 0 and c_start >= curdate() order by c_start";
 	$hand = db_query($q);
 	$out = array();
 	while($row = $hand->fetchAssoc())
