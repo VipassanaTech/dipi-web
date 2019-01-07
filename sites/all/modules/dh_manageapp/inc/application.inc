@@ -39,10 +39,13 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		drupal_goto("course/$centre_id/$course_id");
 	}
 
-	$LC = false;
-	$lc_check = strtolower(db_query("select td_val3 from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchField());
-	if ($lc_check == 'lc')
+	$LC = $TEEN = false;
+
+	$course_check = strtolower(db_query("select td_val3 from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchField());
+	if ($course_check == 'lc')
 		$LC = true;
+	else $TEEN = true;
+		
 
 	//$course_id = 1;
 	$group = 'Personal Information';
@@ -410,6 +413,21 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	}
 
+	if ( $TEEN )
+	{
+		$group = 'Teenagers Course Information';
+		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+		$form[$group]['ae_father'] = array('#title' => 'Name of Father', '#type' => 'textfield', '#weight' => 0,
+			'#default_value' => isset($edit_data['ae_father'])?$edit_data['ae_father']:'', '#required' => 0, );
+		$form[$group]['ae_mother'] = array('#title' => 'Name of Mother', '#type' => 'textfield', '#weight' => 1,
+			'#default_value' => isset($edit_data['ae_mother'])?$edit_data['ae_mother']:'', '#required' => 0, );
+		$form[$group]['ae_parent_course'] = array('#title' => 'Parents have attended course?', '#type' => 'radios', 
+			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 2,
+			'#default_value' => isset($edit_data['ae_father'])?$edit_data['ae_father']:'0', '#required' => 0, );
+		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
+			 '#weight' => 3, '#maxlength' => 100,
+			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 1, );
+	}
 
 	$group = 'Attending';
 	//$sections = array('' => 'Choose', 'A' => 'A', 'B' => 'B');

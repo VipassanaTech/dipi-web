@@ -206,6 +206,19 @@ function create_application_pdf( $application_id )
 			
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
 	}
+
+	elseif ( $row['td_val3'] == 'Teen')
+	{
+
+		$fields = map_application_fields($row);
+		$fields['dad'] = $row['ae_father']; 	
+		$fields['mom'] = $row['ae_mother'];
+		$fields['atsig'] = $row['al_recommending'];
+		$fields['comp_course'] = $row['ae_parent_course'];
+			
+		$template = drupal_get_path("module", "dh_manageapp")."/templates/teenager-template.pdf";
+	}
+
 	else
 	{
 		$fields = map_application_fields($row);
