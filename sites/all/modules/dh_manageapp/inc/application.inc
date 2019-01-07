@@ -423,7 +423,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#default_value' => isset($edit_data['ae_mother'])?$edit_data['ae_mother']:'', '#required' => 0, );
 		$form[$group]['ae_parent_course'] = array('#title' => 'Parents have attended course?', '#type' => 'radios', 
 			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 2,
-			'#default_value' => isset($edit_data['ae_father'])?$edit_data['ae_father']:'0', '#required' => 0, );
+			'#default_value' => isset($edit_data['ae_parent_course'])?$edit_data['ae_parent_course']:'0', '#required' => 0, );
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
 			 '#weight' => 3, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 1, );
