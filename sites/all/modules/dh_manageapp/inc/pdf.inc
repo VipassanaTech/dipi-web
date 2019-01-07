@@ -214,7 +214,7 @@ function create_application_pdf( $application_id )
 		$fields['dad'] = $row['ae_father']; 	
 		$fields['mom'] = $row['ae_mother'];
 		$fields['atsig'] = $row['al_recommending'];
-		$fields['comp_course'] = $row['ae_parent_course'];
+		$fields['comp_course'] = $row['ae_parent_course']?'Yes':'No';
 			
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/teenager-template.pdf";
 	}
