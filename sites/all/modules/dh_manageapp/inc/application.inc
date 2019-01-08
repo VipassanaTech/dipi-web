@@ -44,9 +44,10 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$course_check = strtolower(db_query("select td_val3 from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchField());
 	if ($course_check == 'lc')
 		$LC = true;
-	else $TEEN = true;
+	elseif ($course_check == 'Teen')
+		$TEEN = true;
 		
-
+	else
 	//$course_id = 1;
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline')); 
