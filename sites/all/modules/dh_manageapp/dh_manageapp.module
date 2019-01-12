@@ -334,7 +334,7 @@ function dh_manageapp_menu()
 
 	$items['get-courses/%centre_id'] = array( 'title' => t('Get Courses'),
 	       'page callback' => '_get_courses',
-	       'access arguments' => array('access other center courses'),
+	       'access arguments' => array('transfer course'),
 	       'type' => MENU_CALLBACK);
 
 
@@ -1168,7 +1168,7 @@ function _move_to_centre_course()
 	$new_centre = arg(3);
 	$rs = db_query("select a_center, a_course from dh_applicant where a_id=".$app_id)->fetchAssoc();
 
-	if ( (!user_access("access other center courses")) && ($new_centre <> $rs['a_center']))
+	if ( (!user_access("access other center courses")) && (!user_access("transfer course")) && ($new_centre <> $rs['a_center']))
 	{
 		$out = array();
 		$out['status'] = 'Failed';

@@ -53,10 +53,20 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$centres = array();
 	$q = "select c_id, c_name from dh_center order by c_name";
 	$centres = db_query($q)->fetchAllKeyed();
+
 	$centres_j = array();
 	foreach( $centres as $k => $v)
 		$centres_j[] = array('id' => $k, 'name' => $v);
 	$centres_json = json_encode($centres_j);
+
+	$user_centres = array();
+	$q = "Select c_id, c_name from dh_center left join dh_user_center uc on c_id=uc_center where uc_user='".$user->uid." and uc_deleted=0' order by c_name";
+	$user_centres = db_query($q)->fetchAllKeyed();
+
+	$user_centres_j = array();
+	foreach( $user_centres as $k => $v)
+		$user_centres_j[] = array('id' => $k, 'name' => $v);
+	$user_centres_json = json_encode($user_centres_j);
 
 	$pagination = db_query("select cs_pagination from dh_center_setting where cs_center=$centre")->fetchField();
 	if ($pagination == '')
@@ -358,7 +368,9 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
 				var courses = '.$courses_json.';
-				var centres = '.$centres_json.';	
+				var centres = '.$centres_json.';
+				var user_centres = '.$user_centres_json.';	
+
 				var comment = "";			
 		        var allow_other_centers = '.$allow_other_centers.';
 
@@ -797,12 +809,13 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
 					     	 	else
 					     	 	{
-					     	 		if (centres[i].id == centre_id)
-						     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
+					     	 		i=0;
+					     	 		for(l = user_centres.length; i < l; i++)
+						     	 	$(".centre-select").append($("<option>", { value : user_centres[i].id }).text( user_centres[i].name ));
 					     	 	}
 					        }
 					        $(".centre-select").val(centre_id);
-					        this.$content.find("form").on("submti", function (e) {
+					        this.$content.find("form").on("submit", function (e) {
 					            // if the user submits the form by pressing enter in the field.
 					            e.preventDefault();
 					            jc.$$formSubmit.trigger("click"); // reference the button and click it
