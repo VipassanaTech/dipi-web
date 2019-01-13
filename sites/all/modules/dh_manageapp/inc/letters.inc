@@ -446,7 +446,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[ConfirmationNo]'] = $row['a_conf_no'];
 	$search['[ApplicantType]']  = $row['a_type'];
 	$search['[UserInput]'] 		= $comment;
-	if ((strtotime(date('Y-m-d')) > $row['c_end']) && $row['ct_teacher'] <> '')
+	if ((strtotime(date('Y-m-d')) >= $row['c_end']) && $row['ct_teacher'] <> '')
 	{
 		$q = "select CONCAT(t_f_name,' ',t_l_name,' | ','Contact: ',t_mob_phone,' | ','Email: ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender order by t_f_name asc ";
 		$rows = db_query($q);
