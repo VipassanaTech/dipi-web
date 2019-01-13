@@ -1168,7 +1168,14 @@ function _move_to_centre_course()
 	$new_centre = arg(3);
 	$rs = db_query("select a_center, a_course from dh_applicant where a_id=".$app_id)->fetchAssoc();
 
-	if ( (!user_access("access other center courses")) && (!user_access("transfer course")) && ($new_centre <> $rs['a_center']))
+	$centres_allowed = array();
+	if (!user_access("access other center courses"))
+	{
+		$q = "Select c_id, c_id from dh_center left join dh_user_center uc on c_id=uc_center where uc_user='".$user->uid." and uc_deleted=0'";
+		$centres_allowed = db_query($q)->fetchAllKeyed();
+	}
+
+	if ( (!user_access("access other center courses"))  && ( !in_array($new_centre, $centres_allowed) ))
 	{
 		$out = array();
 		$out['status'] = 'Failed';
