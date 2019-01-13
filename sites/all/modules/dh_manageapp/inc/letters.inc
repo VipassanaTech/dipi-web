@@ -127,7 +127,7 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 
 	$form['#attributes'] = array('class' => array('container-inline')); 
 	$form['a'] = array('#markup' => $out);
-	$form['b'] = array('#type' => 'fieldset', '#title' => 'Merge Fields', '#collapsed' => false, '#collapsible' => true);
+	$form['b'] = array('#type' => 'fieldset', '#title' => 'Merge Fields', '#collapsed' => true, '#collapsible' => true);
 	$form['b']['a'] = array('#markup' => $merge_block);
  	//$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
 	$form['l_name'] = array('#title' => 'Letter Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
