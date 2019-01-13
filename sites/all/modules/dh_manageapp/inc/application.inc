@@ -47,7 +47,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	elseif ($course_check == 'Teen')
 		$TEEN = true;
 		
-	//$course_id = 1;
+	
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline')); 
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false, '#prefix' => '<h2>'.$course_name.'</h2>');
