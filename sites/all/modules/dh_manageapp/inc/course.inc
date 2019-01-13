@@ -236,7 +236,33 @@ function dh_manage_courses()
 	$code = "sch".$c_code;
 	if ( strstr($c_code, '.in'))
 		$code = "noncenter/".$c_code;
+	
+
+	$q = "select c_id, c_name as 'Name', c_finalized from dh_course where c_center = ".arg(1)." and c_finalized = 1 order by c_start";
+	$res = db_query($q);
+	$rows = array();
+	while($r = $res->fetchAssoc())
+	{
+		$r['c_finalized'] = l("View", "course/".arg(1)."/".$r['c_id']);
+		$rows[] = $r;
+	}
+	$header = array("Id", "Course Name", "Action");
+	
+
 	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/".$code, array('attributes' => array("target" => "_blank") )).')</h2>';
+	
+	$finalized = theme("table", array('header' => $header, 'rows' => $rows ));
+	$fieldset_vars = array(
+		'element' => array(
+		'#title' => t('Finalized Courses'),
+		'#collapsible' => true,
+		'#collapsed' => true,
+		'#value' => '',
+		'#children' => $finalized
+		),
+	);
+	$out .= theme('fieldset', $fieldset_vars);
+
 	$out .= '<table id="course-table" class="display">
 				<thead>
 					<tr>
@@ -428,7 +454,7 @@ function dh_manage_course_handler()
    	            	$out['None'] = "0";
         			return $out;
          		}),
-	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),	    
+	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),   
 	    \DataTables\Editor\Field::inst( 'dh_course.c_center' )
 	    ->setValue( $centre_id ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_updated_by' )
@@ -448,6 +474,7 @@ function dh_manage_course_handler()
     ->on( 'preEdit', function ( $editor, $id, $values ) { _course_set_default( $editor, $id, $values); } )
     ->on( 'preRemove', function() { return false; })
     ->where( 'c_deleted', 0)
+    ->where( 'c_finalized', 0)
     ->where( 'c_center', $centre_id)
     ->process( $_POST )
     ->json();
