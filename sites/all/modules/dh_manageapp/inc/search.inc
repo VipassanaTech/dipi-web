@@ -64,14 +64,6 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$centres_j[] = array('id' => $k, 'name' => $v);
 	$centres_json = json_encode($centres_j);
 
-	/*$user_centres = array();
-	$user_centres = db_query($q)->fetchAllKeyed();
-
-	$user_centres_j = array();
-	foreach( $user_centres as $k => $v)
-		$user_centres_j[] = array('id' => $k, 'name' => $v);
-	$user_centres_json = json_encode($user_centres_j);*/
-
 	$pagination = db_query("select cs_pagination from dh_center_setting where cs_center=$centre")->fetchField();
 	if ($pagination == '')
 		$pagination = 'bottom';
