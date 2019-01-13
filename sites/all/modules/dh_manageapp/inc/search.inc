@@ -51,7 +51,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$courses_json = json_encode($courses_j);
 
 	$centres = array();
-	$q = "select c_id, c_name from dh_center order by c_name";
+
+	if ( user_access('access other center courses') )
+		$q = "select c_id, c_name from dh_center order by c_name";		
+	else
+		$q = "Select c_id, c_name from dh_center left join dh_user_center uc on c_id=uc_center where uc_user='".$user->uid." and uc_deleted=0' order by 	c_name";
+
 	$centres = db_query($q)->fetchAllKeyed();
 
 	$centres_j = array();
@@ -59,14 +64,13 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$centres_j[] = array('id' => $k, 'name' => $v);
 	$centres_json = json_encode($centres_j);
 
-	$user_centres = array();
-	$q = "Select c_id, c_name from dh_center left join dh_user_center uc on c_id=uc_center where uc_user='".$user->uid." and uc_deleted=0' order by c_name";
+	/*$user_centres = array();
 	$user_centres = db_query($q)->fetchAllKeyed();
 
 	$user_centres_j = array();
 	foreach( $user_centres as $k => $v)
 		$user_centres_j[] = array('id' => $k, 'name' => $v);
-	$user_centres_json = json_encode($user_centres_j);
+	$user_centres_json = json_encode($user_centres_j);*/
 
 	$pagination = db_query("select cs_pagination from dh_center_setting where cs_center=$centre")->fetchField();
 	if ($pagination == '')
@@ -272,7 +276,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				} )
 			';
 
-	$allow_other_centers = user_access('access other center courses')?1:0;
+	//$allow_other_centers = user_access('access other center courses')?1:0; 
 
 /*
 
@@ -369,10 +373,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				var letters = '.$letters_json.';				
 				var courses = '.$courses_json.';
 				var centres = '.$centres_json.';
-				var user_centres = '.$user_centres_json.';	
 
 				var comment = "";			
-		        var allow_other_centers = '.$allow_other_centers.';
 
 			    var buttonCommon = {
 			        exportOptions: {
@@ -805,15 +807,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					        i = 0;
 					        for(l = centres.length; i < l; i++) 
 					        {
-					        	if (allow_other_centers)
-					     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
-					     	 	else
-					     	 	{
-					     	 		i=0;
-					     	 		for(l = user_centres.length; i < l; i++)
-						     	 	$(".centre-select").append($("<option>", { value : user_centres[i].id }).text( user_centres[i].name ));
-					     	 	}
-					        }
+				     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
+					     	}		
 					        $(".centre-select").val(centre_id);
 					        this.$content.find("form").on("submit", function (e) {
 					            // if the user submits the form by pressing enter in the field.
