@@ -523,7 +523,16 @@ function _api_handle_sms($params)
         $response = _api_sms_keyword_status($sender);
         break;      
       case 'PATRIKA':
- //       $response = _api_sms_keyword_patrika($sender);
+        if (count($temp) < 3)
+        {
+          $response = "PATRIKA <subscriber id> <pincode>\nPlease send in above format";
+          $result = send_sms($sender, $response);
+          _sms_log($sender, $keyword, $params['content'], $response);
+          return array("Result" => "Bad format ".$content); //['status']            
+        }
+        $pid = $temp[1];
+        $pincode = $temp[2];
+        $response = _api_sms_keyword_patrika($pid, $pincode);
         break;      
       default:
         # code...
@@ -611,7 +620,31 @@ function _api_sms_keyword_status($phone)
     return $out;
 }
 
+function _api_sms_keyword_patrika($pid, $pincode)
+{
+    $pid = addslashes($pid);
+    $pincode = addslashes($pincode);
 
+    $q = "select p_mode, CONCAT(p_f_name, ' ', p_l_name) as 'name', p_address, p_zip, l_name, p_subscription_type, p_end_date, p_cancelled
+      from dh_patrika left join dh_language on p_language=l_code where p_vray_id='$pid' and p_zip='$pincode'";
+    $res = db_query($q);
+
+    $out = '';
+    while($r = $res->fetchAssoc())
+    {
+        $out = "Name: ".$r['name']."\nMode: ".$r['p_mode']."\nLang: ".$r['l_name']."\nSub Type: ".$r['p_subscription_type']."\n";
+
+        if ($r['p_cancelled'])
+            $out .= "Status: Cancelled";
+        else
+            $out .= "Subcr End: ".$r['p_end_date'];
+    }
+
+    if ($out == '')
+        return "No patrika subcriptions found for given subscriber id and pincode";
+
+    return $out;    
+}
 
 
 function send_sms($to , $message)
