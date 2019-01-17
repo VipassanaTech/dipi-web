@@ -98,6 +98,15 @@ function dipi_api_services_resources() {
               'access arguments' => array('access sms api'),
               'access arguments append' => FALSE,
               'callback' => '_api_handle_sms',
+              'args' => array(
+                array(
+                  'name' => 'params',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Key value pairs',
+                ),
+              ),
           ),
 
 
