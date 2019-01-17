@@ -495,7 +495,7 @@ function _api_handle_sms($params)
     $sender =  substr($params['sender'], -10);
     $temp = explode(" ", $params['content']);
     $keyword = $temp[0];
-    $content = trim(str_replace($keyword, $params['content']));
+    $content = trim(str_replace($keyword, "", $params['content']));
 
     $keywords = _api_sms_keywords();
     if (!in_array( strtoupper($keyword), $keywords ))
