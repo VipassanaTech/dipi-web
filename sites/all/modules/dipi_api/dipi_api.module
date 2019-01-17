@@ -543,7 +543,7 @@ function _sms_log( $from, $keyword, $content, $response )
 function _api_sms_keyword_help()
 {
     $keywords = _api_sms_keywords();
-    return "Keywords: ".implode(",", $keywords);
+    return "Keywords: ".implode("\n", $keywords);
 }
 
 function _api_sms_keyword_centres()
