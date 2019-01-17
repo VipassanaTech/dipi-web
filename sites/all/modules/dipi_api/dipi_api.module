@@ -9,6 +9,7 @@ function dipi_api_permission() {
     $perms['get all centres'] = array('title' => t('Access all centres') ) ;
     $perms['get all courses'] = array('title' => t('Access all courses') ) ;
     $perms['post application'] = array('title' => t('Post an application to a course') ) ;
+    $perms['access sms api'] = array('title' => t('Access SMS API') );
 
     return $perms;
 }
@@ -90,6 +91,14 @@ function dipi_api_services_resources() {
                 ),
               ),
         ),
+
+
+        'cmd' => array(
+              'help' => t("POST an SMS Command"),
+              'access arguments' => array('access sms api'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_handle_sms',
+          ),
 
 
         ),
@@ -462,6 +471,116 @@ function _api_post_application( $centre, $course, $data )
     $msg = "Application submitted successfully";
     return array("Result" => "Success", "Message" => $msg, 'ID' => $app_id );
 
+}
+
+function _api_sms_keywords()
+{
+    return array('HELP', 'ADDRESS', 'STATUS', 'CONTACT', 'CENTRES', 'PATRIKA');
+}
+
+function _api_handle_sms($params)
+{
+    $data = "From: ".$params['inNumber']." Sender: ".$params['sender'].", CMD: ".$params['keyword'];
+    $result = ""; $response = '';
+    $keywords = _api_sms_keywords();
+    if (!in_array( strtoupper($params['keyword'], $keywords) ))
+    {
+        $result = send_sms($params['inNumber'], "Unknown Keyword, try HELP");
+        return array("Result" => "Bad Keyword"); //['status']
+    }
+    switch ( strtoupper($params['keyword']) ) 
+    {
+      case 'HELP':
+        $response = _api_sms_keyword_help();
+        $result = send_sms($params['inNumber'], $response);        
+        break;
+      case 'ADDRESS':
+        $response = _api_sms_keyword_address($params['content']);
+        $result = send_sms($params['inNumber'], $response);        
+        break;      
+      case 'CENTRES':
+        $response = _api_sms_keyword_centres();
+        $result = send_sms($params['inNumber'], $response);        
+        break;      
+      default:
+        # code...
+        break;
+    }
+    _sms_log($params['inNumber'], $params['keyword'], $params['content'], $response);
+
+    return array("Result" => $result. $data); //['status']
+}
+
+
+function _sms_log( $from, $keyword, $content, $response )
+{
+    $rec['sl_from'] = $from;
+    $rec['sl_keyword'] = $keyword;
+    $rec['sl_content'] = $content;
+    $rec['sl_response'] = $response;
+    dh_insert('dh_sms_log')->fields($rec)->execute();
+}
+
+function _api_sms_keyword_help()
+{
+    $keywords = _api_sms_keywords();
+    return "Keywords: ".implode(",", $keywords);
+}
+
+function _api_sms_keyword_centres()
+{
+    $q = "select c_subdomain from dh_center order by c_subdomain";
+    $res = db_query($q);
+    $rows = array();
+    while($r = $res->fetchAssoc())
+        $rows[] = $r['c_subdomain'];
+    return implode("\n", $rows);
+}
+
+function _api_sms_keyword_address($subdomain)
+{
+    $subdomain = addslashes($subdomain);
+    $q = "select c.c_address, c.c_pincode,co.c_name as 'Country', s_name as 'State', ci.c_name as 'City' from dh_center c left join dh_country co on (c.c_country=co.c_code) 
+      left join dh_state s on (c.c_country=s.s_country and c.c_state=s.s_code) left join dh_city ci on (c.c_city=ci.c_id) 
+      where c_subdomain='$subdomain'";
+    $res = db_query($q)->fetchAssoc();
+
+    return $res['c_address']."-".$res['c_pincode']."\n".$res['City'].",".$res['State'].",".$res['Country'];
+}
+
+
+function send_sms($to , $message)
+{
+    //$result = send_sms_textlocal($params['inNumber'], "Hi there" );
+    //$result = json_decode($result);    
+    $result = send_sms_bhash($to, $message);
+
+}
+
+function send_sms_textlocal( $to, $message )
+{
+    $api_key = "857914009c9f2753425437e54d736058714b9d029aa9c51179d8a31d265a83ed";
+    $sender = "DHAMMA";
+    $message = urlencode($message);
+    $data = "username=".$username."&hash=".$hash."&message=".$message."&sender=".$sender."&numbers=".$to;
+    $ch = curl_init('http://api.textlocal.in/send/?');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch); // This is the result from the API
+    curl_close($ch);
+    return $result;
+}
+
+
+function send_sms_bhash( $to, $message )
+{
+    $sms_url = variable_get('sms_url', '');
+
+    $sms_url = str_replace(array('%phone', '%data'), array($to, urlencode($message)), $sms_url );
+    $result = file_get_contents($sms_url);
+
+    return $result;
 }
 
 
