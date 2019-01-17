@@ -1,0 +1,243 @@
+<?php
+/**
+ * @file
+ * Module file for services_auth_apikeys module.
+ */
+
+/**
+ * Implements hook_services_authentication().
+ */
+function services_auth_apikeys_services_authentication_info() {
+  return array(
+    'file'             => 'services_auth_apikeys.inc',
+    'title'            => t('API keys authentication'),
+    'description'      => t('API keys parameters authentication'),
+    'authenticate_call' => '_services_auth_apikeys_authenticate_call',
+    'default_security_settings' => '_services_auth_apikeys_default_security_settings',
+    'security_settings' => '_services_auth_apikeys_security_settings',
+    'controller_settings' => '_services_auth_apikeys_controller_settings',
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function services_auth_apikeys_menu() {
+  return array(
+    'user/%user/services-apikeys' => array(
+      'title' => 'Services API keys',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('services_auth_apikeys_user_form', 1),
+      'access callback' => 'services_auth_apikeys_access',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'file' => 'services_auth_apikeys.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function services_auth_apikeys_admin_paths() {
+  return array(
+    'user/*/services-apikeys' => TRUE,
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function services_auth_apikeys_permission() {
+  return array(
+    'services use api keys authentication' => array(
+      'title' => t('Use API keys authentication'),
+      'description' => t('Allow the user to access services authenticated by its own API keys.'),
+    ),
+    'services manage own authentication api keys' => array(
+      'title' => t('Manage own authentication API keys'),
+      'description' => t('Allow the user to see and change its own authentication API keys.'),
+    ),
+  );
+}
+
+/**
+ * Access callback for the token management page.
+ *
+ * @global object $user
+ *   The current user
+ *
+ * @param object $account
+ *   The user being managed
+ *
+ * @return bool
+ *   TRUE if access, FALSE otherwise
+ */
+function services_auth_apikeys_access($account) {
+  if (user_access('administer users')) {
+    return TRUE;
+  }
+  else {
+    return $GLOBALS['user']->uid == $account->uid && user_access('services manage own authentication api keys');
+  }
+}
+
+/**
+ * Get the API keys data based on user ID.
+ *
+ * @param int $uid
+ *   User ID
+ *
+ * @param bool $raw_value
+ *   If set to TRUE, the raw token string will be returned
+ *
+ * @return mixed
+ *   Array with API keys data, or raw service string, FALSE if not found.
+ */
+function services_auth_apikeys_load_by_user($uid, $raw_value = FALSE) {
+  $results = db_select('services_auth_apikeys', 's')
+    ->fields('s')
+    ->condition('uid', $uid)
+    ->execute();
+  if ($results) {
+    $apikeys = array();
+    foreach ($results as $result) {
+      $apikeys[$result->service_endpoint] = $result;
+    }
+    return $apikeys;
+  }
+  return FALSE;
+}
+
+/**
+ * Get the API keys data or uid based on API keys (and service endpoint).
+ *
+ * @param array $apikeys
+ *   API keys array : key => value.
+ *
+ * @param bool $raw_value
+ *   If set to TRUE, the raw user ID will be returned.
+ *
+ * @return mixed
+ *   Array with API keys data, or raw user ID, FALSE if not found.
+ */
+function services_auth_apikeys_load_by_apikeys($apikeys, $service_endpoint = NULL, $raw_value = FALSE) {
+  $query = db_select('services_auth_apikeys', 's');
+  $query->fields('s');
+  foreach ($apikeys as $apikey => $value) {
+    $query->condition($apikey, $value);
+  }
+  if (!empty($service_endpoint)) {
+    $query->condition('service_endpoint', $service_endpoint);
+    $result = $query->execute();
+    $result = $result->fetchAssoc();
+  }
+  else {
+    $results = $query->execute();
+    foreach ($results as $result) {
+      $apikeys[] = $result;
+    }
+    return $apikeys;
+  }
+
+  if ($result) {
+    return $raw_value ? $result['uid'] : $result;
+  }
+  return FALSE;
+}
+
+/**
+ * Update the API keys for a given user and a service endpoint.
+ *
+ * @param int $uid
+ *   User ID
+ * @param string $service_endpoint
+ *   Service endpoint name
+ * @param array $apikeys
+ *   The API keys array needed to be updated/generated.
+ * @param array $apikeys_values
+ *   The API keys values array needed to be updated.
+ */
+function services_auth_apikeys_update_apikeys($uid, $service_endpoint, $apikeys = array('api_key', 'token', 'extra_key'), $apikeys_values = array()) {
+  // No API keys values set, generate new API keys.
+  if (empty($apikeys_values)) {
+    do {
+      foreach ($apikeys as $apikey) {
+        $apikey_value_callback = 'services_auth_apikeys_generate_' . $apikey;
+        $apikeys_values[$apikey] = $apikey_value_callback($uid, $service_endpoint);
+      }
+    }
+    while (services_auth_apikeys_load_by_apikeys($apikeys_values, $service_endpoint));
+  }
+  $query_fields = array(
+    'uid' => $uid,
+    'service_endpoint' => $service_endpoint,
+    'updated' => time(),
+  ) + $apikeys_values;
+  $query = db_merge('services_auth_apikeys')
+    ->key(array(
+      'uid' => $uid,
+      'service_endpoint' => $service_endpoint,
+    ))
+    ->fields($query_fields)
+    ->execute();
+  module_invoke_all('services_auth_apikeys_update', $uid, $service_endpoint, $apikeys_values);
+}
+
+/**
+ * Delete the API keys for a given user (and service endpoint).
+ *
+ * @param int $uid
+ *   User ID
+ * @param string $service_endpoint
+ *   Service endpoint name
+ */
+function services_auth_apikeys_delete_apikeys($uid, $service_endpoint = NULL) {
+  $delete_query =  db_delete('services_auth_apikeys')
+    ->condition('uid', $uid);
+  if (!empty($service_endpoint)) {
+    $delete_query->condition('service_endpoint', $service_endpoint);
+  }
+  $delete_query->execute();
+  module_invoke_all('services_auth_apikeys_delete', $uid, $service_endpoint);
+}
+
+/**
+ * Generates a pseudo-unique api key string based on user data and service name.
+ */
+function services_auth_apikeys_generate_api_key($uid, $service_endpoint) {
+  $string = $GLOBALS['base_url'] . $service_endpoint . $uid . microtime(TRUE);
+  return drupal_hash_base64($string);
+}
+
+/**
+ * Generates a pseudo-unique api key string based on user data and service name.
+ */
+function services_auth_apikeys_generate_token($uid, $service_endpoint) {
+  $account = user_load($uid);
+  $string = $service_endpoint . $account->mail . microtime(TRUE);
+  return drupal_hash_base64($string);
+}
+
+/**
+ * Generates a pseudo-unique extra key string based on user data and service name.
+ */
+function services_auth_apikeys_generate_extra_key($uid, $service_endpoint) {
+  $account = user_load($uid);
+  $string = $service_endpoint . $account->name . microtime(TRUE);
+  return drupal_hash_base64($string);
+}
+
+/**
+ * Get the default settings if they are no defined yet in the services endpoint.
+ */
+function _services_auth_apikeys_get_authentication_settings($authentication_settings) {
+  // Use default settings if they are no defined yet.
+  if (!is_array($authentication_settings)) {
+    $authentication_settings = _services_auth_apikeys_default_security_settings();
+  }
+  else {
+    $authentication_settings += _services_auth_apikeys_default_security_settings();
+  }
+  return $authentication_settings;
+}

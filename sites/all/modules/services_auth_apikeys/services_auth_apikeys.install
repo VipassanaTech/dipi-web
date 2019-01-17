@@ -1,0 +1,74 @@
+<?php
+/**
+ * @file
+ * Install file for the services_auth_apikeys module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function services_auth_apikeys_schema() {
+  $schema = array();
+
+  // Create the DB table for the users access keys.
+  $schema['services_auth_apikeys'] = array(
+    'description' => 'Stores services keys data for users.',
+    'fields' => array(
+      'sak_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary ID field for the table. Not used for anything except internal lookups.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'User ID.',
+        'default' => 0,
+      ),
+      'service_endpoint' => array(
+        'description' => 'The name of the service endpoint.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'api_key' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => "User's access api key.",
+      ),
+      'token' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => "User's access token.",
+      ),
+      'extra_key' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => "User's access extra key.",
+      ),
+      'updated' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp for when keys were generated.',
+      ),
+    ),
+    'unique keys' => array(
+      'keys' => array('service_endpoint', 'api_key', 'token', 'extra_key'),
+    ),
+    'indexes' => array(
+      'service_endpoint' => array('service_endpoint'),
+      'uid' => array('uid'),
+    ),
+    'primary key' => array('sak_id'),
+  );
+  return $schema;
+}
