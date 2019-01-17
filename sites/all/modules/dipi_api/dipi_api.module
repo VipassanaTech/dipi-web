@@ -519,7 +519,7 @@ function _sms_log( $from, $keyword, $content, $response )
     $rec['sl_keyword'] = $keyword;
     $rec['sl_content'] = $content;
     $rec['sl_response'] = $response;
-    dh_insert('dh_sms_log')->fields($rec)->execute();
+    db_insert('dh_sms_log')->fields($rec)->execute();
 }
 
 function _api_sms_keyword_help()
