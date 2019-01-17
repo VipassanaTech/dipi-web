@@ -576,12 +576,12 @@ function _api_sms_keyword_address($subdomain)
 function _api_sms_keyword_contact($subdomain)
 {
     $subdomain = addslashes($subdomain);
-    $q = "select c.c_contact, c_email, c_url  from dh_center c where c_subdomain='$subdomain'";
+    $q = "select c.c_phone, c_email, c_url  from dh_center c where c_subdomain='$subdomain'";
     $res = db_query($q)->fetchAssoc();
-    if ($res['c_contact'] == '')
+    if ($res['c_phone'] == '')
         return "CONTACT <centre>. For list of centres, send CENTRES";
 
-    return "Phone: ".$res['c_contact']."\nEmail: ".$res['c_email']."\nWeb: ".$res['c_url'];
+    return "Phone: ".$res['c_phone']."\nEmail: ".$res['c_email']."\nWeb: ".$res['c_url'];
 }
 
 
