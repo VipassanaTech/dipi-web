@@ -488,7 +488,7 @@ function _api_handle_sms($params)
         $response = "Unknown Keyword, try HELP";
 //        $result = send_sms($params['sender'], $response);
 //        _sms_log($params['inNumber'], $params['keyword'], $params['content'], $response);
-        return array("Result" => "Bad Keyword"); //['status']
+        return array("Result" => "Bad Keyword".print_r($params, true)); //['status']
     }
     switch ( strtoupper($params['keyword']) ) 
     {
