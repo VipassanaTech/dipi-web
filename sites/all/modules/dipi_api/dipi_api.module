@@ -509,15 +509,12 @@ function _api_handle_sms($params)
     {
       case 'HELP':
         $response = _api_sms_keyword_help();
-        $result = send_sms($sender, $response);        
         break;
       case 'ADDRESS':
         $response = _api_sms_keyword_address( $content ) ;
-        $result = send_sms($sender, $response);        
         break;      
       case 'CONTACT':
         $response = _api_sms_keyword_contact( $content ) ;
-        $result = send_sms($sender, $response);        
         break;              
       case 'CENTRES':
         $response = _api_sms_keyword_centres();
