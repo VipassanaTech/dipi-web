@@ -626,7 +626,7 @@ function _api_sms_keyword_patrika($pid, $pincode)
     $pincode = addslashes($pincode);
 
     $q = "select p_mode, CONCAT(p_f_name, ' ', p_l_name) as 'name', p_address, p_zip, l_name, p_subscription_type, p_end_date, p_cancelled
-      from dh_patrika left join dh_language on p_language=l_code where p_vray_id='$pid' and p_zip='$pincode'";
+      from dh_patrika left join dh_languages on p_language=l_code where p_vray_id='$pid' and p_zip='$pincode'";
     $res = db_query($q);
 
     $out = '';
