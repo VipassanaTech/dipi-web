@@ -495,14 +495,15 @@ function _api_handle_sms($params)
     $sender =  substr($params['sender'], -10);
     $temp = explode(" ", $params['content']);
     $keyword = $temp[0];
+    $content = trim(str_replace($keyword, $params['content']));
 
     $keywords = _api_sms_keywords();
     if (!in_array( strtoupper($keyword), $keywords ))
     {
-        $response = "Unknown Keyword, try HELP";
+        $response = "Unknown Keyword $keyword, try HELP";
         $result = send_sms($sender, $response);
         _sms_log($sender, $keyword, $params['content'], $response);
-        return array("Result" => "Bad Keyword".print_r($params, true)); //['status']
+        return array("Result" => "Bad Keyword $keyword"); //['status']
     }
     switch ( strtoupper($keyword) ) 
     {
@@ -511,20 +512,22 @@ function _api_handle_sms($params)
         $result = send_sms($sender, $response);        
         break;
       case 'ADDRESS':
-        $response = _api_sms_keyword_address( trim(str_replace($keyword, $params['content'])) ) ;
+        $response = _api_sms_keyword_address( $content ) ;
         $result = send_sms($sender, $response);        
         break;      
       case 'CENTRES':
         $response = _api_sms_keyword_centres();
-        $result = send_sms($sender, $response);        
         break;      
       default:
         # code...
         break;
     }
   //  _sms_log($params['inNumber'], $params['keyword'], $params['content'], $response);
+ 
+    _sms_log($sender, $keyword, $content, $response);
+    $result = send_sms($sender, $response);        
 
-    return array("Result" => $result. $data.     print_r($params, true)); //['status']
+    return array("Result" => $result); //['status']
 }
 
 
