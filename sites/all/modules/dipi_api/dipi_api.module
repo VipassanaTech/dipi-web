@@ -493,23 +493,25 @@ function _api_handle_sms($params)
     $data = "From: ".$params['inNumber']." Sender: ".$params['sender'].", CMD: ".$params['keyword'];
     $result = ""; $response = '';
     $sender =  substr($params['sender'], -10);
+    $temp = explode(" ", $params['content']);
+    $keyword = $temp[0];
 
     $keywords = _api_sms_keywords();
-    if (!in_array( strtoupper($params['keyword']), $keywords ))
+    if (!in_array( strtoupper($keyword), $keywords ))
     {
         $response = "Unknown Keyword, try HELP";
         $result = send_sms($sender, $response);
-        _sms_log($sender, $params['keyword'], $params['content'], $response);
+        _sms_log($sender, $keyword, $params['content'], $response);
         return array("Result" => "Bad Keyword".print_r($params, true)); //['status']
     }
-    switch ( strtoupper($params['keyword']) ) 
+    switch ( strtoupper($keyword) ) 
     {
       case 'HELP':
         $response = _api_sms_keyword_help();
         $result = send_sms($sender, $response);        
         break;
       case 'ADDRESS':
-        $response = _api_sms_keyword_address($params['content']);
+        $response = _api_sms_keyword_address( trim(str_replace($keyword, $params['content'])) ) ;
         $result = send_sms($sender, $response);        
         break;      
       case 'CENTRES':
@@ -593,7 +595,7 @@ function send_sms_bhash( $to, $message )
 
     $sms_url = str_replace(array('%phone', '%data'), array($to, urlencode($message)), $sms_url );
     $result = file_get_contents($sms_url);
-
+    watchdog("SMS", $sms_url);
     return $result;
 }
 
