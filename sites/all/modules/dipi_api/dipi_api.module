@@ -778,7 +778,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         $res = db_query($q);
         $r = $res->fetchAssoc();
 
-        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_subdomain where c_subdomain='$centre' and c_start='$start_date' limit 1";
+        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where c_subdomain='$centre' and c_start='$start_date' limit 1";
         $new_course = db_query($q)->fetchAssoc();
         if ( $new_course['c_id'] == '' )
         {
