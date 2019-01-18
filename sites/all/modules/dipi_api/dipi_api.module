@@ -669,7 +669,7 @@ function _api_sms_keyword_cancel($phone, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
               $out .= " (".$r['a_conf_no'].")";            
         }
@@ -717,7 +717,7 @@ function _api_sms_keyword_confirm($phone, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
               $out .= " (".$r['a_conf_no'].")";            
         }
@@ -763,7 +763,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
               $out .= " (".$r['a_conf_no'].")";            
         }
