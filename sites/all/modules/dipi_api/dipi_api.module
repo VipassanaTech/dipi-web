@@ -747,7 +747,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
 
-    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name, c_course_type  from dh_applicant 
       left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
     if ($id <> '')
@@ -778,11 +778,12 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         $res = db_query($q);
         $r = $res->fetchAssoc();
 
-        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where c_subdomain='$centre' and c_start='$start_date' limit 1";
+        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where 
+          c_subdomain='$centre' and c_start='$start_date' and c_course_type='".$r['c_course_type']."' limit 1";
         $new_course = db_query($q)->fetchAssoc();
         if ( $new_course['c_id'] == '' )
         {
-            $out = "No course found for centre $centre for date $start_date";
+            $out = "No course found for centre $centre for date $start_date with same course type";
             return $out;
         }
         $q = "update dh_applicant set a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
