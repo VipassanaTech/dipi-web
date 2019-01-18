@@ -646,25 +646,22 @@ function _api_sms_keyword_status($phone)
 function _api_sms_keyword_cancel($phone, $id)
 {
     $phone = addslashes($phone);
+    $out = '';
+    $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+
     if ($id <> '')
     {
         $id = addslashes($id);
         $q .= " and a_id='$id'";
+        $count_q .= " and a_id='$id'";
     }
-    $res = db_query($q);
-    $out = '';
-    $records = 0;
-    while($r = $res->fetchAssoc())
-    {
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
-        $out .= "\n";
-        $records++;
-    }
+    $records = db_query($count_q)->fetchField();
+
     if ( $records == 0 )
         return "No applications found for this phone number";        
     elseif ($records > 1)
@@ -673,6 +670,12 @@ function _api_sms_keyword_cancel($phone, $id)
     }
     else
     {
+        $res = db_query($q);
+        $r = $res->fetchAssoc();
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+
         $out = "Application Id ".$r['a_id']." for ".$r['c_name']." cancelled successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
         exec($cmd);
@@ -686,25 +689,23 @@ function _api_sms_keyword_cancel($phone, $id)
 function _api_sms_keyword_confirm($phone, $id)
 {
     $phone = addslashes($phone);
+    $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status='PreConfirmation'";
+
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status='PreConfirmation'";
+
     if ($id <> '')
     {
         $id = addslashes($id);
         $q .= " and a_id='$id'";
+        $count_q .= " and a_id='$id'";
     }
-    $res = db_query($q);
+    $records = db_query($count_q)->fetchField();
+
     $out = '';
-    $records = 0;
-    while($r = $res->fetchAssoc())
-    {
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
-        $out .= "\n";
-        $records++;
-    }
+
     if ( $records == 0 )
         return "No applications in PreConfirmation status found for this phone number";        
     elseif ($records > 1)
@@ -713,6 +714,12 @@ function _api_sms_keyword_confirm($phone, $id)
     }
     else
     {
+        $res = db_query($q);
+        $r = $res->fetchAssoc();
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+
         $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
         exec($cmd);
@@ -726,6 +733,9 @@ function _api_sms_keyword_confirm($phone, $id)
 function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
 {
     $phone = addslashes($phone);
+    $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
@@ -733,18 +743,11 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     {
         $id = addslashes($id);
         $q .= " and a_id='$id'";
+        $count_q .= " and a_id='$id'";
     }
-    $res = db_query($q);
+    $records = db_query($count_q)->fetchField();
     $out = '';
-    $records = 0;
-    while($r = $res->fetchAssoc())
-    {
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
-        $out .= "\n";
-        $records++;
-    }
+
     if ( $records == 0 )
         return "No applications found for this phone number";        
     elseif ($records > 1)
@@ -753,6 +756,12 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     }
     else
     {
+        $res = db_query($q);
+        $r = $res->fetchAssoc();
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+
         $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_subdomain where c_subdomain='$centre' and c_start='$start_date' limit 1";
         $new_course = db_query($q)->fetchAssoc();
         if ( $new_course['c_id'] == '' )
