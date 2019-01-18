@@ -442,7 +442,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[CentreFax]']	 	= $row['c_fax'];
 	$search['[CentreEmail]'] 	= $row['c_email'];
 	$search['[CentreUrl]'] 		= $row['c_url'];
-	$search['[Applicant_id]'] 	= $row['a_id'];
+	$search['[ApplicantID]'] 	= $row['a_id'];
 	$search['[ConfirmationNo]'] = $row['a_conf_no'];
 	$search['[ApplicantType]']  = $row['a_type'];
 	$search['[UserInput]'] 		= $comment;
@@ -622,7 +622,7 @@ function _get_letter_fields( $centre )
 	$FIELDS = array('[FirstName]', '[MiddleName]', '[LastName]', '[Applicantadd]', '[ApplicantCity]', '[ApplicantCountry]', 
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[CourseType]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]', 
-		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[Applicant_id]', '[ConfirmationNo]', '[UserInput]', 
+		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[ApplicantID]', '[ConfirmationNo]', '[UserInput]', 
 		'[LetterDetailURL]', '[ApplicantType]', '[ATDetails]');
 
 	$q = "select lf_name from dh_letter_fields where lf_center = $centre  and lf_deleted =0  order by lf_name"; //(0, $centre)
