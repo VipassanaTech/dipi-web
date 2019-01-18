@@ -674,7 +674,7 @@ function _api_sms_keyword_cancel($phone, $id)
               $out .= " (".$r['a_conf_no'].")";            
           $out .= "\n\n";
         }
-        $out = "Multiple applications found for this phone number\n".$out."\nSend CANCEL AppID";
+        $out = "Multiple applications found for this phone number\n\n".$out."\nSend CANCEL AppID";
     }
     else
     {
@@ -724,7 +724,7 @@ function _api_sms_keyword_confirm($phone, $id)
           $out .= "\n\n";
 
         }
-        $out = "Multiple applications found for this phone number\n".$out."\nSend CONFIRM AppID";
+        $out = "Multiple applications found for this phone number\n\n".$out."\nSend CONFIRM AppID";
     }
     else
     {
@@ -771,7 +771,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
               $out .= " (".$r['a_conf_no'].")";            
           $out .= "\n\n";
         }
-        $out = "Multiple applications found for this phone number\n".$out."\nSend TRANSFER $centre $start_date AppID";
+        $out = "Multiple applications found for this phone number\n\n".$out."\nSend TRANSFER $centre $start_date AppID";
     }
     else
     {
