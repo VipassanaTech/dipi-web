@@ -484,7 +484,7 @@ function _api_post_application( $centre, $course, $data )
 
 function _api_sms_keywords()
 {
-    return array('HELP', 'ADDRESS', 'STATUS', 'CONTACT', 'CENTRES', 'PATRIKA');
+    return array('HELP', 'STATUS', 'CANCEL', 'CONFIRM', 'TRANSFER' , 'ADDRESS',  'CONTACT', 'CENTRES', 'PATRIKA');
 }
 
 function _api_handle_sms($params)
@@ -521,7 +521,29 @@ function _api_handle_sms($params)
         break;      
       case 'STATUS':
         $response = _api_sms_keyword_status($sender);
-        break;      
+        break;
+      case 'CANCEL':
+        $response = _api_sms_keyword_cancel($sender, $content);
+        break;
+      case 'CONFIRM':
+        $response = _api_sms_keyword_confirm($sender, $content);
+        break;
+      case 'TRANSFER':
+        if (count($temp) < 3)
+        {
+          $response = "TRANSFER <centre> <YYYY-mm-dd>\nPlease send in above format";
+          $result = send_sms($sender, $response);
+          _sms_log($sender, $keyword, $params['content'], $response);
+          return array("Result" => "Bad format ".$content); //['status']            
+        }
+        $centre = $temp[1];
+        $start_date = $temp[2];
+        if (!isset($temp[3]))
+            $id = "";
+        else
+            $id = $temp[3];
+        $response = _api_sms_keyword_transfer($sender,  $centre, $start_date, $id );
+        break;
       case 'PATRIKA':
         if (count($temp) < 3)
         {
@@ -533,7 +555,7 @@ function _api_handle_sms($params)
         $pid = $temp[1];
         $pincode = $temp[2];
         $response = _api_sms_keyword_patrika($pid, $pincode);
-        break;      
+        break;
       default:
         # code...
         break;
@@ -620,6 +642,137 @@ function _api_sms_keyword_status($phone)
     return $out;
 }
 
+
+function _api_sms_keyword_cancel($phone, $id)
+{
+    $phone = addslashes($phone);
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
+      left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+    if ($id <> '')
+    {
+        $id = addslashes($id);
+        $q .= " and a_id='$id'";
+    }
+    $res = db_query($q);
+    $out = '';
+    $records = 0;
+    while($r = $res->fetchAssoc())
+    {
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+        $out .= "\n";
+        $records++;
+    }
+    if ( $records == 0 )
+        return "No applications found for this phone number";        
+    elseif ($records > 1)
+    {
+        $out = "Multiple applications found for this phone number\n".$out."\nSend CANCEL AppID";
+    }
+    else
+    {
+        $out = "Application Id ".$r['a_id']." for ".$r['c_name']." cancelled successfully";
+        $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
+        exec($cmd);
+
+    }
+
+    return $out;
+}
+
+
+function _api_sms_keyword_confirm($phone, $id)
+{
+    $phone = addslashes($phone);
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
+      left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status='PreConfirmation'";
+    if ($id <> '')
+    {
+        $id = addslashes($id);
+        $q .= " and a_id='$id'";
+    }
+    $res = db_query($q);
+    $out = '';
+    $records = 0;
+    while($r = $res->fetchAssoc())
+    {
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+        $out .= "\n";
+        $records++;
+    }
+    if ( $records == 0 )
+        return "No applications in PreConfirmation status found for this phone number";        
+    elseif ($records > 1)
+    {
+        $out = "Multiple applications found for this phone number\n".$out."\nSend CONFIRM AppID";
+    }
+    else
+    {
+        $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
+        $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
+        exec($cmd);
+
+    }
+
+    return $out;
+}
+
+
+function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
+{
+    $phone = addslashes($phone);
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
+      left join dh_course on (a_course=c_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+    if ($id <> '')
+    {
+        $id = addslashes($id);
+        $q .= " and a_id='$id'";
+    }
+    $res = db_query($q);
+    $out = '';
+    $records = 0;
+    while($r = $res->fetchAssoc())
+    {
+        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+        if ($r['a_conf_no'] <> '')
+            $out .= " (".$r['a_conf_no'].")";
+        $out .= "\n";
+        $records++;
+    }
+    if ( $records == 0 )
+        return "No applications found for this phone number";        
+    elseif ($records > 1)
+    {
+        $out = "Multiple applications found for this phone number\n".$out."\nSend TRANSFER $centre $start_date AppID";
+    }
+    else
+    {
+        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_subdomain where c_subdomain='$centre' and c_start='$start_date' limit 1";
+        $new_course = db_query($q)->fetchAssoc();
+        if ( $new_course['c_id'] == '' )
+        {
+            $out = "No course found for centre $centre for date $start_date";
+            return $out;
+        }
+        $q = "update dh_applicant set a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
+        db_query($q);
+        $out = "Application Id ".$r['a_id']." transferred to ".$new_course['c_name']." successfully";
+        $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Received'";
+        exec($cmd);
+
+    }
+
+    return $out;
+}
+
+
+
 function _api_sms_keyword_patrika($pid, $pincode)
 {
     $pid = addslashes($pid);
@@ -645,6 +798,7 @@ function _api_sms_keyword_patrika($pid, $pincode)
 
     return $out;    
 }
+
 
 
 function send_sms($to , $message)
