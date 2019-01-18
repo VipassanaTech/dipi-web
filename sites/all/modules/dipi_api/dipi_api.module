@@ -669,9 +669,10 @@ function _api_sms_keyword_cancel($phone, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
               $out .= " (".$r['a_conf_no'].")";            
+          $out .= "\n\n";
         }
         $out = "Multiple applications found for this phone number\n".$out."\nSend CANCEL AppID";
     }
@@ -717,9 +718,11 @@ function _api_sms_keyword_confirm($phone, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
-              $out .= " (".$r['a_conf_no'].")";            
+              $out .= " (".$r['a_conf_no'].")"; 
+          $out .= "\n\n";
+
         }
         $out = "Multiple applications found for this phone number\n".$out."\nSend CONFIRM AppID";
     }
@@ -763,9 +766,10 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         $res = db_query($q);
         while($r = $res->fetchAssoc())
         {
-          $out .= "\n\nAppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
           if ($r['a_conf_no'] <> '')
               $out .= " (".$r['a_conf_no'].")";            
+          $out .= "\n\n";
         }
         $out = "Multiple applications found for this phone number\n".$out."\nSend TRANSFER $centre $start_date AppID";
     }
