@@ -797,7 +797,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
           $field = 'c_status_svr_'.$gender;
         else
           $field = 'c_status_'.$old.$gender;
-        $FULL_STATUS = array('FULL', 'Course Full', 'Closed');
+        $FULL_STATUS = array('full', 'course full', 'closed');
 
         if (in_array(strtolower($check[$field]), $FULL_STATUS) || in_array(strtolower($check['c_status']), $FULL_STATUS) )
         {
