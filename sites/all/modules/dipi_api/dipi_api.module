@@ -666,15 +666,19 @@ function _api_sms_keyword_cancel($phone, $id)
         return "No applications found for this phone number";        
     elseif ($records > 1)
     {
+        $res = db_query($q);
+        while($r = $res->fetchAssoc())
+        {
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          if ($r['a_conf_no'] <> '')
+              $out .= " (".$r['a_conf_no'].")";            
+        }
         $out = "Multiple applications found for this phone number\n".$out."\nSend CANCEL AppID";
     }
     else
     {
         $res = db_query($q);
         $r = $res->fetchAssoc();
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
 
         $out = "Application Id ".$r['a_id']." for ".$r['c_name']." cancelled successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
@@ -710,15 +714,19 @@ function _api_sms_keyword_confirm($phone, $id)
         return "No applications in PreConfirmation status found for this phone number";        
     elseif ($records > 1)
     {
+        $res = db_query($q);
+        while($r = $res->fetchAssoc())
+        {
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          if ($r['a_conf_no'] <> '')
+              $out .= " (".$r['a_conf_no'].")";            
+        }
         $out = "Multiple applications found for this phone number\n".$out."\nSend CONFIRM AppID";
     }
     else
     {
         $res = db_query($q);
         $r = $res->fetchAssoc();
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
 
         $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
@@ -752,15 +760,19 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         return "No applications found for this phone number";        
     elseif ($records > 1)
     {
+        $res = db_query($q);
+        while($r = $res->fetchAssoc())
+        {
+          $out .= "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
+          if ($r['a_conf_no'] <> '')
+              $out .= " (".$r['a_conf_no'].")";            
+        }
         $out = "Multiple applications found for this phone number\n".$out."\nSend TRANSFER $centre $start_date AppID";
     }
     else
     {
         $res = db_query($q);
         $r = $res->fetchAssoc();
-        $out = "AppID: ".$r['a_id']."\n".$r['c_name']."\n".$r['name']." - ".$r['a_status'];
-        if ($r['a_conf_no'] <> '')
-            $out .= " (".$r['a_conf_no'].")";
 
         $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_subdomain where c_subdomain='$centre' and c_start='$start_date' limit 1";
         $new_course = db_query($q)->fetchAssoc();
