@@ -902,7 +902,7 @@ function send_sms_bhash( $to, $message )
 function _ivr_log( $from, $action, $params, $response )
 {
     $rec['il_from'] = $from;
-    $rec['il_action'] = $keyword;
+    $rec['il_action'] = $action;
     $rec['il_params'] = $params;
     $rec['il_response'] = $response;
     db_insert('dh_ivr_log')->fields($rec)->execute();
