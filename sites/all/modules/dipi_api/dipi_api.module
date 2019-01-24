@@ -10,6 +10,7 @@ function dipi_api_permission() {
     $perms['get all courses'] = array('title' => t('Access all courses') ) ;
     $perms['post application'] = array('title' => t('Post an application to a course') ) ;
     $perms['access sms api'] = array('title' => t('Access SMS API') );
+    $perms['access voice api'] = array('title' => t('Access VOICE API') );
 
     return $perms;
 }
@@ -105,6 +106,23 @@ function dipi_api_services_resources() {
                   'source' => 'data',
                   'type' => 'string',
                   'description' => 'Key value pairs',
+                ),
+              ),
+          ),
+
+
+        'apps-status' => array(
+              'help' => t("Get status of applications"),
+              'access arguments' => array('access voice api'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_get_apps_status',
+              'args' => array(
+                array(
+                  'name' => 'phone',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Phone Number',
                 ),
               ),
           ),
@@ -844,6 +862,23 @@ function _api_sms_keyword_patrika($pid, $pincode)
 }
 
 
+function _api_get_apps_status( $phone )
+{
+    $phone = addslashes($phone);
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
+      c_start as 'StartDate', c.c_name as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
+      left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
+      left join dh_type_detail td on (co.c_course_type=td.td_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+    $res = db_query($q);
+
+    $rows = array();
+    while($r = $res->fetchAssoc())
+        $rows[] = $r;
+
+    return $rows;    
+}
+
 
 function send_sms($to , $message)
 {
@@ -855,11 +890,13 @@ function send_sms($to , $message)
 
 function send_sms_textlocal( $to, $message )
 {
-    $api_key = "857914009c9f2753425437e54d736058714b9d029aa9c51179d8a31d265a83ed";
+    $username = "vinay@vinay.in";
+    $hash = "857914009c9f2753425437e54d736058714b9d029aa9c51179d8a31d265a83ed";
     $sender = "DHAMMA";
-    $message = urlencode($message);
-    $data = "username=".$username."&hash=".$hash."&message=".$message."&sender=".$sender."&numbers=".$to;
-    $ch = curl_init('http://api.textlocal.in/send/?');
+    $message = rawurlencode($message);
+    //$data = "username=".$username."&hash=".$hash."&message=".$message."&sender=".$sender."&numbers=".$to;
+    $data = array("username" => $username , "hash" => $hash, "numbers" => $to, "sender" => $sender, "message" => $message);
+    $ch = curl_init('http://api.textlocal.in/send/');
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -878,5 +915,7 @@ function send_sms_bhash( $to, $message )
     watchdog("SMS", $sms_url);
     return $result;
 }
+
+
 
 
