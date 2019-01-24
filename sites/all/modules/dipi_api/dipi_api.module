@@ -913,7 +913,7 @@ function _api_get_apps_status( $phone )
 {
     $phone = addslashes($phone);
     $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
-      c_start as 'StartDate', c.c_name as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
+      c_start as 'StartDate', c.c_subdomain as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
       left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
       left join dh_type_detail td on (co.c_course_type=td.td_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' order by c_start limit 3";
