@@ -862,24 +862,6 @@ function _api_sms_keyword_patrika($pid, $pincode)
 }
 
 
-function _api_get_apps_status( $phone )
-{
-    $phone = addslashes($phone);
-    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
-      c_start as 'StartDate', c.c_name as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
-      left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
-      left join dh_type_detail td on (co.c_course_type=td.td_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
-    $res = db_query($q);
-
-    $rows = array();
-    while($r = $res->fetchAssoc())
-        $rows[] = $r;
-
-    return $rows;    
-}
-
-
 function send_sms($to , $message)
 {
     //$result = send_sms_textlocal($params['inNumber'], "Hi there" );
@@ -915,6 +897,43 @@ function send_sms_bhash( $to, $message )
     watchdog("SMS", $sms_url);
     return $result;
 }
+
+
+function _ivr_log( $from, $action, $params, $response )
+{
+    $rec['il_from'] = $from;
+    $rec['il_action'] = $keyword;
+    $rec['il_params'] = $params;
+    $rec['il_response'] = $response;
+    db_insert('dh_ivr_log')->fields($rec)->execute();
+}
+
+
+function _api_get_apps_status( $phone )
+{
+    $phone = addslashes($phone);
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
+      c_start as 'StartDate', c.c_name as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
+      left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
+      left join dh_type_detail td on (co.c_course_type=td.td_id) 
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' order by c_start limit 3";
+    $res = db_query($q);
+
+    $rows = array();
+    $out = '';
+    while($r = $res->fetchAssoc())
+    {
+        $rows[] = $r;
+        $out = $r['Center']." / ".$r['CourseType']." / ".$r['StartDate']."\n".$r['Name']." - ".$r['Status'];
+        if ($r['ConfNo'] <> '')
+            $out .= " (".$r['ConfNo'].")";
+        $out .= "\n";
+    }
+    _ivr_log($phone, "course", "info", $out );
+    return $rows;    
+}
+
+
 
 
 
