@@ -332,7 +332,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access daily activity'),
 	       'type' => MENU_CALLBACK);
 
-	$items['get-courses/%centre_id'] = array( 'title' => t('Get Courses'),
+	$items['get-courses/%'] = array( 'title' => t('Get Courses'),
 	       'page callback' => '_get_courses',
 	       'access arguments' => array('transfer course'),
 	       'type' => MENU_CALLBACK);
