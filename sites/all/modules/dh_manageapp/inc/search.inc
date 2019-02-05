@@ -124,7 +124,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$r['ConfNo'] = '';
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
 		$rs['course'] = implode(" / ", $temp);
-		$rs['status'] = $r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
+		$rs['status'] = ($r['a_status']=='Reconfirmation')?'Reconfirmed':$r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
 		$rs['confno'] = $r['ConfNo'];
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
@@ -838,6 +838,7 @@ function dh_manageapp_search_form($form, &$form_state)
 	$statuses[$system_statuses['STATUS-RECEIVED']] = $system_statuses['STATUS-RECEIVED'];
 	$statuses[$system_statuses['STATUS-LEFT']] = $system_statuses['STATUS-LEFT'];
 	$statuses[$system_statuses['STATUS-CONFIRMED']] = $system_statuses['STATUS-CONFIRMED'];
+	$statuses[$system_statuses['STATUS-RECONFIRMATION']] = $system_statuses['STATUS-RECONFIRMATION'];
 	$statuses[$system_statuses['STATUS-CANCELLED']] = $system_statuses['STATUS-CANCELLED'];
 	$statuses[$system_statuses['STATUS-CLARIFICATIONRESPONSE']] = $system_statuses['STATUS-CLARIFICATIONRESPONSE'];
 	$statuses[$system_statuses['STATUS-ATTENDED']] = $system_statuses['STATUS-ATTENDED'];
@@ -868,7 +869,7 @@ function dh_manageapp_search_form($form, &$form_state)
 			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 1) )
 				$where .= " and a_attended = '1'";
 			elseif ( in_array('Confirmed', $storage['status']) && (count($storage['status']) == 1) )
-				$where .= " and a_status in ('Confirmed', 'Expected')";
+				$where .= " and a_status in ('Confirmed', 'Expected', 'Reconfirmation')";
 			else
 				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
 				//"'" . implode ( "', '", $temp ) . "'";
