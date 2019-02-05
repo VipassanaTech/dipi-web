@@ -892,6 +892,7 @@ function _update_status($app_id, $status, $uid=0 )
 	$fields['a_updated'] = date("Y-m-d H:i:s");
 	$row = db_query("select a_status,a_conf_no from dh_applicant where a_id=$app_id")->fetchAssoc();
 	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
+	//$system_status = db_query("select td_key from dh_type_detail where td_key = 'ReConfirmation'")->fetchField();
 
 	if ( $system_statuses['STATUS-CUSTOM'] == $status)
 		return '';
@@ -899,7 +900,7 @@ function _update_status($app_id, $status, $uid=0 )
 	$conf_no = $row['a_conf_no'];
 
 
-	if (!in_array($status, array($system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-EXPECTED'], $system_statuses['STATUS-RECONFIRMATION'], $system_statuses['STATUS-ERROR'])))
+	if (!in_array($status, array($system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-EXPECTED'], $system_statuses['STATUS-ERROR'])))
 	{
 		$fields['a_conf_no'] = '';
 		$conf_no = '';
@@ -910,7 +911,7 @@ function _update_status($app_id, $status, $uid=0 )
 
 	if ( $row['a_status'] <> $status)
 	{
-		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && (($row['a_status'] <> $system_statuses['STATUS-ERROR']) || ($conf_no == ''))  )
+		if ( (($status == $system_statuses['STATUS-CONFIRMED']) || ($status == $system_statuses['STATUS-RECONFIRMATION'])) && (($row['a_status'] <> $system_statuses['STATUS-ERROR']) || ($conf_no == ''))  )
 		{
 			$conf_no = generate_conf_no($app_id);
 			$fields['a_conf_no'] = $conf_no;

@@ -435,6 +435,7 @@ function upcoming_courses( $centre_id )
 	unset($system_statuses['STATUS-LEFT']);
 	unset($system_statuses['STATUS-CUSTOM']);
 	unset($system_statuses['STATUS-ATTENDED']);
+
 	$statuses = $system_statuses;
 	//$statuses = array($system_statuses['STATUS-RECEIVED'] , $system_statuses['STATUS-CLARIFICATIONRESPONSE'], $system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-CANCELLED']);
 	$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'";
@@ -544,7 +545,7 @@ function copy_letters_to_centre( $centre_id )
 }
 
 
-function cron_pc_auto_cancel()
+function cron_auto_cancel()
 {
 	$status_cancelled = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CANCELLED'")->fetchField();
 	$q = "select cs_center, cs_reconf_cancel, cs_preconf_days from dh_center_setting where (cs_preconf_enable=1 and cs_preconf_days > 0) or (cs_reconf_enable=1 and cs_reconf_cancel > 0)";

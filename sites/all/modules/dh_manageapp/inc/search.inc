@@ -124,7 +124,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$r['ConfNo'] = '';
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
 		$rs['course'] = implode(" / ", $temp);
-		$rs['status'] = ($r['a_status']=='Reconfirmation')?'Reconfirmed':$r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
+		$rs['status'] = $r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
 		$rs['confno'] = $r['ConfNo'];
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
