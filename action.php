@@ -15,7 +15,7 @@ if ( !is_numeric($id) )
    exit(1);
 }
 
-if ( !in_array($action, array("Photo", "Finalize", "PCAutoCancel", "CronExpected", "ReminderFinalize")) )
+if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronExpected", "ReminderFinalize")) )
 {
    echo "Invalid Action!\n";
    exit(1);
@@ -36,11 +36,11 @@ switch($action)
 	finalize_course( $id );
    dh_patrika_add_course_students($id);
 	break;
-   case 'PCAutoCancel':
-	cron_pc_auto_cancel();
+   case 'AutoCancel':
+	cron_auto_cancel();
 	break;
-   case 'CronExpected':
-	cron_expected();
+   case 'CronRCExpected':
+	cron_rc_expected();
 	break;
    case 'ReminderFinalize':
    reminder_finalize();
