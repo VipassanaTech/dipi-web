@@ -567,7 +567,7 @@ function cron_auto_cancel()
 }
 
 
-function cron_rc_expected($centre_id=0, $course_id=0)
+function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expected')
 {
 	$status_expected = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-EXPECTED'")->fetchField();
 	$status_reconf = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-RECONFIRMATION'")->fetchField();
@@ -576,34 +576,28 @@ function cron_rc_expected($centre_id=0, $course_id=0)
 	if ($centre_id > 0 )
 		$q .=  " and cs_center = '$centre_id'";
 	$result = db_query($q);
+	$new_status = ($expected_or_rc=='expected')?$status_expected:$status_reconf;
 	while($r = $result->fetchAssoc())
 	{
-		$end_date = date('Y-m-d', strtotime("+".$r['cs_expected_days']." day"));
-		$end_rc_date = date('Y-m-d', strtotime("+".$r['cs_reconf_days']." day"));
+		$end_date = date('Y-m-d', strtotime("+".$r[ ($expected_or_rc=='expected')?'cs_expected_days':'cs_reconf_days']." day"));
+		//$end_rc_date = date('Y-m-d', strtotime("+".$r['cs_reconf_days']." day"));
 
 		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_deleted=0";
 		if ($course_id > 0 )
 			$q .=  " and c_id = '$course_id'";
 		else
-			$q .= " and c_start='$end_date' or c_start='$end_rc_date'";
+			$q .= " and c_start='$end_date'";
 		$res_c = db_query($q);
 		while($r_c = $res_c->fetchAssoc())
 		{
 			logit($r['cs_center'], 'CRON-RC-EXPECTED', $r_c['c_id'], 'Running cron for course start date '.$end_date);
-			$q = "select a_id from dh_applicant where a_course=".$r_c['c_id']." and a_status IN ('Confirmed','Reconfirmation')";
+			$q = "select a_id from dh_applicant where a_course=".$r_c['c_id']." and a_status = 'Confirmed' )";
 			$res = db_query($q);
 			while($row = $res->fetchAssoc())
 			{
-				if ($r['a_status'] == 'Confirmed')
-				{
-					_update_status($row['a_id'], $status_expected, $UID_SYSTEM);
-					dh_send_letter('applicant', $row['a_id'], $status_expected );
-				}
-				else 
-				{
-					_update_status($row['a_id'], $status_reconf, $UID_SYSTEM);
-					dh_send_letter('applicant', $row['a_id'], $status_reconf );
-				}
+
+				_update_status($row['a_id'], $new_status, $UID_SYSTEM);
+				dh_send_letter('applicant', $row['a_id'], $new_status );
 			}			
 		}
 	}	
