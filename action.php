@@ -41,6 +41,7 @@ switch($action)
 	break;
    case 'CronRCExpected':
 	cron_rc_expected();
+   cron_rc_expected(0,0,'reconfirmation');
 	break;
    case 'ReminderFinalize':
    reminder_finalize();

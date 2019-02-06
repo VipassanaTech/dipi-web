@@ -25,7 +25,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statues = db_query($q)->fetchAllKeyed();
 
-	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
+	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS' and td_key != 'Reconfirmation'";
 	$statuses = db_query($q)->fetchAllKeyed();
 	$statuses[''] = 'Choose';
 	$statuses[$system_statues['STATUS-CONFIRMED']] = $system_statues['STATUS-CONFIRMED'];
@@ -125,6 +125,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
 		$rs['course'] = implode(" / ", $temp);
 		$rs['status'] = $r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
+		$rs['app_status'] = $r['a_status'];
 		$rs['confno'] = $r['ConfNo'];
 		if ($r['City'] == '')
 			$r['City'] = $r['a_city_str'];
@@ -227,9 +228,22 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	{
 		$status_select = '<option value="" selected="selected">Choose</option>';
 		foreach ($statuses as $key => $value) 
+		{
 			if ($key <> '')
 				$status_select .= '<option value="'.$key.'">'.$value.'</option>';
-		$status_action = ' if (data.finalized) return "NA"; else  return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\">'.addslashes($status_select).'</select><div class=\"sub-letter-"+data.aid+"\" subletter=\"\"></div><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
+		}
+
+
+		$status_action = ' if (data.finalized) return "NA"; 
+			else  
+			{
+				var tmp = "";
+				if (data.app_status == "Confirmed")
+				{
+					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option>";
+				}
+				return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\">'.addslashes($status_select).'"+tmp+"</select><div class=\"sub-letter-"+data.aid+"\" subletter=\"\"></div><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
+			}
 			';
 	}
 	else
@@ -838,7 +852,6 @@ function dh_manageapp_search_form($form, &$form_state)
 	$statuses[$system_statuses['STATUS-RECEIVED']] = $system_statuses['STATUS-RECEIVED'];
 	$statuses[$system_statuses['STATUS-LEFT']] = $system_statuses['STATUS-LEFT'];
 	$statuses[$system_statuses['STATUS-CONFIRMED']] = $system_statuses['STATUS-CONFIRMED'];
-	$statuses[$system_statuses['STATUS-RECONFIRMATION']] = $system_statuses['STATUS-RECONFIRMATION'];
 	$statuses[$system_statuses['STATUS-CANCELLED']] = $system_statuses['STATUS-CANCELLED'];
 	$statuses[$system_statuses['STATUS-CLARIFICATIONRESPONSE']] = $system_statuses['STATUS-CLARIFICATIONRESPONSE'];
 	$statuses[$system_statuses['STATUS-ATTENDED']] = $system_statuses['STATUS-ATTENDED'];
