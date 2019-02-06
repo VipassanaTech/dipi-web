@@ -143,7 +143,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['cs_preconf_enable'] = array('#title' => 'Enable AutoCancellation after Preconfirmation', '#type' => 'radios', '#weight' => 1,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'0':$edit_data['cs_preconf_enable'], '#required' => 1,  );
-	$form[$group]['cs_preconf_days'] = array('#title' => 'Auto-Cancel after Preconfirmation (Days)', '#type' => 'textfield', '#weight' => 2,
+	$form[$group]['cs_preconf_days'] = array('#title' => 'Auto-Cancel (Days after Preconfirmation)', '#type' => 'textfield', '#weight' => 2,
 		'#default_value' => $add?'5':$edit_data['cs_preconf_days'], '#required' => 0, '#size' => 5 );
 
 	$form[$group]['cs_reconf_enable'] = array('#title' => 'Enable Reconfirmation', '#type' => 'radios', '#weight' => 3,
@@ -151,7 +151,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'0':$edit_data['cs_reconf_enable'], '#required' => 1,  );
 	$form[$group]['cs_reconf_days'] = array('#title' => 'Send Reconfirmation (Days before Start Date)', '#type' => 'textfield', '#weight' => 4,
 		'#default_value' => $add?'0':$edit_data['cs_reconf_days'], '#required' => 0, '#size' => 5 );
-	$form[$group]['cs_reconf_cancel'] = array('#title' => 'Auto-Cancel after Reconfirmation (Days)', '#type' => 'textfield', '#weight' => 5,
+	$form[$group]['cs_reconf_cancel'] = array('#title' => 'Auto-Cancel (Days after Reconfirmation)', '#type' => 'textfield', '#weight' => 5,
 		'#default_value' => $add?'0':$edit_data['cs_reconf_days'], '#required' => 0, '#size' => 5 );
 
 	$form[$group]['cs_expected_enable'] = array('#title' => 'Enable Reminder Mail (Change Status to "Expected")', '#type' => 'radios', '#weight' => 6,
