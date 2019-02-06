@@ -713,11 +713,11 @@ function _api_sms_keyword_confirm($phone, $id)
 {
     $phone = addslashes($phone);
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status='PreConfirmation'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status='PreConfirmation'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
     if ($id <> '')
     {
@@ -730,7 +730,7 @@ function _api_sms_keyword_confirm($phone, $id)
     $out = '';
 
     if ( $records == 0 )
-        return "No applications in PreConfirmation status found for this phone number";        
+        return "No applications in PreConfirmation/ReConfirmation status found for this phone number";        
     elseif ($records > 1)
     {
         $res = db_query($q);
@@ -748,8 +748,10 @@ function _api_sms_keyword_confirm($phone, $id)
     {
         $res = db_query($q);
         $r = $res->fetchAssoc();
-
-        $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
+        if ($r['a_status'] == 'PreConfirmation')
+          $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
+        else
+          $out = "Application Id ".$r['a_id']." for ".$r['c_name']." reconfirmed successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
         exec($cmd);
 
