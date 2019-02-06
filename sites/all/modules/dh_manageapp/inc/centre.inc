@@ -139,17 +139,25 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 
 
 	$group = 'Registration Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_preconf_enable'] = array('#title' => 'Enable AutoCancellation after Preconfirmation', '#type' => 'radios', '#weight' => 1,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'0':$edit_data['cs_preconf_enable'], '#required' => 1,  );
-	$form[$group]['cs_preconf_days'] = array('#title' => 'Days after which to send AutoCancellation after Preconfirmation', '#type' => 'textfield', '#weight' => 2,
+	$form[$group]['cs_preconf_days'] = array('#title' => 'Auto-Cancel after Preconfirmation (Days)', '#type' => 'textfield', '#weight' => 2,
 		'#default_value' => $add?'5':$edit_data['cs_preconf_days'], '#required' => 0, '#size' => 5 );
 
-	$form[$group]['cs_expected_enable'] = array('#title' => 'Enable Reminder Mail (Change Status to "Expected")', '#type' => 'radios', '#weight' => 3,
+	$form[$group]['cs_reconf_enable'] = array('#title' => 'Enable Reconfirmation', '#type' => 'radios', '#weight' => 3,
+		'#options' => array(1 => 'Yes', 0 => 'No'), 
+		'#default_value' => $add?'0':$edit_data['cs_preconf_enable'], '#required' => 1,  );
+	$form[$group]['cs_reconf_days'] = array('#title' => 'Send Reconfirmation (Days before Start Date)', '#type' => 'textfield', '#weight' => 4,
+		'#default_value' => $add?'3':$edit_data['cs_expected_days'], '#required' => 0, '#size' => 5 );
+	$form[$group]['cs_reconf_cancel'] = array('#title' => 'Auto-Cancel after Reconfirmation (Days)', '#type' => 'textfield', '#weight' => 5,
+		'#default_value' => $add?'5':$edit_data['cs_preconf_days'], '#required' => 0, '#size' => 5 );
+
+	$form[$group]['cs_expected_enable'] = array('#title' => 'Enable Reminder Mail (Change Status to "Expected")', '#type' => 'radios', '#weight' => 6,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'0':$edit_data['cs_expected_enable'], '#required' => 1,  );
-	$form[$group]['cs_expected_days'] = array('#title' => 'No of days before course start date to send reminder', '#type' => 'textfield', '#weight' => 4,
+	$form[$group]['cs_expected_days'] = array('#title' => 'Send Reminder (Days before Start Date)', '#type' => 'textfield', '#weight' => 7,
 		'#default_value' => $add?'3':$edit_data['cs_expected_days'], '#required' => 0, '#size' => 5 );
 
 
@@ -427,6 +435,7 @@ function upcoming_courses( $centre_id )
 	unset($system_statuses['STATUS-LEFT']);
 	unset($system_statuses['STATUS-CUSTOM']);
 	unset($system_statuses['STATUS-ATTENDED']);
+
 	$statuses = $system_statuses;
 	//$statuses = array($system_statuses['STATUS-RECEIVED'] , $system_statuses['STATUS-CLARIFICATIONRESPONSE'], $system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-CANCELLED']);
 	$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'";
@@ -536,17 +545,18 @@ function copy_letters_to_centre( $centre_id )
 }
 
 
-function cron_pc_auto_cancel()
+function cron_auto_cancel()
 {
 	$status_cancelled = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CANCELLED'")->fetchField();
-	$q = "select cs_center, cs_preconf_days from dh_center_setting where cs_preconf_enable=1 and cs_preconf_days > 0";
+	$q = "select cs_center, cs_reconf_cancel, cs_preconf_days from dh_center_setting where (cs_preconf_enable=1 and cs_preconf_days > 0) or (cs_reconf_enable=1 and cs_reconf_cancel > 0)";
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
 		$send_date = date('Y-m-d', strtotime("-".$r['cs_preconf_days']." day"));
-		$q = "select a_id from dh_applicant left join dh_course on (a_course=c_id) where a_center=".$r['cs_center']." and a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date'";
+		$send_rc_date = date('Y-m-d', strtotime("-".$r['cs_reconf_cancel']." day"));
+		$q = "select a_id from dh_applicant left join dh_course on (a_course=c_id) where a_center=".$r['cs_center']." and (a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date') or (a_status = 'ReConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_rc_date <= '$send_rc_date')";
 		$res = db_query($q);
 		while($row = $res->fetchAssoc())
 		{
@@ -557,17 +567,21 @@ function cron_pc_auto_cancel()
 }
 
 
-function cron_expected($centre_id=0, $course_id=0)
+function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expected')
 {
 	$status_expected = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-EXPECTED'")->fetchField();
+	$status_reconf = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-RECONFIRMATION'")->fetchField();
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-	$q = "select cs_center, cs_expected_days from dh_center_setting where cs_expected_enable=1 and cs_expected_days > 0 ";
+	$q = "select cs_center, cs_reconf_days, cs_expected_days from dh_center_setting where (cs_expected_enable=1 and cs_expected_days > 0) or (cs_reconf_enable=1 and cs_reconf_days > 0) ";
 	if ($centre_id > 0 )
 		$q .=  " and cs_center = '$centre_id'";
 	$result = db_query($q);
+	$new_status = ($expected_or_rc=='expected')?$status_expected:$status_reconf;
 	while($r = $result->fetchAssoc())
 	{
-		$end_date = date('Y-m-d', strtotime("+".$r['cs_expected_days']." day"));
+		$end_date = date('Y-m-d', strtotime("+".$r[ ($expected_or_rc=='expected')?'cs_expected_days':'cs_reconf_days']." day"));
+		//$end_rc_date = date('Y-m-d', strtotime("+".$r['cs_reconf_days']." day"));
+
 		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_deleted=0";
 		if ($course_id > 0 )
 			$q .=  " and c_id = '$course_id'";
@@ -576,13 +590,14 @@ function cron_expected($centre_id=0, $course_id=0)
 		$res_c = db_query($q);
 		while($r_c = $res_c->fetchAssoc())
 		{
-			logit($r['cs_center'], 'CRON-EXPECTED', $r_c['c_id'], 'Running cron for course start date '.$end_date);
-			$q = "select a_id from dh_applicant where a_course=".$r_c['c_id']." and a_status='Confirmed'";
+			logit($r['cs_center'], 'CRON-RC-EXPECTED', $r_c['c_id'], 'Running cron for course start date '.$end_date);
+			$q = "select a_id from dh_applicant where a_course=".$r_c['c_id']." and a_status = 'Confirmed' )";
 			$res = db_query($q);
 			while($row = $res->fetchAssoc())
 			{
-				_update_status($row['a_id'], $status_expected, $UID_SYSTEM);
-				dh_send_letter('applicant', $row['a_id'], $status_expected );
+
+				_update_status($row['a_id'], $new_status, $UID_SYSTEM);
+				dh_send_letter('applicant', $row['a_id'], $new_status );
 			}			
 		}
 	}	
