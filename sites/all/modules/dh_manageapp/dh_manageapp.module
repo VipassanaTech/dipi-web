@@ -900,7 +900,7 @@ function _update_status($app_id, $status, $uid=0 )
 	$conf_no = $row['a_conf_no'];
 
 
-	if (!in_array($status, array($system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-EXPECTED'], $system_statuses['STATUS-ERROR'])))
+	if (!in_array($status, array($system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-EXPECTED'], $system_statuses['STATUS-RECONFIRMATION'], $system_statuses['STATUS-ERROR'])))
 	{
 		$fields['a_conf_no'] = '';
 		$conf_no = '';
