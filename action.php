@@ -15,7 +15,7 @@ if ( !is_numeric($id) )
    exit(1);
 }
 
-if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronExpected", "ReminderFinalize")) )
+if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronRCExpected", "ReminderFinalize")) )
 {
    echo "Invalid Action!\n";
    exit(1);
