@@ -152,7 +152,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['cs_reconf_days'] = array('#title' => 'Send Reconfirmation (Days before Start Date)', '#type' => 'textfield', '#weight' => 4,
 		'#default_value' => $add?'0':$edit_data['cs_reconf_days'], '#required' => 0, '#size' => 5 );
 	$form[$group]['cs_reconf_cancel'] = array('#title' => 'Auto-Cancel (Days after Reconfirmation)', '#type' => 'textfield', '#weight' => 5,
-		'#default_value' => $add?'0':$edit_data['cs_reconf_days'], '#required' => 0, '#size' => 5 );
+		'#default_value' => $add?'0':$edit_data['cs_reconf_cancel'], '#required' => 0, '#size' => 5 );
 
 	$form[$group]['cs_expected_enable'] = array('#title' => 'Enable Reminder Mail (Change Status to "Expected")', '#type' => 'radios', '#weight' => 6,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
