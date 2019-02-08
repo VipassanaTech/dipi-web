@@ -599,7 +599,7 @@ function _sms_log( $from, $keyword, $content, $response )
 function _api_sms_keyword_help()
 {
     $keywords = _api_sms_keywords();
-    return "Keywords: ".implode("\n", $keywords);
+    return "KEYWORDS:".implode("\n", $keywords);
 }
 
 function _api_sms_keyword_centres()
@@ -609,7 +609,7 @@ function _api_sms_keyword_centres()
     $rows = array();
     while($r = $res->fetchAssoc())
         $rows[] = $r['c_subdomain'];
-    return implode("\n", $rows);
+    return "List of Centers -".implode("\n", $rows);
 }
 
 function _api_sms_keyword_address($subdomain)
@@ -657,7 +657,7 @@ function _api_sms_keyword_status($phone)
     if ($out == '')
         return "No applications found for this phone number";
 
-    return $out;
+    return "Following application(s) found:"."\n".$out;
 }
 
 
