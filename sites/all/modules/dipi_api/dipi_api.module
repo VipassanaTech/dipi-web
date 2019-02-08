@@ -599,7 +599,7 @@ function _sms_log( $from, $keyword, $content, $response )
 function _api_sms_keyword_help()
 {
     $keywords = _api_sms_keywords();
-    return "KEYWORDS:".implode("\n", $keywords);
+    return "KEYWORDS:\n".implode("\n", $keywords);
 }
 
 function _api_sms_keyword_centres()
@@ -609,7 +609,7 @@ function _api_sms_keyword_centres()
     $rows = array();
     while($r = $res->fetchAssoc())
         $rows[] = $r['c_subdomain'];
-    return "List of Centers -".implode("\n", $rows);
+    return "List of Centers -\n".implode("\n", $rows);
 }
 
 function _api_sms_keyword_address($subdomain)
