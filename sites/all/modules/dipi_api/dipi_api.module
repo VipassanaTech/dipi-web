@@ -871,9 +871,14 @@ function _api_sms_keyword_patrika($pid, $pincode)
 
 function send_sms($to , $message)
 {
-    //$result = send_sms_textlocal($params['inNumber'], "Hi there" );
-    //$result = json_decode($result);    
-    $result = send_sms_bhash($to, $message);
+    if ( in_array($to, array('9987086533', '8380017304', '9106557926')))
+    {
+      $result = send_sms_textlocal($to, $message );
+      $result = json_decode($result);    
+      watchdog('SMS', 'Sending via Textlocal');
+    }
+    else
+      $result = send_sms_bhash($to, $message);
 
 }
 
@@ -901,7 +906,7 @@ function send_sms_bhash( $to, $message )
 
     $sms_url = str_replace(array('%phone', '%data'), array($to, urlencode($message)), $sms_url );
     $result = file_get_contents($sms_url);
-    watchdog("SMS", $sms_url);
+   // watchdog("SMS", $sms_url);
     return $result;
 }
 
