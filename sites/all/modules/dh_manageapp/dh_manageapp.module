@@ -911,7 +911,7 @@ function _update_status($app_id, $status, $uid=0 )
 
 	if ( $row['a_status'] <> $status)
 	{
-		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && (($row['a_status'] <> $system_statuses['STATUS-ERROR']) || ($conf_no == ''))  )
+		if ( ($status == $system_statuses['STATUS-CONFIRMED']) && ($row['a_status'] <> $system_statuses['STATUS-RECONFIRMATION']) && (($row['a_status'] <> $system_statuses['STATUS-ERROR']) || ($conf_no == ''))  )
 		{
 			$conf_no = generate_conf_no($app_id);
 			$fields['a_conf_no'] = $conf_no;
