@@ -556,7 +556,7 @@ function cron_auto_cancel()
 	{
 		$send_date = date('Y-m-d', strtotime("-".$r['cs_preconf_days']." day"));
 		$send_rc_date = date('Y-m-d', strtotime("-".$r['cs_reconf_cancel']." day"));
-		$q = "select a_id from dh_applicant left join dh_course on (a_course=c_id) where a_center=".$r['cs_center']." and (a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date') or (a_status = 'ReConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_rc_date <= '$send_rc_date')";
+		$q = "select a_id from dh_applicant left join dh_course on (a_course=c_id) where a_center=".$r['cs_center']." and ((a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date') or (a_status = 'ReConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_rc_date <= '$send_rc_date'))";
 		$res = db_query($q);
 		while($row = $res->fetchAssoc())
 		{
@@ -572,7 +572,12 @@ function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expecte
 	$status_expected = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-EXPECTED'")->fetchField();
 	$status_reconf = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-RECONFIRMATION'")->fetchField();
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-	$q = "select cs_center, cs_reconf_days, cs_expected_days from dh_center_setting where (cs_expected_enable=1 and cs_expected_days > 0) or (cs_reconf_enable=1 and cs_reconf_days > 0) ";
+	$q = "select cs_center, cs_reconf_days, cs_expected_days from dh_center_setting where ";
+	if ($expected_or_rc == 'expected')
+		$q .= " cs_expected_enable=1 and cs_expected_days > 0 ";
+	else
+		$q .= " cs_reconf_enable=1 and cs_reconf_days > 0 ";
+
 	if ($centre_id > 0 )
 		$q .=  " and cs_center = '$centre_id'";
 	$result = db_query($q);
