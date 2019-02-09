@@ -238,7 +238,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			else  
 			{
 				var tmp = "";
-				if (data.app_status == "Confirmed")
+				if (data.app_status == "Confirmed" || data.app_status == "ReConfirmation")
 				{
 					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option>";
 				}
