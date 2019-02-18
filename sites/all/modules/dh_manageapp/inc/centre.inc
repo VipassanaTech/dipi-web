@@ -100,7 +100,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	{	$form[$group]['c_subdomain'] = array('#title' => 'Dhamma.org Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 2,
 			'#default_value' => $add?'':$edit_data['c_subdomain'], );
 		$form[$group]['c_dana'] = array('#title' => '&nbsp;Enable Dana?', '#type' => 'checkbox',
-      		'#default_value' => $add?'':$edit_data['c_dana'],  '#weight' => 3);}
+      		'#default_value' => $add?'0':$edit_data['c_dana'],  '#weight' => 3);}
 	$form[$group]['c_trust'] = array('#title' => 'Trust Name', '#type' => 'textfield', '#size' => '50', '#weight' => 4, 
 		'#default_value' => $add?'':$edit_data['c_trust'], '#required' => 0, );
 	$form[$group]['c_pincode'] = array('#title' => 'PinCode', '#type' => 'textfield', '#size' => '15', '#weight' => 5, 
@@ -353,8 +353,6 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		if ( substr($key,0,3) == 'cs_')
 			$centre_setting[$key] = $value;
 	}
-	if ($centre['c_dana'] == '')
-		$centre['c_dana'] = 0;
 
 	if ($centre['c_city'] <> '')
 	{	
