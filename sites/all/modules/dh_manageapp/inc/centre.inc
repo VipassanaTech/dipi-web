@@ -556,7 +556,7 @@ function cron_auto_cancel()
 	{
 		$send_date = date('Y-m-d', strtotime("-".$r['cs_preconf_days']." day"));
 		$append = '';
-		if ( $r['cs_reconf_enable'] )
+		if ( $r['cs_reconf_enable'] && ($r['cs_reconf_cancel'] > 0) )
 		{
 			$send_rc_date = date('Y-m-d', strtotime("-".$r['cs_reconf_cancel']." day"));
 			$append = "or (a_status = 'ReConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_rc_date <= '$send_rc_date')";
