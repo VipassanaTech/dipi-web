@@ -829,8 +829,12 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
             $out = "Unable to transfer to ".$new_course['c_name']." as either course status is FULL/Closed";
             return $out;
         }
-        $q = "update dh_applicant set a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
+        $q = "update dh_applicant set a_center='".$new_course['c_id']."', a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
         db_query($q);
+        $msg = 'Re-Applied from '.$r['c_name']." (".$r['a_status'].") ";
+        logit($new_course['c_id'], 'Status Change', $r['a_id'], $msg );
+
+               
         $out = "Application Id ".$r['a_id']." transferred to ".$new_course['c_name']." successfully";
         $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Received'";
         exec($cmd);
