@@ -1585,7 +1585,7 @@ function generate_cell_list($centre, $course)
 	{
 		foreach( $types as $t )
 		{
-			if ( isset($ini[$g][$t]) )
+			if ( isset($ini[$g][$t]) && ($ini[$g][$t] <> '') )
 			{
 				$temp = explode(",", $ini[$g][$t]);
 				foreach( $temp as $v )
