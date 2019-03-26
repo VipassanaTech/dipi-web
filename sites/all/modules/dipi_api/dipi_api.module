@@ -128,6 +128,77 @@ function dipi_api_services_resources() {
           ),
 
 
+        'confirm-app' => array(
+              'help' => t("Confirm attendance of application"),
+              'access arguments' => array('access voice api'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_confirm_app',
+              'args' => array(
+                array(
+                  'name' => 'phone',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Phone Number',
+                ),
+                array(
+                  'name' => 'appid',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'Application ID',
+                ),
+              ),
+          ),
+
+        'cancel-app' => array(
+              'help' => t("Cancel application"),
+              'access arguments' => array('access voice api'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_cancel_app',
+              'args' => array(
+                array(
+                  'name' => 'phone',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Phone Number',
+                ),
+                array(
+                  'name' => 'appid',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'Application ID',
+                ),
+              ),
+          ),
+
+
+        'transfer-app' => array(
+              'help' => t("Transfer application to another centre"),
+              'access arguments' => array('access voice api'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_transfer_app',
+              'args' => array(
+                array(
+                  'name' => 'phone',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Phone Number',
+                ),
+                array(
+                  'name' => 'appid',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'Application ID',
+                ),
+              ),
+          ),
+
+
         ),
      )
   );
@@ -949,8 +1020,70 @@ function _api_get_apps_status( $phone )
     return $rows;    
 }
 
+function _api_confirm_app($phone, $appid)
+{
+    $phone = addslashes($phone);
+    $appid = addslashes($appid);
+
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
+      c_start as 'StartDate', c.c_subdomain as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
+      left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
+      left join dh_type_detail td on (co.c_course_type=td.td_id) 
+      where a_id='$appid' and date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
+    $res = db_query($q);
+    $r = $res->fetchAssoc();
+    if ($r['a_status'] == 'PreConfirmation')
+    {
+      $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
+      $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
+    }
+    else
+    {
+      $out = "Application Id ".$r['a_id']." for ".$r['c_name']." reconfirmed successfully";
+      $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Expected'";
+    }
+    exec($cmd);
+    _ivr_log($phone, "course", "confirm", $out );
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
+      c_start as 'StartDate', c.c_subdomain as 'Center', td.td_val1 as 'CourseType' from dh_applicant 
+      left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
+      left join dh_type_detail td on (co.c_course_type=td.td_id) 
+      where a_id='$appid'";
+    $res = db_query($q);
+    $rows = array();
+    $r = $res->fetchAssoc();
+    $rows[] = $r;
+    return $rows;    
+}
 
 
+function _api_cancel_app($phone, $appid)
+{
+    $phone = addslashes($phone);
+    $appid = addslashes($appid);
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
+      left join dh_course on (a_course=c_id) 
+      where a_id='$appid' and date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
 
+    $res = db_query($q);
+    $r = $res->fetchAssoc();
+
+    $out = "Application Id ".$r['a_id']." for ".$r['c_name']." cancelled successfully";
+    $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
+    exec($cmd);
+    _ivr_log($phone, "course", "cancel", $out );
+    return $r;
+}
+
+
+function _api_transfer_app($phone, $appid)
+{
+    $phone = addslashes($phone);
+    $appid = addslashes($appid);
+    $out = "Send 'TRANSFER <centre> <YYYY-mm-dd> $appid' to 9293792937";
+    send_sms_bhash($phone, $out);
+    _ivr_log($phone, "course", "transfer", $out);
+    return array();
+}
 
 
