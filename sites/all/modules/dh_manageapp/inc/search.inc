@@ -240,7 +240,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				var tmp = "";
 				if (data.app_status == "Confirmed" || data.app_status == "ReConfirmation")
 				{
-					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option>";
+					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option><option value=\"Expected\">Expected</option>";
 				}
 				return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\">'.addslashes($status_select).'"+tmp+"</select><div class=\"sub-letter-"+data.aid+"\" subletter=\"\"></div><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 			}
