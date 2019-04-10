@@ -418,6 +418,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[FirstName]'] 		= $row['a_f_name'];
 	$search['[MiddleName]'] 	= $row['a_m_name'];
 	$search['[LastName]'] 		= $row['a_l_name'];
+	$search['[RegisteredMobile]'] = $row['a_phone_mobile'];
 	$search['[Applicantadd]'] 	= $row['a_address'];
 	$search['[ApplicantCity]'] 	= $row['a_city'];
 	$search['[ApplicantCountry]']= $row['a_country'];
@@ -620,7 +621,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 
 function _get_letter_fields( $centre )
 {
-	$FIELDS = array('[FirstName]', '[MiddleName]', '[LastName]', '[Applicantadd]', '[ApplicantCity]', '[ApplicantCountry]', 
+	$FIELDS = array('[FirstName]', '[MiddleName]', '[LastName]', '[RegisteredMobile]', '[Applicantadd]', '[ApplicantCity]', '[ApplicantCountry]', 
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[CourseType]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]', 
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[ApplicantID]', '[ConfirmationNo]', '[UserInput]', 
