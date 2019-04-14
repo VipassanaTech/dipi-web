@@ -199,12 +199,14 @@ function dh_manage_courses()
 			                		return;
 			                	}
 			                	var row = table.rows(".selected").data();
-			                	if ( row[0].dh_course.c_finalized == "1" )
+			                	var date = moment().format("YYYY-MM-DD");
+			                	var end_date = moment(row[0].dh_course.c_end).format("YYYY-MM-DD");			                	
+			                	if ( end_date > date )
 			                	{
-			                		alert("Course already finalized!");
+			                		alert("COURSE HAS NOT COMPLETED YET. Please make sure students who have ATTENDED course are updated via ZERO DAY section and LEFT students are updated before finalizing.");
 			                		return;
 			                	}
-			                	var r = confirm("PLEASE MAKE SURE COURSE IS COMPLETE AND LEFT STUDENTS ARE UPDATED BEFORE FINALIZING.\nAre you sure you want to finalize this course?");
+			                	var r = confirm("Please make sure students who have ATTENDED course are updated via ZERO DAY section and LEFT students are updated before finalizing. Are you sure you want to finalize this course?");
 			                	if ( r == true )
 			                	{
 				                    editor
