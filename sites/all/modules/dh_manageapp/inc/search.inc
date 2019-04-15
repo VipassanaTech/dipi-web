@@ -465,7 +465,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			                		return tmp[ row ].country; 
 			                	}
 			                	else if (column == 17) {
-			                		return tmp[ row ].section + " / " + tmp[ row ].acc; 
+			                		return tmp[ row ].section + " - " + tmp[ row ].acc; 
 			                	}
 			                	return data;
 			                }
