@@ -693,7 +693,7 @@ function _api_sms_keyword_address($subdomain)
     if ($res['c_address'] == '')
         return "Address <centre>. For list of centres, send CENTRES";
 
-    return $res['c_address']."-".$res['c_pincode']."\n".$res['City'].",".$res['State'].",".$res['Country'];
+    return "Address:%n".$res['c_address']."-".$res['c_pincode']."%n".$res['City'].",".$res['State'].",".$res['Country'];
 }
 
 function _api_sms_keyword_contact($subdomain)
@@ -948,7 +948,7 @@ function send_sms($to , $message)
 {
     //if ( in_array($to, array('9987086533', '8380017304', '9106557926')))
     //{
-      $result = send_sms_textlocal($to, $message );
+      $result = send_sms_textlocal($to, rawurlencode($message) );
       $result = json_decode($result);    
       if (  $result->status == 'failure' )
         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
