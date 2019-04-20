@@ -950,7 +950,8 @@ function send_sms($to , $message)
     //{
       $result = send_sms_textlocal($to, $message );
       $result = json_decode($result);    
-      //watchdog('SMS', 'Sending via Textlocal'. print_r($result, true));
+      if (  $result->status == 'failure' )
+        watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
     //}
     //else
       //$result = send_sms_bhash($to, $message);
