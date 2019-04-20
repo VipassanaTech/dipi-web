@@ -946,14 +946,14 @@ function _api_sms_keyword_patrika($pid, $pincode)
 
 function send_sms($to , $message)
 {
-    if ( in_array($to, array('9987086533', '8380017304', '9106557926')))
-    {
+    //if ( in_array($to, array('9987086533', '8380017304', '9106557926')))
+    //{
       $result = send_sms_textlocal($to, $message );
       $result = json_decode($result);    
-      watchdog('SMS', 'Sending via Textlocal'. print_r($result, true));
-    }
-    else
-      $result = send_sms_bhash($to, $message);
+      //watchdog('SMS', 'Sending via Textlocal'. print_r($result, true));
+    //}
+    //else
+      //$result = send_sms_bhash($to, $message);
 
 }
 
