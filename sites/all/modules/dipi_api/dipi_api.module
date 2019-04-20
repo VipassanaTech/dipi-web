@@ -693,7 +693,7 @@ function _api_sms_keyword_address($subdomain)
     if ($res['c_address'] == '')
         return "Address <centre>. For list of centres, send CENTRES";
 
-    return "Address:\n".$res['c_address']."-".$res['c_pincode']."%n".$res['City'].",".$res['State'].",".$res['Country'];
+    return "Address:\n".$res['c_address']."-".$res['c_pincode']."\n".$res['City'].",".$res['State'].",".$res['Country'];
 }
 
 function _api_sms_keyword_contact($subdomain)
@@ -948,7 +948,7 @@ function send_sms($to , $message)
 {
     //if ( in_array($to, array('9987086533', '8380017304', '9106557926')))
     //{
-      $result = send_sms_textlocal($to, rawurlencode($message) );
+      $result = send_sms_textlocal($to, $message );
       $result = json_decode($result);    
       if (  $result->status == 'failure' )
         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
@@ -963,7 +963,7 @@ function send_sms_textlocal( $to, $message )
     $username = "vinay@vinay.in";
     $hash = "857914009c9f2753425437e54d736058714b9d029aa9c51179d8a31d265a83ed";
     $sender = "DHAMMA";
-    $message = rawurlencode( str_replace("\n", "%n",  $message) );
+    $message =  str_replace("\n", '%n',  $message) ;
     //$data = "username=".$username."&hash=".$hash."&message=".$message."&sender=".$sender."&numbers=".$to;
     $data = array("username" => $username , "hash" => $hash, "numbers" => $to, "sender" => $sender, "message" => $message);
     $ch = curl_init('http://api.textlocal.in/send/');
