@@ -607,9 +607,14 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if ($sms_body <> '' )
 		{
 			$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
+			$result = send_sms_textlocal($row['a_phone_mobile'], $sms_body );
+		    $result = json_decode($result); 
+      		watchdog('SMS', 'Textlocal sending letter'. print_r($result, true));
+
 			//watchdog('SMS', $sms_body);
 			//http://bhashsms.com/api/sendmsg.php?user=success&pass=123456&sender=DHAMMA&phone=9003099142&text=TestSMS&priority=ndnd&stype=normal
-			$response = file_get_contents($sms_url);
+			//$response = file_get_contents($sms_url);
+			$response = $result["status"];
 			$log = "Letter sent (SMS) - ".$letter_name." ( Response: $response )";
 			logit($centre,  'Letter', $id, $log );
 		}
