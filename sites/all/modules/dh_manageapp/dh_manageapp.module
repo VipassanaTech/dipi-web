@@ -8,6 +8,7 @@ include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
 include_once(dirname(__FILE__)."/inc/referral.inc");
+include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 
 function dh_manageapp_help($path, $arg)
 {
@@ -60,6 +61,8 @@ function dh_manageapp_permission()
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
 
+ 	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
+    $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
 
 	return $perms;
 }
@@ -368,9 +371,82 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access content'),
 	       'type' => MENU_CALLBACK);
 
+	$items['center-dashboard'] = array(
+        'title' => t('Center Dashboard'),
+        'page callback' => 'get_teahcer_dashboard',
+        'access arguments' => array('access center dashboard'),
+        'type' => MENU_CALLBACK,);
+    $items['center-dashboard-page'] = array(
+        'title' => t('Center Dashboard'),
+        'page callback' => 'center_dashboard_page',
+        'access arguments' => array('access center dashboard'),
+        'type' => MENU_CALLBACK,);
+
+    $items['vri-management'] = array(
+        'title' => t('VRI Management'),
+        'page callback' => 'vri_management',
+        'access arguments' => array('access all center dashboard'),
+        'type' => MENU_CALLBACK,);
+
+    $items['user-logout'] = array(
+        'title' => t('Logout'),
+        'page callback' => 'get_user_logout',
+        'access callback' => true,
+        'type' => MENU_CALLBACK,);
+
+    $items['app-student-count-finalize/%course_id'] = array(
+        'title' => t('Search'),
+        'page callback' => '_get_student_finalize',
+        'access arguments' => array('access manageapp'),
+        'type' => MENU_CALLBACK,);
+
+
+
+    $items['app-student-count-cancel/%course_arr'] = array(
+        'title' => t('Search'),
+        'page callback' => '_get_student_cancel_count',
+        'access arguments' => array('access manageapp'),
+        'type' => MENU_CALLBACK,);
+
+    // $items['app-student-count-cancel/%course_arr'] = array(
+    //     'title' => t('Search'),
+    //     'page callback' => '_get_student_cancel_count',
+    //     'access arguments' => array('access manageapp'),
+    //     'type' => MENU_CALLBACK,);
+
+
+
 	return $items;
 }
 
+function dh_manageapp_theme()
+{
+    $themes = array();
+    $themes['center_dashboard_page'] = array(
+        'template' => 'center-dashboard-page',
+        'path' => drupal_get_path('module', 'dh_manageapp') . '/tpl/',
+    );
+
+    $themes['vri_management'] = array(
+        'template' => 'vri-management-page',
+        'path' => drupal_get_path('module', 'dh_manageapp') . '/tpl/',
+    );
+    return $themes;
+}
+
+function center_dashboard_page()
+{
+    print theme('center_dashboard_page');
+    module_invoke_all('exit');
+    exit();
+}
+
+function vri_management()
+{
+    print theme('vri_management');
+    module_invoke_all('exit');
+    exit();
+}
 
 function dh_manageapp_file_download($uri) 
 {
@@ -525,6 +601,10 @@ function letter_id_load( $id )
 	return $id;	
 }
 
+function course_arr_load( $crs_arr )
+{
+	return $crs_arr;	
+}
 
 function dh_manageapp_admin_form($form, &$form_state)
 {
@@ -646,7 +726,7 @@ function dh_manage_usermapping()
 				    fields: [
 				        { name: "dh_user_center.uc_center", label: "Centre Name", type: "select2" },
 				        { name: "dh_user_center.uc_user", label:  "User", type: "select2" }, 
-				        { name: "dh_user_center.uc_deleted", type: "hidden" },
+				        { name: "dh_user_center.uc_deleted", type: "hidden",default: "0" },
 
 				    ]
 				});
@@ -1419,4 +1499,64 @@ function dh_manageapp_lock_acquire($name, $timeout = 30.0, $delay = 30)
   );
 }
 
-?>
+
+
+function _get_student_cancel_count()
+{
+    global $user;
+    $c_course = arg(1);
+    $CourseArr = (explode(",", $c_course));
+    foreach ($CourseArr as $key => $value) 
+    {
+         $q = "SELECT count(a_id) as TotalApplicant from dh_applicant where a_course= '".$value."' ";
+        $result = db_query($q);
+        while ($r = $result->fetchAssoc()) 
+        {
+            $ApplicantCount = $r['TotalApplicant'];
+            if ($ApplicantCount > 0) 
+            {
+                $row['ApplicantFound'] = 'Yes';
+                break;
+            } else 
+            {
+                $row['ApplicantFound'] = 'No';
+            }
+        }
+        if ($row['ApplicantFound'] == 'Yes') 
+        {
+            break;
+        }
+    }
+    drupal_json_output($row);
+    exit;
+}
+
+function _get_student_finalize()
+{
+    global $user;
+    $c_course = arg(1);
+
+    $q = "SELECT count(a_attended) as TotalAttended from dh_applicant where a_attended=1 and a_course=$c_course";
+    $result = db_query($q);
+    $Count = $result->rowCount();
+    if ($Count > 0) 
+    {
+        $rows = array();
+        while ($r = $result->fetchAssoc()) 
+        {
+            $row = array();
+            $row['Count'] = intval($r['TotalAttended']);
+        }
+    } else 
+    {
+        $row['Count'] = 0;
+    }
+    drupal_json_output($row);
+    exit;
+}
+
+
+
+
+
+
