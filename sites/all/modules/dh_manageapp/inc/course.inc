@@ -171,22 +171,53 @@ function dh_manage_courses()
 			                text: "Delete",
 			                action: function ( e, dt, node, config ) {
 			                    var rows = table.rows( {selected: true} ).indexes();
-			 
-			                    editor
-			                        .hide( editor.fields() )
-			                        .one( "close", function () {
-			                            setTimeout( function () { // Wait for animation
-			                                editor.show( editor.fields() );
-			                            }, 500 );
-			                        } )
-			                        .edit( rows, {
-			                            title: "Delete",
-			                            message: rows.length === 1 ?
-			                                "Are you sure you wish to delete this row?" :
-			                                "Are you sure you wish to delete these "+rows.length+" rows",
-			                            buttons: "Delete"
-			                        } )
-			                        .val( "dh_course.c_deleted", 1 );
+			 					var rowData = table.rows(".selected").data();
+			 						
+			 						var blkstr = [];
+									$.each(rowData, function(key,val) {                    
+									  var course_id=val.dh_course.c_id;
+									  blkstr.push(course_id);
+									});
+									blkstr.join(",");
+
+
+									var $URL="/app-student-count-cancel/"+blkstr;
+							
+				                	var request = $.ajax({
+	            						url:$URL,
+	            						type: "GET"
+	        						});
+	        						request.done(function (responseString) {
+	        							console.log(responseString);
+	        					
+	           							var obj = responseString;
+	           							if(obj.ApplicantFound == "Yes")
+	           							{
+											alert("Course has applications. Cannot be deleted");
+			 								return;
+	           							}
+	           							else
+	           							{
+	           								editor
+					                        .hide( editor.fields() )
+					                        .one( "close", function () {
+					                            setTimeout( function () { // Wait for animation
+					                                editor.show( editor.fields() );
+					                            }, 500 );
+					                        } )
+					                        .edit( rows, {
+					                            title: "Delete",
+					                            message: rows.length === 1 ?
+					                                "Are you sure you wish to delete this row?" :
+					                                "Are you sure you wish to delete these "+rows.length+" rows",
+					                            buttons: "Delete"
+					                        } )
+					                        .val( "dh_course.c_deleted", 1 );
+					                    }
+		           							
+	           						});
+
+							
 			                }
 			            },
     			        {
@@ -198,23 +229,43 @@ function dh_manage_courses()
 			                		alert("Please select only one row");
 			                		return;
 			                	}
-			                	var row = table.rows(".selected").data();
-			                	var date = moment().format("YYYY-MM-DD");
-			                	var end_date = moment(row[0].dh_course.c_end).format("YYYY-MM-DD");			                	
-			                	if ( end_date > date )
+			                	else
 			                	{
-			                		alert("COURSE HAS NOT COMPLETED YET. Please make sure students who have ATTENDED course are updated via ZERO DAY section and LEFT students are updated before finalizing.");
-			                		return;
-			                	}
-			                	var r = confirm("Please make sure students who have ATTENDED course are updated via ZERO DAY section and LEFT students are updated before finalizing. Are you sure you want to finalize this course?");
-			                	if ( r == true )
-			                	{
-				                    editor
-				                        .edit( table.row( { selected: true } ).index(), false )
-									    .set( "dh_course.c_finalized", "1" )
-				                        .submit();
+			                		var row = table.rows(".selected").data();
+			                		var course_id=row[0].dh_course.c_id;
+			                		var AllowFinalizedCourseFlag=false;
+			                		
+				                	var $URL="/app-student-count-finalize/"+course_id;
 
+
+				                	var request = $.ajax({
+	            						url:$URL,
+	            						type: "GET"
+	        						});
+	        						request.done(function (responseString) {
+	        							
+	           							var obj = responseString;
+	           							
+	           							var r = confirm("PLEASE MAKE SURE COURSE IS COMPLETE AND LEFT STUDENTS ARE UPDATED BEFORE FINALIZING.\nAre you sure you want to finalize this course?");
+			                			if ( r == true)
+			                			{	
+			                				if(obj.Count > 0)
+			                				{
+
+			                				editor.edit( table.row( { selected: true } ).index(), false )
+			                					.set( "dh_course.c_finalized", "1" )
+					                        	.submit();
+			                				}
+			                				else
+			                				{
+			                					alert("Students who have attended course have not been updated. Please update via Zero Day section");
+			                					return;
+			                				}
+			                			}
+			                			
+	           						});
 			                	}
+			              
 			                }
 
 			            }
@@ -226,7 +277,8 @@ function dh_manage_courses()
 			}
 
 			$(document).ready(function(){
-			    $.fn.dataTable.moment( "DD MMM YYYY" );			 
+			    $.fn.dataTable.moment( "DD MMM YYYY" );	
+
 				load_editor();
 			});
 		})(jQuery);
@@ -285,7 +337,6 @@ function dh_manage_courses()
 	</table>';
 	return $out;
 }
-
 
 
 function dh_manage_course_handler()

@@ -126,6 +126,13 @@ function dh_zero_select_centre($form, &$form_state)
 		$form['a'] = array('#markup' => $admin );
 		$q = "select c_id, c_name from dh_center order by c_name";
 	}
+	else if (user_access('access center dashboard')) 
+	{
+        drupal_goto('center-dashboard');
+    } 
+    else if (user_access('access all center dashboard')) {
+        drupal_goto('vri-management');
+    }
 	else
 	{
 		$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'  and uc_deleted=0");
