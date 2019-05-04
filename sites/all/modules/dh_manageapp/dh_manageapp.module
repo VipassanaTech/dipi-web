@@ -642,6 +642,11 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Applicant Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['applicant_url'] = array('#title' => 'Applicant URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('applicant_url', ''));
 
+ 	$group = 'DIPI Statistics Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'Statistics Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['stats_url'] = array('#title' => 'Stats URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('stats_url', ''));
+
+
 
    return system_settings_form($form);
 }

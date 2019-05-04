@@ -13,7 +13,7 @@ $_SESSION['user_name'] = $user->name;
 $_SESSION['base_url'] = $base_url;
 $session_id = trim(session_id());
 
-$dashboard_page_url = 'http://admin.win/vri_management.php?session_id=' . $session_id;
+$dashboard_page_url = variable_get('stats_url').'/vri_management.php?session_id=' . $session_id;
 if ($user->uid == "" || empty($user->uid)) {
     echo "<div style='text-align:center;'><h2>Invalid User.</h2></div>";
     exit;
