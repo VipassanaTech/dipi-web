@@ -207,7 +207,7 @@ function create_application_pdf( $application_id )
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/seva-template.pdf";
 	}
 
-	elseif ( $row['td_val3'] == 'Teen')
+	elseif ( $row['td_val3'] == 'Teen' || $row['td_val3'] == 'Child')
 	{
 
 		$fields = map_application_fields($row);
