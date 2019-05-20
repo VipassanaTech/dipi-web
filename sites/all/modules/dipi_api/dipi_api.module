@@ -874,7 +874,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         $res = db_query($q);
         $r = $res->fetchAssoc();
 
-        $q = "select co.c_id, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where 
+        $q = "select co.c_id, co.c_center, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where 
           c_subdomain='$centre' and c_start='$start_date' and c_course_type='".$r['c_course_type']."' limit 1";
         $new_course = db_query($q)->fetchAssoc();
         if ( $new_course['c_id'] == '' )
@@ -900,7 +900,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
             $out = "Unable to transfer to ".$new_course['c_name']." as either course status is FULL/Closed";
             return $out;
         }
-        $q = "update dh_applicant set a_center='".$new_course['c_id']."', a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
+        $q = "update dh_applicant set a_center='".$new_course['c_center']."', a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
         db_query($q);
         $msg = 'Re-Applied from '.$r['c_name']." (".$r['a_status'].") ";
         logit($new_course['c_id'], 'Status Change', $r['a_id'], $msg );
