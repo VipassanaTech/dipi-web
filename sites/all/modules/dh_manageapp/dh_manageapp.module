@@ -507,7 +507,7 @@ function centre_id_load( $id )
 	if ($temp <> $id)
 		return false;
 
-	if (user_access("access all centres") || (user_access("access other center courses") && strpos($_SERVER['REQUEST_URI'],"move-to-course")))
+	if (user_access("access all centres") || (user_access("access other center courses") && (arg(0)=="move-to-course")))
 		return $id;
 
 	$temp = db_query("select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='$id' and uc_deleted=0")->fetchField();
@@ -527,7 +527,7 @@ function course_id_load( $id )
 	if ($temp <> $id)
 		return false;
 
-	if (user_access("access all centres") || (user_access("access other center courses") && strpos($_SERVER['REQUEST_URI'],"move-to-course")))
+	if (user_access("access all centres") || (user_access("access other center courses") && (arg(0)=="move-to-course")))
 		return $id;
 
 	$centre = db_query("select c_center from dh_course where c_id=$id")->fetchField();
