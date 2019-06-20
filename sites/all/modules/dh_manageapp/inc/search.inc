@@ -799,7 +799,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					                }
 					                else
 					                {
-										location.href = "/app/add/'.$centre.'/"+course+"?ref="+id;					                	
+										location.href = "/app/add/"+centre+"/"+course+"?ref="+id;					                	
 					                }
 					            }
 					        },
