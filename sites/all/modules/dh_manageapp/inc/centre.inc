@@ -563,8 +563,13 @@ function cron_auto_cancel()
 		$res = db_query($q);
 		while($row = $res->fetchAssoc())
 		{
-			_update_status($row['a_id'], $status_cancelled, $UID_SYSTEM);
-			dh_send_letter('applicant', $row['a_id'], $status_cancelled );
+			try {
+				_update_status($row['a_id'], $status_cancelled, $UID_SYSTEM);
+				dh_send_letter('applicant', $row['a_id'], $status_cancelled );
+				
+			} catch (Exception $e) {
+				logit($r['cs_center'], 'CRON-AUTO-CANCEL', $row['a_id'], 'Problem '.$e->getMessage());
+			}
 		}
 	}
 }
@@ -603,9 +608,14 @@ function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expecte
 			$res = db_query($q);
 			while($row = $res->fetchAssoc())
 			{
+				try {
+					_update_status($row['a_id'], $new_status, $UID_SYSTEM);
+					dh_send_letter('applicant', $row['a_id'], $new_status );
+					
+				} catch (Exception $e) {
+					logit($r['cs_center'], 'CRON-RC-EXPECTED', $row['a_id'], 'Problem '.$e->getMessage());									
+				}
 
-				_update_status($row['a_id'], $new_status, $UID_SYSTEM);
-				dh_send_letter('applicant', $row['a_id'], $new_status );
 			}			
 		}
 	}	
