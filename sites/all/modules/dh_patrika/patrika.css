@@ -6,13 +6,18 @@
 	margin-bottom: 12px !important;
 }
 
+.fieldset {
+	float: left;
+	margin-right: 25px;
+}
+
 .form-inline .control-label {
 	float: none;
 	display: block;
 }
 
 .edit-student-f-name,.form-item-student-address1,.form-item-student-address-zip,.form-item-student-subscription,
-.form-item-student-receipt-date,.form-item-student-transaction-type,.form-item-p-mode,.form-item-p-mode-paper {
+.form-item-student-receipt-date,.form-item-student-transaction-type,.form-item-p-mode,#edit-mode {
 	clear: left;
 }
 
