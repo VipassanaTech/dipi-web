@@ -768,14 +768,14 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 
 	$form['mode'] = array('#type' => 'fieldset', '#title' => 'Mode of Patrika', '#collapsible' => false);
 	$form['mode']['p_mode_paper'] = array(
-		'#title' => 'Paper Mode', 
+		'#title' => '&nbsp;Paper Mode', 
 		'#type' => 'checkbox', 
 		'#default_value' => $add?'1':$edit_data['p_mode_paper'],
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'p_mode_paper'));
 
 	$form['mode']['p_mode_email'] = array(
-		'#title' => 'Email Mode', 
+		'#title' => '&nbsp;Email Mode', 
 		'#type' => 'checkbox', 
 		'#default_value' => $add?'1':$edit_data['p_mode_email'],
 		'#validated' => TRUE,

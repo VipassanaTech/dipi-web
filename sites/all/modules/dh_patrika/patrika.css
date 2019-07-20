@@ -7,8 +7,17 @@
 }
 
 .fieldset {
+	display: inline-block;
 	float: left;
 	margin-right: 25px;
+}
+
+.form-type-checkbox {
+	margin-right: 15px;
+}
+
+.form-checkbox {
+	margin-right: 5px;
 }
 
 .form-inline .control-label {
