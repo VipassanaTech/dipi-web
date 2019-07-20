@@ -291,13 +291,19 @@ function dh_patrika_search_form($form, &$form_state)
 		'#type' => 'textfield',
 		'#title' => t('First Name'),
 		'#attributes' => array('placeholder' => t('First name')),
-		'#size' => 30,
+		'#size' => 25,
 	);
 	$form['student_l_name'] = array(
 		'#type' => 'textfield',
 		'#title' => t('Last Name'),
 		'#attributes' => array('placeholder' => t('Last name')),
-		'#size' => 30,
+		'#size' => 25,
+	);
+	$form['pincode'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Pincode'),
+		'#attributes' => array('placeholder' => t('Pincode')),
+		'#size' => 10,
 	);
 
 	$form['receipt_number'] = array(
@@ -335,6 +341,7 @@ function dh_patrika_search_form($form, &$form_state)
 		$f_name = trim($storage['student_f_name']);
 		$l_name = trim($storage['student_l_name']);
  		$patrika_id = $storage['patrika_id'];
+ 		$pincode = $storage['pincode'];
 		
 		$receipt_number = trim($storage['receipt_number']);
 		$receipt_date = $storage['receipt_date'];
@@ -354,6 +361,9 @@ function dh_patrika_search_form($form, &$form_state)
 
 		if ( $receipt_date <> '')
 		 	$append .= " and pp_receipt_date = '$receipt_date'";
+
+		 if ( $pincode <> '')
+		 	$append .= " and p_zip = '$pincode'";
 
 		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
 
@@ -748,13 +758,27 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#size' => 40,
 	);
 	
-	$form['p_mode'] = array(
+	/*$form['p_mode'] = array(
 		'#title' => 'Mode of Patrika', 
 		'#type' => 'radios', 
 		'#options' => array('PAPER' => 'PAPER', 'EMAIL' => 'EMAIL'),
 		'#default_value' => $add?'PAPER':$edit_data['p_mode'],
 		'#validated' => TRUE,
-		'#attributes' => array('id' => 'p_mode'));
+		'#attributes' => array('id' => 'p_mode'));*/
+
+	$form['p_mode_paper'] = array(
+		'#title' => 'Paper Mode', 
+		'#type' => 'checkbox', 
+		'#default_value' => $add?'1':$edit_data['p_mode_paper'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'p_mode_paper'));
+
+	$form['p_mode_email'] = array(
+		'#title' => 'Email Mode', 
+		'#type' => 'checkbox', 
+		'#default_value' => $add?'1':$edit_data['p_mode_email'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'p_mode_email'));
 
 	$form['p_email'] = array(
 		'#title' => 'Email', 
@@ -1027,7 +1051,9 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	$rec['p_language'] = $input['language'];
 	$rec['p_zip'] = $input['student_address_zip'];
 	$rec['p_email'] = $input['p_email'];
-	$rec['p_mode'] = $input['p_mode'];
+	//$rec['p_mode'] = $input['p_mode'];
+	$rec['p_mode_paper'] = $input['p_mode_paper'];
+	$rec['p_mode_email'] = $input['p_mode_email'];
 	$rec['p_subscription_type'] = $input['student_subscription'];
 	$rec['p_start_date'] = dmy_to_ymd($input['student_sub_start_date']);
 	$rec['p_end_date'] = dmy_to_ymd($input['student_sub_end_date']);
