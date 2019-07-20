@@ -766,14 +766,15 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'p_mode'));*/
 
-	$form['p_mode_paper'] = array(
+	$form['mode'] = array('#type' => 'fieldset', '#title' => 'Mode of Patrika', '#collapsible' => false);
+	$form['mode']['p_mode_paper'] = array(
 		'#title' => 'Paper Mode', 
 		'#type' => 'checkbox', 
 		'#default_value' => $add?'1':$edit_data['p_mode_paper'],
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'p_mode_paper'));
 
-	$form['p_mode_email'] = array(
+	$form['mode']['p_mode_email'] = array(
 		'#title' => 'Email Mode', 
 		'#type' => 'checkbox', 
 		'#default_value' => $add?'1':$edit_data['p_mode_email'],
@@ -1052,8 +1053,8 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	$rec['p_zip'] = $input['student_address_zip'];
 	$rec['p_email'] = $input['p_email'];
 	//$rec['p_mode'] = $input['p_mode'];
-	$rec['p_mode_paper'] = $input['p_mode_paper'];
-	$rec['p_mode_email'] = $input['p_mode_email'];
+	$rec['p_mode_paper'] = $input['p_mode_paper']?$input['p_mode_paper']:0;
+	$rec['p_mode_email'] = $input['p_mode_email']?$input['p_mode_email']:0;
 	$rec['p_subscription_type'] = $input['student_subscription'];
 	$rec['p_start_date'] = dmy_to_ymd($input['student_sub_start_date']);
 	$rec['p_end_date'] = dmy_to_ymd($input['student_sub_end_date']);
