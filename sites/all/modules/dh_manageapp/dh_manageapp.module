@@ -1419,7 +1419,7 @@ function dh_app_update_attended()
 		exit;		
 	}
 
-	$lv_check = db_query("select aa_laundry, aa_valuable from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and a_gender='$gender' and  (aa_laundry='".$fields['aa_laundry']."' or aa_valuable='".$fields['aa_valuable']."') and aa_applicant <> '$app_id'")->fetchField();
+	$lv_check = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and a_gender='$gender' and  (aa_laundry='".$fields['aa_laundry']."' or aa_valuable='".$fields['aa_valuable']."') and aa_applicant <> '$app_id'")->fetchField();
 	if ($lv_check > 0 && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
 		$out['status'] = false; 
