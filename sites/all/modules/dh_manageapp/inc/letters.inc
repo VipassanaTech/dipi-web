@@ -591,7 +591,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 
 		if ($attachment <> '')
 		{
-			 $options['attachment'] = array(array('filePath' => $attachment));
+			 $options['attachment'] .= array(array('filePath' => $attachment));
 		}
 		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
 
