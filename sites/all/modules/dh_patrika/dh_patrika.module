@@ -33,7 +33,6 @@ function dh_patrika_menu()
 		'type' => MENU_CALLBACK,       
     );
 
-
 /* 	$items['patrika/payment/edit/%patrika_id/%payment_id'] = array(
 	    'title' => 'Edit Payment',
 	    'page callback' => 'dh_manage_patrika_payment',
@@ -84,6 +83,13 @@ function dh_patrika_menu()
 		'access arguments' => array('generate label'),	
 	);
 
+ 	$items['patrika/center-report'] = array( 'title' => t('Center Report'),
+       	'page callback' => 'dh_center_report',
+       	'access arguments' => array('access center report'),
+		'type' => MENU_CALLBACK,       
+    ); 	
+
+
 	return $items;
 
 }
@@ -98,7 +104,7 @@ function dh_patrika_permission()
 	$perms['add payment'] = array('title' => t('Add Payments') ) ;
 	$perms['delete payment'] = array('title' => t('Delete Payments') ) ;
 	$perms['generate label'] = array('title' => t('Generate Labels') ) ;
-
+	$perms['access center report'] = array('title' => t('Access Center Report') ) ;
 	return $perms;
 }
 
@@ -119,6 +125,34 @@ function payment_id_load( $id )
 	return $id;
 }
 
+function dh_center_report()
+{
+	$q = "select co.c_name from dh_course co left join dh_center ce on (co.c_center = ce.c_id) where c_finalized = 0 order by ce.c_subdomain, co.c_start";
+	$res = db_query($q);
+	$rows = array();
+	while($r = $res->fetchAssoc())
+	{
+		$r = explode("/", $r['c_name'],3);
+		$rows[] = $r;
+	}
+
+	$header = array("Center Name", "Course Type", "Course Date");
+	$out  = '<h2>'.l("Back to Search", "patrika").'</h2>';
+	
+	$unfinalized = theme("table", array('header' => $header, 'rows' => $rows ));
+	$fieldset_vars = array(
+		'element' => array(
+		'#title' => t('Un-Finalized Courses'),
+		'#collapsible' => true,
+		'#collapsed' => false,
+		'#value' => '',
+		'#children' => $unfinalized
+		),
+	);
+	$out .= theme('fieldset', $fieldset_vars);
+	return $out;
+
+}
 
 function dh_manage_patrika()
 {
@@ -279,6 +313,11 @@ function dh_patrika_search_form($form, &$form_state)
 		l("Generate Labels (Foreign)", "patrika/generate/NON-IN", array('attributes' => array('class' => array('filedownload'))));
 
 	}
+	if (user_access("access center report"))
+	{
+		$breadcrumb .= "&nbsp;&nbsp;|&nbsp;&nbsp;".l("Center Report","patrika/center-report");
+	}
+
 	$form['a'] = array('#markup' => '<h3 style="">'.$breadcrumb.'</h3>');
 
 	$form['patrika_id'] = array(
