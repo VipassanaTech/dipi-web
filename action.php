@@ -15,7 +15,7 @@ if ( !is_numeric($id) )
    exit(1);
 }
 
-if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronRCExpected", "ReminderFinalize")) )
+if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronRCExpected", "ReminderFinalize", "VRIReminderFinalize")) )
 {
    echo "Invalid Action!\n";
    exit(1);
@@ -45,6 +45,9 @@ switch($action)
 	break;
    case 'ReminderFinalize':
    reminder_finalize();
+   break;
+   case 'VRIReminderFinalize':
+   vri_reminder_finalize();
    break;
 }
 //update_status_external($id, $event);

@@ -796,6 +796,30 @@ Thanks,
 	}
 }
 
+function vri_reminder_finalize()
+{
+
+	$body = 'Dear VRI Admin,
+
+This is a monthly report of centers who have not finalized their courses. You can view the report here - 'l("Center Report", "https://dipi.vipassana.co/patrika/center-report")'. Please make sure that centers finalize courses on time.
+
+Thanks,
+- DIPI Automation. 
+
+	';
+	$mg = Mailgun::create(variable_get('mailgun_key', ''));
+	$test_mode = variable_get('mode_test', '0');
+	if ( $test_mode )
+		$to = variable_get('mode_test_emails', '');
+	$options = array(
+	  'from'    => 'DIPI Automation <noreply@vipassana.co>',
+	  'to'      => 'vri_admin@vridhamma.org',
+	  'subject' => 'DIPI Monthly Center Report',
+	  'text'    => $body,
+	  'v:test-mode' => $test_mode
+	);
+	$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+}
 
 function finalize_course( $course_id )
 {
