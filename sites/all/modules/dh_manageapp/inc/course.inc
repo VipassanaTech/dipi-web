@@ -801,7 +801,7 @@ function vri_reminder_finalize()
 
 	$body = 'Dear VRI Admin,
 
-This is a monthly report of centers who have not finalized their courses. You can view the report here - 'l("Center Report", "https://dipi.vipassana.co/patrika/center-report")'. Please make sure that centers finalize courses on time.
+This is a monthly report of centers who have not finalized their courses. You can view the report here - https://dipi.vipassana.co/patrika/center-report . Please make sure that centers finalize courses on time.
 
 Thanks,
 - DIPI Automation. 
