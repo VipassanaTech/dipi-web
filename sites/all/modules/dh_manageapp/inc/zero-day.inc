@@ -1408,7 +1408,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 		$data[strtoupper($r['a_gender'])][$r['a_old']?'old':'new'][] = $r;
 	}
 
-	$header = array('Sr.', 'ConfNo', 'Student', 'Courses', 'Education', 'Age', 'City', 'Occupation', 'ContactDetails' , 'Recommended By');
+	$header = array('Sr.', 'ConfNo', 'Student', 'Courses', 'Education', 'Age', 'City', 'Occupation', 'ContactDetails' , 'Recom. By / Comments');
 	if ($c_type == 'lc')
 		$header = array('Sr', 'ConfNo', 'Student', 'Courses', 'Country', 'Age' , 'Contact', 'Health Problems', 'Special Requirement', '10d', 'STP', 'TSC', '20d', '30d', '45d', '60d', 'Languages' );
 	$attributes = array('class' => array('table-day0-list') );
