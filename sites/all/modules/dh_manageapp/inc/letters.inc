@@ -517,7 +517,9 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$subject = $ret['subject'];
 	$body = $ret['body'];
 	$sms_body = $ret['sms_body'];
-	$attachment = $ret['attachment'];
+	$attachment = array();
+	if ( $ret['attachment'] <> '')
+		$attachment[] = $ret['attachment'];
 	$delivery_type = $ret['delivery_type'];
 	$letter_name = $ret['letter_name'];
 
@@ -527,7 +529,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$attachment = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
 	}
 
 
@@ -589,9 +591,10 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 
 //		  'cc'      => 'vinay@vinay.in',
 
-		if ($attachment <> '')
+		if ( count($attachment) > 0)
 		{
-			 $options['attachment'] = array(array('filePath' => $attachment));
+			foreach( $attachment as $a )
+				$options['attachment'][] = array('filePath' => $a);
 		}
 		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
 
