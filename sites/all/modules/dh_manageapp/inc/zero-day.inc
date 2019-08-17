@@ -1448,7 +1448,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 
 					$row[] = $r['a_occupation'];
 					$row[] = 'M: '.$r['a_phone_mobile'].' Email:'.$r['a_email'];
-					$row[] = $r['a_learn_about_vip'].$r['a_willing_to_serve']?'Can Serve':''.(strtoupper($r['Country'])<>'INDIA')?$r['a_lang_discourse']:'';
+					$row[] = $r['a_learn_about_vip'].($r['a_willing_to_serve']?'Can Serve':'').(strtoupper($r['Country'])<>'INDIA'?$r['a_lang_discourse']:'');
 				}
 				else
 				{
