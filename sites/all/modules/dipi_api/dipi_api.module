@@ -1031,17 +1031,18 @@ function _api_confirm_app($phone, $appid)
       left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
       left join dh_type_detail td on (co.c_course_type=td.td_id) 
       where a_id='$appid' and date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
+    watchdog('dipi_api', $q, array(), WATCHDOG_NOTICE, 'link');
     $res = db_query($q);
     $r = $res->fetchAssoc();
-    if ($r['a_status'] == 'PreConfirmation')
+    if ($r['Status'] == 'PreConfirmation')
     {
-      $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
-      $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
+      $out = "Application Id ".$r['ID']." for ".$r['Name']." confirmed successfully";
+      $cmd = "/usr/bin/php status-trigger.php ".$r['ID']." 'Confirmed'";
     }
     else
     {
-      $out = "Application Id ".$r['a_id']." for ".$r['c_name']." reconfirmed successfully";
-      $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Expected'";
+      $out = "Application Id ".$r['ID']." for ".$r['Name']." reconfirmed successfully";
+      $cmd = "/usr/bin/php status-trigger.php ".$r['ID']." 'Expected'";
     }
     exec($cmd);
     _ivr_log($phone, "course", "confirm", $out );
