@@ -232,7 +232,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 50);
+		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255);
 	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
  		'#default_value' => $add?'':$edit_data['a_friend_family_details'], '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
