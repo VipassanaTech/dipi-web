@@ -86,7 +86,7 @@ function create_d11_report_pdf( $course_id )
 			$totals[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
 	}
 
-	$q = "select a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and aa_left=1 group by a_gender, a_old, a_country";
+	$q = "select a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and (aa_left=1 or a_status='LEFT') group by a_gender, a_old, a_country";
 	$hand = db_query($q);
 	$left['M'][0]['IN'] = $left['M'][1]['IN'] = $left['F'][0]['IN'] = $left['F'][1]['IN'] = 0;
 	$left['M'][0]['NON-IN'] = $left['M'][1]['NON-IN'] = $left['F'][0]['NON-IN'] = $left['F'][1]['NON-IN'] = 0;
