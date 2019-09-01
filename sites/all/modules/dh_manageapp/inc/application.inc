@@ -1008,7 +1008,10 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	if (isset($temp['query']))
 		parse_str($temp['query'], $qry);
 	if ( strstr($temp['path'], "search-app") )
-		drupal_goto("search-course/$centre_id/$course_id", array('query' => array('s' => '', 't' => '', 'g' => '')));
+	{
+		drupal_goto("course/$centre_id/$course_id");
+		//drupal_goto("search-course/$centre_id/$course_id", array('query' => array('s' => '', 't' => '', 'g' => '')));		
+	}
 	else
 		drupal_goto($temp['path'], array('query' => $qry ));
 	if($ajax <> '')
