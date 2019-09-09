@@ -520,9 +520,12 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        		var str = "<select id=\"action-type\" class=\"action-select\"><option value=\"\" selected=\"selected\">Choose</option>";
 				        		for (var i=0; i < t.length; i++ )
 				        		{
-				        			if ((data.allowtransfer == "1") && ( t[i] == "Transfer" || t[i] == "Delete" ) )
+				        			if ( t[i] == "Transfer" || t[i] == "Delete" )
 				        			{
-				        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
+					        			if ((data.allowtransfer == 1)   )
+					        			{
+					        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
+					        			}				       			
 				        			}
 				        			else
 				        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
