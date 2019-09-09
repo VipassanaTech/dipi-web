@@ -107,7 +107,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['courseid'] = $r['a_course'];
 		$rs['centreid'] = $r['a_center'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
-		if ( $r['a_attended'] || ($r['a_status'] == $system_statues['STATUS-LEFT'] ))
+		if ( $r['a_attended'] ||  in_array($r['a_status'], array($system_statues['STATUS-LEFT'],$system_statues['STATUS-ATTENDED'] ))  )
 			$rs['allowtransfer'] = 0;
 		if (date('Y-m-d') > $r['c_end'])
 			$rs['allowtransfer'] = 0;
@@ -257,21 +257,31 @@ function dh_manageapp_search_results( $type, $where, $centre )
 	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')))
 	{	
 		$action_select = '<option value=\"\" selected=\"selected\">Choose</option>';
-		if (user_access("transfer course"))
+		$actions = array();
+		if (user_access("transfer course")) {
 			$action_select .='<option value=\"Transfer\" >Transfer</option>';
-		if (user_access("add application"))
+			$actions[] = "Transfer";
+		}
+		if (user_access("add application")) {
 			$action_select .='<option value=\"Add\">Add</option>';
-		if (user_access("manage referral list"))
+			$actions[] = "Add";
+		}
+		if (user_access("manage referral list")) {
 			$action_select .='<option value=\"Add-referral\">Add Referral</option>';
-		if (user_access("delete application"))
+			$actions[] = "Add Referral";
+		}
+		if (user_access("delete application")) {
 			$action_select .='<option value=\"Delete\">Delete</option>';
-		$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
-		
+			$actions[] = "Delete";
+		}
+		//$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
+		$action = implode("," , $actions);
 //		$action_select .='<option value="Add">'.$add_action.'</option>';
 		//$action_select .= 'return "<a href=\"#\" action=\"Transfer\" class=\"course-transfer\">Transfer</a>";';
 	}
 	else
-		$action = 'return "No access"';
+		$action = '';
+		//$action = 'return "No access"';
 
 
 	$button_access = '';
@@ -503,7 +513,20 @@ function dh_manageapp_search_results( $type, $where, $centre )
 				        	'.$status_action.'	
 				        } },
 				        { data: null, "title" : "Action", render: function(data, type, row) {
-				        		'.$action.'
+				        		var a = "'.$action.'";
+				        		if (a == "")
+				        			return "No Access";
+				        		var t = a.split(",");
+				        		var str = "<select id=\"action-type\" class=\"action-select\"><option value=\"\" selected=\"selected\">Choose</option>";
+				        		for (var i=0; i < t.length; i++ )
+				        		{
+				        			if (!data.allowtransfer)
+				        			{
+				        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
+				        			}
+				        		}
+				        		str += "</select>";
+				        		return str;
 				        } },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
