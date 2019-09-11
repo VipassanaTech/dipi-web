@@ -152,7 +152,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 		$rs['mental'] = $r['ae_desc_mental']?$r['ae_desc_mental']:"";
 		$rs['medication'] = $r['ae_desc_medication']?$r['ae_desc_medication']:"";
 		$rs['addiction'] = $r['ae_desc_addiction_current']?$r['ae_desc_addiction_current']:"";
-		$rs['othertechnique'] = $r['ae_desc_other_technique']?$r['ae_desc_other_technique']:"";
+		$rs['othertechnique'] = trim($r['ae_desc_other_technique'])?$r['ae_desc_other_technique']:"";
 		$rs['pregnant'] = $r['ae_pregnant']?'Yes':'No';
 		if ($r['ae_pregnant'] && ( ! in_array(strtolower($r['ae_pregnant_detail']), array("-", "no")) ) )
 			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
