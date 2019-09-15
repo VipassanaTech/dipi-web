@@ -794,6 +794,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 		if ($input['attending'] || in_array($old_status, array_values($status_ce) )  )
 		{
+			if (!isset($app['a_status'])) $app['a_status'] = '';
 			if ( $app['a_status'] <> 'Left' )
 			{
 				$app['a_status'] =  $status_ce['STATUS-CONFIRMED'];
