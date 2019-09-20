@@ -777,7 +777,7 @@ Thanks,
 - DIPI Automation. 
 
 	';
-	$q = "select c.c_name, c.c_id, cs.cs_email_reply_to from dh_course c left join dh_center_setting cs on (c.c_center=cs.cs_center) left join dh_type_detail td on (c.c_course_type=td.td_id) where date_format(c.c_end, '%Y%m%d') < '".date("Ymd")."' and td.td_val2 > 1 and c.c_deleted=0 and c.c_finalized=0";
+	$q = "select c.c_name, c.c_id, cs.cs_email_reply_to from dh_course c left join dh_center_setting cs on (c.c_center=cs.cs_center) left join dh_type_detail td on (c.c_course_type=td.td_id) where date_format(c.c_end, '%Y%m%d') < '".date("Ymd")."' and td.td_val2 > 1 and c.c_deleted=0 and c.c_finalized=0 and c.c_cancelled=0";
 	$result = db_query($q);
 	$mg = Mailgun::create(variable_get('mailgun_key', ''));
 	while($r = $result->fetchAssoc())
