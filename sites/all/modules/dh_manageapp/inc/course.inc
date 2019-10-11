@@ -573,11 +573,11 @@ function course_summary( $centre_id, $where, $statuses )
 	global $user;
 	if (empty($statuses))
 	{
-		$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
+		$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' order by td_val2";
 		$system_statuses = db_query($q)->fetchAllKeyed();
 
 		$statuses = $system_statuses;
-		$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'";
+		$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS' order by td_val2";
 		$s_res = db_query($q);
 		while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];		
 	}

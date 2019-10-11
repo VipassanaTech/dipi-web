@@ -428,7 +428,7 @@ function upcoming_courses( $centre_id )
 	$now = date('Y-m-d');
 	$now_plus_1month = date('Y-m-d', strtotime("+1 month"));
 
-	$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
+	$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' order by td_val2";
 	$system_statuses = db_query($q)->fetchAllKeyed();
 	unset($system_statuses['STATUS-LEFT']);
 	unset($system_statuses['STATUS-CUSTOM']);
@@ -436,7 +436,7 @@ function upcoming_courses( $centre_id )
 
 	$statuses = $system_statuses;
 	//$statuses = array($system_statuses['STATUS-RECEIVED'] , $system_statuses['STATUS-CLARIFICATIONRESPONSE'], $system_statuses['STATUS-CONFIRMED'], $system_statuses['STATUS-CANCELLED']);
-	$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'";
+	$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'  order by td_val2";
 	$s_res = db_query($q);
 	while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];
 
