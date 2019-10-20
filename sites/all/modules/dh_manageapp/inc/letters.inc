@@ -7,10 +7,6 @@ define('DELIVERY_TYPE_EMAIL', 1);
 define('DELIVERY_TYPE_SMS', 2);
 
 
-//define('MAILGUN_KEY', 'key-1dec8567ba03bd362ea0d719f554c1cb');
-define('SENDGRID_KEY', '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');
-//define('PRIMARY_DOMAIN', 'nl.vipassana.co');
-
 
 function dh_manage_letters()
 {
@@ -539,43 +535,6 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		//$from = $from_email['cs_email_from_name'];
 		$from = $from_email['cs_email_from_name'].' <'.$from_email['cs_email_reply_to'].'>';
 		$mg = Mailgun::create(variable_get('mailgun_key', ''));
-
-		/*$reply_to = new SendGrid\ReplyTo($from_email['cs_email_reply_to'], $from_email['cs_email_from_name']);
-		$from = new SendGrid\Email($from_email['cs_email_from_name'], "registrar@me.vipassana.co" );
-		//$subject = "Sending with SendGrid is Fun";
-		$to = new SendGrid\Email("Vinay", "ramyan04@gmail.com");
-		$content = new SendGrid\Content("text/plain", $body);
-		$mail = new SendGrid\Mail($from, $subject, $to, $content);
-    	$mail->setReplyTo($reply_to);
-
-    	$cc = new SendGrid\Email("Info Centre", "info@dhamma.net.in");
-    	//$mail->personalization[0]->addCC($cc);
-
-		$apiKey = SENDGRID_KEY;
-		$sg = new \SendGrid($apiKey);
-		
-		if ($attachment <> '')
-		{
-			$filename = basename($attachment);
-			$file_encoded = base64_encode(file_get_contents($attachment));
-			$attach = new SendGrid\Attachment();
-			$attach->setContent($file_encoded);
-			$attach->setType("application/pdf");
-			$attach->setDisposition("attachment");
-			$attach->setFilename($filename);
-			$mail->addAttachment($attach);
-		}
-
-
-		$response = $sg->client->mail()->send()->post($mail);
-			
-
-		watchdog('SENDGRID', 'Attachment: '.$attachment.' Response: '.$response->statusCode()." Body: ".$response->body() );
-		*/
-		//$response->statusCode();
-		//print_r($response->headers());
-		//echo $response->body();
-
 		$test_mode = variable_get('mode_test', '0');
 		$to = $row['a_email'];
 		if ( $test_mode )
@@ -610,14 +569,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if ($sms_body <> '' )
 		{
 			$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
-			//$result = send_sms_textlocal($row['a_phone_mobile'], $sms_body );
-		    //$result = json_decode($result); 
-      		//watchdog('SMS', 'Textlocal sending letter'. print_r($result, true));
-
-			//watchdog('SMS', $sms_body);
-			//http://bhashsms.com/api/sendmsg.php?user=success&pass=123456&sender=DHAMMA&phone=9003099142&text=TestSMS&priority=ndnd&stype=normal
 			$response = file_get_contents($sms_url);
-			//$response = $result["status"];
 			$log = "Letter sent (SMS) - ".$letter_name." ( Response: $response )";
 			logit($centre,  'Letter', $id, $log );
 		}
