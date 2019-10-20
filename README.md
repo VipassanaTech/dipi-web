@@ -39,7 +39,7 @@ You can [download](https://github.com/VipassanaTech/dipi-web/archive/master.zip)
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://github.com/VipassanaTech/dipi-web/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](https://github.com/VipassanaTech/dipi-web/blob/master/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## License
 
