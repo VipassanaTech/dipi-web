@@ -10,6 +10,7 @@ Please note we have a code of conduct, please follow it in all your interactions
 1. Ensure any install or build dependencies are removed before the end of the layer when doing a 
    build.
 2. Always commit your changes to a branch separate from master & beta
+3. You can then request the project maintainers to merge the commits
 
 ## Code of Conduct
 
@@ -35,8 +36,6 @@ include:
 
 Examples of unacceptable behavior by participants include:
 
-* The use of sexualized language or imagery and unwelcome sexual attention or
-advances
 * Trolling, insulting/derogatory comments, and personal or political attacks
 * Public or private harassment
 * Publishing others' private information, such as a physical or electronic
@@ -68,7 +67,7 @@ further defined and clarified by project maintainers.
 ### Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team at [INSERT EMAIL ADDRESS]. All
+reported by contacting the project team at [dipi@vipassana.co]. All
 complaints will be reviewed and investigated and will result in a response that
 is deemed necessary and appropriate to the circumstances. The project team is
 obligated to maintain confidentiality with regard to the reporter of an incident.
