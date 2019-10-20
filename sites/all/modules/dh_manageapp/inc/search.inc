@@ -752,18 +752,18 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			        var tr = $(this).closest("tr");
 			        var row = table.row( tr );
 			        var centre_id = row.data().centreid;
-
+			        console.log(action);
 			        if ( action == "" )
-			        	exit;
-			        if (action == "Add-referral")
+			        	return;
+			        if (action == "Add Referral")
 			        {
 			        	add_referral(s);
-			        	exit;
+			        	return;
 			        }
 			        if ( action == "Delete" )
 			        {
 			        	app_del(s);
-			        	exit;
+			        	return;
 			        }
 			        var comment_transfer = "";
 			        if ( action == "Transfer")
