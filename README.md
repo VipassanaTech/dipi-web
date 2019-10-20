@@ -3,12 +3,12 @@
 DIPI is a Pali word meaning 'Teaching'. This is an online registration system designed for Vipassana Meditation centres around the world.
 
 ## Key Features
-* SMS Gateway - System can send SMS to applicants who do not have an email. System can also re-confirm,cancel & transfer applications based on student's SMS. 
-  For e.g - Student can SMS 'Cancel' from their registered mobile number to cancel his/her application.
-* Auto-close/waitlist Courses - User can define the number of applications they wish to have per course, after which the      system can automatically mark the course as FULL/Waitlist
-* Course History - Centers can view when a student has applied for a course anywhere in India
-* Supports multiple registration workflows - Centers can choose to process applications in various ways. Pre-confirmation/Re-confirmation both are supported & students will be notified automatically as defined by the user. Reminder mails can also be sent automatically.
-* Cancellation/Re-confirmation via link - Students can cancel/re-confirm their application via a link sent to them in their email correspondence & status will be updated automatically in the system
+* SMS Gateway – The system can send an SMS to applicants who do not have an email. The system can also re-confirm, cancel and transfer applications based on student's SMS. 
+For e.g – The student can SMS 'Cancel' from their registered mobile number to cancel his/her application. 
+* Auto-close/waitlist Courses – The user can define the number of applications they wish to have per course, after which the system can automatically mark the course as FULL/Waitlist
+* Course History – The centers can view when a student has applied for a course anywhere in India 
+* Supports multiple registration workflows – The centers can choose to process applications in various ways. Both Pre-confirmation/Re-confirmation are supported and students will be notified automatically as defined by the user. Reminder mails can also be sent automatically.
+* Cancellation/Re-confirmation via link - Students can cancel/re-confirm their application via a link sent to them in their email correspondence and status will be updated automatically in the system
 * AT Scheduling - Centers can create this schedule for all courses to keep track of the conducting ATs
 * User Permissions - There are 4 levels of permissions -
   - Registrar - Full Access
@@ -39,7 +39,7 @@ You can [download](https://github.com/VipassanaTech/dipi-web/archive/master.zip)
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](https://github.com/VipassanaTech/dipi-web/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## License
 
