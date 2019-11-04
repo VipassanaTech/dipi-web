@@ -127,7 +127,7 @@ function payment_id_load( $id )
 
 function dh_center_report()
 {
-	$q = "select co.c_name from dh_course co left join dh_center ce on (co.c_center = ce.c_id) left join dh_type_detail on (co.c_course_type = td_id) where c_finalized = 0 and td_val2 > 1 and c_end <= (CURDATE() - interval 1 month) order by ce.c_subdomain, co.c_start";
+	$q = "select co.c_name from dh_course co left join dh_center ce on (co.c_center = ce.c_id) left join dh_type_detail on (co.c_course_type = td_id) where c_finalized = 0 and c_deleted = 0 and c_cancelled = 0 and td_val2 > 1 and c_end <= (CURDATE() - interval 1 month) order by ce.c_subdomain, co.c_start";
 	$res = db_query($q);
 	$rows = array();
 	while($r = $res->fetchAssoc())
