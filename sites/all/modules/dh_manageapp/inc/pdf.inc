@@ -499,8 +499,8 @@ function map_application_fields_lc($row)
 	$fields['form1[0].#subform[0].practicedetails[0]'] = $row['al_daily_practice_details'];
 
 	if ($row['al_5_precepts']) $fields['form1[0].#subform[1].pd5[0]'] = '1'; else $fields['form1[0].#subform[1].pd6[0]'] = '1';
-	if ($row['al_intoxicants']) $fields['form1[0].#subform[1].pd7[0]'] = '1'; else $fields['form1[0].#subform[1].pd8[0]'] = '1';
-	if ($row['al_sexual_misconduct']) $fields['form1[0].#subform[1].pd9[0]'] = '1'; else $fields['form1[0].#subform[1].pd10[0]'] = '1';
+	if ($row['al_sexual_misconduct']) $fields['form1[0].#subform[1].pd7[0]'] = '1'; else $fields['form1[0].#subform[1].pd8[0]'] = '1';
+	if ($row['al_intoxicants']) $fields['form1[0].#subform[1].pd9[0]'] = '1'; else $fields['form1[0].#subform[1].pd10[0]'] = '1';
 	//if ($row['al_requirements']) $fields['form1[0].#subform[0].pd11[0]'] = 'Yes'; else $fields['form1[0].#subform[0].pd12[0]'] = 'Yes';
 	//$fields['form1[0].#subform[1].creqdetails[0]'] = $row['al_requirements_details'];
 
