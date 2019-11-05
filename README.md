@@ -21,13 +21,42 @@ For e.g – The student can SMS 'Cancel' from their registered mobile number to 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-To clone this project, you'll need [Git](https://git-scm.com) installed on your computer. From your command line:
+<ul>
+<li>Install LAMP/WAMP stack</li>
+<li>Download <a href="https://github.com/VipassanaTech/db-dump/blob/master/dipi-dump.zip">db dump</a>. The zip file is password protected. Please send an email to <a href="mailto:dipi@vipassana.co">dipi@vipassana.co</a>, if you want access.</li>
+<li>To clone this project, you'll need <a href="https://git-scm.com">Git</a> installed on your computer. From your command line:</li>
 
 ```bash
 # Clone this repository
 $ git clone https://github.com/VipassanaTech/dipi-web.git
 ```
+
+<li>Setup Database</li>
+
+```bash
+$ mysql -u root -p
+# Enter password
+$ create database database_name;
+$ quit
+
+# Import database dump
+$ mysql -u root -p database_name < path_to_dipi-dump.sql
+# Enter password
+$ mysql -u root -p
+# Enter password
+$ grant all privileges on database_name.* to dipi@localhost identified by 'adsklfjajsdkfj';
+$ flush privileges;
+$ quit
+
+# Copy default.settings.php
+# CD into the cloned repo
+cd path_to_cloned_repo/sites/default
+cp default.settings.php settings.php
+# Edit & Update settings.php with the database credentials
+```
+
+<li>Update Apache configuration and Host file</li>
+</ul>
 
 ## Download
 
