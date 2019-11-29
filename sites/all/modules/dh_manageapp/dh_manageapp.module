@@ -638,6 +638,9 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group] = array('#type' => 'fieldset','#title' => 'SMS Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['sms_url'] = array('#title' => 'SMS URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_url', ''));
 
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'SMS Settings (API)' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['sms_api_url'] = array('#title' => 'SMS API URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_api_url', ''));
+
  	$group = 'Applicant Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Applicant Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['applicant_url'] = array('#title' => 'Applicant URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('applicant_url', ''));

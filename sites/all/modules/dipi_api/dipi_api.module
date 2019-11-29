@@ -987,6 +987,16 @@ function send_sms_bhash( $to, $message )
 }
 
 
+function send_sms_rudra($to, $message )
+{
+    $sms_url = variable_get('sms_api_url', '');
+
+    $sms_url = str_replace(array('%phone', '%data'), array($to, urlencode($message)), $sms_url );
+    $result = file_get_contents($sms_url);
+   // watchdog("SMS", $sms_url);
+    return $result;
+}
+
 function _ivr_log( $from, $action, $params, $response )
 {
     $rec['il_from'] = $from;
