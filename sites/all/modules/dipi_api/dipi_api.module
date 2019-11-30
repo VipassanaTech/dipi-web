@@ -946,14 +946,20 @@ function _api_sms_keyword_patrika($pid, $pincode)
 
 function send_sms($to , $message)
 {
-      $result = send_sms_textlocal($to, $message );
-      $result = json_decode($result);    
+      //$result = send_sms_textlocal($to, $message );
+      //$result = json_decode($result);    
       /*if (  $result->response->status != 'success' )
         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
       */
+      /*
       if (  $result->status == 'failure' )
         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
-      
+      */
+      $result = send_sms_rudra($to, $message);
+      if (! strstr($result, "Message Submitted Successfully"))
+      {
+         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. $result);  
+      }
 }
 
 function send_sms_textlocal( $to, $message )
