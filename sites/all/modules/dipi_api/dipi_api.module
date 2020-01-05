@@ -1097,7 +1097,7 @@ function _api_transfer_app($phone, $appid)
     $phone = addslashes($phone);
     $appid = addslashes($appid);
     $out = "Send 'TRANSFER <centre> <YYYY-mm-dd> $appid' to 9293792937";
-    send_sms_bhash($phone, $out);
+    send_sms($phone, $out);
     _ivr_log($phone, "course", "transfer", $out);
     return array();
 }
