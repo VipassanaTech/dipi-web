@@ -1,0 +1,11 @@
+name = User Created By
+description = Allows to store the uid of the current user who created the user
+core = 7.x
+dependencies[] = views
+
+; Information added by Drupal.org packaging script on 2014-12-03
+version = "7.x-1.0"
+core = "7.x"
+project = "user_created_by"
+datestamp = "1417603381"
+

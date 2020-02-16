@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ * Module file of User Created By module.
+ */
+
+/**
+ * Implements hook_user_insert().
+ */
+function user_created_by_user_insert(&$edit, $account, $category) {
+  global $user;
+  // Insert user creator uid in module's custom table.
+  db_insert('user_created_by_data')->fields(array('uid' => $account->uid, 'creator_uid' => $user->uid))->execute();
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function user_created_by_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'user_created_by') . '/views',
+  );
+}
+
+/**
+ * Implements hook_user_delete().
+ */
+function user_created_by_user_delete($account) {
+  db_delete('user_created_by_data')->condition('uid', $account->uid)->execute();
+}

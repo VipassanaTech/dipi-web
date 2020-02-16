@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Install file for User Created By module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function user_created_by_schema() {
+  $schema['user_created_by_data'] = array(
+    'description' => 'The table to store the user uid and creator\'s uid.',
+    'fields' => array(
+      'uid' => array(
+        'description' => 'The {users}.uid',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+      'creator_uid' => array(
+        'description' => 'The {users}.uid who created the user',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ),
+    ),
+    'primary key' => array('uid'),
+  );
+
+  return $schema;
+}
