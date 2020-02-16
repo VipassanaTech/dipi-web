@@ -33,6 +33,7 @@ function dh_manageapp_permission()
 	$perms['access manageapp'] = array('title' => t('Access ManageApp') ) ;
 	$perms['administer manageapp'] = array('title' => t('Administer ManageApp module') ) ;
 	$perms['access manageapp settings'] = array('title' => t('Access ManageApp System Settings') ) ;
+	$perms['access user mapping'] = array('title' => t('Access User Mapping') ) ;
 	$perms['access all centres'] = array('title' => t('Access All Centres') ) ;
 	$perms['access zero day'] = array('title' => t('Access Zero Day Module') ) ;
 	$perms['access centre'] = array('title' => t('Access Centre Details') ) ;
@@ -122,12 +123,12 @@ function dh_manageapp_menu()
 
     $items['user-mapping'] = array('title' => t('Manager User Mapping'),
 	       'page callback' => 'dh_manage_usermapping',
-	       'access arguments' => array('access all centres'),
+	       'access arguments' => array('access user mapping'),
 	       'type' => MENU_CALLBACK);
 
     $items['user-mapping/handler'] = array('title' => t('Manager User Mapping'),
 	       'page callback' => 'dh_manage_usermapping_handler',
-	       'access arguments' => array('access all centres'),
+	       'access arguments' => array('access user mapping'),
 	       'type' => MENU_CALLBACK);
 
 
@@ -434,6 +435,35 @@ function dh_manageapp_theme()
     return $themes;
 }
 
+
+function dh_manageapp_form_user_admin_account_alter(&$form, &$form_state, $form_id) 
+{
+	global $user;
+	if (!user_access('administer users')) 
+	{
+		$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'");
+		$center_access = array();
+		while($r = $res->fetchAssoc())
+			$center_access[] = $r['uc_center'];
+		foreach ($form['accounts']['#options'] as $uid => $fields) 
+		{
+			$account = user_load($uid);
+		  	if (!_manageapp_check_access($account, $center_access)) 
+		  	{
+		   		unset($form['accounts']['#options'][$uid]);
+		  	}
+		}
+	}
+}
+
+
+function _manageapp_check_access($account, $center_access)
+{
+	$q = "select count(uc_id) from dh_user_center where uc_user='".$account->uid."' and uc_center in (".implode(",", $center_access).") and uc_deleted=0";
+	$c = db_query($q)->fetchField();
+	return $c;
+}
+
 function center_dashboard_page()
 {
     print theme('center_dashboard_page');
@@ -659,6 +689,23 @@ function dh_manage_usermapping_handler()
 {
 	global $user;
 	include_once "sites/all/libraries/editor/php/DataTables.php";
+    $centers_allowed = array();
+    $users_allowed = array();
+    if ( ! user_access('administer manageapp') )
+    {
+	    $res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."' and uc_deleted=0");
+    	while( $r = $res->fetchAssoc())
+        	$centers_allowed[] = $r['uc_center'];
+
+       	$res = db_query("select uc_user from dh_user_center where uc_center in (".implode(",", $centers_allowed).") and uc_deleted=0");
+       	while( $r = $res->fetchAssoc())
+        	$users_allowed[] = $r['uc_user'];
+
+       	$res = db_query("select u.uid from users u left join user_created_by_data uc on (u.uid=uc.uid) where uc.creator_uid='".$user->uid."'");
+       	while( $r = $res->fetchAssoc())
+        	if (!in_array($r['uid'], $users_allowed))
+            	$users_allowed[] = $r['uid'];
+    }
 
 	$editor = \DataTables\Editor::inst( $db, 'dh_user_center', 'uc_id' ); 
     $editor->fields(\DataTables\Editor\Field::inst( 'dh_user_center.uc_user' )
@@ -669,8 +716,14 @@ function dh_manage_usermapping_handler()
                 ->where( function ($q) {
 		            $q->where( 'name', 'Applicant', '!=' );
 		            $q->where( 'name', '', '!=' );
-        		}
-            )            
+        		})
+               ->where( function ($q) use ($users_allowed) {
+                   	foreach($users_allowed as $k => $c)
+                   		if ($k == 0 )
+                        	$q->where('uid', $c);
+                        else
+                        	$q->or_where('uid', $c);
+                })                        
             )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Please Select a User' )
@@ -681,6 +734,13 @@ function dh_manage_usermapping_handler()
                 ->table( 'dh_center' )
                 ->value( 'c_id' )
                 ->label( 'c_name' )
+                ->where( function ($q) use ($centers_allowed) {
+                   	foreach($centers_allowed as $k => $c)
+                    	if ($k == 0 )
+                        	$q->where('c_id', $c);
+                        else
+                        	$q->or_where('c_id', $c);
+                })      
             )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Please Select a Center' )
@@ -704,8 +764,21 @@ function dh_manage_usermapping_handler()
 //    ->on( 'preCreate', function ( $editor, $values ) { _course_set_default( $editor, 0, $values); } )
 //   ->on( 'preEdit', function ( $editor, $id, $values ) { _course_set_default( $editor, $id, $values); } )
     ->on( 'preRemove', function() { return false; })
-    ->where( 'uc_deleted', 0)
-    ->process( $_POST )
+    ->where( 'uc_deleted', 0);
+
+   	if(! user_access("administer manageapp") )
+   	{
+    	$editor->where( function ( $q ) use ($centers_allowed) 
+    	{
+        	foreach($centers_allowed as $k => $c)
+            	if ( $k == 0)
+                	$q->where( 'uc_center', $c );
+                else
+                	$q->or_where( 'uc_center',  $c);
+        } );
+   	}
+
+    $editor->process( $_POST )
     ->json();
     exit;
 }
