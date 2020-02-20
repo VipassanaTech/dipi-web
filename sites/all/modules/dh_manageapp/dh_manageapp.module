@@ -126,7 +126,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access user mapping'),
 	       'type' => MENU_CALLBACK);
 
-    $items['centre/%centre_id/users'] = array('title' => t('Manage Users'),
+    $items['users'] = array('title' => t('Manage Users'),
 	       'page callback' => 'dh_manage_users',
 	       'access arguments' => array('access user mapping'),
 	       'type' => MENU_CALLBACK);
@@ -791,7 +791,6 @@ function dh_manage_usermapping_handler()
 function dh_manage_users()
 {
 	global $user;
-	$centre_id = arg(1);
 	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 
 	$temp = db_query("select uc_center from dh_user_center where uc_user = '".$user->uid."'")->fetchAssoc();
