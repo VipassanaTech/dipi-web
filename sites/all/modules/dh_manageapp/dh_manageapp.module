@@ -126,6 +126,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access user mapping'),
 	       'type' => MENU_CALLBACK);
 
+    $items['centre/%centre_id/users'] = array('title' => t('Manage Users'),
+	       'page callback' => 'dh_manage_users',
+	       'access arguments' => array('access user mapping'),
+	       'type' => MENU_CALLBACK);
+
     $items['user-mapping/handler'] = array('title' => t('Manager User Mapping'),
 	       'page callback' => 'dh_manage_usermapping_handler',
 	       'access arguments' => array('access user mapping'),
@@ -783,6 +788,35 @@ function dh_manage_usermapping_handler()
     exit;
 }
 
+function dh_manage_users()
+{
+	global $user;
+	$centre_id = arg(1);
+	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
+
+	$temp = db_query("select uc_center from dh_user_center where uc_user = '".$user->uid."'")->fetchAssoc();
+	$centres = implode(",", $temp);
+	$q = "select u.uid as id, uc.uc_user, u.name as username, u.status as status, FROM_UNIXTIME(u.created) as created, FROM_UNIXTIME(u.access) as access, GROUP_CONCAT(r.name SEPARATOR'\r\n') as roles from users u left join users_roles ur on u.uid = ur.uid left join role r on ur.rid = r.rid left join dh_user_center uc on u.uid = uc.uc_user where uc.uc_center IN ($centres) and r.rid > 3 group by u.uid";
+	$result = db_query($q);
+	$rows = array();
+	while ($r = $result->fetchAssoc()) 
+	{	
+		unset($rs);
+		$rs[] = $r['id'];
+		$rs[] = $r['username'];
+		$rs[] = $r['status']?'Active':'Inactive';
+		$rs[] = nl2br($r['roles']);
+		$rs[] = $r['created'];
+		$rs[] = $r['access'];		
+		$rs[] = l("Edit", "user/".$r['id']."/edit");
+		$rows[] = array_values($rs);
+	}
+	$out = '<h3>'.l("Back to Dashboard", "centre/".arg(1))." | ".l("Create User", "admin/people/create")." | ".l("User Mapping", "user-mapping").'</h3>';
+	$header = array('ID', 'Name', 'Status', 'Roles','Member since','Last access', 'Action');	
+	$out .= theme("table", array('header' => $header, 'rows' => $rows ));
+
+	return $out;
+}
 
 function dh_manage_usermapping()
 {
