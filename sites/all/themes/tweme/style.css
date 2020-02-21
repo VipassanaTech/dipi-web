@@ -22,6 +22,13 @@ p:last-child {
   font-weight: normal;
   color: #333333 !important;
 }
+
+.marker {
+  color: dodgerblue;
+  font-size: small;
+  font-weight: bold;
+}
+
 .header {
   position: relative;
   text-align: center;
