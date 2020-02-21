@@ -1101,6 +1101,7 @@ function dh_manageapp_search_form($form, &$form_state)
 				$(document).ready(function(){
 					$("#edit-course").select2();
 					$("#edit-country").select2();
+					$("#edit-f-name").focus();
 				});
 			})(jQuery);
 		';
