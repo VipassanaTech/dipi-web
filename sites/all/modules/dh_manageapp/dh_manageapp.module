@@ -793,8 +793,8 @@ function dh_manage_users()
 	global $user;
 	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 
-	$temp = db_query("select uc_center from dh_user_center where uc_user = '".$user->uid."'")->fetchAssoc();
-	$centres = implode(",", $temp);
+	$temp = db_query("select uc_center from dh_user_center where uc_user = '".$user->uid."'")->fetchAllKeyed(0,0);
+	$centres = implode(",", array_values($temp));
 	$q = "select u.uid as id, uc.uc_user, u.name as username, u.status as status, FROM_UNIXTIME(u.created) as created, FROM_UNIXTIME(u.access) as access, GROUP_CONCAT(r.name order by r.name SEPARATOR'\r\n') as roles from users u left join users_roles ur on u.uid = ur.uid left join role r on ur.rid = r.rid left join dh_user_center uc on u.uid = uc.uc_user where uc.uc_center IN ($centres) and r.rid > 3 group by u.uid order by status desc, username, created";
 	$result = db_query($q);
 	$rows = array();
