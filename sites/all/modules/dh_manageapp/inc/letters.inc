@@ -5,6 +5,7 @@ use Mailgun\Mailgun;
 
 define('DELIVERY_TYPE_EMAIL', 1);
 define('DELIVERY_TYPE_SMS', 2);
+define('DELIVERY_TYPE_BOTH', 3);
 
 
 
@@ -499,7 +500,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 }
 
 
-function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
+function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0)
 {
 	global $user;
 
@@ -516,7 +517,10 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$attachment = array();
 	if ( $ret['attachment'] <> '')
 		$attachment[] = $ret['attachment'];
-	$delivery_type = $ret['delivery_type'];
+	if ($force_delivery_type)
+		$delivery_type = $force_delivery_type;
+	else
+		$delivery_type = $ret['delivery_type'];
 	$letter_name = $ret['letter_name'];
 
 	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
@@ -529,7 +533,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	}
 
 
-	if ( $delivery_type == DELIVERY_TYPE_EMAIL)
+	if ( ($delivery_type == DELIVERY_TYPE_EMAIL) || ($delivery_type == DELIVERY_TYPE_BOTH) )
 	{
 		$from_email = db_query("select cs_email_from_name, cs_email_reply_to from dh_center_setting where cs_center=".$row['CentreID'])->fetchAssoc();
 		//$from = $from_email['cs_email_from_name'];
@@ -563,7 +567,8 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '')
 			$log .= " ($comment)";
 		logit($centre,  'Letter', $id, $log );
 	}
-	else
+	
+	if ( ($delivery_type == DELIVERY_TYPE_SMS) || ($delivery_type == DELIVERY_TYPE_BOTH) )
 	{
 		$sms_url = variable_get('sms_url', '');
 		if ($sms_body <> '' )
