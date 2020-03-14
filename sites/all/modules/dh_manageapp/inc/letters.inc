@@ -514,7 +514,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$row = $ret['row'];
 	$centre = $row['CentreID'];
 	$course = $row['a_course'];
-	$letter_id = $ret['letter_id']
+	$letter_id = $ret['letter_id'];
 	$subject = $ret['subject'];
 	$body = $ret['body'];
 	$sms_body = $ret['sms_body'];
