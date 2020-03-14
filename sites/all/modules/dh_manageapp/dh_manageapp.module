@@ -61,6 +61,7 @@ function dh_manageapp_permission()
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
+	$perms['view sms report'] = array('title' => t('View SMS report'));
 
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
     $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
@@ -200,6 +201,10 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage letters'),
 	       'type' => MENU_CALLBACK);
 
+    $items['centre/%centre_id/sms-report'] = array('title' => t('SMS Report'),
+	       'page callback' => 'dh_center_sms_report',
+	       'access arguments' => array('view sms report'),
+	       'type' => MENU_CALLBACK);
 
 	$items['zero-day'] = array( 'title' => t('Day Zero'),
 	       'page callback' => 'dh_manage_day_zero',

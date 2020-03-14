@@ -74,3 +74,22 @@ function dh_manage_at_schedule()
 
 	return $out;
 }
+
+function dh_center_sms_report()
+{
+	$centre_id = arg(1);
+	$q = "select c_name, COUNT(cs_id) from dh_center_sms left join dh_course on cs_course = c_id where cs_center=$centre_id group by cs_course order by c_start";
+	$res = db_query($q);
+	$rows = array();
+	while($r = $res->fetchAssoc())
+	{
+		$rows[] = $r;
+	}
+
+	$header = array("Course Name", "SMS Count");
+	$out  = '<h2>'.l("Back to Dashboard", "/centre/$centre_id").'</h2>';
+	
+	$out .= theme("table", array('header' => $header, 'rows' => $rows ));
+	return $out;
+
+}
