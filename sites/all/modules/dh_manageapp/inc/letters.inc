@@ -580,7 +580,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
 			$response = file_get_contents($sms_url);
 			$log = "Letter sent (SMS) - ".$letter_name." ( Response: $response )";
-			dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile'] );
+			dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile'], strlen($sms_body) );
 			logit($centre,  'Letter', $id, $log );
 		}
 		else
@@ -588,7 +588,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	}
 }
 
-function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
+function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile, $size )
 {
 	$sms = array();
 	$sms['cs_center'] = $centre;
@@ -596,7 +596,10 @@ function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
 	$sms['cs_letter'] = $letter;
 	$sms['cs_applicant'] = $applicant;
 	$sms['cs_mobile'] = $mobile;
-
+	$credits = floor($size/160);
+	if (($size % 160) > 0)
+		$credits += 1;
+	$sms['cs_credits_used'] = $credits;
 	db_insert('dh_center_sms')->fields($sms)->execute();
 }
 
