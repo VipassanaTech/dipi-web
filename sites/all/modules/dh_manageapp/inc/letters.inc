@@ -377,7 +377,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	switch( $type )
 	{
 		case 'applicant':
-			$q = "select a.a_id, a.a_type, a.a_center, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher
+			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms
 				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id where a.a_id='$id' ";
 			break;
 		case 'student':
@@ -479,7 +479,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	}
 	$search['[LetterDetailURL]']= variable_get('applicant_url', '')."/l.php?a=".simple_crypt($row['a_id']."-".$letter['l_id']); //http://applicant.vipassana.co
 
-
+	$letter_id = $letter['l_id'];
 	$letter_name = $letter['l_name'];
 	$event_name = $letter['l_event'];
 	$subject = str_replace(array_keys($search), array_values($search), $letter['l_subject']);
@@ -493,9 +493,11 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	if ( $attachment <> '')
 		$attachment = str_replace('private://',drupal_realpath('private://'), $attachment );
 
+	if ($row['c_sms'])
+		$delivery_type = DELIVERY_TYPE_BOTH;
 	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 
 		'subject' => $subject, 'body' => $body, 'sms_body' => $sms_body, 
-		'delivery_type' => $delivery_type, 'letter_name' => $letter_name);
+		'delivery_type' => $delivery_type, 'letter_name' => $letter_name, 'letter_id' => $letter_id);
 	return $out;
 }
 
@@ -511,6 +513,8 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 
 	$row = $ret['row'];
 	$centre = $row['CentreID'];
+	$course = $row['a_course'];
+	$letter_id = $ret['letter_id']
 	$subject = $ret['subject'];
 	$body = $ret['body'];
 	$sms_body = $ret['sms_body'];
@@ -576,11 +580,24 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
 			$response = file_get_contents($sms_url);
 			$log = "Letter sent (SMS) - ".$letter_name." ( Response: $response )";
+			dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile'] );
 			logit($centre,  'Letter', $id, $log );
 		}
 		else
 			logit($centre, 'Letter', $id, "No SMS Body found in $letter_name!");
 	}
+}
+
+function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
+{
+	$sms = array();
+	$sms['cs_center'] = $centre;
+	$sms['cs_course'] = $course;
+	$sms['cs_letter'] = $letter;
+	$sms['cs_applicant'] = $applicant;
+	$sms['cs_mobile'] = $mobile;
+
+	db_insert('dh_center_sms')->fields($sms)->execute();
 }
 
 
