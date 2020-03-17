@@ -62,7 +62,7 @@ function dh_manageapp_permission()
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
 	$perms['view sms report'] = array('title' => t('View SMS report'));
-
+	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
     $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
 
@@ -203,6 +203,11 @@ function dh_manageapp_menu()
 
     $items['centre/%centre_id/sms-report'] = array('title' => t('SMS Report'),
 	       'page callback' => 'dh_center_sms_report',
+	       'access arguments' => array('view sms report'),
+	       'type' => MENU_CALLBACK);
+
+	$items['sms-count/%course_id'] = array( 'title' => 'SMS Report',
+	       'page callback' => '_get_sms_count',
 	       'access arguments' => array('view sms report'),
 	       'type' => MENU_CALLBACK);
 
@@ -1683,7 +1688,25 @@ function _get_student_finalize()
     exit;
 }
 
-
+function _get_sms_count()
+{
+	$course_id = arg(1);
+	$q = "select l_id,l_name, SUM(cs_credits_used) as 'Count' from dh_center_sms left join dh_course on cs_course = c_id left join dh_letter on cs_letter = l_id where cs_course=$course_id group by l_name order by l_name";
+	$res = db_query($q);
+	$rows = array();
+	while( $row = $res->fetchAssoc())
+	{
+		$r = array();
+		$r[] = $row['l_id'];
+		$r[] = $row['l_name'];
+		$r[] = $row['Count'];
+		$rows[] = $r;
+	}
+	$header = array('Letter ID','Letter Name','SMS Count');
+	$out = theme('table', array('header' => $header, 'rows' => $rows)) ;
+	print $out;
+	exit;
+}
 
 
 
