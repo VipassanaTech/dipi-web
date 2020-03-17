@@ -81,7 +81,7 @@ function dh_center_sms_report()
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
 
   	$centre_id = arg(1);
-	$out  = '<h2>'.l("Back to Dashboard", "/centre/$centre_id")." | ".l("Invoices", "/centre/$centre_id/sms-report/invoices").'</h2>';
+	$out  = '<h2>'.l("Back to Dashboard", "/centre/$centre_id").'</h2>';
 
 
 	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
