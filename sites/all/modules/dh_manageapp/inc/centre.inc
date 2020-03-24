@@ -595,7 +595,7 @@ function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expecte
 		$end_date = date('Y-m-d', strtotime("+".$r[ ($expected_or_rc=='expected')?'cs_expected_days':'cs_reconf_days']." day"));
 		//$end_rc_date = date('Y-m-d', strtotime("+".$r['cs_reconf_days']." day"));
 
-		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_deleted=0";
+		$q = "select c_id from dh_course where c_center='".$r['cs_center']."' and c_deleted=0 and c_cancelled = 0";
 		if ($course_id > 0 )
 			$q .=  " and c_id = '$course_id'";
 		else
