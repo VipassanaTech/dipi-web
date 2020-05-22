@@ -73,3 +73,9 @@ Please read [CONTRIBUTING.md](https://github.com/VipassanaTech/dipi-web/blob/mas
 ## License
 
 This project is licensed under the GPL License
+
+## Copyleft
+
+This project follows the [Copyleft](https://www.gnu.org/copyleft) principle.
+
+Here's a [Comprehensive Guide](https://copyleft.org/guide/comprehensive-gpl-guide.pdf), to understand it in detail.
