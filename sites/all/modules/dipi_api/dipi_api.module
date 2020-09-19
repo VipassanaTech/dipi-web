@@ -11,6 +11,7 @@ function dipi_api_permission() {
     $perms['post application'] = array('title' => t('Post an application to a course') ) ;
     $perms['access sms api'] = array('title' => t('Access SMS API') );
     $perms['access voice api'] = array('title' => t('Access VOICE API') );
+    $perms['get application status'] = array('title' => t('Access Application Status') );
 
     return $perms;
 }
@@ -197,6 +198,57 @@ function dipi_api_services_resources() {
                 ),
               ),
           ),
+
+
+          'countries-updated-last-n-hours' => array(
+                  'help' => t("Get Countries"),
+                  'access arguments' => array('get all centres'),
+              'access arguments append' => FALSE,
+                  'callback' => '_api_countries_get',
+            'args' => array(
+              array(
+                'name' => 'lastupdated',
+                'optional' => FALSE,
+                'source' => array('path' => 1),
+                'type' => 'int',
+                'description' => 'Countries updated in last n hours',
+              ),
+            ),
+          ),
+
+          'states-updated-last-n-hours' => array(
+                  'help' => t("Get States"),
+                  'access arguments' => array('get all centres'),
+              'access arguments append' => FALSE,
+                  'callback' => '_api_states_get',
+            'args' => array(
+              array(
+                'name' => 'lastupdated',
+                'optional' => FALSE,
+                'source' => array('path' => 1),
+                'type' => 'int',
+                'description' => 'States updated in last n hours',
+              ),
+            ),
+          ),
+
+
+          'app-status' => array(
+                  'help' => t("Get Application ID status"),
+                  'access arguments' => array('get application status'),
+              'access arguments append' => FALSE,
+                  'callback' => '_api_application_status',
+            'args' => array(
+              array(
+                'name' => 'appid',
+                'optional' => FALSE,
+                'source' => array('path' => 1),
+                'type' => 'int',
+                'description' => 'Application ID',
+              ),
+            ),
+          ),
+
 
 
         ),
@@ -500,6 +552,14 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_other_technique'] = 0;
 
+    if (isset($vals['photo_name']) && ($vals['photo_name'] <> '') )
+    {
+       if (!isset($vals['photo_data']) || ($vals['photo_data'] == ''))
+         return array("Result" => "Error", "Message" => 'Photo Data not found');
+       //if (strstr( trim($vals['photo_data']), " " ))
+       //   return array("Result" => "Error", "Message" => 'Photo Data is not base64 encoded');
+    }
+
     $app['a_old'] = 1; // Assuming old student, since first phase is only for seva
     $app['a_type'] = 'Sevak';
     $app['a_status'] =  'Received';
@@ -564,6 +624,21 @@ function _api_post_application( $centre, $course, $data )
         $app_ac['ac_updated_by'] = $app_ac['ac_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
         $app_ac['ac_updated'] = $app_ac['ac_created'] = date('Y-m-d H:i:s');        
         db_insert('dh_applicant_course')->fields($app_ac)->execute();               
+    }
+
+    if (isset($vals['photo_name']) && ($vals['photo_name'] <> '') )
+    {
+      $temp = base64_decode($vals['photo_data']);
+      $path = pathinfo($vals['photo_name']);
+      $photo_dir = drupal_realpath('private://');
+      $dir = $photo_dir."/photo-id/".$centre."/".$course;
+      $fname = $dir."/app-".$app_id.".".$path['extension'];
+      if (!is_dir($dir))
+          mkdir($dir, 0755, true);
+      file_put_contents($fname, $temp);
+      $ph = array();
+      $ph['a_photo'] = "private://photo-id/$centre/$course/app-$app_id.".$path['extension'];
+      db_update('dh_applicant')->fields($ph)->condition('a_id', $app_id)->execute();
     }
 
     $msg = "Application submitted successfully";
@@ -1100,6 +1175,55 @@ function _api_transfer_app($phone, $appid)
     send_sms($phone, $out);
     _ivr_log($phone, "course", "transfer", $out);
     return array();
+}
+
+function _api_countries_get( $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $q = "select c.c_code as 'ISOCode', c.c_name as 'Name' from dh_country c where date_format(c_last_updated, '%Y%m%d%H%i') > $last order by c.c_name";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;
+}
+
+function _api_states_get( $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $q = "select s_country as 'CountryISOCode', s_code as 'ISOCode', s_name as 'Name' from dh_state 
+      where date_format(s_last_updated, '%Y%m%d%H%i') > $last order by s_name";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;
+}
+
+function _api_application_status($appid)
+{
+    if (!$appid)
+      return array('Error' => 'Invalid AppID');
+
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', c_name as 'CourseName'  from dh_applicant left join dh_course on (a_course=c_id) where  a_id=$appid";
+    $res = db_query($q);
+
+    $rows = array();
+    while($r = $res->fetchAssoc())
+    {
+      $rows[] = $r;
+    }
+    if (empty($rows))
+      $rows = array('Error' => 'AppID Not Found' );
+    return $rows;
 }
 
 

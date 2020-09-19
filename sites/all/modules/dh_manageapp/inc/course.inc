@@ -1041,4 +1041,39 @@ function check_student($r)
 	return $sid;
 }
 
+function generate_course_pdf($course_id, $type = 'M')
+{
+	$q = "select a_id, a_uri from dh_applicant a left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course=$course_id and a_attended = 1 and a_type='Student' and a_gender='$type' order by  IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$result = db_query($q);
+	$pdfs = array();
+	$i = 0;
+	while($r = $result->fetchAssoc())
+	{
+		if ($r['a_uri'] <> '')
+		{
+			if ($i == 0)
+			{
+				$path = drupal_realpath($r['a_uri']);
+				$dirname = dirname($path);
+			}
+			$pdfs[] =  basename($r['a_uri']);
+			$i++;
+		}
+	}
+	if ( count($pdfs) > 0)
+	{
+		$cur_dir = getcwd();
+		echo "Dir: $dirname\n";
+		//print_r($pdfs);
+		chdir($dirname);
+		$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
+		//echo "$cmd\n";
+		exec($cmd);
+		chdir($cur_dir);		
+	} 
+	else
+	{
+		echo "No pdf applications found\n";
+	}
+}
 
