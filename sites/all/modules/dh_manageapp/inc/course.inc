@@ -526,8 +526,17 @@ function dh_manage_course_handler()
     ->on( 'preCreate', function ( $editor, $values ) { _course_set_default( $editor, 0, $values); } )
     ->on( 'preEdit', function ( $editor, $id, $values ) { _course_set_default( $editor, $id, $values); } )
     ->on( 'preRemove', function() { return false; })
-    ->where( 'c_deleted', 0)
-    ->where( 'c_finalized', 0)
+    ->where( function ( $q ) {
+	$q
+	->where( 'c_deleted', 0)
+	->and_where( 'c_finalized', 0)
+        ->and_where( function ( $q ) {
+	$q
+	->where( 'c_cancelled', 1 )
+        ->and_where( 'c_end', 'NOW()', '>=', false )
+	->or_where( 'c_cancelled', 0 );
+	});
+	})
     ->where( 'c_center', $centre_id)
     ->process( $_POST )
     ->json();
