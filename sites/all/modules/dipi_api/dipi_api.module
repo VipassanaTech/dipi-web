@@ -568,7 +568,7 @@ function _api_post_application( $centre, $course, $data )
     $r['a_lang_2_level'] = $vals['lang2_level'];
 
 
-    if (!isset($vals['seva_details']) || ( strlen($vals['seva_details']) > 300 ) )
+    if (isset($vals['seva_details']) && ( strlen($vals['seva_details']) > 300 ) )
       return array("Result" => "Error", "Message" => 'Seva Detais not present or more than 300 chars');
     if (trim($vals['seva_details']) <> '')
         $r['ae_seva_details'] = $vals['seva_details'];
