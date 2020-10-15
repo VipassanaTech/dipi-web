@@ -614,7 +614,7 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_addiction_current'] = 0;
 
-    if (!isset($vals['othermeditaion']) || ( strlen($vals['othermeditaion']) > 160 ) )
+    if (isset($vals['othermeditaion']) && ( strlen($vals['othermeditaion']) > 160 ) )
       return array("Result" => "Error", "Message" => 'Othermeditation not present or more than 160 chars');
     if (trim($vals['othermeditaion']) <> '')
     {
