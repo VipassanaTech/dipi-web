@@ -309,7 +309,7 @@ function _api_courses_get( $centre, $lastupdated )
     $q = "select co.c_id as 'CourseID', c.c_name as 'CentreName', c.c_id as 'CentreID', td.td_val1 as 'CourseType', co.c_start as 'StartDate', co.c_end as 'EndDate',
     co.c_enrol_date as 'EnrollmentDate', co.c_status_om as 'StatusOldMale', co.c_status_of as 'StatusOldFemale', 
     co.c_status_nm as 'StatusNewMale', co.c_status_nf as 'StatusNewFemale', co.c_status_svr_m as 'StatusServerMale', co.c_status_svr_f as 'StatusServerFemale',    
-    co.c_list_only as 'ListOnly', c_comments as 'Comments', c_description as 'Description', c_status as 'CourseStatus' 
+    co.c_list_only as 'ListOnly', c_comments as 'Comments', c_description as 'Description', c_status as 'CourseStatus', c_deleted as 'Deleted', c_cancelled as 'Cancelled', c_date_change as 'DateChange'  
     from dh_course co left join dh_center c on co.c_center=c.c_id  
     left join dh_type_detail td on (co.c_course_type=td.td_id) 
     where co.c_center=$centre and date_format(co.c_start, '%Y%m%d') > $today and date_format(co.c_updated, '%Y%m%d%H%i') > $last order by co.c_start";
