@@ -1377,7 +1377,7 @@ function _api_cities_get( $lastupdated )
 
     $last = date("YmdHi", strtotime("-$lastupdated hours"));
     $q = "select c_country as 'CountryISOCode', c_state as 'StateISOCode', c_name as 'Name', c_id as 'CityID' from dh_city 
-      where date_format(c_last_updated, '%Y%m%d%H%i') > $last order by c_name";
+      where date_format(c_last_updated, '%Y%m%d%H%i') > $last and c_name <> '' order by c_name";
     $res = db_query($q);
     $rows = array( 'Last Updated' => $last);
     while( $row = $res->fetchAssoc() )
