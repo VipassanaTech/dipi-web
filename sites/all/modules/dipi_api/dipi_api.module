@@ -281,7 +281,8 @@ function _api_centres_get( $lastupdated )
 
     $last = date("YmdHi", strtotime("-$lastupdated hours"));
     $q = "select c.c_id as 'CentreID', c.c_name as 'CentreName', c.c_trust as 'TrustName', ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', 
-      c.c_address as 'Address', c.c_pincode as 'Pincode', c.c_phone as 'Phone', c.c_email as 'Email', c.c_url as 'URL' from dh_center c 
+      c.c_address as 'Address', c.c_pincode as 'Pincode', c.c_phone as 'Phone', c.c_email as 'Email', c.c_url as 'URL', c.c_subdomain as 'Identifier'
+       from dh_center c 
       left join dh_country co on (c.c_country=co.c_code) 
       left join dh_state s on (c.c_country=s.s_country and c.c_state=s.s_code) 
       left join dh_city ci on (c.c_city = ci.c_id) where date_format(c_updated, '%Y%m%d%H%i') > $last order by c.c_name";
@@ -623,6 +624,18 @@ function _api_post_application( $centre, $course, $data )
     }
     else
         $r['a_other_technique'] = 0;
+
+
+    if (isset($vals['othermeditaion_old']) && ( strlen($vals['othermeditaion_old']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Othermeditation Old Students more than 160 chars');
+    if (trim($vals['othermeditaion_old']) <> '')
+    {
+        $r['a_other_technique_old'] = 1;
+        $r['ae_desc_other_technique_old'] = $vals['othermeditaion_old'];
+    }
+    else
+        $r['a_other_technique_old'] = 0;
+
 
     if (isset($vals['teach_other_details']) && ( strlen($vals['teach_other_details']) > 200 ) )
       return array("Result" => "Error", "Message" => 'Teach other details more than 200 chars');
