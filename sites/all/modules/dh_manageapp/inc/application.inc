@@ -197,14 +197,14 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Additional Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['ae_desc_physical'] = array('#title' => 'Physical Health', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_physical'])?$edit_data['ae_desc_physical']:'', '#rows' => 3,  '#weight' => 50, '#required' => 0,
-		'#suffix' => $photo, '#maxlength' => 160 );
+		'#suffix' => $photo);
 	$form[$group]['ae_desc_mental'] = array('#title' => 'Mental Health', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_mental'])?$edit_data['ae_desc_mental']:'', '#rows' => 3,  '#weight' => 51, 
-		'#required' => 0, '#maxlength' => 160);
+		'#required' => 0);
 
 	$form[$group]['ae_desc_addiction_current'] = array('#title' => 'Addiction Details', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52, 
-		'#required' => 0, '#maxlength' => 160);
+		'#required' => 0);
 	$t = '';
 	if (isset($edit_data['ae_desc_other_technique']))
 		$t = $edit_data['ae_desc_other_technique'];
@@ -212,11 +212,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$t .= ' '.$edit_data['ae_desc_other_technique_old'];
 
 	$form[$group]['ae_desc_other_technique'] = array('#title' => 'Other Meditation Techniques', '#type' => 'textarea',  
-		'#default_value' => $t?$t:'', '#rows' => 3,  '#weight' => 53, '#required' => 0, '#maxlength' => 160);
+		'#default_value' => $t?$t:'', '#rows' => 3,  '#weight' => 53, '#required' => 0);
 
 	$form[$group]['ae_desc_medication'] = array('#title' => 'Medication', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_medication'])?$edit_data['ae_desc_medication']:'', '#rows' => 3,  '#weight' => 54, 
-		'#required' => 0,'#maxlength' => 160);
+		'#required' => 0);
 	$form[$group]['ae_pregnant_detail'] = array('#title' => 'Pregnancy Details', '#type' => 'textarea',  
 		'#default_value' => $add?'':$edit_data['ae_pregnant_detail'], '#rows' => 3,  '#weight' => 55, '#required' => 0, '#maxlength' => 100);
 
