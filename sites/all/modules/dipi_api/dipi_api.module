@@ -575,8 +575,8 @@ function _api_post_application( $centre, $course, $data )
         $r['ae_seva_details'] = $vals['seva_details'];
 
 
-    if (!isset($vals['mental']) || ( strlen($vals['mental']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Mental not present or more than 160 chars');
+    if (!isset($vals['mental']))
+      return array("Result" => "Error", "Message" => 'Mental not present');
     if (trim($vals['mental']) <> '')
     {
         $r['a_problem_mental'] = 1;
@@ -585,8 +585,8 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_problem_mental'] = 0;
 
-    if (!isset($vals['physical']) || ( strlen($vals['physical']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Physical not present or more than 160 chars');
+    if (!isset($vals['physical']))
+      return array("Result" => "Error", "Message" => 'Physical not present');
     if (trim($vals['physical']) <> '')
     {
         $r['a_problem_physical'] = 1;
@@ -595,8 +595,8 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_problem_physical'] = 0;
 
-    if (!isset($vals['medication']) || ( strlen($vals['medication']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Medication not present or more than 160 chars');
+    if (!isset($vals['medication']))
+      return array("Result" => "Error", "Message" => 'Medication not present');
     if (trim($vals['medication']) <> '')
     {
         $r['a_medication'] = 1;
@@ -605,8 +605,8 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_medication'] = 0;
 
-    if (!isset($vals['intox']) || ( strlen($vals['intox']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Intox not present or more than 160 chars');
+    if (!isset($vals['intox']))
+      return array("Result" => "Error", "Message" => 'Intox not present');
     if (trim($vals['intox']) <> '')
     {
         $r['a_addiction_current'] = 1;
@@ -615,8 +615,8 @@ function _api_post_application( $centre, $course, $data )
     else
         $r['a_addiction_current'] = 0;
 
-    if (isset($vals['othermeditaion']) && ( strlen($vals['othermeditaion']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Othermeditation not present or more than 160 chars');
+    if (!isset($vals['othermeditaion']))
+      return array("Result" => "Error", "Message" => 'Othermeditation not present');
     if (trim($vals['othermeditaion']) <> '')
     {
         $r['a_other_technique'] = 1;
@@ -626,8 +626,8 @@ function _api_post_application( $centre, $course, $data )
         $r['a_other_technique'] = 0;
 
 
-    if (isset($vals['othermeditaion_old']) && ( strlen($vals['othermeditaion_old']) > 160 ) )
-      return array("Result" => "Error", "Message" => 'Othermeditation Old Students more than 160 chars');
+    if (!isset($vals['othermeditaion_old']))
+      return array("Result" => "Error", "Message" => 'Othermeditation Old Students not present');
     if (trim($vals['othermeditaion_old']) <> '')
     {
         $r['a_other_technique_old'] = 1;
@@ -637,8 +637,8 @@ function _api_post_application( $centre, $course, $data )
         $r['a_other_technique_old'] = 0;
 
 
-    if (isset($vals['teach_other_details']) && ( strlen($vals['teach_other_details']) > 200 ) )
-      return array("Result" => "Error", "Message" => 'Teach other details more than 200 chars');
+    if (!isset($vals['teach_other_details']))
+      return array("Result" => "Error", "Message" => 'Teach other details not present');
     if (trim($vals['teach_other_details']) <> '')
     {
         $r['a_teach_others'] = 1;
