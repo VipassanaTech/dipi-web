@@ -553,7 +553,7 @@ function _course_set_default( &$editor, $id, &$values)
 {
 //	file_put_contents("/tmp/lala2", print_r($values, true));
 	$start = $values['dh_course']['c_start'] ;
-	if ($values['dh_course']['c_end'] == '' || $values['dh_course']['c_end'] < $start)
+	if ($values['dh_course']['c_end'] == '' || strtotime($values['dh_course']['c_end']) <  strtotime($start) )
 	{
 		$days = db_query("select td_val2 from dh_type_detail where td_id=".$values['dh_course']['c_course_type'])->fetchField() + 1;
 		//if ( in_array($values['dh_course']['c_course_type'], array(9,11,41) ) )             //array('2 Day Course', '3 Day Course', 'STP') ) )
