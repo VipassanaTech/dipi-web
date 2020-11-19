@@ -721,7 +721,8 @@ function _api_post_application( $centre, $course, $data )
       $r['a_extra'] = $vals['extra'];
     }
 
-
+    $app['a_course'] = $course;
+    $app['a_center'] = $centre;
     $app['a_old'] = $oldstudent; // Assuming old student, since first phase is only for seva
     $app['a_type'] = $vals['type'];
     $app['a_status'] =  'Received';
