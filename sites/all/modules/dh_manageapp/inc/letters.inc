@@ -136,7 +136,7 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'0':$edit_data['l_course_type'], '#options' => $course_types, '#required' => 0,  );
 	$form['l_subject'] = array('#title' => 'Subject', '#type' => 'textfield', '#size' => 120,  '#weight' => 3, 
 		'#default_value' => $add?'':$edit_data['l_subject'], '#required' => 1,  );
-	$form['l_body'] = array('#title' => 'Letter Body', '#type' => 'textarea', '#mutliple' => 1 , '#rows' => '20', '#cols' => 125, '#weight' => 4, 
+	$form['l_body'] = array('#title' => 'Letter Body', '#type' => 'text_format', '#format' => 'filtered_html',  '#mutliple' => 1 , '#rows' => '20', '#cols' => 125, '#weight' => 4, 
 		'#default_value' => $add?'':$edit_data['l_body'], '#required' => 1,  );
 	$form['l_sms'] = array('#title' => 'SMS Text', '#type' => 'textarea', '#mutliple' => 1 , '#rows' => '3', '#cols' => 125, '#weight' => 5, 
 		'#default_value' => $add?'':$edit_data['l_sms'], '#required' => 0,  );
@@ -214,7 +214,7 @@ function dh_letters_form_submit($form, &$form_state)
 	//if ( $input['l_course_type'])
 	$fields['l_course_type'] = $input['l_course_type'];
 	$fields['l_subject'] = $input['l_subject'];
-	$fields['l_body'] = $input['l_body'];
+	$fields['l_body'] = $input['l_body']['value'];
 	$fields['l_sms'] = $input['l_sms'];
 
 	$fields['l_updated'] = date('Y-m-d H:i:s'); 
@@ -551,7 +551,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		  'from'    => $from,
 		  'to'      => $to,  //info@dhamma.net.in
 		  'subject' => $subject,
-		  'text'    => $body,
+		  'html'    => $body,
 		  'v:app-id' => $id,
 		  'v:test-mode' => $test_mode
 		);
@@ -627,36 +627,39 @@ function mailgun_webhook()
 {
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$key = variable_get('mailgun_key', '');
+	watchdog('WEBHOOK', print_r($_REQUEST,true) );
+	$post_data = json_decode( file_get_contents( 'php://input' ), true );
+	watchdog('WEBHOOK', print_r($post_data, true) );
 	if ($_SERVER['REQUEST_METHOD'] == 'POST') 
 	{
-		if(isset($_POST['timestamp']) && isset($_POST['token']) && isset($_POST['signature']) && hash_hmac('sha256', $_POST['timestamp'] . $_POST['token'], $key) === $_POST['signature'])
+		if(isset($post_data['signature']['timestamp']) && isset($post_data['signature']['token']) && isset($post_data['signature']['signature']) && hash_hmac('sha256', $post_data['signature']['timestamp'] . $post_data['signature']['token'], $key) === $post_data['signature']['signature'])
 		{
-			switch($_POST['event'])
+			switch($post_data['event-data']['event'])
 			{
 				case 'delivered':
-					watchdog('WEBHOOK', "Test Mode: ".$_POST['test-mode'].", App id is ".$_POST['app-id']);
+					watchdog('WEBHOOK', "Test Mode: ".$post_data['event-data']['flags']['is-test-mode'].", App id is ".$post_data['event-data']['user-variables']['app-id']);
 					break;
 				case 'complained':
 				case 'bounced':
 				case 'dropped':
 				case 'failed':
 				case 'rejected':
-					if (!isset($_POST['app-id']))
+					if (!isset($post_data['event-data']['app-id']))
 						break;
-					if ($_POST['test-mode'] == 1)
+					if ($post_data['event-data']['flags']['is-test-mode'] == 1)
 						break;
-					$desc = strtoupper($_POST['event'])." - ".$_POST['recipient'];
-					if (isset($_POST['error'])) $desc .= " ".$_POST['error'];
-					if (isset($_POST['reason'])) $desc .= " ".$_POST['reason'];
-					if (isset($_POST['notification'])) $desc .= " ".$_POST['notification'];
-					if (isset($_POST['description'])) $desc .= " ".$_POST['description'];
-					$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$_POST['app-id'])->fetchAssoc();
+					$desc = strtoupper($post_data['event-data']['event'])." - ".$post_data['event-data']['recipient'];
+					if (isset($post_data['event-data']['delivery-status']['message'])) $desc .= " ".$post_data['event-data']['delivery-status']['message'];
+					if (isset($post_data['event-data']['reason'])) $desc .= " ".$post_data['event-data']['reason'];
+					if (isset($post_data['event-data']['delivery-status']['code'])) $desc .= " (".$post_data['event-data']['delivery-status']['code'].") ";
+					if (isset($post_data['event-data']['delivery-status']['description'])) $desc .= " ".$post_data['event-data']['delivery-status']['description'];
+					$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['event-data']['user-variables']['app-id'])->fetchAssoc();
 					$centre = $temp['a_center'];
 					$new_email = $temp['a_email'];
-					if ( $new_email == $_POST['recipient'] )
+					if ( $new_email == $post_data['event-data']['recipient'] )
 					{
-						db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$_POST['app-id']);
-						logit($centre,  'Letter', $_POST['app-id'], $desc);
+						db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['event-data']['user-variables']['app-id']);
+						logit($centre,  'Letter', $post_data['event-data']['user-variables']['app-id'], $desc);
 					}
 					break;
 

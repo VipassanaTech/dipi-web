@@ -62,6 +62,7 @@ function dh_manageapp_permission()
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
 	$perms['view sms report'] = array('title' => t('View SMS report'));
+	$perms['access webhook'] = array('title' => t('Allow Webhook'));
 	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
     $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
@@ -384,7 +385,7 @@ function dh_manageapp_menu()
 
 	$items['webhook/mailgun'] = array( 'title' => t('Mailgun'),
 	       'page callback' => 'mailgun_webhook',
-	       'access arguments' => array('access content'),
+	       'access arguments' => array('access webhook'),
 	       'type' => MENU_CALLBACK);
 
 	$items['center-dashboard'] = array(
