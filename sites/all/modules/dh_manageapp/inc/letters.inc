@@ -631,7 +631,7 @@ function mailgun_webhook()
 	//$post_data = json_decode( file_get_contents( 'php://input' ), true );
 	$post_data = $_POST;
 	#watchdog('WEBHOOK', print_r($post_data, true) );
-	watchdog('WEBHOOK', print_r($_POST,true) );
+	//watchdog('WEBHOOK', print_r($_POST,true) );
 	if ($_SERVER['REQUEST_METHOD'] == 'POST') 
 	{
 		if(isset($post_data['timestamp']) && isset($post_data['token']) && isset($post_data['signature']) && hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
