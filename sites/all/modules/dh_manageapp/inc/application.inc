@@ -316,7 +316,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$course_types = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-TYPE' and td_val2 > 1")->fetchAllKeyed();
 		$course_types[''] = 'Choose';
 		$form[$group]['al_recent_sat_type'] = array('#title' => 'Recent Course Sat', '#type' => 'select', '#weight' => 1, '#options' => $course_types, 
-			'#default_value' => isset($edit_data['al_last_lc_type'])?$edit_data['al_last_lc_type']:'', '#required' => 0, );
+			'#default_value' => isset($edit_data['al_recent_sat_type'])?$edit_data['al_recent_sat_type']:'', '#required' => 0, );
 		$form[$group]['al_last_lc_type'] = array('#title' => 'Last LC Course', '#type' => 'select', '#weight' => 2, '#options' => $course_types, 
 			'#default_value' => isset($edit_data['al_last_lc_type'])?$edit_data['al_last_lc_type']:'', '#required' => 0, );
 		$form[$group]['al_last_lc_location'] = array('#title' => 'Last LC Course Location', '#type' => 'textfield', '#size' => '25', '#weight' => 3, 
