@@ -627,10 +627,11 @@ function mailgun_webhook()
 {
 	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$key = variable_get('mailgun_key', '');
-	#watchdog('WEBHOOK', print_r($_REQUEST,true) );
+	watchdog('WEBHOOK', print_r($_POST,true) );
 	//$post_data = json_decode( file_get_contents( 'php://input' ), true );
 	$post_data = $_POST;
 	#watchdog('WEBHOOK', print_r($post_data, true) );
+	watchdog('WEBHOOK', print_r($_POST,true) );
 	if ($_SERVER['REQUEST_METHOD'] == 'POST') 
 	{
 		if(isset($post_data['timestamp']) && isset($post_data['token']) && isset($post_data['signature']) && hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
