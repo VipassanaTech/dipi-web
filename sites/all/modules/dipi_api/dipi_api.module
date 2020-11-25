@@ -1394,7 +1394,7 @@ function _api_application_status($appid)
     if (!$appid)
       return array('Error' => 'Invalid AppID');
 
-    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', c_name as 'CourseName'  from dh_applicant left join dh_course on (a_course=c_id) where  a_id=$appid";
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', c_name as 'CourseName'  from dh_applicant left join dh_course on (a_course=c_id) where  a_id in ($appid)";
     $res = db_query($q);
 
     $rows = array();
