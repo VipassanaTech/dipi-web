@@ -1294,7 +1294,7 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 
 	$out = '<div class="'.$div.'"><table class="sortable'.$append.'">'; // id=
 //	$out = '<div class="main-div"><ul id="sortable">';
-	$inc = 1;
+	$inc = count($seats)*$cushion_cols;
 	for ($row = count($seats)-1; $row >= 0; $row--)
 	{
 		$out .= '<tr>';
@@ -1313,7 +1313,7 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 				if ($r['a_old']) $t = '(O)'; else $t ='';
 				$teacher = "";	
 				if ($alpha) {
-					$s_no = sprintf("%d", $inc, $inc++);
+					$s_no = sprintf("%d", $inc, $inc--);
 				}
 				else {
 					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
