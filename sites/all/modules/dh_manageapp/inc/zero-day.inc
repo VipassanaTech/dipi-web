@@ -1141,7 +1141,7 @@ function dh_auto_allocate_seats($centre, $course)
 {
 	if (!is_array($course))
 		$course = array($course);
-	$settings = db_query("select cs_seat_config, cs_seat_config_type from dh_center_setting where cs_center=$centre")->fetchAssoc();
+	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchAssoc();
 
 	$ini = array();
 	if ($settings['cs_seat_config'] <> '')
