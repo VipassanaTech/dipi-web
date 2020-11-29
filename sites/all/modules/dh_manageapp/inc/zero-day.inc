@@ -1047,6 +1047,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 ';
 
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
+	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$ini = array();
 	if ($settings <> '')
 		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
@@ -1093,8 +1094,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		$male_dir = RIGHT_TO_LEFT;
 
 	$out .= '<div class="teacher-seat">Seating Plan - MALE<br>'.$course_name.'</div>';	
-	$out_seats = dh_print_seats($seats['M']['seats'], $max_col['M']+1, $male_dir, 'main-div');
-	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div');		
+	$out_seats = dh_print_seats($seats['M']['seats'], $max_col['M']+1, $male_dir, 'main-div', $alpha);
+	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div', $alpha);		
 	if ($male_dir == LEFT_TO_RIGHT)
 		$out .= $out_seats.$out_chowky;
 	else
@@ -1112,8 +1113,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	//$seats['seats'] = dh_get_seats($data['F'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
 	//$seats['chowky'] = dh_get_seats($chowky['F'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
 	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';	
-	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div');
-	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div');
+	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div', $alpha);
+	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div', $alpha);
 	if ($female_dir == LEFT_TO_RIGHT)
 		$out .= $out_seats.$out_chowky;
 	else
@@ -1286,14 +1287,14 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 	return $seats;
 }
 
-function dh_print_seats($seats, $cushion_cols, $direction, $div)
+function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 {
 //	$seats = $seat_data['seats'];
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
 	$out = '<div class="'.$div.'"><table class="sortable'.$append.'">'; // id=
 //	$out = '<div class="main-div"><ul id="sortable">';
-
+	$inc = 1;
 	for ($row = count($seats)-1; $row >= 0; $row--)
 	{
 		$out .= '<tr>';
@@ -1310,8 +1311,13 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div)
 			{
 				$r = $seats[$row][$col2];
 				if ($r['a_old']) $t = '(O)'; else $t ='';
-				$teacher = "";
-				$s_no = sprintf("%c%d", (65+$col2), ($row+1));
+				$teacher = "";	
+				if ($alpha) {
+					$s_no = sprintf("%d", $inc, $inc++);
+				}
+				else {
+					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
+				}
 				if ($r['aa_chowky'])
 					$s_no = 'CW-'.$s_no;
 				if ($r['aa_chair'])
