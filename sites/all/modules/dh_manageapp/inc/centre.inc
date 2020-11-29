@@ -181,6 +181,9 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['cs_hall_combined'] = array('#title' => 'Male/Female Students in same Hall', '#type' => 'radios', '#weight' => 1,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'':$edit_data['cs_hall_combined'], '#required' => 1,  );
+	$form[$group]['cs_seat_naming_conv'] = array('#title' => 'Seat naming convention', '#type' => 'radios', '#weight' => 1,
+		'#options' => array(1 => 'Numerical', 0 => 'Alphabetical'), 
+		'#default_value' => $add?'':$edit_data['cs_seat_naming_conv'], '#required' => 1,  );	
 
 	/*$seat_direction = array(LEFT_TO_RIGHT => 'Left To Right', RIGHT_TO_LEFT => 'Right to Left');
 	$form[$group]['cs_seating_dir_male'] = array('#title' => 'Male Seating Direction', '#type' => 'select', '#weight' => 2,
