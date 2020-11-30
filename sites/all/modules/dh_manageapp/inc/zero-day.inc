@@ -1069,18 +1069,27 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
+	$counter = array();
 	while($r = $result->fetchAssoc())
 	{
 		if ($r['aa_chowky'] || $r['aa_chair'])
 		{
 			if ( $r['aa_seat_col'] > $max_col_chowky[strtoupper($r['a_gender'])] )
 				$max_col_chowky[strtoupper($r['a_gender'])] = $r['aa_seat_col'];
+			if (!isset($counter[strtoupper($r['a_gender'])."-ch"]))
+				$counter[strtoupper($r['a_gender'])."-ch"] = 1;
+			$r['counter'] = $counter[strtoupper($r['a_gender'])."-ch"];
+			$counter[strtoupper($r['a_gender'])."-ch"]++;
 			$seats[strtoupper($r['a_gender'])]['chowky'][$r['aa_seat_row']][$r['aa_seat_col']] = $r;			
 		}
 		else
 		{
 			if ( $r['aa_seat_col'] > $max_col[strtoupper($r['a_gender'])] )
 				$max_col[strtoupper($r['a_gender'])] = $r['aa_seat_col'];
+			if (!isset($counter[strtoupper($r['a_gender'])."-ch"]))
+				$counter[strtoupper($r['a_gender'])."-ch"] = 1;
+			$r['counter'] = $counter[strtoupper($r['a_gender'])."-ch"];
+			$counter[strtoupper($r['a_gender'])."-ch"]++;
 			$seats[strtoupper($r['a_gender'])]['seats'][$r['aa_seat_row']][$r['aa_seat_col']] = $r;			
 		}
 	}
@@ -1312,10 +1321,8 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 				$r = $seats[$row][$col2];
 				if ($r['a_old']) $t = '(O)'; else $t ='';
 				$teacher = "";	
+				$s_no = $r['counter'];
 				if ($alpha) {
-					$s_no = sprintf("%d", $inc, $inc--);
-				}
-				else {
 					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
 				}
 				if ($r['aa_chowky'])
