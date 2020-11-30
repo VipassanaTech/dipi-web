@@ -1086,10 +1086,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		{
 			if ( $r['aa_seat_col'] > $max_col[strtoupper($r['a_gender'])] )
 				$max_col[strtoupper($r['a_gender'])] = $r['aa_seat_col'];
-			if (!isset($counter[strtoupper($r['a_gender'])."-ch"]))
-				$counter[strtoupper($r['a_gender'])."-ch"] = 1;
-			$r['counter'] = $counter[strtoupper($r['a_gender'])."-ch"];
-			$counter[strtoupper($r['a_gender'])."-ch"]++;
+			if (!isset($counter[strtoupper($r['a_gender'])."-seat"]))
+				$counter[strtoupper($r['a_gender'])."-seat"] = 1;
+			$r['counter'] = $counter[strtoupper($r['a_gender'])."-seat"];
+			$counter[strtoupper($r['a_gender'])."-seat"]++;
 			$seats[strtoupper($r['a_gender'])]['seats'][$r['aa_seat_row']][$r['aa_seat_col']] = $r;			
 		}
 	}
