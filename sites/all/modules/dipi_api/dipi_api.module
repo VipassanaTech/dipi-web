@@ -1,6 +1,7 @@
 <?php
 
 
+
 /**
  * Implements hook_permission().
  */
@@ -397,8 +398,26 @@ function _api_post_application( $centre, $course, $data )
     else
       $r['a_dob'] = $vals['dob'];
 
-    if (!isset($vals['mobile']) || (!preg_match("/^[0-9]{10}$/", $vals['mobile']) ) )
-      return array("Result" => "Error", "Message" => 'Mobile not present or more than 10 chars');
+    //if (!isset($vals['mobile']) || (!preg_match("/^[0-9]{10}$/", $vals['mobile']) ) )
+    $is_value = false;
+    $phone_type = -1;
+    $mobile_format = \libphonenumber\PhoneNumberUtil::getInstance();
+    $country_code = '';
+    try {
+      $m_phone = $mobile_format->parse("+".$vals['mobile'], null, null, true);
+      $is_valid = $mobile_format->isValidNumber($m_phone);
+      $phone_type = $mobile_format->getNumberType($m_phone); 
+      $country_code = $m_phone->getCountryCode();
+      if ($country_code == '91')
+      {
+         $vals['mobile'] = substr($vals['mobile'], -10);
+      }
+    } catch (Exception $e) {
+      
+    }
+    
+    if (!isset($vals['mobile']) || ( !$is_valid  ) || ( ! in_array($phone_type, array(1,2)) ) ) 
+      return array("Result" => "Error", "Message" => 'Mobile not present or not a valid mobile '.$is_valid.' '.$phone_type.' '.$country_code);
     $r['a_phone_mobile'] = $vals['mobile'];
 
     if (isset($vals['phone_home']) && ( strlen($vals['phone_home']) > 20 )  )
