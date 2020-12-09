@@ -597,7 +597,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	}
 
 	//$q = "select a_id, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and aa_acco IS NOT NULL order by a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$rows = array();
 	$totals['new']['F'] = $totals['old']['F'] = $totals['new']['M'] = $totals['old']['M'] = 0; 
@@ -613,7 +613,10 @@ function dh_manageapp_attended( $centre, $course_id )
 		//$centre = $r['a_center'];
 		$rs[] = $r['a_id'];
 		$rs[] = $r['ConfNo'];
-		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit',array('attributes' => array('appid' => $r['a_id'] )));
+		$pdf_link = '';
+		if ( $r['a_uri'] <> '' )
+			$pdf_link = '<br>('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit',array('attributes' => array('appid' => $r['a_id'] ))).$pdf_link;
 		$rs[] = ($r['a_gender']=='M')?'Male':'Female';
 		$rs[] = $r['a_type'];
 		$rs[] = $r['Age'];
