@@ -1891,6 +1891,7 @@ function dh_valuable_list($centre, $course)
 function dh_student_chit($centre, $course)
 {
 	global $base_url;
+	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$BLOCKS_PER_PAGE = variable_get('student_chit_rows_per_page', '18');
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
@@ -1902,6 +1903,13 @@ function dh_student_chit($centre, $course)
 	{
 		$data[strtoupper($r['a_gender'])][] = $r;
 	}
+	$max_cols = array('M' => array(), 'F' => array());
+	$q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 group by a_gender, aa_seat_row";
+	$result = db_query($q);
+	while($r = $result->fetchAssoc())
+	{
+		$max_cols[strtoupper($r['a_gender'])][$r['aa_seat_row']]  = $r['c'];
+	}	
 	$out = '<html><head>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css");</style>';
 	$out .= '</head><body>';
@@ -1924,7 +1932,19 @@ function dh_student_chit($centre, $course)
 			$seat_type = 'Seat';
 			if ( !isset($r['a_f_name']) )
 				continue;
-			$r['SeatNo'] = chr($r['aa_seat_col']+65).($r['aa_seat_row']+1);
+			if ($alpha)
+				$r['SeatNo'] = chr($r['aa_seat_col']+65).($r['aa_seat_row']+1);
+			else
+			{
+				$offset = 0;
+				if ($r['aa_seat_row'])
+				{
+					for ($j=0; $j<$r['aa_seat_row']; $j++)
+						$offset += $max_cols[$g][$j];
+				}
+				$offset += $r['aa_seat_col'] + 1;
+				$r['SeatNo'] = $offset;
+			}
 			if ($r['aa_chowky'])
 				$r['SeatNo'] = 'CW-'.$r['SeatNo'];
 			if ($r['aa_chair'])
