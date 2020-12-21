@@ -375,11 +375,15 @@ function _api_post_application( $centre, $course, $data )
 
     if (!isset($vals['lname']) || (strlen($vals['lname']) > 50) )
       return array("Result" => "Error", "Message" => 'Last Name not present or more than 50 chars');
-    $r['a_m_name'] = $vals['mname'];
+    $r['a_l_name'] = $vals['lname'];
 
     if (isset($vals['mname']) && (strlen($vals['mname']) > 50) )
       return array("Result" => "Error", "Message" => 'Middle Name more than 50 chars');
-    $r['a_l_name'] = $vals['lname'];
+    
+    if (!isset($vals['mname']))
+      $r['a_m_name'] = '';
+    else
+      $r['a_m_name'] = $vals['mname'];  
 
     if (!isset($vals['gender']) || (!in_array($vals['gender'], array("M", "F")) ) )
       return array("Result" => "Error", "Message" => 'Gender not present or not "M"/"F" ');
