@@ -324,8 +324,14 @@ function _api_courses_get( $centre, $lastupdated )
 }
 
 
+function log_app( $data )
+{
+   file_put_contents("/var/log/vri-app.log", date("Y-m-d H:i:s")." ".$data."\n", FILE_APPEND);
+}
+
 function _api_post_application( $centre, $course, $data )
 {
+    log_app( "Centre: $centre, Course: $course, D: ".print_r($data, true) );
     if (!$centre)
       return array( "Result" => "Error", 'Message' => 'Invalid Centre');
 
