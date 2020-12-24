@@ -158,7 +158,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
   
     $form[$group]['r_reason'] = array('#title' => 'Referral Reason/Remarks', '#type' => 'textarea',  
 	  '#default_value' => isset($edit_data['r_reason'])?$edit_data['r_reason']:'', '#rows' => 3,  '#weight' => 24, '#required' => 1, 
-		'#suffix' => '', '#maxlength' => 200 );
+		'#suffix' => '');
   
     $form[$group]['r_listed_by'] = array('#title' => 'Referred By', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'', '#rows' => 3,  '#weight' => 25, '#required' => 1, 
