@@ -349,6 +349,10 @@ function _api_post_application( $centre, $course, $data )
 
     $vals = array();
     parse_str($data['data'], $vals);
+    if ( isset($vals['photo_data']) )
+    {
+       $vals['photo_data'] = str_replace(" ", "+", $vals['photo_data']);
+    }
     $r = array();
     $oldstudent = 0;
 
