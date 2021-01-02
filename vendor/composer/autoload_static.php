@@ -198,6 +198,13 @@ class ComposerStaticInit621ae7afa74608266d2e466c99df43c9
     );
 
     public static $prefixesPsr0 = array (
+        'R' => 
+        array (
+            'Requests' => 
+            array (
+                0 => __DIR__ . '/..' . '/rmccue/requests/library',
+            ),
+        ),
         'M' => 
         array (
             'Mailgun' => 
