@@ -1457,13 +1457,13 @@ function sms_sa_get_token()
    variable_set('sms_sa_token', $token);
    variable_set('sms_sa_token_expiry', $time + 1440 * 60 );
    //watchdog('dipi_api', var_dump($req->body) , array(), WATCHDOG_NOTICE);
-   return $token
+   return $token;
 }
 
 function sms_sa_send_sms($to, $message)
 {
    $return = 0;
-   $token = sms_sa_get_token()
+   $token = sms_sa_get_token();
    $headers = array('Content-Type' => 'application/json', 'Accept' => 'application/json',  
       'Authorization' => 'Bearer '.$token);   
    $data = array('Messages' => array('Content' => $message, 'Destination' => $to ));
