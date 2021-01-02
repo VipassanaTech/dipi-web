@@ -1421,7 +1421,6 @@ function _api_cities_get( $lastupdated )
 }
 
 
-
 function _api_application_status($appid)
 {
     if (!$appid)
@@ -1440,4 +1439,45 @@ function _api_application_status($appid)
     return $rows;
 }
 
+
+function sms_sa_get_token()
+{
+   Requests::register_autoloader();
+   $time = time();   
+   $expiry = variable_get('sms_sa_token_expiry', 0);
+   if (($time - $expiry) < 100 )
+   {
+      return variable_get('sms_sa_token', '');
+   }
+   $options = array( variable_get('sms_sa_client_id', ''),  variable_get('sms_sa_secret','') );
+   $headers = array('Content-Type' => 'application/json');
+   $req = Requests::get(variable_get('sms_sa_url', '')."/Authentication", $headers, $options);
+   $json = json_decode($req->body);
+   $token = $json->token;
+   variable_set('sms_sa_token', $token);
+   variable_set('sms_sa_token_expiry', $time + 1440 * 60 );
+   //watchdog('dipi_api', var_dump($req->body) , array(), WATCHDOG_NOTICE);
+   return $token
+}
+
+function sms_sa_send_sms($to, $message)
+{
+   $return = 0;
+   $token = sms_sa_get_token()
+   $headers = array('Content-Type' => 'application/json', 'Accept' => 'application/json',  
+      'Authorization' => 'Bearer '.$token);   
+   $data = array('Messages' => array('Content' => $message, 'Destination' => $to ));
+   $data = json_encode($data);
+   $req = Requests::post(variable_get('sms_sa_url', '')."/bulkmessages", $headers, $data);
+   if ($req->status_code == 200)
+   {
+      $ret = json_decode($req->body);
+      $return = $ret->EventId;
+   }
+   else
+   {
+      watchdog('SA-SMS', 'Failure Sending SMS - '.nl2br($message).' - '. $req->body);  
+   }
+   return $return;
+}
 
