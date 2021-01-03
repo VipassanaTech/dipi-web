@@ -688,7 +688,7 @@ function dh_manageapp_admin_form($form, &$form_state)
 
 
  	$group = 'South Africa SMS Settings';
- 	$form[$group] = array('#type' => 'fieldset','#title' => 'SMS Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'South Africa SMS Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['sms_sa_url'] = array('#title' => 'SA API URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_sa_url', ''));
  	$form[$group]['sms_sa_client_id'] = array('#title' => 'Client ID', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_sa_client_id', ''));
  	$form[$group]['sms_sa_secret'] = array('#title' => 'Client Secret', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('sms_sa_secret', ''));
