@@ -65,6 +65,23 @@ function dipi_api_services_resources() {
               ),
         ),
 
+        'teachers-updated-last-n-hours' => array(
+              'help' => t("Get Teachers"),
+              'access arguments' => array('get all courses'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_teachers_get',
+              'args' => array(
+                array(
+                  'name' => 'lastupdated',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Teachers updated in last n hours',
+                ),
+              ),
+        ),
+
+
         'post-application' => array(
               'help' => t("Post an application to course"),
               'access arguments' => array('post application'),
@@ -1440,6 +1457,24 @@ function _api_application_status($appid)
 }
 
 
+function _api_teachers_get( $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $q = "select t_id as 'ID', t_code as 'ATCode', c_state as 'StateISOCode', CONCAT(t_f_name, ' ', t_l_name) as 'Name', t_email as 'Email'
+       t_mob_phone as 'PhoneMobile', t_unique_code as 'UniqueCode', t_sat as 'SAT', t_ct as 'CT', t_full_t as 'FullT', t_cat as 'CAT', 
+       t_bhante as 'Bhante', t_responsibility as 'Responsibility', t_current_status as 'CurrentStatus'
+        from dh_teacher where date_format(t_updated, '%Y%m%d%H%i') > $last and t_f_name <> '' order by t_f_name, t_l_name";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;   
+}
+
 function sms_sa_get_token()
 {
    Requests::register_autoloader();
@@ -1449,9 +1484,10 @@ function sms_sa_get_token()
    {
       return variable_get('sms_sa_token', '');
    }
-   $options = array( variable_get('sms_sa_client_id', ''),  variable_get('sms_sa_secret','') );
+   $options = array( 'auth' => array( variable_get('sms_sa_client_id', ''),  variable_get('sms_sa_secret','')) );
    $headers = array('Content-Type' => 'application/json');
    $req = Requests::get(variable_get('sms_sa_url', '')."/Authentication", $headers, $options);
+   watchdog('SA-SMS', 'Token response'.$req->body;  
    $json = json_decode($req->body);
    $token = $json->token;
    variable_set('sms_sa_token', $token);
@@ -1466,13 +1502,13 @@ function sms_sa_send_sms($to, $message)
    $token = sms_sa_get_token();
    $headers = array('Content-Type' => 'application/json', 'Accept' => 'application/json',  
       'Authorization' => 'Bearer '.$token);   
-   $data = array('Messages' => array('Content' => $message, 'Destination' => $to ));
+   $data = array('Messages' => array( array('Content' => $message, 'Destination' => $to ) ));
    $data = json_encode($data);
    $req = Requests::post(variable_get('sms_sa_url', '')."/bulkmessages", $headers, $data);
    if ($req->status_code == 200)
    {
       $ret = json_decode($req->body);
-      $return = $ret->EventId;
+      $return = $ret->eventId;
    }
    else
    {
