@@ -1487,7 +1487,7 @@ function sms_sa_get_token()
    $options = array( 'auth' => array( variable_get('sms_sa_client_id', ''),  variable_get('sms_sa_secret','')) );
    $headers = array('Content-Type' => 'application/json');
    $req = Requests::get(variable_get('sms_sa_url', '')."/Authentication", $headers, $options);
-   watchdog('SA-SMS', 'Token response'.$req->body;  
+   watchdog('SA-SMS', 'Token response'.$req->body);  
    $json = json_decode($req->body);
    $token = $json->token;
    variable_set('sms_sa_token', $token);
