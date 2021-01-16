@@ -869,7 +869,14 @@ function _api_handle_sms($params)
     //watchdog("SMS", "I got data".print_r($params, true));
     $data = "From: ".$params['inNumber']." Sender: ".$params['sender'].", CMD: ".$params['keyword'];
     $result = ""; $response = '';
-    $sender =  substr($params['sender'], -10);
+    $country = '91';
+    if ( substr($params['sender'], 0, 2) == '91')
+      $sender =  substr($params['sender'], -10);
+    else
+    {
+      $sender = $params['sender'];
+      $country = substr($params['sender'], 0, 2);
+    }
     $temp = explode(" ", $params['content']);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $params['content']));
@@ -878,7 +885,7 @@ function _api_handle_sms($params)
     if (!in_array( strtoupper($keyword), $keywords ))
     {
         $response = "Unknown Keyword $keyword, try HELP";
-        $result = send_sms($sender, $response);
+        $result = send_sms($sender, $response, $country);
         _sms_log($sender, $keyword, $params['content'], $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
@@ -909,7 +916,7 @@ function _api_handle_sms($params)
         if (count($temp) < 3)
         {
           $response = "TRANSFER <centre> <YYYY-mm-dd>\nPlease send in above format";
-          $result = send_sms($sender, $response);
+          $result = send_sms($sender, $response, $country);
           _sms_log($sender, $keyword, $params['content'], $response);
           return array("Result" => "Bad format ".$content); //['status']            
         }
@@ -925,7 +932,7 @@ function _api_handle_sms($params)
         if (count($temp) < 3)
         {
           $response = "PATRIKA <subscriber id> <pincode>\nPlease send in above format";
-          $result = send_sms($sender, $response);
+          $result = send_sms($sender, $response, $country);
           _sms_log($sender, $keyword, $params['content'], $response);
           return array("Result" => "Bad format ".$content); //['status']            
         }
@@ -940,7 +947,7 @@ function _api_handle_sms($params)
   //  _sms_log($params['inNumber'], $params['keyword'], $params['content'], $response);
  
     _sms_log($sender, $keyword, $content, $response);
-    $result = send_sms($sender, $response);        
+    $result = send_sms($sender, $response, $country);        
 
     return array("Result" => $result); //['status']
 }
@@ -1232,7 +1239,7 @@ function _api_sms_keyword_patrika($pid, $pincode)
 }
 
 
-function send_sms($to , $message)
+function send_sms($to , $message, $country = '91')
 {
       //$result = send_sms_textlocal($to, $message );
       //$result = json_decode($result);    
@@ -1243,11 +1250,22 @@ function send_sms($to , $message)
       if (  $result->status == 'failure' )
         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. print_r($result, true));
       */
-      $result = send_sms_rudra($to, $message);
-      if (! strstr($result, "Message Submitted Successfully"))
-      {
-         watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. $result);  
-      }
+        switch ($country) 
+        {
+            case '91':
+                $result = send_sms_rudra($to, $message);
+                if (! strstr($result, "Message Submitted Successfully"))
+                {
+                    watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. $result);  
+                }
+                break;
+            case '27':
+                $result = sms_sa_send_sms($country.$to, $message);
+                break;
+            default:
+                break;
+        }
+
 }
 
 function send_sms_textlocal( $to, $message )
