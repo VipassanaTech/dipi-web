@@ -384,7 +384,9 @@ function dh_manage_course_handler()
 					) )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Course Start date is required' )
-            ) ),
+            ) )
+            ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
+                ->message( 'Course Start date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
  	    \DataTables\Editor\Field::inst( 'dh_course.c_end' )
 	 	    ->getFormatter( 'Format::datetime', array(
 					'from' => 'Y-m-d',
@@ -393,7 +395,9 @@ function dh_manage_course_handler()
 	 	    ->setFormatter( 'Format::datetime', array(
 					'from' => 'd M Y',
 					'to' => 'Y-m-d'
-					) ),
+					) )
+            ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
+                ->message( 'Course End date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_cancelled' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_finalized' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_enrol_date' )
@@ -404,7 +408,9 @@ function dh_manage_course_handler()
 	 	    ->setFormatter( 'Format::datetime', array(
 					'from' => 'd M Y',
 					'to' => 'Y-m-d'
-					) ),
+					) )
+            ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
+                ->message( 'Course Enrol date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
 		\DataTables\Editor\Field::inst( 'dh_course.c_status' )
    	            ->options( /*function () {
 			        return array(
