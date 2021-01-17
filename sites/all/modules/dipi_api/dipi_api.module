@@ -1260,7 +1260,7 @@ function send_sms($to , $message, $country = '91')
                 }
                 break;
             case '27':
-                $result = sms_sa_send_sms($country.$to, $message);
+                $result = sms_sa_send_sms($to, $message);
                 break;
             default:
                 break;
