@@ -172,7 +172,7 @@
 		        		if ( value_or_code == 'code' )
 		        			$( element_teacher ).val( ui.item.code );
 		        		else
-		        			$( element_teacher ).val( ui.item.value );
+		        			$( element_teacher ).val( ui.item.fullname );
 		        		return false;
 		      		}
 	      		});
