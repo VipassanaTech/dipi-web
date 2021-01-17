@@ -161,7 +161,7 @@
 				          url: "/autocomplete/get-teacher/" + request.term + "?type=" + teacher_type,
 				          dataType: "json",
 				          success: function( data ) {
-				          	$(country).removeClass( "throbbing" );
+				          	$(element_teacher).removeClass( "throbbing" );
 				            response( data );
 				          }
 				        });
