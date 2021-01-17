@@ -406,10 +406,22 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
 			 '#weight' => 29, '#maxlength' => 100,
-			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 0, );	
+			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 0, 
+				'#attached' => array(
+      		'library' => array(
+        		array('system', 'ui.autocomplete'),
+      	)),
+
+		);	
 		$form[$group]['al_area_at'] = array('#title' => 'Area Teacher?', '#type' => 'textfield', 
 			 '#weight' => 30, '#maxlength' => 100, 
-			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0, );	
+			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0, 
+				'#attached' => array(
+      		'library' => array(
+        		array('system', 'ui.autocomplete'),
+      	)),
+
+		);	
 
 	}
 

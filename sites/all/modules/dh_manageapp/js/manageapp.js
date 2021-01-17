@@ -150,6 +150,38 @@
 		autocomplete_state("#edit-a-state", "#edit-a-country");
 		autocomplete_city("#edit-a-city", "#edit-a-country", "#edit-a-state");
 
+
+		window.autocomplete_teacher = function ( element_teacher, teacher_type = 'all', value_or_code = 'code' )
+		{
+			$(document).on("keydown.autocomplete", element_teacher, function(){
+				$(this).autocomplete({
+					source: function( request, response ) {
+						$(element_teacher).addClass( "throbbing" );
+				        $.ajax({
+				          url: "/autocomplete/get-teacher/" + request.term + "?type=" + teacher_type,
+				          dataType: "json",
+				          success: function( data ) {
+				          	$(country).removeClass( "throbbing" );
+				            response( data );
+				          }
+				        });
+					},
+		  			minLength: 1,
+		  			select: function( event, ui ) {
+		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
+		        		if ( value_or_code == 'code' )
+		        			$( element_teacher ).val( ui.item.code );
+		        		else
+		        			$( element_teacher ).val( ui.item.value );
+		        		return false;
+		      		}
+	      		});
+			});
+		}
+
+		autocomplete_teacher( "#edit-al-recommending", 'all', 'value' );
+		autocomplete_teacher( "#edit-al-area-at", 'full-t', 'value' );
+
 		$("#edit-ac-teacher-code").autocomplete({
 			source: function( request, response ) {
 				$("#edit-ac-teacher-code").addClass( "throbbing" );
