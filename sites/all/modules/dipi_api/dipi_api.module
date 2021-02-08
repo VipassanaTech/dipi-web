@@ -360,7 +360,7 @@ function _api_post_application( $centre, $course, $data )
 
     $course_data = db_query("select c_id,c_status_nf,c_status_nm,c_status_of,c_status_om,c_status_svr_f,c_status_svr_m, c_status from 
         dh_course where c_center=$centre and c_id=$course")->fetchAssoc();
-
+    $course_type = db_query("select td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
     if ( isset($course_data) && ( $course_data['c_id'] <> $course) )
         return array("Result" => "Error", "Message" => "Course or Centre ID Invalid");
 
@@ -771,6 +771,175 @@ function _api_post_application( $centre, $course, $data )
       $r['a_extra'] = $vals['extra'];
     }
 
+    /*Long course checks*/
+    if ($course_type == 'LC')
+    {
+        if (!isset($vals['lc_committed']) || ( ! in_array($vals['lc_committed'], array('0', '1')) ) )
+          return array("Result" => "Error", "Message" => 'Committed not present or invalid value');
+        $r['al_committed'] = $vals['lc_committed'];
+
+        if (!isset($vals['lc_2yrs']) || ( ! in_array($vals['lc_2yrs'], array('0', '1')) ) )
+          return array("Result" => "Error", "Message" => 'Practice exclusively for 2 years not present or invalid value');
+        $r['al_exclusive_2yrs'] = $vals['lc_2yrs'];
+
+        if (!isset($vals['lc_daily_practice_yrs']) || ( ! is_numeric($vals['lc_daily_practice_yrs']) ) )
+          return array("Result" => "Error", "Message" => 'Daily Practice years not present or invalid value');
+        $r['al_daily_practice_yrs'] = $vals['lc_daily_practice_yrs'];    
+
+        if (!isset($vals['lc_practice_details']) || ( trim($vals['lc_practice_details']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Practice Details not present');
+        $r['al_daily_practice_details'] = $vals['lc_practice_details'];    
+
+        if (!isset($vals['lc_precepts']) || ( ! in_array($vals['lc_precepts'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => '5 Precepts not present');
+        $r['al_5_precepts'] = $vals['lc_precepts'];    
+
+        if (!isset($vals['lc_intoxicants']) || ( ! in_array($vals['lc_intoxicants'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Intoxicants not present');
+        $r['al_intoxicants'] = $vals['lc_intoxicants'];    
+
+        if (!isset($vals['lc_sexual_misconduct']) || ( ! in_array($vals['lc_sexual_misconduct'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Sexual Misconduct not present');
+        $r['al_sexual_misconduct'] = $vals['lc_sexual_misconduct'];    
+
+        if (!isset($vals['lc_recent_sat_type']) || ( trim($vals['lc_recent_sat_type']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Most Recent Course Sat not present');
+        $r['al_recent_sat_type'] = $vals['lc_recent_sat_type'];    
+
+        if (!isset($vals['lc_last_lc_type']) || ( trim($vals['lc_last_lc_type']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Last Long Course Type Sat not present');
+        $r['al_last_lc_type'] = $vals['lc_last_lc_type'];    
+                
+        if (!isset($vals['lc_last_lc_date']) || ( trim($vals['lc_last_lc_date']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Last Long Course Sat Date not present');
+        $r['al_last_lc_date'] = $vals['lc_last_lc_date'];    
+
+        if (!isset($vals['lc_last_lc_location']) || ( trim($vals['lc_last_lc_location']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Last Long Course Sat Location not present');
+        $r['al_last_lc_location'] = $vals['lc_last_lc_location'];    
+                
+        if (!isset($vals['lc_last_lc_teacher']) || ( trim($vals['lc_last_lc_teacher']) == ''  ) )
+          return array("Result" => "Error", "Message" => 'Last Long Course Sat Teacher not present');
+        $r['al_last_lc_teacher'] = $vals['lc_last_lc_teacher'];    
+
+        if (!isset($vals['lc_relationship']) || ( ! in_array($vals['lc_relationship'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Relationship not present');
+        $r['al_relationship'] = $vals['lc_relationship'];    
+
+        if ($vals['lc_relationship'])
+        {
+            if (!isset($vals['lc_relation_harmonious']) || ( ! in_array($vals['lc_relation_harmonious'], array('0','1'))  ) )
+              return array("Result" => "Error", "Message" => 'Relationship harmonious not present');
+            $r['al_relation_harmonious'] = $vals['lc_relation_harmonious'];    
+
+            if (!isset($vals['lc_relationship_lifelong']) || ( ! in_array($vals['lc_relationship_lifelong'], array('0','1'))  ) )
+              return array("Result" => "Error", "Message" => 'Relationship LifeLong not present');
+            $r['al_relationship_lifelong'] = $vals['lc_relationship_lifelong'];    
+
+            if (!isset($vals['lc_spouse_name']) || ( trim($vals['lc_spouse_name']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Spouse Name not present');
+            $r['al_spouse_name'] = $vals['lc_spouse_name'];    
+
+            if (!isset($vals['lc_spouse_approve']) || ( ! in_array($vals['lc_spouse_approve'], array('0','1'))  ) )
+              return array("Result" => "Error", "Message" => 'Spouse Approve not present');
+            $r['al_spouse_approve'] = $vals['lc_spouse_approve'];    
+
+            if (!isset($vals['lc_spouse_meditator']) || ( ! in_array($vals['lc_spouse_meditator'], array('0','1'))  ) )
+              return array("Result" => "Error", "Message" => 'Spouse Meditator not present');
+            $r['al_spouse_meditator'] = $vals['lc_spouse_meditator'];    
+
+            if (!isset($vals['lc_spouse_other_technique']) || ( trim($vals['lc_spouse_other_technique']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Spouse Other Technique not present');
+            $r['al_spouse_other_technique'] = $vals['lc_spouse_other_technique'];            
+        }
+        if (!isset($vals['lc_left_course']) || ( ! in_array($vals['lc_left_course'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Left Course not present');
+        $r['al_left_course'] = $vals['lc_left_course'];    
+
+        if ($vals['lc_left_course'])
+        {
+            if (!isset($vals['lc_left_course_details']) || ( trim($vals['lc_left_course_details']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Left Course Details not present');
+            $r['al_left_course_details'] = $vals['lc_left_course_details'];                        
+        }
+
+        if (!isset($vals['lc_reduce_practice']) || ( ! in_array($vals['lc_reduce_practice'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Reduce Practice Advise not present');
+        $r['al_reduce_practice'] = $vals['lc_reduce_practice'];    
+
+        if ($vals['lc_reduce_practice'])
+        {
+            if (!isset($vals['lc_reduce_practice_details']) || ( trim($vals['lc_reduce_practice_details']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Reduce Practice Advise Details not present');
+            $r['al_reduce_practice_details'] = $vals['lc_reduce_practice_details'];                        
+        }
+
+        if (!isset($vals['lc_personal_tragedy']) || ( ! in_array($vals['lc_personal_tragedy'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Personal Tragedy not present');
+        $r['al_personal_tragedy'] = $vals['lc_personal_tragedy'];    
+
+        if ($vals['lc_personal_tragedy'])
+        {
+            if (!isset($vals['lc_personal_tragedy_details']) || ( trim($vals['lc_personal_tragedy_details']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Personal Tragedy Details not present');
+            $r['al_personal_tragedy_details'] = $vals['lc_personal_tragedy_details'];                        
+        }
+
+
+        if (!isset($vals['lc_difficulty']) || ( ! in_array($vals['lc_difficulty'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Difficulty not present');
+        $r['al_difficulty'] = $vals['lc_difficulty'];    
+
+        if ($vals['lc_difficulty'])
+        {
+            if (!isset($vals['lc_difficulty_details']) || ( trim($vals['lc_difficulty_details']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Difficulty Details not present');
+            $r['al_difficulty_details'] = $vals['lc_difficulty_details'];                        
+        }
+
+
+        if (!isset($vals['lc_special_req']) || ( ! in_array($vals['lc_special_req'], array('0','1'))  ) )
+          return array("Result" => "Error", "Message" => 'Special Request not present');
+        $r['al_special_req'] = $vals['lc_difficulty'];    
+
+        if ($vals['lc_special_req'])
+        {
+            if (!isset($vals['lc_special_req_details']) || ( trim($vals['lc_special_req_details']) == ''  ) )
+              return array("Result" => "Error", "Message" => 'Special Request Details not present');
+            $r['al_special_req_details'] = $vals['al_special_req_details'];                        
+        }
+
+
+        if (trim($vals['lc_additional_info']) <> '')
+        {
+          if (strlen($vals['lc_additional_info']) > 255 )
+             return array("Result" => "Error", "Message" => 'Additonal info more than 255 chars');
+          $r['al_additional_info'] = $vals['lc_additional_info'];
+        }
+
+        if (!isset($vals['lc_arrival']) || ( trim($vals['lc_arrival']) == '' ))
+          return array("Result" => "Error", "Message" => 'Arrival not present');
+        $r['al_arrival'] = $vals['lc_arrival'];    
+
+
+        if (!isset($vals['lc_recommending']) || ( trim($vals['lc_recommending']) == '' ))
+          return array("Result" => "Error", "Message" => 'Recommending AT not present');
+        $r['al_recommending'] = $vals['lc_recommending'];
+
+
+        if (isset($vals['lc_at_year']) && ( ! is_numeric($vals['lc_at_year']) ))
+          return array("Result" => "Error", "Message" => 'AT Year not present');
+        if (isset($vals['lc_at_year']))
+            $r['al_at_year'] = $vals['lc_at_year'];
+
+        if (isset($vals['lc_served_other']) && ( strlen($vals['lc_served_other']) > 255 ))
+          return array("Result" => "Error", "Message" => 'Served Other Courses more than 255 chars');
+        if (isset($vals['lc_served_other']))
+            $r['al_served_other'] = $vals['lc_served_other'];
+
+    }
+    /*End of Long course checks*/
+
     $app['a_course'] = $course;
     $app['a_center'] = $centre;
     $app['a_old'] = $oldstudent; // Assuming old student, since first phase is only for seva
@@ -870,13 +1039,25 @@ function _api_handle_sms($params)
     $data = "From: ".$params['inNumber']." Sender: ".$params['sender'].", CMD: ".$params['keyword'];
     $result = ""; $response = '';
     $country = '91';
-    if ( substr($params['sender'], 0, 2) == '91')
+    $sender = $params['sender'];
+    try {
+      $mobile_format = \libphonenumber\PhoneNumberUtil::getInstance();
+      $m_phone = $mobile_format->parse("+".$params['sender'], null, null, true);
+      $country = $m_phone->getCountryCode();
+      if ($country == '91')
+        $sender = str_replace( array("+", $country), "", $params['sender']);
+      
+    } catch (Exception $e) {
+      logit($value." -> ".$e->getMessage());          
+    }
+
+    /*if ( substr($params['sender'], 0, 2) == '91')
       $sender =  substr($params['sender'], -10);
     else
     {
       $sender = $params['sender'];
       $country = substr($params['sender'], 0, 2);
-    }
+    }*/
     $temp = explode(" ", $params['content']);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $params['content']));
