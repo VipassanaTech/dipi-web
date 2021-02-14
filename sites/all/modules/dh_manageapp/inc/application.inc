@@ -75,11 +75,16 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); /*'<div class="form-item">DOB Checked<input type="checkbox" id="edit-checked-dob" /></div>'); */
 	$form[$group]['age'] = array('#title' => 'Age', '#type' => 'textfield', '#size' => '5', '#weight' => 11, 
 		'#default_value' => '', '#required' => 0, '#maxlength' => 10 );
-
-	$form[$group]['a_phone_home'] = array('#title' => 'Phone (Home)', '#type' => 'textfield', '#size' => '20', '#weight' => 12, 
-		'#default_value' => isset($edit_data['a_phone_home'])?$edit_data['a_phone_home']:'', '#required' => 0, '#maxlength' => 20 );
+	
+	$country_codes = db_query("select c_isd_code, CONCAT(c_name,' ','(',c_isd_code,')') from dh_country order by c_name")->fetchAllKeyed();
+	$country_codes[''] = 'Choose';
+	$form[$group]['a_mob_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 12, 
+		'#default_value' => isset($edit_data['a_mob_country'])?$edit_data['a_mob_country']:'', '#required' => 0, );
+	
 	$form[$group]['a_phone_mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 13, 
 		'#default_value' => isset($edit_data['a_phone_mobile'])?$edit_data['a_phone_mobile']:'', '#required' => 0, '#maxlength' => 15 );
+	$form[$group]['a_phone_home'] = array('#title' => 'Phone (Home)', '#type' => 'textfield', '#size' => '20', '#weight' => 13.5, 
+		'#default_value' => isset($edit_data['a_phone_home'])?$edit_data['a_phone_home']:'', '#required' => 0, '#maxlength' => 20 );	
 	$form[$group]['a_phone_office'] = array('#title' => 'Phone (Office)', '#type' => 'textfield', '#size' => '20', '#weight' => 14, 
 		'#default_value' => isset($edit_data['a_phone_office'])?$edit_data['a_phone_office']:'', '#required' => 0, '#maxlength' => 20 );
 

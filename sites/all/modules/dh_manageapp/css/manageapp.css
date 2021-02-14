@@ -32,7 +32,7 @@
 .form-item-s-dob {
 	margin-right: 10px !important;
 }
-.form-item-a-address, .form-item-a-zip, .form-item-a-education, .form-item-s-education, 
+.form-item-a-mob-country, .form-item-a-address, .form-item-a-zip, .form-item-a-education, .form-item-s-education, 
 .form-item-document-type, .form-item-ac-first-location-str, 
 .form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,
 .form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile,
@@ -154,6 +154,7 @@ textarea#comments {
 	width: 500px;
 }
 
+.form-item-a-mob-country  {width: 25%;}
 #centre-acco-table,#course-table { width: 100% !important; }
 #centre-acco-table td,#course-table td { word-wrap: break-word; word-break: break-all; }
 
