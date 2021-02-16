@@ -79,7 +79,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$country_codes = db_query("select c_isd_code, CONCAT(c_name,' ','(',c_isd_code,')') from dh_country order by c_name")->fetchAllKeyed();
 	$country_codes[''] = 'Choose';
 	$form[$group]['a_mob_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 12, 
-		'#default_value' => isset($edit_data['a_mob_country'])?$edit_data['a_mob_country']:'', '#required' => 0, );
+		'#default_value' => isset($edit_data['a_mob_country'])?$edit_data['a_mob_country']:'0', '#required' => 0, );
 	
 	$form[$group]['a_phone_mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 13, 
 		'#default_value' => isset($edit_data['a_phone_mobile'])?$edit_data['a_phone_mobile']:'', '#required' => 0, '#maxlength' => 15 );
