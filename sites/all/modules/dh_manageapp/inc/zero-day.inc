@@ -1277,7 +1277,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 		}
 	}
 
-	foreach ($data['new'] as $r) 
+	/*foreach ($data['new'] as $r) 
 	{	
 		db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $col, 'aa_seat_row' => $row))->condition('aa_id', $r['aa_id'])->execute();
 		$seats[$row][$col++] = $r;//$counter++;
@@ -1290,11 +1290,11 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 			$row++;
 			$col = 0;
 		}
-	}
+	}*/
 
 
 //	print "Max cols - $max_col, Total rows = $total_rows";
-	/*
+	
 	for($c=0; $c< $max_col; $c++)
 	{
 		for($r=0; $r < $total_rows; $r++ )
@@ -1314,7 +1314,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 			$seats[$r][$c] = $seat_data;
 		}
 	}
-	*/
+	
 	return $seats;
 }
 
