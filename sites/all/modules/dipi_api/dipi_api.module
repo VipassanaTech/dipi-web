@@ -1709,6 +1709,7 @@ function sms_sa_send_sms($to, $message)
    {
       $ret = json_decode($req->body);
       $return = $ret->eventId;
+      watchdog('SA-SMS', 'SMS ID '.$ret->eventId);
    }
    else
    {
