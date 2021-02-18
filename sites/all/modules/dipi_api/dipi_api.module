@@ -1048,7 +1048,7 @@ function _api_handle_sms($params)
         $sender = str_replace( array("+", $country), "", $params['sender']);
       
     } catch (Exception $e) {
-      logit($value." -> ".$e->getMessage());          
+      log_app("SMS: ".$params['sender']." -> ".$e->getMessage());          
     }
 
     /*if ( substr($params['sender'], 0, 2) == '91')
@@ -1444,6 +1444,7 @@ function send_sms($to , $message, $country = '91')
                 $result = sms_sa_send_sms($to, $message);
                 break;
             default:
+                log_app("send_sms: No handler to send to ".$to." (".$country.")"." -> ".$message);
                 break;
         }
 
