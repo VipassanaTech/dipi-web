@@ -1044,8 +1044,9 @@ function _api_handle_sms($params)
       $mobile_format = \libphonenumber\PhoneNumberUtil::getInstance();
       $m_phone = $mobile_format->parse("+".$params['sender'], null, null, true);
       $country = $m_phone->getCountryCode();
-      if ($country == '91')
+      /*if ($country == '91')
         $sender = str_replace( array("+", $country), "", $params['sender']);
+      */
       
     } catch (Exception $e) {
       log_app("SMS: ".$params['sender']." -> ".$e->getMessage());          
@@ -1189,7 +1190,7 @@ function _api_sms_keyword_status($phone)
     $phone = addslashes($phone);
     $q = "select a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
     $res = db_query($q);
 
     $out = '';
@@ -1213,11 +1214,11 @@ function _api_sms_keyword_cancel($phone, $id)
     $phone = addslashes($phone);
     $out = '';
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
 
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
 
     if ($id <> '')
     {
@@ -1260,11 +1261,11 @@ function _api_sms_keyword_confirm($phone, $id)
 {
     $phone = addslashes($phone);
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
     if ($id <> '')
     {
@@ -1317,11 +1318,11 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
 {
     $phone = addslashes($phone);
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
 
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, a_gender, a_old, a_type, c_name, c_course_type  from dh_applicant 
       left join dh_course on (a_course=c_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone'";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
     if ($id <> '')
     {
         $id = addslashes($id);
@@ -1434,7 +1435,8 @@ function send_sms($to , $message, $country = '91')
         switch ($country) 
         {
             case '91':
-                $result = send_sms_rudra($to, $message);
+                $to_temp = substr($to, -10);
+                $result = send_sms_rudra($to_temp, $message);
                 if (! strstr($result, "Message Submitted Successfully"))
                 {
                     watchdog('SMS', 'Failure Sending SMS - '.nl2br($message).' - '. $result);  
