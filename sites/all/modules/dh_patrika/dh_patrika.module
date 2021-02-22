@@ -820,6 +820,14 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'p_mode_email'));
 
+	$form['p_mobile'] = array(
+		'#title' => 'Mobile', 
+		'#type' => 'textfield', 
+		'#size' => 20,
+		'#default_value' => $add?'':$edit_data['p_mobile'],
+		'#validated' => TRUE,
+		'#attributes' => array('id' => 'p_mobile'));
+
 	$form['p_email'] = array(
 		'#title' => 'Email', 
 		'#type' => 'textfield', 
@@ -827,7 +835,6 @@ function dh_patrika_addedit($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['p_email'],
 		'#validated' => TRUE,
 		'#attributes' => array('id' => 'p_email'));
-
 
 	// $subscription['']='choose';
 	$subscription=array('Life Long'=>'Life Long','Yearly'=>'Yearly','Privilege'=>'Privilege',''=>'Choose');
@@ -1090,6 +1097,7 @@ function dh_patrika_addedit_submit($form, &$form_state)
 
 	$rec['p_language'] = $input['language'];
 	$rec['p_zip'] = $input['student_address_zip'];
+	$rec['p_mobile'] = $input['p_mobile'];
 	$rec['p_email'] = $input['p_email'];
 	//$rec['p_mode'] = $input['p_mode'];
 	$rec['p_mode_paper'] = $input['p_mode_paper']?$input['p_mode_paper']:0;
