@@ -1262,6 +1262,8 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 		$top_col = $cushion_cols - $extra;
 	//$total_rows = floor($total_cushion_seats / $cushion_cols);
 	$counter = 1 ;
+	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=".arg(1))->fetchField();
+
 	foreach ($data['old'] as $r) 
 	{	
 		db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $col, 'aa_seat_row' => $row))->condition('aa_id', $r['aa_id'])->execute();
@@ -1277,43 +1279,48 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 		}
 	}
 
-	/*foreach ($data['new'] as $r) 
-	{	
-		db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $col, 'aa_seat_row' => $row))->condition('aa_id', $r['aa_id'])->execute();
-		$seats[$row][$col++] = $r;//$counter++;
-		//$q = "update dh_applicant_attended set where "
-		$current_row_cols =  $cushion_cols;
-		if (isset($special_rows[$row]))
-			$current_row_cols =  $special_rows[$row];
-		if ($col >= $current_row_cols) 
-		{
-			$row++;
-			$col = 0;
-		}
-	}*/
-
-
-//	print "Max cols - $max_col, Total rows = $total_rows";
-	
-	for($c=0; $c< $max_col; $c++)
+	if (!$alpha)
 	{
-		for($r=0; $r < $total_rows; $r++ )
-		{
+		foreach ($data['new'] as $r) 
+		{	
+			db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $col, 'aa_seat_row' => $row))->condition('aa_id', $r['aa_id'])->execute();
+			$seats[$row][$col++] = $r;//$counter++;
+			//$q = "update dh_applicant_attended set where "
 			$current_row_cols =  $cushion_cols;
-			if (isset($special_rows[$r]))
-				$current_row_cols =  $special_rows[$r];
-			if ( $c >= $current_row_cols )
-				continue;
-			if ( isset($seats[$r][$c]) && is_array($seats[$r][$c]) )
-				continue;				
-			if ($r == ($total_rows-1))
-				if ($c >= $top_col)
-					continue;
-			list($k, $seat_data) = each($data['new']);
-			db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $c, 'aa_seat_row' => $r))->condition('aa_id', $seat_data['aa_id'])->execute();
-			$seats[$r][$c] = $seat_data;
+			if (isset($special_rows[$row]))
+				$current_row_cols =  $special_rows[$row];
+			if ($col >= $current_row_cols) 
+			{
+				$row++;
+				$col = 0;
+			}
 		}
 	}
+	else
+	{
+		//	print "Max cols - $max_col, Total rows = $total_rows";
+		
+		for($c=0; $c< $max_col; $c++)
+		{
+			for($r=0; $r < $total_rows; $r++ )
+			{
+				$current_row_cols =  $cushion_cols;
+				if (isset($special_rows[$r]))
+					$current_row_cols =  $special_rows[$r];
+				if ( $c >= $current_row_cols )
+					continue;
+				if ( isset($seats[$r][$c]) && is_array($seats[$r][$c]) )
+					continue;				
+				if ($r == ($total_rows-1))
+					if ($c >= $top_col)
+						continue;
+				list($k, $seat_data) = each($data['new']);
+				db_update("dh_applicant_attended")->fields(array('aa_seat_col' => $c, 'aa_seat_row' => $r))->condition('aa_id', $seat_data['aa_id'])->execute();
+				$seats[$r][$c] = $seat_data;
+			}
+		}		
+	}
+
 	
 	return $seats;
 }
@@ -1923,7 +1930,7 @@ function dh_student_chit($centre, $course)
 		$data[strtoupper($r['a_gender'])][] = $r;
 	}
 	$max_cols = array('M' => array(), 'F' => array());
-	$q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 group by a_gender, aa_seat_row";
+	$q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, aa_seat_row";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
