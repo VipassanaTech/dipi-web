@@ -119,6 +119,12 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	$statuses[$system_statuses['STATUS-CUSTOM']] = $system_statuses['STATUS-CUSTOM'];
 	$statuses[$system_statuses['STATUS-ATTENDED']] = $system_statuses['STATUS-ATTENDED'];
 
+	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-LC-STATUS'";
+	$status_lc = db_query($q)->fetchAllKeyed();
+	foreach ($status_lc as $key => $value) {
+		$statuses[$key] = $value;
+	}
+
 	$q = "select td_id, td_val1 from dh_type_detail where td_type='COURSE-TYPE'";
 	$course_types = db_query($q)->fetchAllKeyed();
 	$course_types['0'] = 'All';
@@ -368,7 +374,7 @@ function dh_manage_letter_fields_handler()
 
 function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 {
-	if ( ! in_array($type, array('applicant', 'student')) )
+	if ( ! in_array($type, array('applicant', 'student', 'r-teacher', 'a-teacher')) )
 	{
 		return array('result' => false, 'msg' => 'Invalid Type');
 	}
@@ -381,6 +387,11 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id where a.a_id='$id' ";
 			break;
 		case 'student':
+			break;
+		case 'r-teacher':
+		case 'a-teacher':
+			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms, al.al_recommending, al.al_area_at
+				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id left join dh_applicant_lc al on a.a_id=al.al_applicant where a.a_id='$id' ";			
 			break;
 	}
 	$result = db_query($q);
@@ -409,7 +420,15 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		db_update('dh_applicant')->fields(array('a_auth_code' => $row['a_auth_code'], 'a_login' => $row['a_login']))->condition('a_id', $id)->execute();
 	}
 		
-
+	if (in_array($type, array('r-teacher', 'a-teacher')))
+	{
+		$teacher = '';
+		if ($type == 'r-teacher') $teacher = $row['al_recommending'];
+		if ($type == 'a-teacher') $teacher = $row['al_area_at'];
+		$q = "select t_email, t_mob_phone  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
+		$t_data = db_query($q)->fetchAssoc();
+		$row['a_email'] = $t_data['t_email'];
+	}
 	$view_link = variable_get('applicant_url', ''); //'http://applicant.vipassana.co';
 
 	$search['[FirstName]'] 		= $row['a_f_name'];
@@ -528,7 +547,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$letter_name = $ret['letter_name'];
 
 	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
-	if ( $event == $STATUS_CONFIRMED )
+	if (  in_array($event, array($STATUS_CONFIRMED, 'R-ATReview', 'A-ATReview')) )
 	{
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
