@@ -1757,6 +1757,7 @@ function generate_cell_list($centre, $course)
 			if ($r['aa_cell_fixed'])
 			{
 				$cells[$batch][$g][$r['aa_cell']] = $r['Full Name']." - ".$r['a_old'];
+				$c++; $count++;
 				continue;
 			}
 			$cells[$batch][$g][$cell_alloc['Old'][$g][$keys[$count]]] = $r['Full Name']." - ".$r['a_old'];
