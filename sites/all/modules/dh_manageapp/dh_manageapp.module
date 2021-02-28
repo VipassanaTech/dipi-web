@@ -1477,7 +1477,16 @@ function update_status_external($app_id, $new_status)
 		else
 		{
 			_update_status($app_id, $new_status, $UID_APPLICANT);
-			dh_send_letter('applicant', $app_id, $new_status );
+			if ($new_status == 'A-ATReview')
+				dh_send_letter('a-teacher', $app_id, $new_status);
+			else
+			{
+				if (($new_status == 'Received') && (in_array($row['a_status'], array('R-ATReview', 'A-ATReview'))))
+					return;
+				dh_send_letter('applicant', $app_id, $new_status );
+			}
+			
+				
 		}
 		
 	}

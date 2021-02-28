@@ -428,6 +428,19 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$q = "select t_email, t_mob_phone  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
 		$t_data = db_query($q)->fetchAssoc();
 		$row['a_email'] = $t_data['t_email'];
+
+		$q = "select al_id, al_area_auth, al_recommending_auth from dh_applicant_lc where al_applicant=".$id;
+		$al_row = db_query($q)->fetchAssoc();
+		$auth_area = $al_row['al_area_auth'];
+		$auth_reco = $al_row['al_recommending_auth'];
+		if (!$auth_reco)
+		{
+	 		$auth_area = generate_random_str(15);
+	 		$auth_reco = generate_random_str(15);
+			db_update('dh_applicant_lc')->fields(array('al_area_auth' => $auth_area, 'al_recommending_auth' => $auth_reco))->condition('al_applicant', $id)->execute();
+		}
+		$search['[RAuth]'] = $auth_reco;
+		$search['[AAuth]'] = $auth_area;
 	}
 	$view_link = variable_get('applicant_url', ''); //'http://applicant.vipassana.co';
 
