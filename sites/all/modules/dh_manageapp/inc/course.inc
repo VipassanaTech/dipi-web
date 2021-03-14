@@ -595,6 +595,21 @@ function course_summary( $centre_id, $where, $statuses )
 		$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS' order by td_val2";
 		$s_res = db_query($q);
 		while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];		
+
+
+		if ( (arg(0) == 'course') && (  is_numeric(arg(1)) ) && (is_numeric(arg(2))) )
+		{
+			$q  = "select td_val3 from dh_course c left join dh_type_detail td on c.c_course_type=td.td_id where c.c_id=".arg(2);
+			$c_data = db_query($q)->fetchAssoc();
+			$is_lc = $c_data['td_val3']=='LC'?1:0;
+			if ( $is_lc )
+			{
+				$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-LC-STATUS' order by td_val2";
+				$s_res = db_query($q);
+				while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];									
+			}
+		}
+
 	}
 
 	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type order by c.c_start";

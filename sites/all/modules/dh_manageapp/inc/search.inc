@@ -240,6 +240,10 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			else  
 			{
 				var tmp = "";
+				if (data.app_status == "R-ATReview" || data.app_status == "A-ATReview")
+				{
+					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"Approved\">Approved</option><option value=\"Rejected\">Rejected</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
+				}
 				if (data.app_status == "Confirmed" || data.app_status == "ReConfirmation")
 				{
 					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option><option value=\"Expected\">Expected</option>";
@@ -667,6 +671,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 					  	{
 					  		if ( s != "'.$system_statues['STATUS-CUSTOM'].'")
 								row1.data().status = s;
+							if ( json.newstatus != "" )
+								row1.data().status = json.newstatus;
 							if ( json.confno != "" )
 								row1.data().status = s + " ("+json.confno+")";
 							//row1.data().confno = json.confno;
@@ -675,7 +681,7 @@ function dh_manageapp_search_results( $type, $where, $centre )
 							tr1.css("background-color", "#bdcdea");						  		
 					  	}
 					  	else
-					  		alert("Update failed "+json.msg)
+					  		alert("Update failed!\n"+json.msg)
 					  	$(tr1).loading("stop");
 					  })
 					  .fail(function( jqxhr, textStatus, error ) {

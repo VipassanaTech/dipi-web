@@ -1089,10 +1089,43 @@ function _change_status()
 	$out = array();
 	$out['status'] = 'OK';
 	$out['msg'] = '';
-
-	$res = _update_status($app_id, $status);
-	$out['confno'] = $res;
-	dh_send_letter('applicant', $app_id, $status, $letter, $comment);
+	$out['confno'] = '';
+	$out['newstatus'] = '';
+	if ( $status == 'Approved' )
+	{
+		$q = "select a_status from dh_applicant where a_id=".$app_id;
+		$current_status = db_query($q)->fetchField();
+		if ( $current_status == 'R-ATReview' )
+		{
+			$area_at = db_query('select al_area_at from dh_applicant_lc where al_applicant='.$app_id)->fetchField();
+			if ($area_at)
+			{
+				$status = 'A-ATReview';
+				$q = "update dh_applicant_lc set al_recommending_approved='Approved' where al_applicant ='$app_id'";
+				db_query($q);				
+			}
+			else
+			{
+				$status = 'R-ATReview';
+				$out['status'] = 'Failed';
+				$out['msg'] = 'Please Edit application and choose Area teacher before approving!';
+			}
+		}
+		else
+		{
+			$status = 'Received';
+			$q = "update dh_applicant_lc set al_area_at_approved='Approved' where al_applicant ='$app_id'";
+			db_query($q);
+		}
+		$out['newstatus'] = $status;
+		update_status_external($app_id, $status);
+	}
+	else
+	{
+		$res = _update_status($app_id, $status);
+		$out['confno'] = $res;
+		dh_send_letter('applicant', $app_id, $status, $letter, $comment);		
+	}
 
 	drupal_json_output($out);
 	exit;
@@ -1468,27 +1501,63 @@ function update_status_external($app_id, $new_status)
 
 	if ( ($row['a_status'] <> $new_status) )
 	{
-		if ($is_lc &&  ($xml_id == 0) && ($new_status == 'Received') && (! in_array($row['a_status'], array('R-ATReview', 'A-ATReview'))))
+		if ($is_lc &&  ($xml_id == 0) )
 		{
-			_update_status($app_id, 'R-ATReview' , $UID_APPLICANT);	
-			dh_send_letter('applicant', $app_id, $new_status );
-			dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
+			$q = "select al_recommending_approved, al_area_at_approved from dh_applicant_lc where al_applicant=$app_id";
+			$lc_row = db_query($q)->fetchAssoc();
+			$altered_status = $new_status;
+			if ($lc_row)
+			{
+				$reco_done = $lc_row['al_recommending_approved'];
+				$area_done = $lc_row['al_area_at_approved'];
+				if ( $new_status == 'Received' )
+				{
+					switch ($area_done) 
+					{
+						case 'Approved':
+							$altered_status = 'Received';
+							break;
+						case 'Rejected':
+							$altered_status = 'Rejected';
+							break;	
+						default:
+							switch ($reco_done) 
+							{
+								case 'Approved':
+									$altered_status = 'A-ATReview';
+									break;
+								case 'Rejected':
+									$altered_status = 'Rejected';
+									break;	
+								default:
+									$altered_status = 'R-ATReview';
+									break;
+							}
+							break;
+					}
+				}
+			}
+			else
+				$altered_status = 'R-ATReview';
+
+			_update_status($app_id, $altered_status , $UID_APPLICANT);	
+			if (in_array($new_status, array('Received', 'A-ATReview', 'R-ATReview')))
+			{
+				if ( in_array($altered_status, array('R-ATReview'))  || (($altered_status == 'A-ATReview') && ($new_status == 'Received')) )
+					dh_send_letter('applicant', $app_id, $new_status );
+			}
+			else
+				dh_send_letter('applicant', $app_id, $altered_status );
+			if (($new_status == 'A-ATReview') || ($altered_status == 'A-ATReview') )
+				dh_send_letter('a-teacher', $app_id, $altered_status);
+			elseif (($new_status == 'R-ATReview' ) ||  ($altered_status == 'R-ATReview') )
+				dh_send_letter('r-teacher', $app_id, $altered_status );
 		}
 		else
 		{
 			_update_status($app_id, $new_status, $UID_APPLICANT);
-			if ($new_status == 'A-ATReview')
-				dh_send_letter('a-teacher', $app_id, $new_status);
-			else
-			{
-				if (($new_status == 'Received') && (in_array($row['a_status'], array('R-ATReview', 'A-ATReview'))))
-					return;
-				dh_send_letter('applicant', $app_id, $new_status );
-			}
-			
-				
-		}
-		
+			dh_send_letter('applicant', $app_id, $new_status );
+		}	
 	}
 	else
 		watchdog('Applicant', "ID $app_id - New status $new_status, old status is ".$row['a_status']);
