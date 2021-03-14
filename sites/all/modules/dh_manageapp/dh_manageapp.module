@@ -1491,9 +1491,11 @@ function generate_conf_no( $app_id )
 
 function update_status_external($app_id, $new_status)
 {
+	global $user;
 	$row = db_query("select a_status,a_conf_no from dh_applicant where a_id=$app_id")->fetchAssoc();
 	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
 	$UID_APPLICANT = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-APPLICANT-UID'")->fetchField();
+	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$q  = "select td_val3, IFNULL(a_xml_id,0) as 'xml_id' from dh_applicant a left join dh_course c on a.a_course=c.c_id left join dh_type_detail td on c.c_course_type=td.td_id where a.a_id=".$app_id;
 	$c_data = db_query($q)->fetchAssoc();
 	$is_lc = $c_data['td_val3']=='LC'?1:0;
@@ -1540,7 +1542,11 @@ function update_status_external($app_id, $new_status)
 			else
 				$altered_status = 'R-ATReview';
 
-			_update_status($app_id, $altered_status , $UID_APPLICANT);	
+			$uid = $UID_APPLICANT;
+			if ($user->uid > 0)
+				$uid = $user->uid;
+			//if ($altered_status)
+			_update_status($app_id, $altered_status , $uid);	
 			if (in_array($new_status, array('Received', 'A-ATReview', 'R-ATReview')))
 			{
 				if ( in_array($altered_status, array('R-ATReview'))  || (($altered_status == 'A-ATReview') && ($new_status == 'Received')) )
