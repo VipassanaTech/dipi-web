@@ -360,7 +360,9 @@ function _api_post_application( $centre, $course, $data )
 
     $course_data = db_query("select c_id,c_status_nf,c_status_nm,c_status_of,c_status_om,c_status_svr_f,c_status_svr_m, c_status from 
         dh_course where c_center=$centre and c_id=$course")->fetchAssoc();
-    $course_type = db_query("select td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
+    $row_ctype = db_query("select td_val3, td_val2 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
+    $course_type = $row_ctype['td_val3'];
+    $total_days = $row_ctype['td_val2'];
     if ( isset($course_data) && ( $course_data['c_id'] <> $course) )
         return array("Result" => "Error", "Message" => "Course or Centre ID Invalid");
 
@@ -806,19 +808,19 @@ function _api_post_application( $centre, $course, $data )
           return array("Result" => "Error", "Message" => 'Most Recent Course Sat not present');
         $r['al_recent_sat_type'] = $vals['lc_recent_sat_type'];    
 
-        if (!isset($vals['lc_last_lc_type']) || ( trim($vals['lc_last_lc_type']) == ''  ) )
+        if ( ($total_days >= 30 ) && (!isset($vals['lc_last_lc_type']) || ( trim($vals['lc_last_lc_type']) == ''  ) ))
           return array("Result" => "Error", "Message" => 'Last Long Course Type Sat not present');
         $r['al_last_lc_type'] = $vals['lc_last_lc_type'];    
                 
-        if (!isset($vals['lc_last_lc_date']) || ( trim($vals['lc_last_lc_date']) == ''  ) )
+        if ( ($total_days >= 30 ) && (!isset($vals['lc_last_lc_date']) || ( trim($vals['lc_last_lc_date']) == ''  ) ))
           return array("Result" => "Error", "Message" => 'Last Long Course Sat Date not present');
         $r['al_last_lc_date'] = $vals['lc_last_lc_date'];    
 
-        if (!isset($vals['lc_last_lc_location']) || ( trim($vals['lc_last_lc_location']) == ''  ) )
+        if ( ($total_days >= 30 ) &&  (!isset($vals['lc_last_lc_location']) || ( trim($vals['lc_last_lc_location']) == ''  ) ))
           return array("Result" => "Error", "Message" => 'Last Long Course Sat Location not present');
         $r['al_last_lc_location'] = $vals['lc_last_lc_location'];    
                 
-        if (!isset($vals['lc_last_lc_teacher']) || ( trim($vals['lc_last_lc_teacher']) == ''  ) )
+        if ( ($total_days >= 30 ) && (!isset($vals['lc_last_lc_teacher']) || ( trim($vals['lc_last_lc_teacher']) == ''  ) ))
           return array("Result" => "Error", "Message" => 'Last Long Course Sat Teacher not present');
         $r['al_last_lc_teacher'] = $vals['lc_last_lc_teacher'];    
 
@@ -963,6 +965,8 @@ function _api_post_application( $centre, $course, $data )
             $app_ac[$key] = $value;
         if ( substr($key,0,3) == 'ae_')
             $app_ae[$key] = $value;
+        if ( substr($key,0,3) == 'al_')
+            $app_al[$key] = $value;
     }
     if ($app['a_city'] <> '')
     {   
@@ -1008,6 +1012,12 @@ function _api_post_application( $centre, $course, $data )
         db_insert('dh_applicant_course')->fields($app_ac)->execute();               
     }
 
+    if (isset($app_al))
+    {
+        $app_al['al_applicant'] = $app_id;
+        db_insert('dh_applicant_lc')->fields($app_al)->execute();               
+    }
+
     if (isset($vals['photo_name']) && ($vals['photo_name'] <> '') )
     {
       $temp = base64_decode($vals['photo_data']);
@@ -1022,10 +1032,11 @@ function _api_post_application( $centre, $course, $data )
       $ph['a_photo'] = "private://photo-id/$centre/$course/app-$app_id.".$path['extension'];
       db_update('dh_applicant')->fields($ph)->condition('a_id', $app_id)->execute();
     }
-
+    $old = getcwd();    
+    $cmd = "/usr/bin/php status-trigger.php $app_id 'Received'";
+    exec($cmd);
     $msg = "Application submitted successfully";
     return array("Result" => "Success", "Message" => $msg, 'ID' => $app_id );
-
 }
 
 function _api_sms_keywords()
