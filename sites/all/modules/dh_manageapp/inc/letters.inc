@@ -495,7 +495,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$search['['.$key.']'] = str_replace (array_keys($search), array_values($search), $value);
 
 	if ( $letter_id == 0)
-		$where = " and l_event='$event' and l_course_type in ('".$row['c_course_type']."', '0') and l_deleted=0";  
+		$where = " and l_event='$event' and l_course_type in ('".$row['c_course_type']."', '0') and l_deleted=0 order by l_name limit 1";  
 	else
 		$where = " and l_id=$letter_id";
 	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='".$row['CentreID']."' $where";
