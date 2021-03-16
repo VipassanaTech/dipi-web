@@ -1973,9 +1973,9 @@ function dh_student_chit($centre, $course)
 				$r['SeatNo'] = $offset;
 			}
 			if ($r['aa_chowky'])
-				$r['SeatNo'] = 'CW-'.$r['SeatNo'];
+				$r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
 			if ($r['aa_chair'])
-				$r['SeatNo'] = 'CH-'.$r['SeatNo'];
+				$r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
 
 			if ($r['aa_chowky'])
 				$seat_type = 'Chowky';
