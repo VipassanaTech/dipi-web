@@ -189,12 +189,16 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 	$photo = '';
-	if (!$add)
+	if (isset($edit_data['a_photo']))
 	{
 		$photo = '<div class="right"><img width="220px" src="'.file_create_url($edit_data['a_photo']).'"/></div>';
 		if ($edit_data['a_uri'] <> '')
 		{
 			$photo = '<div class="right"><a href="'.file_create_url($edit_data['a_uri']).'"><img width="220px" src="'.file_create_url($edit_data['a_photo']).'"/></a></div>';
+		}
+		if ($add)
+		{
+			$form['a_photo'] = array('#type' => 'hidden', '#value' => $edit_data['a_photo']);	
 		}
 	}
 
@@ -229,19 +233,19 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_emergency_name'])?$edit_data['a_emergency_name']:'', '#size' => 30,  '#weight' => 56, 
 		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_relation'] = array('#title' => 'Emergency Relation', '#type' => 'textfield',  
-		'#default_value' => $add?'':$edit_data['a_emergency_relation'], '#size' => 30,  '#weight' => 57, 
+		'#default_value' => isset($edit_data['a_emergency_relation'])?$edit_data['a_emergency_relation']:'', '#size' => 30,  '#weight' => 57, 
 		'#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',  
-		'#default_value' => $add?'':$edit_data['a_emergency_num'], '#size' => 20,  '#weight' => 58, 
+		'#default_value' => isset($edit_data['a_emergency_num'])?$edit_data['a_emergency_num']:'', '#size' => 20,  '#weight' => 58, 
 		'#required' => 0, '#maxlength' => 40);
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['a_internal_note'], '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
+		'#default_value' => isset($edit_data['a_internal_note'])?$edit_data['a_internal_note']:'', '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['a_learn_about_vip'], '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255);
+		'#default_value' => isset($edit_data['a_learn_about_vip'])?$edit_data['a_learn_about_vip']:'', '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255);
 	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
- 		'#default_value' => $add?'':$edit_data['a_friend_family_details'], '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
+ 		'#default_value' => isset($edit_data['a_friend_family_details'])?$edit_data['a_friend_family_details']:'', '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
- 		'#default_value' => $add?'':$edit_data['a_extra'], '#rows' => 3,  '#weight' => 62, '#required' => 0, '#maxlength' => 250);
+ 		'#default_value' => isset($edit_data['a_extra'])?$edit_data['a_extra']:'', '#rows' => 3,  '#weight' => 62, '#required' => 0, '#maxlength' => 250);
 
 
 
