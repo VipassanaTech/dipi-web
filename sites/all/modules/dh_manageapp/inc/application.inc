@@ -245,7 +245,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
  		'#default_value' => isset($edit_data['a_friend_family_details'])?$edit_data['a_friend_family_details']:'', '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
 	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
- 		'#default_value' => isset($edit_data['a_extra'])?$edit_data['a_extra']:'', '#rows' => 3,  '#weight' => 62, '#required' => 0, '#maxlength' => 250);
+ 		'#default_value' => isset($edit_data['a_extra'])?$edit_data['a_extra']:'', '#rows' => 3,  '#weight' => 62, '#required' => 0);
 
 
 
