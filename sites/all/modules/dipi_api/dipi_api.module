@@ -465,10 +465,13 @@ function _api_post_application( $centre, $course, $data )
       $is_valid = $mobile_format->isValidNumber($m_phone);
       $phone_type = $mobile_format->getNumberType($m_phone); 
       $country_code = $m_phone->getCountryCode();
+      $r['a_mob_country'] = $country_code;
+      $vals['mobile'] = substr($vals['mobile'], strlen((string)$country_code));
+      /*
       if ($country_code == '91')
       {
          $vals['mobile'] = substr($vals['mobile'], -10);
-      }
+      }*/
     } catch (Exception $e) {
       
     }
