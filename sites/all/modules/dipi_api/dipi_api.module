@@ -143,6 +143,13 @@ function dipi_api_services_resources() {
                   'type' => 'string',
                   'description' => 'Phone Number',
                 ),
+                array(
+                  'name' => 'country_code',
+                  'optional' => TRUE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'Country Code',
+                ),
               ),
           ),
 
@@ -280,6 +287,23 @@ function dipi_api_services_resources() {
                 'description' => 'Application ID',
               ),
             ),
+          ),
+
+
+        'transfer-application' => array(
+              'help' => t("Transfer application to another centre"),
+              'access arguments' => array('post application'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_transfer_application',
+              'args' => array(
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Phone Number with country code',
+                ),
+              ),
           ),
 
 
@@ -1325,6 +1349,55 @@ function _api_sms_keyword_confirm($phone, $id)
 }
 
 
+function _api_transfer_application( $data )
+{
+    if (!is_array($data))
+    {
+        $out = array('status' => 'error', 'msg' => 'No data found');
+        return $out;
+    }
+    $fields = array('phone', 'centre', 'start_date', 'appid');
+    foreach ($fields as $v) 
+    {
+        if ( ! in_array($v, array_keys($data)) )
+        {
+          $out = array('status' => 'error', 'msg' => "Field $v not present");
+          return $out;
+        }
+    }
+    if (!is_numeric($data['phone']))
+    {
+        $out = array('status' => 'error', 'msg' => "Phone must be numeric");
+        return $out;
+    }
+
+    if (!is_numeric($data['appid']))
+    {
+        $out = array('status' => 'error', 'msg' => "Application ID must be numeric");
+        return $out;
+    }
+
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $data['start_date'], $parts) == false) 
+    {
+        $out = array('status' => 'error', 'msg' => "Start date must be in yyyy-mm-dd format");
+        return $out;
+    }
+    $date = strtotime($data['start_date']." 23:59:59");
+    if ($date < time() )
+    {
+        $out = array('status' => 'error', 'msg' => "Start date must be greater than today");
+        return $out;
+    }
+    $cid = db_query("select c_id from dh_center where c_subdomain='".addslashes($data['centre'])."'")->fetchField();
+    if (!$cid)
+    {
+        $out = array('status' => 'error', 'msg' => "Invalid centre ".$data['centre']);
+        return $out;        
+    }
+
+    return _api_sms_keyword_transfer($data['phone'], $data['centre'], $data['start_date'], $data['appid']);    
+}
+
 function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
 {
     $phone = addslashes($phone);
@@ -1512,14 +1585,20 @@ function _ivr_log( $from, $action, $params, $response )
 }
 
 
-function _api_get_apps_status( $phone )
+function _api_get_apps_status( $phone, $country_code = '91' )
 {
     $phone = addslashes($phone);
+    $limit = 10;
+    if ($country_code == '')
+    {
+      $country_code = '91';
+      $limit = 3;
+    }
     $q = "select a_id as 'ID', a_status as 'Status', CONCAT(a_f_name, ' ', a_l_name) as 'Name', a_conf_no as 'ConfNo', 
       c_start as 'StartDate', c.c_subdomain as 'Center', td.td_val1 as 'CourseType', c.c_phone as CentreNum from dh_applicant 
       left join dh_course co on (a_course=co.c_id) left join dh_center c on (co.c_center=c.c_id) 
       left join dh_type_detail td on (co.c_course_type=td.td_id) 
-      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' order by c_start limit 3";
+      where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_mob_country='$country_code' order by c_start limit $limit";
     $res = db_query($q);
 
     $rows = array();
@@ -1548,6 +1627,11 @@ function _api_confirm_app($phone, $appid)
       where a_id='$appid' and date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and a_phone_mobile='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
     watchdog('dipi_api', $q, array(), WATCHDOG_NOTICE, 'link');
     $res = db_query($q);
+    if ($res->rowCount() <= 0 )
+    {
+       $ret = array('status' => 'error', 'msg' => "No Application found with App id $appid, mobile $phone and status in PreConfirmation/ReConfirmation");
+       return $ret;
+    }
     $r = $res->fetchAssoc();
     if ($r['Status'] == 'PreConfirmation')
     {
@@ -1589,7 +1673,7 @@ function _api_cancel_app($phone, $appid)
     $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
     exec($cmd);
     _ivr_log($phone, "course", "cancel", $out );
-    return $r;
+    return $out;
 }
 
 
