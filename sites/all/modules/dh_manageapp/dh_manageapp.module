@@ -1554,6 +1554,11 @@ function update_status_external($app_id, $new_status)
 			elseif ( $altered_status == 'Received' ) 
 				$uid = $user_ids['COURSE-A-AT-UID'];
 
+			if (($new_status == 'Rejected-R-AT') && ($altered_status == 'Rejected'))
+				$uid = $user_ids['COURSE-R-AT-UID'];
+			elseif ( ($new_status == 'Rejected-A-AT') && ($altered_status == 'Rejected') ) 
+				$uid = $user_ids['COURSE-A-AT-UID'];
+
 			if ($user->uid > 0)
 				$uid = $user->uid;
 			_update_status($app_id, $altered_status , $uid);	
