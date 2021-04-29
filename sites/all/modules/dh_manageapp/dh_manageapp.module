@@ -1566,7 +1566,7 @@ function update_status_external($app_id, $new_status)
 			{
 				if ( (($new_status == 'Rejected-R-AT') && ($altered_status == 'Rejected')) || (($new_status == 'Rejected-A-AT') && ($altered_status == 'Rejected')) )
 				{
-					$letter_map = array('A-ATReview' => 'Recommending AT Rejected', 'Received' => 'Area AT Rejected') ;
+					$letter_map = array('Rejected-R-AT' => 'Recommending AT Rejected', 'Rejected-A-AT' => 'Area AT Rejected') ;
 					$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
 					$lid = db_query("select l_id from dh_letter where l_name='".$letter_map[$new_status]."' and l_center='$centre' limit 1")->fetchField();
 					if ($lid)
