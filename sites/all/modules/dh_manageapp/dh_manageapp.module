@@ -1120,6 +1120,17 @@ function _change_status()
 		$out['newstatus'] = $status;
 		update_status_external($app_id, $status);
 	}
+	elseif ( in_array($status, array('Rejected-R-AT', 'Rejected-A-AT')) ) 
+	{
+		if ( $status == 'Rejected-R-AT' )
+			$field = 'al_recommending_approved';
+		else
+			$field = 'al_area_at_approved';
+		$q = "update dh_applicant_lc set $field='Rejected' where al_applicant ='$app_id'";
+		db_query($q);				
+		update_status_external($app_id, $status);	
+		$out['newstatus'] = 'Rejected';
+	}
 	else
 	{
 		$res = _update_status($app_id, $status);
