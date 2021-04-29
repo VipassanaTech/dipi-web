@@ -1561,6 +1561,9 @@ function update_status_external($app_id, $new_status)
 			{
 				if ( in_array($altered_status, array('R-ATReview'))  || (($altered_status == 'A-ATReview') && ($new_status == 'Received')) )
 					dh_send_letter('applicant', $app_id, $new_status );
+			}
+			else
+			{
 				if ( (($new_status == 'Rejected-R-AT') && ($altered_status == 'Rejected')) || (($new_status == 'Rejected-A-AT') && ($altered_status == 'Rejected')) )
 				{
 					$letter_map = array('A-ATReview' => 'Recommending AT Rejected', 'Received' => 'Area AT Rejected') ;
@@ -1574,9 +1577,9 @@ function update_status_external($app_id, $new_status)
 						logit($centre,  'Letter', $app_id, $log );
 					}
 				}
+				else				
+					dh_send_letter('applicant', $app_id, $altered_status );
 			}
-			else
-				dh_send_letter('applicant', $app_id, $altered_status );
 			if (($new_status == 'A-ATReview') || ($altered_status == 'A-ATReview') )
 				dh_send_letter('a-teacher', $app_id, $altered_status);
 			elseif (($new_status == 'R-ATReview' ) ||  ($altered_status == 'R-ATReview') )
