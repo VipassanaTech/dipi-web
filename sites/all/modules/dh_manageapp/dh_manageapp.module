@@ -1565,9 +1565,9 @@ function update_status_external($app_id, $new_status)
 			elseif (($new_status == 'R-ATReview' ) ||  ($altered_status == 'R-ATReview') )
 				dh_send_letter('r-teacher', $app_id, $altered_status );
 
-			if ( in_array($altered_status, array('R-ATReview', 'Received')) )
+			if ( in_array($altered_status, array('A-ATReview', 'Received')) )
 			{
-				$letter_map = array('R-ATReview' => 'Recommending AT Approved', 'Received' => 'Area AT Approved') ;
+				$letter_map = array('A-ATReview' => 'Recommending AT Approved', 'Received' => 'Area AT Approved') ;
 				$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
 				$lid = db_query("select l_id from dh_letter where l_name='".$letter_map[$altered_status]."' and l_center='$centre' limit 1")->fetchField();
 				if ($lid)
