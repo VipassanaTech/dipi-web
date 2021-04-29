@@ -1494,8 +1494,10 @@ function update_status_external($app_id, $new_status)
 	global $user;
 	$row = db_query("select a_status,a_conf_no from dh_applicant where a_id=$app_id")->fetchAssoc();
 	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
-	$UID_APPLICANT = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-APPLICANT-UID'")->fetchField();
-	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+	$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
+
+	//$UID_APPLICANT = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-APPLICANT-UID'")->fetchField();
+	//$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 	$q  = "select td_val3, IFNULL(a_xml_id,0) as 'xml_id' from dh_applicant a left join dh_course c on a.a_course=c.c_id left join dh_type_detail td on c.c_course_type=td.td_id where a.a_id=".$app_id;
 	$c_data = db_query($q)->fetchAssoc();
 	$is_lc = $c_data['td_val3']=='LC'?1:0;
@@ -1542,10 +1544,14 @@ function update_status_external($app_id, $new_status)
 			else
 				$altered_status = 'R-ATReview';
 
-			$uid = $UID_APPLICANT;
+			$uid = $user_ids['COURSE-APPLICANT-UID'];
+			if ( $altered_status == 'A-ATReview' )
+				$uid = $user_ids['COURSE-R-AT-UID'];
+			elseif ( $altered_status == 'Received' ) 
+				$uid = $user_ids['COURSE-A-AT-UID'];
+
 			if ($user->uid > 0)
 				$uid = $user->uid;
-			//if ($altered_status)
 			_update_status($app_id, $altered_status , $uid);	
 			if (in_array($new_status, array('Received', 'A-ATReview', 'R-ATReview')))
 			{
@@ -1558,10 +1564,24 @@ function update_status_external($app_id, $new_status)
 				dh_send_letter('a-teacher', $app_id, $altered_status);
 			elseif (($new_status == 'R-ATReview' ) ||  ($altered_status == 'R-ATReview') )
 				dh_send_letter('r-teacher', $app_id, $altered_status );
+
+			if ( in_array($altered_status, array('R-ATReview', 'Received')) )
+			{
+				$letter_map = array('R-ATReview' => 'Recommending AT Approved', 'Received' => 'Area AT Approved') ;
+				$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
+				$lid = db_query("select l_id from dh_letter where l_name='".$letter_map[$altered_status]."' and l_center='$centre' limit 1")->fetchField();
+				if ($lid)
+					dh_send_letter('applicant', $app_id, 'Custom', $lid );	
+				else
+				{
+					$log = "No ".$letter_map[$altered_status]." letter found!";
+					logit($centre,  'Letter', $app_id, $log );
+				}
+			}
 		}
 		else
 		{
-			_update_status($app_id, $new_status, $UID_APPLICANT);
+			_update_status($app_id, $new_status, $user_ids['COURSE-SYSTEM-UID']);
 			dh_send_letter('applicant', $app_id, $new_status );
 		}	
 	}
