@@ -136,6 +136,8 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['cs_email_from_name'], '#required' => 1, );
 	$form[$group]['cs_email_reply_to'] = array('#title' => 'Email Reply to', '#type' => 'textfield', '#size' => '50', '#weight' => 15, 
 		'#default_value' => $add?'':$edit_data['cs_email_reply_to'], '#required' => 1, );
+	$form[$group]['c_announcement'] = array('#title' => 'Announcement', '#type' => 'textarea', '#weight' => 16, 
+		'#default_value' => $add?'':$edit_data['c_annoucement'], '#required' => 0, );
 
 
 	$group = 'Registration Settings';
