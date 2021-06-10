@@ -158,6 +158,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $default_doc_type, '#options' => $doc_types, '#required' => 0, );
 	$form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42, 
 		'#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
+	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'textfield', '#size' => '25', '#weight' => 42.5, 
+		'#default_value' => isset($edit_data['ae_nationality'])?$edit_data['ae_nationality']:'', '#required' => 0, '#maxlength' => 60 );
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
 		'#default_value' => isset($edit_data['a_langs'])?$edit_data['a_langs']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 44, 
