@@ -1073,6 +1073,7 @@ function check_student($r)
 
 function generate_course_pdf($course_id, $type = 'M')
 {
+	watchdog('DIPI', 'generate_course_pdf called', array(), WATCHDOG_NOTICE, 'link');
 	$q = "select a_id, a_uri from dh_applicant a left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course=$course_id and a_attended = 1 and a_gender='$type' order by a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."), IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$pdfs = array();
@@ -1128,11 +1129,17 @@ function generate_course_pdf($course_id, $type = 'M')
 			//echo "$cmd\n";
 			exec($cmd);
 			chdir($cur_dir);					
-			if ( isset($json) && (count($json) > 0))
+			if ( isset($json) && (is_array($json)) && (count($json) > 0))
+			{
 				$json[$type] = $meta_data[$type];
-
-			$ins = array('j_data' => serialize($json), 'j_identifier' => $course_id);
-			db_insert('dh_json')->fields($ins)->execute();
+				$upd = array('j_data' => serialize($json));
+				db_update('dh_json')->fields($upd)->condition("j_identifier", $course_id)->execute();
+			}
+			else
+			{
+				$ins = array('j_data' => serialize($meta_data), 'j_identifier' => $course_id);
+				db_insert('dh_json')->fields($ins)->execute();				
+			}
 		}
 	}
 	else
