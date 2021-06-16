@@ -1128,7 +1128,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
 			//echo "$cmd\n";
 			exec($cmd);
-			chdir($cur_dir);					
+			chdir($cur_dir);			
 			if ( isset($json) && (is_array($json)) && (count($json) > 0))
 			{
 				$json[$type] = $meta_data[$type];
@@ -1139,7 +1139,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			{
 				$ins = array('j_data' => serialize($meta_data), 'j_identifier' => $course_id);
 				db_insert('dh_json')->fields($ins)->execute();				
-			}
+			}			
 		}
 	}
 	else
@@ -1152,7 +1152,7 @@ function course_pdf()
 {
 	$course_id = arg(2);
 	if (arg(0) == 'course-pdf-m') {
-		$type = 'M';		
+		$type = 'M';
 		$pdf = generate_course_pdf($course_id);
 	}
 	else {
@@ -1161,5 +1161,6 @@ function course_pdf()
 	}
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=course-".$type.".pdf");
-	@readfile($pdf);
+	$uri = 'private://';
+	@readfile($uri."/applications/".arg(1)."/".arg(2)."/course-".$type.".pdf");
 }
