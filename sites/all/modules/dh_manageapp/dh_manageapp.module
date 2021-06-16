@@ -290,12 +290,12 @@ function dh_manageapp_menu()
 	       'type' => MENU_CALLBACK);
 
 	$items['course-pdf-m/%centre_id/%course_id'] = array( 'title' => t('Male PDF'),
-	       'page callback' => 'dh_manage_day_zero',
+	       'page callback' => 'course_pdf',
 	       'access arguments' => array('access male'),
 	       'type' => MENU_CALLBACK);
 
 	$items['course-pdf-f/%centre_id/%course_id'] = array( 'title' => t('Female PDF'),
-	       'page callback' => 'dh_manage_day_zero',
+	       'page callback' => 'course_pdf',
 	       'access arguments' => array('access female'),
 	       'type' => MENU_CALLBACK);
 

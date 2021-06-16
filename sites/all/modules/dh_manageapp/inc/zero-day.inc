@@ -57,12 +57,6 @@ function dh_manage_day_zero()
 		case 'student-chit':
 			return dh_student_chit(arg(1), arg(2));
 		break;
-		case 'course-pdf-m':
-			return dh_generate_course_pdf(arg(2));
-		break;
-		case 'course-pdf-f':
-			return dh_generate_course_pdf(arg(2),'F');
-		break;		
 		case 'app':
 			$row = array();
 			$ajax = '';

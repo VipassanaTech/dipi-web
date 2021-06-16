@@ -1148,3 +1148,18 @@ function generate_course_pdf($course_id, $type = 'M')
 	}
 }
 
+function course_pdf()
+{
+	$course_id = arg(2);
+	if (arg(0) == 'course-pdf-m') {
+		$type = 'M';		
+		$pdf = generate_course_pdf($course_id);
+	}
+	else {
+		$type = 'F';
+		$pdf = generate_course_pdf($course_id, $type);
+	}
+	header("Content-type: application/pdf");
+	header("Content-Disposition: inline; filename=course-".$type.".pdf");
+	@readfile($pdf);
+}
