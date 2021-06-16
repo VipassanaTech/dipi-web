@@ -544,19 +544,19 @@ function map_application_fields_lc($row)
 
 	if ( $row['a_problem_physical'])
 	{
-		$fields['form1[0].#subform[1].hi1[0]'] = '1';
+		$fields['form1[0].#subform[1].hi3[0]'] = '1';
 		$fields['form1[0].#subform[1].physicalinfo[0]'] =  $row['ae_desc_physical']; 	
 	}
 	else
-		$fields['form1[0].#subform[1].hi2[0]'] = '1';
+		$fields['form1[0].#subform[1].hi4[0]'] = '1';
 
 	if ( $row['a_problem_mental'])
 	{
 		$fields['form1[0].#subform[1].mentalinfo[0]'] = $row['ae_desc_mental']; 
-		$fields['form1[0].#subform[1].hi3[0]'] = '1';
+		$fields['form1[0].#subform[1].hi1[0]'] = '1';
 	}
 	else
-		$fields['form1[0].#subform[1].hi4[0]'] = '1';
+		$fields['form1[0].#subform[1].hi2[0]'] = '1';
 
 
 	if ( $row['a_medication'])
