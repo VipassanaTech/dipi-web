@@ -1093,7 +1093,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			$i++;
 		}
 	}
-
+	$generate = True;
 	$q = "select j_data from dh_json where j_identifier = $course_id";
 	$res = db_query($q);
 	if ($res)
@@ -1107,11 +1107,12 @@ function generate_course_pdf($course_id, $type = 'M')
 				$total_count = $json[$type];
 				if ($total_count <>  $meta_data[$type])
 				{
-					$generate = True;
 					$json[$type] = $meta_data[$type];
 					$upd = array('j_data' => serialize($json));
 					db_update('dh_json')->fields($upd)->condition("j_identifier", $course_id)->execute();
 				}
+				else
+					$generate = False;
 			}
 		}
 	}
