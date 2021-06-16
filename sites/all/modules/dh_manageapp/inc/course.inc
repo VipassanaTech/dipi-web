@@ -1077,8 +1077,11 @@ function generate_course_pdf($course_id, $type = 'M')
 	$result = db_query($q);
 	$pdfs = array();
 	$i = 0;
+	$meta_data = array();
+	$meta_data[$type] = 0;
 	while($r = $result->fetchAssoc())
 	{
+		$meta_data[$type]++;
 		if ($r['a_uri'] <> '')
 		{
 			if ($i == 0)
@@ -1090,17 +1093,47 @@ function generate_course_pdf($course_id, $type = 'M')
 			$i++;
 		}
 	}
-	if ( count($pdfs) > 0)
+
+	$q = "select j_data from dh_json where j_identifier = $course_id";
+	$res = db_query($q);
+	if ($res)
 	{
-		$cur_dir = getcwd();
-		echo "Dir: $dirname\n";
-		//print_r($pdfs);
-		chdir($dirname);
-		$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
-		//echo "$cmd\n";
-		exec($cmd);
-		chdir($cur_dir);		
-	} 
+		$tmp = $res->fetchAssoc();
+		$json = unserialize($tmp['j_data']);
+		if ($json)
+		{
+			if (isset($json[$type]))
+			{
+				$total_count = $json[$type];
+				if ($total_count <>  $meta_data[$type])
+				{
+					$generate = True;
+					$json[$type] = $meta_data[$type];
+					$upd = array('j_data' => serialize($json));
+					db_update('dh_json')->fields($upd)->condition("j_identifier", $course_id)->execute();
+				}
+			}
+		}
+	}
+	if ( count($pdfs) > 0 )
+	{
+		if ($generate)
+		{
+			$cur_dir = getcwd();
+			echo "Dir: $dirname\n";
+			//print_r($pdfs);
+			chdir($dirname);
+			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
+			//echo "$cmd\n";
+			exec($cmd);
+			chdir($cur_dir);					
+			if ( isset($json) && (count($json) > 0))
+				$json[$type] = $meta_data[$type];
+
+			$ins = array('j_data' => serialize($json), 'j_identifier' => $course_id);
+			db_insert('dh_json')->fields($ins)->execute();
+		}
+	}
 	else
 	{
 		echo "No pdf applications found\n";
