@@ -133,6 +133,14 @@ function dh_zero_select_centre($form, &$form_state)
     else if (user_access('access all center dashboard')) {
         drupal_goto('vri-management');
     }
+    else if (user_access('r-at review')) {
+    	$search_lc = '<li><h2>'.l("R-AT Review", "search-lc/r-atreview").'</h2></li>';
+    	$form['a'] = array('#markup' => $search_lc );
+    }
+    else if (user_access('a-at review')) {
+    	$search_lc = '<li><h2>'.l("A-AT Review", "search-lc/a-atreview").'</h2></li>';
+    	$form['a'] = array('#markup' => $search_lc );
+    }
 	else
 	{
 		$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'  and uc_deleted=0");

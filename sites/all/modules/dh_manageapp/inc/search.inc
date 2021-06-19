@@ -1,6 +1,6 @@
 <?php
 
-function dh_manageapp_search_results( $type, $where, $centre )
+function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False )
 {
 	global $user;
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
@@ -124,6 +124,8 @@ function dh_manageapp_search_results( $type, $where, $centre )
 			$r['ConfNo'] = '';
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
 		$rs['course'] = implode(" / ", $temp);
+		if ($show_centre_name)
+			$rs['course'] = $r['c_name'];
 		$rs['status'] = $r['a_status'].($r['ConfNo']?" (".$r['ConfNo'].")":"");
 		$rs['app_status'] = $r['a_status'];
 		$rs['confno'] = $r['ConfNo'];
@@ -1061,11 +1063,12 @@ function dh_manageapp_search_form($form, &$form_state)
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
 		$form['state'] = array('#title' => 'State', '#type' => 'textfield','#weight' => 10);
 		
-		$q = "select l_id, l_name, l_event from dh_letter where l_center = $centre_id order by l_event";
-		$letters = db_query($q)->fetchAllKeyed();
-		$letters[''] = 'Choose';
-		$form['letters'] = array('#title' => 'Letters', '#type' => 'select', '#options' => $letters, '#weight' => 11);	
-
+		if ($centre_id <> '') {
+			$q = "select l_id, l_name, l_event from dh_letter where l_center = $centre_id order by l_event";
+			$letters = db_query($q)->fetchAllKeyed();
+			$letters[''] = 'Choose';
+			$form['letters'] = array('#title' => 'Letters', '#type' => 'select', '#options' => $letters, '#weight' => 11);	
+		}
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#weight' => 11);
 		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#options' => $modes, '#weight' => 12 );
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 13);
@@ -1147,3 +1150,17 @@ function dh_manageapp_search_form_submit($form, &$form_state)
 //	drupal_goto("donation-report-results", array('query' => $data));
 }
 
+function dh_search_lc ($type)
+{
+	$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'  and uc_deleted=0");
+	$centres = array();
+	while($r = $res->fetchAssoc())
+	{
+		$centres[] = $r['uc_center'];
+	}
+	$where = " a_centre in (".implode(",", $centres).") and a_status in ('r-atreview')";
+	$out = dh_manageapp_search_results( 'applicant', $where, $centre[0], True );
+
+	$form['out'] = array('#markup' => $out, '#weight' => 100 );
+	return $form;
+}

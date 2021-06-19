@@ -51,6 +51,8 @@ function dh_manageapp_permission()
 	$perms['access daily activity'] = array('title' => t('Access Daily Activity'));
 	$perms['access male'] = array('title' => t('Access Male Applications'));
 	$perms['access female'] = array('title' => t('Access Female Applications'));
+	$perms['r-at review'] = array('title' => t('View Applications with status R-ATReview') ) ;
+	$perms['a-at review'] = array('title' => t('View Applications with status A-ATReview') ) ;
 	$perms['export data'] = array('title' => t('Ability to Export data as PDF/Excel'));
 	$perms['view teachers list'] = array('title' => t('Access Teachers List'));
 	$perms['received applications block'] = array('title' => t('View Received Applications Block'));
@@ -143,6 +145,16 @@ function dh_manageapp_menu()
            'page arguments' => array('dh_manageapp_search_form'),
 	       'page callback' => 'drupal_get_form',
 	       'access arguments' => array('access all centres'),
+	       'type' => MENU_LOCAL_TASK);
+
+	$items['search-lc'] = array( 'title' => t('Search'),
+	       'page callback' => 'dh_search_lc',
+	       'access arguments' => array('r-at review'),
+	       'type' => MENU_LOCAL_TASK);
+
+	$items['search-lc'] = array( 'title' => t('Search'),
+	       'page callback' => 'dh_search_lc',
+	       'access arguments' => array('a-at review'),
 	       'type' => MENU_LOCAL_TASK);
 
 	$items['search-app/%centre_id'] = array( 'title' => t('Search'),
