@@ -602,7 +602,7 @@ function course_summary( $centre_id, $where, $statuses )
 			$q  = "select td_val3 from dh_course c left join dh_type_detail td on c.c_course_type=td.td_id where c.c_id=".arg(2);
 			$c_data = db_query($q)->fetchAssoc();
 			$is_lc = $c_data['td_val3']=='LC'?1:0;
-			if ( $is_lc )
+			if ( $is_lc && (user_access('r-at review') || user_access('a-at review')))
 			{
 				$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-LC-STATUS' order by td_val2";
 				$s_res = db_query($q);
