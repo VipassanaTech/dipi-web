@@ -67,7 +67,7 @@ function dh_course_dashboard()
 
 function dh_manage_courses()
 {
-	$c_code = db_query("select c_subdomain from dh_center where c_id=".arg(1))->fetchField();
+	$c_type = db_query("select c_subdomain, c_vri from dh_center where c_id=".arg(1))->fetchAssoc();
 	drupal_add_library('system', 'ui.core');
 	drupal_add_library('system', 'ui.dialog');
 	drupal_add_library('system', 'ui.datepicker');
@@ -287,9 +287,9 @@ function dh_manage_courses()
 	
 
 	drupal_add_js($js, 'inline');
-	$code = "sch".$c_code;
-	if ( strstr($c_code, '.in'))
-		$code = "noncenter/".$c_code;
+	$code = "sch".$c_type['c_subdomain'];
+	if ( strstr($c_type['c_subdomain'], '.in'))
+		$code = "noncenter/".$c_type['c_subdomain'];
 	
 
 	$q = "select c_id, c_name as 'Name', c_finalized from dh_course where c_center = ".arg(1)." and c_finalized = 1 order by c_start";
@@ -303,7 +303,11 @@ function dh_manage_courses()
 	$header = array("Id", "Course Name", "Action");
 	
 
-	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/".$code, array('attributes' => array("target" => "_blank") )).')</h2>';
+	$out  = '<h2>'.l("Back to Dashboard", "centre/".arg(1));
+	if ($c_type['c_vri'])
+		$out .= '&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://schedule.vridhamma.org/courses/".$c_type['c_subdomain'], array('attributes' => array("target" => "_blank") )).')</h2>';
+	else
+		$out .= '&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/".$code, array('attributes' => array("target" => "_blank") )).')</h2>';
 	
 	$finalized = theme("table", array('header' => $header, 'rows' => $rows ));
 	$fieldset_vars = array(
