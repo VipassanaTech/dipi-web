@@ -1159,7 +1159,7 @@ function dh_search_lc ($type)
 	{
 		$centres[] = $r['uc_center'];
 	}
-	$where = " a_center in (".implode(",", $centres).") and a_status in (".$type.")";
+	$where = " a_center in (".implode(",", $centres).") and a_status in ('".$type."')";
 	$out = dh_manageapp_search_results( 'applicant', $where, $centres[0], True );
 
 	$form['out'] = array('#markup' => $out, '#weight' => 100 );
