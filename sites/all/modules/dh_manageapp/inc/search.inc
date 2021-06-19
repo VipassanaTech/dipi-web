@@ -1152,14 +1152,15 @@ function dh_manageapp_search_form_submit($form, &$form_state)
 
 function dh_search_lc ($type)
 {
+	global $user;
 	$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'  and uc_deleted=0");
 	$centres = array();
 	while($r = $res->fetchAssoc())
 	{
 		$centres[] = $r['uc_center'];
 	}
-	$where = " a_centre in (".implode(",", $centres).") and a_status in ('r-atreview')";
-	$out = dh_manageapp_search_results( 'applicant', $where, $centre[0], True );
+	$where = " a_center in (".implode(",", $centres).") and a_status in ('r-atreview')";
+	$out = dh_manageapp_search_results( 'applicant', $where, $centres[0], True );
 
 	$form['out'] = array('#markup' => $out, '#weight' => 100 );
 	return $form;
