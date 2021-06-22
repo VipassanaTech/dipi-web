@@ -1087,8 +1087,9 @@ function generate_course_pdf($course_id, $type = 'M')
 	while($r = $result->fetchAssoc())
 	{
 		$meta_data[$type]++;
+		create_application_pdf($r['a_id']);
 		if ($r['a_uri'] <> '')
-		{
+		{			
 			if ($i == 0)
 			{
 				$path = drupal_realpath($r['a_uri']);
