@@ -948,7 +948,14 @@ function _api_post_application( $centre, $course, $data )
 
         if (!isset($vals['lc_arrival']) || ( trim($vals['lc_arrival']) == '' ))
           return array("Result" => "Error", "Message" => 'Arrival not present');
-        $r['al_arrival'] = $vals['lc_arrival'];    
+
+        if (trim($vals['lc_arrival']) <> '')
+        {
+          if (strlen($vals['lc_arrival']) > 50 )
+             return array("Result" => "Error", "Message" => 'Arrival more than 50 chars');
+          $r['al_arrival'] = $vals['lc_arrival'];    
+        }
+
 
 
         if (!isset($vals['lc_recommending']) || ( trim($vals['lc_recommending']) == '' ))
