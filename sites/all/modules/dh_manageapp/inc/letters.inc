@@ -435,8 +435,8 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$auth_reco = $al_row['al_recommending_auth'];
 		if (!$auth_reco)
 		{
-	 		$auth_area = generate_random_str(15);
-	 		$auth_reco = generate_random_str(15);
+	 		$auth_area = generate_random_str(30);
+	 		$auth_reco = generate_random_str(30);
 			db_update('dh_applicant_lc')->fields(array('al_area_auth' => $auth_area, 'al_recommending_auth' => $auth_reco))->condition('al_applicant', $id)->execute();
 		}
 		$search['[RAuth]'] = $auth_reco;
