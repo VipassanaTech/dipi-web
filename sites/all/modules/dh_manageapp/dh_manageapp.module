@@ -1597,7 +1597,8 @@ function update_status_external($app_id, $new_status)
 			if (in_array($new_status, array('Received', 'A-ATReview', 'R-ATReview')))
 			{
 				if ( in_array($altered_status, array('R-ATReview'))  || (($altered_status == 'A-ATReview') && ($new_status == 'Received')) )
-					dh_send_letter('applicant', $app_id, $new_status );
+					if ($new_status <> 'R-ATReview')
+						dh_send_letter('applicant', $app_id, $new_status );
 			}
 			else
 			{

@@ -15,7 +15,7 @@ if ( !is_numeric($id) )
    exit(1);
 }
 
-if ( !in_array($event, array('Clarification-Response', 'Expected', 'Confirmed', 'Cancelled', 'Received', 'WaitList', 'R-ATReview', 'A-ATReview', 'Rejected-R-AT', 'Rejected-A-AT')) )
+if ( !in_array($event, array('Clarification-Response', 'Expected', 'Confirmed', 'Cancelled', 'Received', 'WaitList', 'R-ATReview', 'A-ATReview', 'Rejected-R-AT', 'Rejected-A-AT', 'R-ATTransfer')) )
 {
    echo "Invalid Event!\n";
    exit(1);
