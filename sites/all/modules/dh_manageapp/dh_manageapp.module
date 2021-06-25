@@ -1143,7 +1143,7 @@ function _change_status()
 			}
 			else 
 			{
-				$status = 'R-ATReview';
+				$status = 'R-ATTransfer';
 				$out['status'] = 'Failed';
 				$out['msg'] = 'Please Edit application and choose Recommending teacher before approving!';
 			}
