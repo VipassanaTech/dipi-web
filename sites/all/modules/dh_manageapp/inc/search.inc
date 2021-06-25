@@ -247,12 +247,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					var t = "Rejected-"+data.app_status[0]+"-AT";
 					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"Approved\">Approved</option><option value=\""+t+"\">Rejected</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 				}
-				elseif (data.app_status == "R-ATTransfer")
+				else if (data.app_status == "R-ATTransfer")
 				{
 					var t = "R-ATReview";
 					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"R-ATReview\">R-AT Review</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 
-				} 
+				}
 				if (data.app_status == "Confirmed" || data.app_status == "ReConfirmation")
 				{
 					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option><option value=\"Expected\">Expected</option>";

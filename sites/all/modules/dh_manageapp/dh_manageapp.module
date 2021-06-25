@@ -1112,7 +1112,7 @@ function _change_status()
 	$out['msg'] = '';
 	$out['confno'] = '';
 	$out['newstatus'] = '';
-	if ( $status == 'Approved' )
+	if ( $status == 'Approved' || $status == 'R-ATReview')
 	{
 		$q = "select a_status from dh_applicant where a_id=".$app_id;
 		$current_status = db_query($q)->fetchField();
@@ -1132,6 +1132,22 @@ function _change_status()
 				$out['msg'] = 'Please Edit application and choose Area teacher before approving!';
 			}
 		}
+		elseif ($current_status == 'R-ATTransfer')
+		{
+			$reco_at = db_query('select al_recommending from dh_applicant_lc where al_applicant='.$app_id)->fetchField();
+			if ($reco_at)
+			{
+				$status = 'R-ATReview';
+				$q = "update dh_applicant_lc set al_recommending_approved='Pending' where al_applicant ='$app_id'";
+				db_query($q);			
+			}
+			else 
+			{
+				$status = 'R-ATReview';
+				$out['status'] = 'Failed';
+				$out['msg'] = 'Please Edit application and choose Recommending teacher before approving!';
+			}
+		}			
 		else
 		{
 			$status = 'Received';
@@ -1141,6 +1157,7 @@ function _change_status()
 		$out['newstatus'] = $status;
 		update_status_external($app_id, $status);
 	}
+
 	elseif ( in_array($status, array('Rejected-R-AT', 'Rejected-A-AT')) ) 
 	{
 		if ( $status == 'Rejected-R-AT' )
