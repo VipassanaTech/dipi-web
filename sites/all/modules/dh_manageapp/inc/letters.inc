@@ -568,6 +568,14 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
 		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+		if ($row['a_email'] == '')
+		{
+			$log = "No email found for AT ";
+			logit($centre,  'Letter', $id, $log );
+			$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
+			_update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
+		}
+
 	}
 
 
@@ -579,6 +587,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$mg = Mailgun::create(variable_get('mailgun_key', ''));
 		$test_mode = variable_get('mode_test', '0');
 		$to = $row['a_email'];
+
 		if ( $test_mode )
 			$to = variable_get('mode_test_emails', '');
 		$options = array(
