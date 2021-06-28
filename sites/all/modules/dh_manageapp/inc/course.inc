@@ -1175,8 +1175,8 @@ function course_pdf()
 function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 {
 
-	watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender");
-	$settings = db_query("select cs_course_config from dh_center_setting where cs_center=$centre")->fetchField();
+	//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender");
+	$settings = db_query("select cs_course_config from dh_center_setting where cs_center=$center_id")->fetchField();
 	$ini = array();
 	if ($settings <> '')
 		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
@@ -1190,7 +1190,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 		if ( isset($ini[$course_type]['Waitlist-'.$g]) && (trim($ini[$course_type]['Waitlist-'.$g]) <> '') )
 		  $count_wait = trim($ini[$course_type]['Waitlist-'.$g]);
 	}
-	watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Count Full: $count_full");
+	//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Count Full: $count_full");
 	if ( ( $count_full > 0) || ($count_wait > 0))
 	{
 		$SYSTEM_USER_ID = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
