@@ -1195,7 +1195,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 	{
 		$SYSTEM_USER_ID = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
 		$count = db_query("select count(a_id) from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender'" )->fetchField();
-		if ( $count >= $count_full )
+		if (( $count >= $count_full ) && ($count_full > 0 ))
 		{
 			watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Count: $count, Count Full: $count_full");
 			$q = "update dh_course set c_status_o".strtolower($gender)." = 'Course Full', c_status_n".strtolower($gender)." = 'Course Full', 
