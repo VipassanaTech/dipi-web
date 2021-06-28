@@ -1169,3 +1169,47 @@ function course_pdf()
 	$uri = 'private://';
 	@readfile($uri."/applications/".arg(1)."/".arg(2)."/course-".$type.".pdf");
 }
+
+
+
+function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
+{
+
+	$settings = db_query("select cs_course_config from dh_center_setting where cs_center=$centre")->fetchField();
+	$ini = array();
+	if ($settings <> '')
+		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
+
+	$g = ($gender == 'M')?"Male":"Female";
+	$count_full = 0; $count_wait = 0;
+	if ( is_array($ini[$course_type]) )
+	{
+		if ( isset($ini[$course_type]['MaxApps-'.$g]) && (trim($ini[$course_type]['MaxApps-'.$g]) <> '') )
+		  $count_full = trim($ini[$course_type]['MaxApps-'.$g]);
+		if ( isset($ini[$course_type]['Waitlist-'.$g]) && (trim($ini[$course_type]['Waitlist-'.$g]) <> '') )
+		  $count_wait = trim($ini[$course_type]['Waitlist-'.$g]);
+	}
+	if ( ( $count_full > 0) || ($count_wait > 0))
+	{
+		$SYSTEM_USER_ID = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+		$count = db_query("select count(a_id) from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender'" )->fetchField();
+		if ( $count >= $count_full )
+		{
+			//logit("Centre: $center_id, Course Id: $course_id, Gender: $gender, Count: $count, Count Full: $count_full");
+			$q = "update dh_course set c_status_o".strtolower($gender)." = 'Course Full', c_status_n".strtolower($gender)." = 'Course Full', 
+			  c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+			db_query($q);
+		}
+		elseif ( $count > $count_wait )
+		{
+			if ($count_wait > 0 )
+			{
+				//logit("Centre: $center_id, Course Id: $course_id, Gender: $gender, Count: $count, Count Wait: $count_wait");
+				$q = "update dh_course set c_status_o".strtolower($gender)." = 'Wait List', c_status_n".strtolower($gender)." = 'Wait List', 
+				  c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+				db_query($q);
+			}
+		}
+	}
+}
+
