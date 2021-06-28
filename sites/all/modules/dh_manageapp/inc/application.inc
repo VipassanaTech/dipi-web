@@ -957,15 +957,27 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		if ($app_al['al_at_year'] == '')
 			$app_al['al_at_year'] = null;
 
+		$trigger_letter_reco = False;
+		$trigger_letter_area = False;
 		if ($app_lc_id > 0)
-		{				
+		{
+			$t_row = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_id=$app_lc_id")->fetchAssoc();
+			if (($t_row['al_recommending'] <> $app_al['al_recommending']) && ($old_status == 'R-ATReview'))
+				$trigger_letter_reco = True;
+			if (($t_row['al_area_at'] <> $app_al['al_area_at'])  && ($old_status == 'A-ATReview'))
+				$trigger_letter_area = True;		
 			db_update('dh_applicant_lc')->fields($app_al)->condition('al_id', $app_lc_id)->execute();
 		}
 		else
 		{
 			$app_al['al_applicant'] = $app_id;
-			db_insert('dh_applicant_lc')->fields($app_al)->execute();				
+			db_insert('dh_applicant_lc')->fields($app_al)->execute();
+			$trigger_letter_reco = True;	
 		}
+		if ($trigger_letter_reco)
+			dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
+		if ($trigger_letter_area)
+			dh_send_letter('a-teacher', $app_id, 'R-ATReview' );
 	}
 
 	if ($input['attending'])
