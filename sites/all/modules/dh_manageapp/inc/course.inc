@@ -1087,7 +1087,12 @@ function generate_course_pdf($course_id, $type = 'M')
 	while($r = $result->fetchAssoc())
 	{
 		$meta_data[$type]++;
-		create_application_pdf($r['a_id']);
+		try {
+			create_application_pdf($r['a_id']);	
+		} catch (Exception $e) {
+			
+		}
+
 		if ($r['a_uri'] <> '')
 		{			
 			if ($i == 0)
@@ -1095,7 +1100,12 @@ function generate_course_pdf($course_id, $type = 'M')
 				$path = drupal_realpath($r['a_uri']);
 				$dirname = dirname($path);
 			}
-			$pdfs[] =  basename($r['a_uri']);
+			$path_t = drupal_realpath($r['a_uri']);
+			$dirname_t = dirname($path_t);
+			if ($dirname_t == $dirname)
+				$pdfs[] =  basename($r['a_uri']);
+			else
+				$pdfs[] =  $dirname_t."/".basename($r['a_uri']);
 			$i++;
 		}
 	}
@@ -1132,6 +1142,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			chdir($dirname);
 			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
 			//echo "$cmd\n";
+			watchdog('DIPI', 'generate_course_pdf cmd '.$cmd, array(), WATCHDOG_NOTICE, 'link');
 			exec($cmd);
 			chdir($cur_dir);			
 			if ( isset($json) && (is_array($json)) && (count($json) > 0))
