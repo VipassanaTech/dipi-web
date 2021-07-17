@@ -562,20 +562,22 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$letter_name = $ret['letter_name'];
 
 	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
-	if (  in_array($event, array($STATUS_CONFIRMED, 'R-ATReview', 'A-ATReview')) )
+	if (  in_array($event, array($STATUS_CONFIRMED)) )
 	{
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
 		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+	}
+	if ( in_array($event, array('R-ATReview', 'A-ATReview')))
+	{
 		if ($row['a_email'] == '')
 		{
 			$log = "No email found for AT ";
 			logit($centre,  'Letter', $id, $log );
 			$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
 			_update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
-		}
-
+		}		
 	}
 
 
