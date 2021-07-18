@@ -1659,7 +1659,10 @@ function update_status_external($app_id, $new_status)
 		}
 		else
 		{
-			_update_status($app_id, $new_status, $user_ids['COURSE-SYSTEM-UID']);
+			$uid = $user_ids['COURSE-SYSTEM-UID'];
+			if ( in_array($new_status, array('Clarification-Response', 'Confirmed', 'Cancelled')) )
+				$uid = $user_ids['COURSE-APPLICANT-UID'];
+			_update_status($app_id, $new_status, $uid );
 			dh_send_letter('applicant', $app_id, $new_status );
 		}	
 	}
