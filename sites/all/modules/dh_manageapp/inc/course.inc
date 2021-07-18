@@ -1193,19 +1193,82 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
 
 	$g = ($gender == 'M')?"Male":"Female";
-	$count_full = 0; $count_wait = 0;
+	//$count_full = 0; $count_wait = 0;
+	$count_ini = array('full' => array('all' => 0, 'Old' => 0, 'New' => 0, 'Server' => 0), 
+		'wait' => array('all' => 0, 'Old' => 0, 'New' => 0, 'Server' => 0));
 	if ( is_array($ini[$course_type]) )
 	{
-		if ( isset($ini[$course_type]['MaxApps-'.$g]) && (trim($ini[$course_type]['MaxApps-'.$g]) <> '') )
-		  $count_full = trim($ini[$course_type]['MaxApps-'.$g]);
-		if ( isset($ini[$course_type]['Waitlist-'.$g]) && (trim($ini[$course_type]['Waitlist-'.$g]) <> '') )
-		  $count_wait = trim($ini[$course_type]['Waitlist-'.$g]);
+		foreach( array('MaxApps-', 'Waitlist-') as $cc )
+		{
+			$key = $cc.$g;
+			if ( isset($ini[$course_type][$key]) && (trim($ini[$course_type][$key]) <> '') )
+			  $count_ini[($cc == 'MaxApps-'?'full':'wait')]['all'] = trim($ini[$course_type][$key]);			
+		}
+		//if ( isset($ini[$course_type]['Waitlist-'.$g]) && (trim($ini[$course_type]['Waitlist-'.$g]) <> '') )
+		//  $count_wait['all'] = trim($ini[$course_type]['Waitlist-'.$g]);			
+		foreach( array('Old', 'New', 'Server') as $a_type )
+		{
+			foreach( array('MaxApps-', 'Waitlist-') as $cc )
+			{
+				$key = $cc.$g.'-'.$a_type;
+				if ( isset($ini[$course_type][$key]) && (trim($ini[$course_type][$key]) <> '') )
+				  $count_ini[($cc == 'MaxApps-'?'full':'wait')][$a_type] = trim($ini[$course_type][$key]);
+
+			}
+			//if ( isset($ini[$course_type]['Waitlist-'.$g.'-'.$a_type]) && (trim($ini[$course_type]['Waitlist-'.$g]) <> '') )
+			// $count_wait[$a_type] = trim($ini[$course_type]['Waitlist-'.$g]);			
+		}
 	}
 	//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Count Full: $count_full");
-	if ( ( $count_full > 0) || ($count_wait > 0))
+	//if ( ( $count_full > 0) || ($count_wait > 0))
+	if ( ($count_ini['full']['all'] > 0 || $count_ini['full']['Old'] > 0 || $count_ini['full']['New'] > 0 || $count_ini['full']['Server'] > 0 ) || ($count_ini['wait']['all'] > 0 || $count_ini['wait']['Old'] > 0 || $count_ini['wait']['New'] > 0 || $count_ini['wait']['Server'] > 0) )
 	{
 		$SYSTEM_USER_ID = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-		$count = db_query("select count(a_id) from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender'" )->fetchField();
+		$count_row = db_query("select a_type, a_old, count(a_id) as 'c' from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender' group by a_type, a_old" );
+		$count_cur = array('all' => 0, 'Old' => 0, 'New' => 0, 'Server' => 0);
+		$c = 0;
+		while( $r = $count_row->fetchAssoc() )
+		{
+			if ( strtolower($r['a_type']) == 'student')
+				$key = ($r['a_old']?'Old':'New');
+			elseif ( strtolower($r['a_type']) == 'sevak' )
+				$key = 'Server';
+			$count_cur[$key] += $r['c'];
+			$c += $r['c'];
+		}
+		$count_cur['all'] = $c;
+
+		// If old, new, server counts are there, then they get preference and all is ignored. 
+		if (( $count_ini['Old'] + $count_ini['New'] + $count_ini['Server'] ) > 0 )
+			unset($count_ini['all']);
+		else
+		{
+			unset($count_ini['Old']); 
+			unset($count_ini['New']);
+			unset($count_ini['Server']);
+		}
+
+		foreach( $count_ini as $c_status => $c_status_data )
+		{
+			foreach( $c_status_data as $key => $val  )
+			{
+				if (( $count_cur[$c_status][$key] >= $val ) && ( $val > 0) )
+				{
+					watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$c_status][$key] );
+
+					$new_status = ($c_status == 'full'? 'Course Full':'Wait List');
+					if ($key == 'all')
+						$q = "update dh_course set c_status_o".strtolower($gender)." = '$new_status', c_status_n".strtolower($gender)." = '$new_status', 
+					  		c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+					else					
+						$q = "update dh_course set c_status_".( ($key == 'Server'?'svr_':($key == 'Old'?'o':'n')) ).strtolower($gender)." = '$new_status', 
+					  		c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+					db_query($q);
+				}				
+			}
+		}
+		/*
+
 		if (( $count >= $count_full ) && ($count_full > 0 ))
 		{
 			watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Count: $count, Count Full: $count_full");
@@ -1223,6 +1286,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 				db_query($q);
 			}
 		}
+		*/
 	}
 }
 
