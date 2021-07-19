@@ -1185,7 +1185,6 @@ function course_pdf()
 
 function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 {
-
 	//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender");
 	$settings = db_query("select cs_course_config from dh_center_setting where cs_center=$center_id")->fetchField();
 	$ini = array();
@@ -1290,3 +1289,16 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 	}
 }
 
+
+function applicant_should_be_waitlisted( $centre, $course, $type, $gender, $old, $app_id )
+{
+   	$update_waitlist = db_query("select cs_apps_waitlist from dh_center_setting where cs_center=$centre")->fetchField();
+   	if ($update_waitlist)
+   	{
+	 	$course_status = db_query("select c_status_".( (strtolower($type) == 'server'?'svr_':($old?'o':'n')) ).strtolower($gender)." from dh_course where c_id=".$course)->fetchField();
+	 	if ( in_array($course_status, array('Wait List', 'Course Full')) )
+	 		return true;
+	}
+	return false;
+
+}

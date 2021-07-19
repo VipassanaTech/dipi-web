@@ -1541,7 +1541,7 @@ function generate_conf_no( $app_id )
 function update_status_external($app_id, $new_status)
 {
 	global $user;
-	$row = db_query("select a_status,a_conf_no,a_center,a_course,a_gender from dh_applicant where a_id=$app_id")->fetchAssoc();
+	$row = db_query("select a_status,a_conf_no,a_center,a_course,a_gender,a_old,a_type from dh_applicant where a_id=$app_id")->fetchAssoc();
 	$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
 	$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
 
@@ -1553,7 +1553,16 @@ function update_status_external($app_id, $new_status)
 	$xml_id = $c_data['xml_id'];
 	$c_type = $c_data['td_key'];
 	if ( in_array($new_status, array('Received')) )
+	{
 		dh_course_status_check( $row['a_center'], $c_type, $row['a_gender'], $row['a_course'] );
+		if (!$is_lc)
+		{
+			if (applicant_should_be_waitlisted($row['a_center'], $row['a_course'], $row['a_type'], $row['a_gender'], $row['a_old'], $app_id  ))
+			{
+				$new_status = 'Wait List';
+			}			
+		}
+	}
 
 	if ( ($row['a_status'] <> $new_status) )
 	{
