@@ -1251,7 +1251,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 		{
 			foreach( $c_status_data as $key => $val  )
 			{
-				if (( $count_cur[$c_status][$key] >= $val ) && ( $val > 0) )
+				if ( isset($count_cur[$c_status]) && isset($count_cur[$c_status][$key]) && ( $count_cur[$c_status][$key] >= $val ) && ( $val > 0) )
 				{
 					watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$c_status][$key] );
 
