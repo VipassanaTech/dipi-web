@@ -1559,7 +1559,7 @@ function update_status_external($app_id, $new_status)
 		{
 			if (applicant_should_be_waitlisted($row['a_center'], $row['a_course'], $row['a_type'], $row['a_gender'], $row['a_old'], $app_id  ))
 			{
-				$new_status = 'Wait List';
+				$new_status = 'WaitList';
 			}			
 		}
 	}
