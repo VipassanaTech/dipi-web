@@ -571,16 +571,16 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	}
 	if ( in_array($event, array('R-ATReview', 'A-ATReview')))
 	{
+		if ( $row['a_uri'] == '' )
+			$row['a_uri'] = create_application_pdf($row['a_id']);
+
+		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
 		if ($row['a_email'] == '')
 		{
 			$log = "No email found for AT ";
 			logit($centre,  'Letter', $id, $log );
 			$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
 			_update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
-			if ( $row['a_uri'] == '' )
-				$row['a_uri'] = create_application_pdf($row['a_id']);
-
-			$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
 		}
 	}
 
