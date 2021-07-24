@@ -1650,7 +1650,18 @@ function update_status_external($app_id, $new_status)
 			if (($new_status == 'A-ATReview') || ($altered_status == 'A-ATReview') )
 				dh_send_letter('a-teacher', $app_id, $altered_status);
 			elseif (($new_status == 'R-ATReview' ) ||  ($altered_status == 'R-ATReview') )
+			{
 				dh_send_letter('r-teacher', $app_id, $altered_status );
+				
+				$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
+				$lc_admin_email = db_query("select c_lc_admin_email from dh_center where c_id=$centre")->fetchField();
+				if ($lc_admin_email)
+				{
+					$lid = db_query("select l_id from dh_letter where l_name='LC Admin Notification' and l_center='$centre' limit 1")->fetchField();
+					if ($lid)
+						dh_send_letter('lc-admin', $app_id, 'Custom', $lid );					
+				}
+			}
 
 			if ( in_array($altered_status, array('A-ATReview', 'Received')) )
 			{
