@@ -430,7 +430,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if (in_array($type, array('r-teacher', 'a-teacher')))
 			$q = "select t_email, t_mob_phone  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
 		else
-			$q = "select c_lc_admin_email as 't_email' from dh_center where c_id=".$row['a_center'];
+			$q = "select c_lc_admin_email as 't_email' from dh_center where c_id=".$centre;
 		$t_data = db_query($q)->fetchAssoc();
 		$row['a_email'] = $t_data['t_email'];
 

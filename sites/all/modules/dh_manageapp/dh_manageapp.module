@@ -1657,7 +1657,9 @@ function update_status_external($app_id, $new_status)
 				$lc_admin_email = db_query("select c_lc_admin_email from dh_center where c_id=$centre")->fetchField();
 				if ($lc_admin_email)
 				{
+
 					$lid = db_query("select l_id from dh_letter where l_name='LC Admin Notification' and l_center='$centre' limit 1")->fetchField();
+					//watchdog('LC ADMIN', 'I got lid '.$lid);
 					if ($lid)
 						dh_send_letter('lc-admin', $app_id, 'Custom', $lid );					
 				}
