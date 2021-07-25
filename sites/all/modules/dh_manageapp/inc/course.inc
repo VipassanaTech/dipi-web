@@ -1295,7 +1295,7 @@ function applicant_should_be_waitlisted( $centre, $course, $type, $gender, $old,
    	$update_waitlist = db_query("select cs_apps_waitlist from dh_center_setting where cs_center=$centre")->fetchField();
    	if ($update_waitlist)
    	{
-	 	$course_status = db_query("select c_status_".( (strtolower($type) == 'server'?'svr_':($old?'o':'n')) ).strtolower($gender)." from dh_course where c_id=".$course)->fetchField();
+	 	$course_status = db_query("select c_status_".( (strtolower($type) == 'sevak'?'svr_':($old?'o':'n')) ).strtolower($gender)." from dh_course where c_id=".$course)->fetchField();
 	 	if ( in_array($course_status, array('Wait List', 'Course Full')) )
 	 		return true;
 	}
