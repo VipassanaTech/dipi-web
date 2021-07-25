@@ -915,7 +915,7 @@ function finalize_course( $course_id )
 	if (posix_getuid() == 0)
 		posix_setuid(33);
 
-	$q = "select * from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant where a_course='$course_id' and a_attended=1 and a_type='Student'";
+	$q = "select * from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant where a_course='$course_id' and a_attended=1 and a_type IN ('Student','Sevak')";
 	$result = db_query($q);
 	while( $r = $result->fetchAssoc() )
 	{
