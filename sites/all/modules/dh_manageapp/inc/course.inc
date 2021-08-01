@@ -1247,13 +1247,15 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 			unset($count_ini['Server']);
 		}
 
+		$full_done = array('all' => False, 'Old' => False, 'New' => False, 'Server' => False);
 		foreach( $count_ini as $c_status => $c_status_data )
 		{
 			foreach( $c_status_data as $key => $val  )
 			{
-				if ( isset($count_cur[$c_status]) && isset($count_cur[$c_status][$key]) && ( $count_cur[$c_status][$key] >= $val ) && ( $val > 0) )
+				if ( isset($count_cur[$key]) && ( $count_cur[$key] >= $val ) && ( $val > 0) && ($full_done[$key] == False) )
 				{
-					watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$c_status][$key] );
+					$full_done[$key] = True;
+					watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$key] );
 
 					$new_status = ($c_status == 'full'? 'Course Full':'Wait List');
 					if ($key == 'all')
@@ -1263,7 +1265,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 						$q = "update dh_course set c_status_".( ($key == 'Server'?'svr_':($key == 'Old'?'o':'n')) ).strtolower($gender)." = '$new_status', 
 					  		c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
 					db_query($q);
-				}				
+				}
 			}
 		}
 		/*
