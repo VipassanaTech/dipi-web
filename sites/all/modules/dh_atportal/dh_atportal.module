@@ -1,0 +1,46 @@
+<?php
+
+
+/**
+ * Implements hook_permission().
+ */
+function dh_atportal_permission() 
+{
+
+	$perms['access at portal'] = array('title' => t('Access AT Portal') ) ;
+
+	return $perms;
+}
+
+
+function dh_atportal_menu() 
+{
+    $items['at-portal'] = array( 'title' => t('LC Applications Dashboard'),
+	       'page callback' => 'dh_atportal_dashbaord',
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+    $items['lc-review/me'] = array( 'title' => t('Reviews Assigned to me'),
+	       'page callback' => 'dh_atportal_dashbaord',
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+    $items['lc-review/all'] = array( 'title' => t('All Reviews'),
+	       'page callback' => 'dh_atportal_dashbaord',
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+    return $items;
+}
+
+
+function dh_atportal_dashboard()
+{
+	$out = '<h1>Long Course Dashboard</h1><ul><li><h2>'.l("Reviews Assigned to me", "lc-review/me").'</h2></li>'.
+	'<li><h2>'.l("All Reviews", "lc-review/all").'</h2></li>'.
+	'</ul>';
+
+	$form['a'] = array('#markup' => $out );
+	return $form;
+}
+

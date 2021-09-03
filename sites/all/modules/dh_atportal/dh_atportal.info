@@ -1,0 +1,5 @@
+name = DIPI AT Portal
+description = Portal for Assistant Teachers to handle Long Course applications
+core = 7.x
+package = Dhamma
+dependencies[] = services
