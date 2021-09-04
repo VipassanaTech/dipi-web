@@ -20,7 +20,7 @@ function dh_atportal_permission()
 
 function dh_atportal_menu() 
 {
-    $items['at-portal'] = array( 'title' => t('LC Applications Dashboard'),
+    $items['at-portal'] = array( 'title' => t('AT Portal Dashboard'),
 	       'page callback' => 'dh_atportal_dashboard',
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
@@ -111,9 +111,9 @@ function atcode_load( $id )
 
 function dh_atportal_dashboard()
 {
-	$out = '<h1>Long Course Dashboard</h1><ul><li><h2>'.l("Reviews Assigned to me", "lc-review/me").'</h2></li>'.
+	$out = '<h1>AT Portal Dashboard</h1><ul><li><h2>'.l("Reviews Assigned to me", "lc-review/me").'</h2></li>'.
 	'<li><h2>'.l("All Reviews", "lc-review/all").'</h2></li>'.
-	'<li><h2>'.l("My Profile", "at-portal/profile").'</h2></li>'.
+	'<li><h2>'.l("My Profile", "at-portal/address-book/edit/an3.m").'</h2></li>'.
 	'<li><h2>'.l("AT Address Book", "at-portal/address-book").'</h2></li>'.
 	'</ul>';
 	return $out;
