@@ -254,7 +254,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['a'] = array('#markup' => $out);
 
 
-	$q = "select l_msg , name, l_tstamp from dh_log left join users on l_user=uid where l_module='Applicant' and l_identifier='".$r['a_id']."' and l_event in ('Status Change', 'Letter') order by l_tstamp desc";
+	$q = "select l_msg , name, l_tstamp from dh_log left join users on l_user=uid where l_module='Applicant' and l_identifier='".$r['a_id']."' and l_event in ('Status Change', 'Letter', 'LC Workflow') order by l_tstamp desc";
 	$res = db_query($q);
 	$rows = array();
 	while( $row = $res->fetchAssoc())
@@ -273,6 +273,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['b'] = array('#type' => 'fieldset','#title' => '<h2>Activity Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true);
 	$form['b']['c'] = array('#markup' => $out);
 
+	if ()
 	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1) order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
 
@@ -293,3 +294,9 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	return $form;
 }
 
+
+function dh_atportal_review_form_submit($form, &$form_state )
+{
+	drupal_set_message("I am called");
+
+}
