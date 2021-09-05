@@ -273,7 +273,6 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['b'] = array('#type' => 'fieldset','#title' => '<h2>Activity Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true);
 	$form['b']['c'] = array('#markup' => $out);
 
-	if ()
 	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1) order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
 
