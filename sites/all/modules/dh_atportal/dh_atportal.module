@@ -14,6 +14,8 @@ function dh_atportal_permission()
 	$perms['access at profile'] = array('title' => t('Access AT Profile') );
 	$perms['access any profile'] = array('title' => t('Access Any AT Profile') );
 	$perms['add assistant teacher'] = array('title' => t('Add AT'));
+	$perms['at portal superadmin'] = array('title' => t('AT Portal Superadmin'));
+	$perms['approve applications'] = array('title' => t('LC Admin Approve/Reject Apps'));
 	return $perms;
 }
 
@@ -26,6 +28,12 @@ function dh_atportal_menu()
 	       'type' => MENU_CALLBACK);
 
     $items['lc-review/%atcode'] = array( 'title' => t('Reviews Assigned to me'),
+	       'page callback' => 'dh_atportal_show_apps',
+	       'page arguments' => array('other'),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+    $items['lc-review/me'] = array( 'title' => t('Reviews Assigned to me'),
 	       'page callback' => 'dh_atportal_show_apps',
 	       'page arguments' => array('me'),
 	       'access arguments' => array('access at portal'),
@@ -86,28 +94,84 @@ function lcappid_load( $id )
 	$centre_id = db_query("select a_center from dh_applicant where a_id='$id'")->fetchField();
 	if ($centre_id == '')
 		return false;
-	if (user_access("access at portal"))
+	if (user_access("at portal superadmin"))
 		return $id;
-	/*$count = db_query("select count(uc_id) from dh_user_center where uc_center='$centre_id' and uc_user='".$user->uid."'  and uc_deleted=0")->fetchField();
+
+	if (user_access("access any profile"))
+		return $id;
+
+
+	$at_name = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
+	$check_q = "select count(al_id) from dh_applicant_lc where lc_applicant = $id and  (al_recommending = :frname OR al_area_at = :faname) ";
+	$check = db_query($check_q, array(':frname' => $at_name, ':faname' => $at_name))->fetchField();
+	if (!$check)
+		return false;
+
+	$count = db_query("select count(uc_id) from dh_user_center where uc_center='$centre_id' and uc_user='".$user->uid."'  and uc_deleted=0")->fetchField();
 	if ( $count <= 0  )
 		return false;
 
-	$gender = db_query("select a_gender from dh_applicant where a_id=$id")->fetchField();
-	$gender = strtoupper($gender);
-	if (($gender == 'M') && (! user_access('access male')))
-		return false;		
-
-	if (($gender == 'F') && (! user_access('access female')))
-		return false;
-	*/
 	return $id;
 }
 
 
 function atcode_load( $id )
 {
-	return True;
+	global $user;
+	if (user_access("at portal superadmin"))
+		return True;
+	if (in_array($id, array('me', 'all')))
+		return True;
 }
+
+
+function dh_atportal_form_alter(&$form, &$form_state, $form_id) 
+{
+	if ((strpos($form_id, 'user_login') !== FALSE)) 
+	{
+		// Add validation handler in the right place.
+		$final_validate = array_pop($form['#validate']);
+		array_push($form['#validate'], 'dh_atportal_login_validate', $final_validate);
+	}
+}
+
+/**
+ * Validation callback used by user auth api to deal with additional validation.
+ */
+function dh_atportal_login_validate($form, &$form_state) 
+{
+	if (array_key_exists('uid', $form_state) && ($form_state['uid'] == 1)) 
+		return;
+
+	$username = $form_state['values']['name'];
+	$password = $form_state['values']['pass'];
+
+	$q = "select CONCAT(t_f_name, ' ', t_l_name) as 'FullName', t_year_appointed, t_email  from dh_teacher where CONCAT(t_code,'.',t_gender) = :user limit 1";
+	$row = db_query($q, array(':user' => $username))->fetchAssoc();
+	if (!$row)
+		return False;
+
+	if ($row['t_year_appointed'] == $password)
+	{
+		user_external_login_register($username, 'dh_atportal');
+		$account = user_external_load($username);
+		// Save the password the user entered.
+		$mail = '';
+		if ($mail <> '')
+			$mail = $row['t_email']; 
+		user_save($account, array('pass' => $password, 'mail' => $mail ));
+		$role = user_role_load_by_name("AT Portal");
+		user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);		
+	}
+	else
+		return False;
+
+	// Always add uid into form state regardless of whether
+	// user_external_login_register is being used.
+	// As we are using our own validate handler. user module needs $form_state['uid'].
+	$form_state['uid'] = $account->uid;
+}
+
 
 function dh_atportal_dashboard()
 {
@@ -122,6 +186,10 @@ function dh_atportal_dashboard()
 function dh_atportal_show_apps( $type )
 {
 	$out = drupal_get_form('dh_atportal_apps_form', $type);
+	$temp = $type;
+	if ($type == 'other')
+		$temp = arg(1);
+	//$out['a']['#prefix'] =  '<h3>'.l("Back", "lc-review/$temp").'</h3>';
 	return $out;
 }
 
@@ -143,30 +211,56 @@ function dh_atportal_make_pretty( $value )
 	return $ret;
 }
 
+function dh_atportal_get_centers_assigned()
+{
+	global $user;
+	$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'");
+	$center_access = array();
+	while($r = $res->fetchAssoc())
+		$center_access[] = $r['uc_center'];
+	return $center_access;
+}
+
 function dh_atportal_apps_form($form, &$form_state, $type)
 {
-	/*if ($type == 'me')
-		drupal_set_title('Reviews Assigned to me');
-	else
-		drupal_set_title('All Reviews');
-	*/
+	global $user;
 	$at_code = '';
-	if (arg(1) <> '' )
+	if (in_array($type, array('me', 'all') ))
+		$at_code = $user->name;
+	elseif ($type == 'other' )
 		$at_code = arg(1);
+
+	$diff_days = 730;
+	$where = '';
+	$where_opts = array(); 
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
 	if ($at_name == '')
 	{
-		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$at_name.' </h2>');	
+		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
 		return $form;
 	}
+
+	switch ($type )
+	{
+		case 'me':
+		case 'other':
+			$where = "(al.al_recommending = :frname or al.al_area_at = :faname )";
+			$where_opts = array( ':frname' => $at_name, ':faname' => $at_name );
+			break;
+		case 'all':
+			$diff_days = 365;
+			$where = "a_center in (".implode(",", dh_atportal_get_centers_assigned()).")";
+			break;
+	}
+
 	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
 	$iPhone  = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
 	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
-	//drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
-	//drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
+	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
 	if ( !($iPad || $iPhone || $iPod) )
 	{
 		//drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.min.js");
@@ -182,54 +276,98 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	//$form['a'] = array('#markup' => 'Hi there, I am '.$at_name);
 	$q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved, al.al_area_at_approved, DATEDIFF(CURDATE(), cr.c_start) as 'diff',
 		a_uri, a_id
-		from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where
-		(al.al_recommending = '$at_name' or al.al_area_at='$at_name') and DATEDIFF(CURDATE(), cr.c_start) <= 730  order by a_created desc";
-	$result = db_query($q);
+		from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where $where
+		 and DATEDIFF(CURDATE(), cr.c_start) <= $diff_days  order by a_created desc";
+	$result = db_query($q, $where_opts);
 	$rows_completed = $rows_pending = array();
 	while( $r = $result->fetchAssoc() )
 	{
 		unset($rs);
 		$rs = array();
-		if ($r['diff'] <= 0)
-			$rs[] = l('Details', "lc-review/app/".$r['a_id']);
-		$rs[] = dh_atportal_make_pretty($r['al_recommending_approved']);
-		$rs[] = dh_atportal_make_pretty($r['al_area_at_approved']);
-		$rs[] = $r['Centre'];
-		$rs[] = $r['CourseType'];
-		$rs[] = $r['CourseStart']." - ".$r['CourseEnd'];
+		//if ($r['diff'] <= 0)
+		$rs['detail_link'] = l('Details', "lc-review/app/".$r['a_id']);
+		$rs['RStatus'] = dh_atportal_make_pretty($r['al_recommending_approved']);
+		$rs['AStatus'] = dh_atportal_make_pretty($r['al_area_at_approved']);
+		$rs['Centre'] = $r['Centre'];
+		$rs['CourseType'] = $r['CourseType'];
+		$rs['CourseDt'] = $r['CourseStart']." - ".$r['CourseEnd'];
 		$pdf_link = '';
 		if ( $r['a_uri'] <> '' )
 			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
 
-		$rs[] = $r['Student Name'].$pdf_link."<br>".$r['Gender']."&nbsp;|&nbsp;".(($r['Sit/Serve']=='Student')?'Sit':'Serve');
-		$rs[] = $r['Email']."<br>".$r['a_phone_mobile'];
-		$rs[] = $r['Country'].", ".$r['State'];
+		$rs['NameDetails'] = $r['Student Name'].$pdf_link."<br>".$r['Gender']."&nbsp;|&nbsp;".(($r['Sit/Serve']=='Student')?'Sit':'Serve');
+		$rs['Email'] = $r['Email']."<br>".$r['a_phone_mobile'];
+		$rs['Location'] = $r['Country'].", ".$r['State'];
 		if ($r['diff'] > 0)
-			$rows_completed[] = array_values($rs);
+			$rows_completed[] = $rs; //array_values($rs);
 		else
-			$rows_pending[] = array_values($rs);
+			$rows_pending[] = $rs; //array_values($rs);
 	}	
 
 	$header = array('Action', 'Reco AT', 'Area AT', 'Centre', 'CourseType', 'Course Start/End', 'Applicant Name', 'Email/Contact',  'Country/State');
 	$attributes = array('id' => 'applications-pending');
 
-	$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
+	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
+	$out = theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
 	$form['a'] = array('#markup' => '<h2>Pending Courses</h2>'.$out);
-
-	$header = array('Reco AT', 'Area AT', 'Centre', 'CourseType', 'Course Start/End', 'Applicant Name', 'Email/Contact',  'Country/State');
+	$data_pending = json_encode($rows_pending);
+	//$header = array('Reco AT', 'Area AT', 'Centre', 'CourseType', 'Course Start/End', 'Applicant Name', 'Email/Contact',  'Country/State');
 	$attributes = array('id' => 'applications-completed');
-	$out = theme('table', array('header' => $header, 'rows' => $rows_completed, 'attributes' => $attributes));
+	//$out = theme('table', array('header' => $header, 'rows' => $rows_completed, 'attributes' => $attributes));
+	$out = theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
+	$data_completed = json_encode($rows_completed);
 	$form['b'] = array('#type' => 'fieldset','#title' => '<h2>Completed Courses - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true);
 	$form['b']['c'] = array('#markup' => $out);
 	
+
+	$js = '
+		(function ($) {
+			function do_datatable( tid, data )
+			{
+				var table = $(tid).DataTable({
+					dom: "lfr<\"clear\">tip", 
+					data: data,
+					"columnDefs": [
+					            {
+					                "targets": [ 1 ],
+					                "searchable": false
+					            }
+			        ],					
+			        columns: [
+			            { data: "detail_link", "title" : "Action" },
+			            { data: "RStatus", "title" : "Reco AT" },
+			            { data: "AStatus", "title" : "Area AT" },
+			            { data: "Centre", "title" : "Centre" },
+				        { data: "CourseType", "title" : "CourseType"},
+				        { data: "CourseDt", "title" : "Course Start/End"},
+				        { data: "NameDetails", "title" : "Applicant Name"},
+				        { data: "Email", "title" : "Email/Contact"},
+						{ data: "Location", "title" : "Country/State"},
+			        ],
+			    });			
+			}
+			$(document).ready(function(){
+				var dataset_pending = '.$data_pending.';
+				var dataset_complete = '.$data_completed.';
+				do_datatable("#applications-pending", dataset_pending);
+				do_datatable("#applications-completed", dataset_complete);
+			});
+		})(jQuery);
+
+	';
+	drupal_add_js($js, 'inline');
 	return $form;
 }
 
 function dh_atportal_review_form($form, &$form_state, $appid )
 {
+	global $user;
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
+	$at_code = $user->name;
+	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
+	$at_name = db_query($q)->fetchField();
 	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo,  
 		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri,  
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
@@ -259,11 +397,11 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$rows = array();
 	while( $row = $res->fetchAssoc())
 	{
-		$r = array();
-		$r[] = $row['l_tstamp'];
-		$r[] = $row['l_msg'];
-		$r[] = $row['name'];
-		$rows[] = $r;
+		$l = array();
+		$l[] = $row['l_tstamp'];
+		$l[] = $row['l_msg'];
+		$l[] = $row['name'];
+		$rows[] = $l;
 	}
 	$header = array('DateTime', 'Activity', 'User');
 	$out = '';
@@ -273,18 +411,67 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['b'] = array('#type' => 'fieldset','#title' => '<h2>Activity Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true);
 	$form['b']['c'] = array('#markup' => $out);
 
+	$today = date('Y-m-d');
+	if ( $today >= $r['c_start'] )
+		return $form;
+
+	$reco_done = False; $area_done = False;
+	if (in_array($r['al_recommending_approved'], array('Approved', 'Rejected')))
+		$reco_done = True;
+
+	if (in_array($r['al_area_at_approved'], array('Approved', 'Rejected')))
+		$area_done = True;
+
+	if ($area_done && ($r['al_area_at'] == $at_name) )
+		return $form;
+
+	if ($reco_done && ($r['al_recommending'] == $at_name) )
+		return $form;
+
+	if ($reco_done && $area_done)
+		return $form;
+
+	if (! user_access("approve applications"))
+		return $form;
+	//drupal_set_message("Rdone: ".$reco_done." ($at_name | ".$r['al_recommending'].")");
 	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1) order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
 
-	$form['action'] = array('#type' => 'select',  '#options' => array( '' => 'Choose Action', 'approve' => 'Approve', 'reject' => 'Reject'));
-	$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => 'Select Area Teacher');
-	$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
+	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
+		'Approved' => 'Approve', 'Rejected' => 'Reject', 'Transfer to Registrar' => 'Transfer to Registrar'));
+
+	if (!$reco_done)
+	{
+		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => 'Select Area Teacher', '#required' => True);
+		$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
+	}
+	else
+	{
+		$form['area_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
+	}
+
 	$form['sub'] = array('#type' => 'submit',  '#value' => 'Submit Review');
 
 	$js = '
 		(function ($) {
 			$(document).ready(function(){
 				$("#edit-area-teacher").select2();
+				$("#edit-action").change(function(){
+					if (($(this).val() == "Approved") || ($(this).val() == "Transfer to Registrar"))
+					{
+						$("label[for=\"edit-reco-comments\"]").text("Comments");
+						$("label[for=\"edit-area-comments\"]").text("Comments");
+						$("#edit-area-comments").attr("required", false);
+						$("#edit-reco-comments").attr("required", false);
+					}
+					else if ($(this).val() == "Rejected")
+					{
+						$("label[for=\"edit-reco-comments\"]").text("Rejection Reason");
+						$("label[for=\"edit-area-comments\"]").text("Comments");
+						$("#edit-area-comments").attr("required", true);
+						$("#edit-reco-comments").attr("required", true);
+					}
+				});
 			});
 		})(jQuery);
 	';
@@ -296,6 +483,23 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
 function dh_atportal_review_form_submit($form, &$form_state )
 {
-	drupal_set_message("I am called");
-
+	global $user;
+	drupal_set_message(t('Application updated successfully'));
+	$input = $form_state['input'];	
+	$app = array();
+	if (isset($input['reco_comments']))
+	{
+		$app['al_area_at'] = $input['area_teacher'];
+		$app['al_recommending_approved'] = $input['action'];
+		$app['al_recommending_comments'] = $input['reco_comments'];
+	}
+	else
+	{
+		$app['al_area_at_approved'] = $input['action'];
+		$app['al_area_at_comments'] = $input['area_comments'];
+	}
+	$lc_id = arg(2);
+	db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $lc_id)->execute();
+	db_update('dh_applicant_lc')->fields($app)->condition('al_applicant', $lc_id)->execute();
+	drupal_goto("lc-review/me");
 }
