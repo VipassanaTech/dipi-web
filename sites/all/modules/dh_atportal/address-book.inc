@@ -95,7 +95,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	if (count($edit_data) == 0)
 		$add = 1;
 
-	$form['a'] = array('#markup' => '<h2>Profile for '.$at_code.'</h2>');
+	$form['a'] = array('#markup' => '<h2>My Profile</h2>');
 
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline'));
@@ -131,22 +131,19 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$form[$group]['t_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
 
-	$city_name = '';
-	if (!$add)
-	{
-		if ($edit_data['t_city'] <> '')
-			$city_name = db_query("select c_name from dh_city where c_id='".$edit_data['t_city']."'")->fetchField();
-	}
-
 	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
 		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#required' => 1, '#maxlength' => 5 );
-	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
-		'#default_value' => $add?'':$city_name, '#description' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 100);	
 	
 	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 7, 
 		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 15 );
 	$form[$group]['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 8, 
 		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 20 );
+
+	if ($add)
+		$action = 'Add';
+	else
+		$action = 'Update';
+	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
 
 	return $form;		
 }
@@ -164,5 +161,35 @@ function dh_manage_at()
 			$row = db_query("select * from dh_teacher where t_code='".$at_code."'")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
+	}
+}
+
+function dh_atportal_profile_submit($form, &$form_state)
+{
+	global $user;
+	$input = $form_state['input'];
+	if (arg(2) == 'edit')
+		$form_state['redirect'] = 'at-portal';
+	elseif ( arg(1) == 'add')
+		$form_state['redirect'] = 'at-portal/address-book';
+
+	foreach ($form_state['input'] as $key => $value) 
+	{
+		if ( substr($key,0,2) == 't_')
+			$t[$key] = $value;
+	}
+
+	if ( arg(2) == 'edit')
+	{
+		$t['t_updated_by'] = $user->uid;
+		$t['t_updated'] = date('Y-m-d H:i:s');
+		db_update('dh_teacher')->fields($t)->condition('t_code', $user->name )->execute();
+	}
+
+	else 
+	{
+		$t['t_created_by'] = $user->uid;
+		$t['t_created'] = date('Y-m-d H:i:s');
+		db_insert('dh_teacher')->fields($t)->execute();
 	}
 }
