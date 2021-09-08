@@ -131,12 +131,82 @@ function atcode_load( $id )
 
 function dh_atportal_form_alter(&$form, &$form_state, $form_id) 
 {
+	global $user;
 	if ((strpos($form_id, 'user_login') !== FALSE)) 
 	{
 		// Add validation handler in the right place.
 		$final_validate = array_pop($form['#validate']);
 		array_push($form['#validate'], 'dh_atportal_login_validate', $final_validate );
 	}
+	elseif ((strpos($form_id, 'user_pass') !== FALSE) )
+	{
+		//if ($user->uid == 1)
+		//drupal_set_message(print_r($form['#validate'], true));
+		$final_validate = array_pop($form['#validate']);
+		array_push($form['#validate'], 'dh_atportal_passreset_validate', $final_validate );
+
+	}
+}
+
+function dh_atportal_check_and_register_user( $username, $password = '', $logout = False, $form, &$form_state )
+{
+	//global $user;
+	$q = "select count(name) from users where name=:user";
+	$check = db_query($q, array(':user' => $username))->fetchField();
+	if ($check)
+	{
+		return;
+	}
+
+	$q = "select CONCAT(t_f_name, ' ', t_l_name) as 'FullName', t_year_appointed, t_email  from dh_teacher where CONCAT(t_code,'.',t_gender) = :user limit 1";
+	$row = db_query($q, array(':user' => $username))->fetchAssoc();
+	if (!$row)
+		return False;
+	$allow = False;
+	if ($password)
+	{
+		if ($row['t_year_appointed'] == $password)
+			$allow = True;
+	}
+	else
+		$allow = True;
+
+	if ($allow)
+	{
+		user_external_login_register($username, 'dh_atportal');
+		$account = user_external_load($username);
+		$mail = '';
+		if ($row['t_email'] <> '')
+			$mail = $row['t_email']; 
+		user_save($account, array('mail' => 'natuankur@gmail.com' ));
+		$role = user_role_load_by_name("AT Portal");
+		user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);		
+		if ($logout)
+		{
+			$form_state['values']['account'] = $account;
+			user_pass_submit($form, $form_state);
+			session_destroy();
+			$null = NULL;
+			user_module_invoke('logout', $null, $account);
+			drupal_set_message("Please check your email for further instructions");
+			drupal_goto("");
+		}
+		else
+			$form_state['uid'] = $account->uid;
+	}
+}
+
+function dh_atportal_passreset_validate($form, &$form_state)
+{
+	if (array_key_exists('uid', $form_state) && ($form_state['uid'] == 1)) 
+		return;
+
+	$username = $form_state['values']['name'];
+	if ($username == '')
+		return False;
+
+
+	return dh_atportal_check_and_register_user( $username, '', True, $form,  $form_state );
 }
 
 /**
@@ -150,6 +220,9 @@ function dh_atportal_login_validate($form, &$form_state)
 	$username = $form_state['values']['name'];
 	$password = $form_state['values']['pass'];
 
+
+	return dh_atportal_check_and_register_user( $username, $password, False, $form, $form_state );
+	/*
 	$q = "select count(name) from users where name=:user";
 	$check = db_query($q, array(':user' => $username))->fetchField();
 	if ($check)
@@ -180,11 +253,11 @@ function dh_atportal_login_validate($form, &$form_state)
 		watchdog('dh_atportal', "$username, Year: ".$row['t_year_appointed'].", P: ".$password, array(), WATCHDOG_NOTICE, 'link');
 		return False;
 	}
-
+	*/
 	// Always add uid into form state regardless of whether
 	// user_external_login_register is being used.
 	// As we are using our own validate handler. user module needs $form_state['uid'].
-	$form_state['uid'] = $account->uid;
+	//$form_state['uid'] = $account->uid;
 }
 
 
@@ -276,22 +349,12 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 			break;
 	}
 
-	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
-	$iPhone  = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
-	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
-
-	if ( !($iPad || $iPhone || $iPod) )
-	{
-		//drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.min.js");
-		drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.print.min.js");
-	}
 
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	
-	//drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
 	//$form['a'] = array('#markup' => 'Hi there, I am '.$at_name);
