@@ -160,7 +160,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	      '#default_value' => isset($edit_data['t_bhante'])?$edit_data['t_bhante']:'0',  '#weight' => 16);
 	    $form[$group]['t_responsibility'] = array('#title' => 'Additional Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
 			'#default_value' => isset($edit_data['t_responsibility'])?$edit_data['t_responsibility']:'', '#maxlength' => 200  );
-	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
+	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 18, 
 			'#default_value' => isset($edit_data['t_area'])?$edit_data['t_area']:'', '#maxlength' => 255  );
 	}	
 
