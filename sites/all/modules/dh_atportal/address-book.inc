@@ -101,7 +101,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline'));
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
-	$form[$group]['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1, 
+	$form[$group]['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1.1, 
 		'#default_value' => isset($edit_data['t_f_name'])?$edit_data['t_f_name']:'', '#required' => 1, '#maxlength' => 50  );	
 	$form[$group]['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2, 
 		'#default_value' => isset($edit_data['t_l_name'])?$edit_data['t_l_name']:'', '#required' => 1, '#maxlength' => 50);
@@ -114,8 +114,14 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		      'wrapper' => 'dropdown-section-replace',
 		    ),
 		);
-	$form[$group]['t_age'] = array('#title' => 'Age', '#type' => 'textfield', '#size' => '3', '#weight' => 4, 
-		'#default_value' => (isset($edit_data['t_age']))?$edit_data['t_age']:'', '#maxlength' => 3 );	
+
+	$form[$group]['t_dob'] = array('#title' => 'Date of Birth', '#type' => 'date_popup', '#size' => '20', '#weight' => 4, 
+		'#default_value' => isset($edit_data['t_dob'])?$edit_data['t_dob']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
+    		'maxDate' => 0, '#required' => 1, 
+    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
+
 	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#size' => '150', '#weight' => 5, 
 		'#default_value' => isset($edit_data['t_address'])?$edit_data['t_address']:'', '#required' => 1, '#maxlength' => 150);	
 	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '10', '#weight' => 5.2, 
@@ -135,6 +141,28 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 25 );
 	$form[$group]['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 8, 
 		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 20 );
+
+	if (user_access('add assistant teacher'))
+	{
+		$group = 'AT Role Information';
+		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => true);
+		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '5', '#weight' => 10, 
+			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 5  );
+		$form[$group]['t_sat'] = array('#title' => '&nbsp;SAT', '#type' => 'checkbox',
+	      '#default_value' => isset($edit_data['t_sat'])?$edit_data['t_sat']:'0',  '#weight' => 13);
+		$form[$group]['t_full_t'] = array('#title' => '&nbsp;T', '#type' => 'checkbox',
+	      '#default_value' => isset($edit_data['t_full_t'])?$edit_data['t_full_t']:'0',  '#weight' => 14);
+		$form[$group]['t_ct'] = array('#title' => '&nbsp;CT', '#type' => 'checkbox',
+	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 14.1);
+	    $form[$group]['t_cat'] = array('#title' => '&nbsp;CAT', '#type' => 'checkbox',
+	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 15);
+	    $form[$group]['t_bhante'] = array('#title' => '&nbsp;Bhikkhu', '#type' => 'checkbox',
+	      '#default_value' => isset($edit_data['t_bhante'])?$edit_data['t_bhante']:'0',  '#weight' => 16);
+	    $form[$group]['t_responsibility'] = array('#title' => 'Additional Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
+			'#default_value' => isset($edit_data['t_responsibility'])?$edit_data['t_responsibility']:'', '#maxlength' => 200  );
+	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
+			'#default_value' => isset($edit_data['t_area'])?$edit_data['t_area']:'', '#maxlength' => 255  );
+	}	
 
 	if ($add)
 		$action = 'Add';
