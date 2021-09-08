@@ -156,13 +156,16 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 function dh_manage_at()
 {
 	global $user;
-	$at_code = substr($user->name, 0, strpos($user->name, "."));
+	if (arg(3) == 'me')
+		$at_code = substr($user->name, 0, strpos($user->name, "."));		
+	else
+		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
 	switch( arg(2) )
 	{
 		case 'add':
 			return drupal_get_form('dh_atportal_profile');
 			break;
-		case 'edit':			
+		case 'edit':						
 			$row = db_query("select * from dh_teacher where t_code='".$at_code."'")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
