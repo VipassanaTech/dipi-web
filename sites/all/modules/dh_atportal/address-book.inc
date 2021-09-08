@@ -96,7 +96,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	if (count($edit_data) == 0)
 		$add = 1;
 
-	$form['a'] = array('#markup' => '<h2>My Profile</h2>');
+	$form['a'] = array('#markup' => '<h2>Edit Profile</h2>');
 
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline'));
