@@ -114,31 +114,25 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		      'wrapper' => 'dropdown-section-replace',
 		    ),
 		);
-	$form[$group]['t_dob'] = array('#title' => 'Date of Birth', '#type' => 'date_popup', '#size' => '20', '#weight' => 4, 
-		'#default_value' => isset($edit_data['t_dob'])?$edit_data['t_dob']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
-    		'maxDate' => 0, '#required' => 1, 
-    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
-		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); /*'<div class="form-item">DOB Checked<input type="checkbox" id="edit-checked-dob" /></div>'); */
-	
-	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#size' => '30', '#weight' => 5, 
-		'#default_value' => isset($edit_data['t_address'])?$edit_data['t_address']:'', '#required' => 1, '#maxlength' => 50);
-	
-	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 5.2, 
-		'#default_value' => (isset($edit_data['t_zip']))?$edit_data['t_pincode']:'', '#maxlength' => 20 );
+	$form[$group]['t_age'] = array('#title' => 'Age', '#type' => 'textfield', '#size' => '3', '#weight' => 4, 
+		'#default_value' => (isset($edit_data['t_age']))?$edit_data['t_age']:'', '#maxlength' => 3 );	
+	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#size' => '150', '#weight' => 5, 
+		'#default_value' => isset($edit_data['t_address'])?$edit_data['t_address']:'', '#required' => 1, '#maxlength' => 150);	
+	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '10', '#weight' => 5.2, 
+		'#default_value' => (isset($edit_data['t_zip']))?$edit_data['t_pincode']:'', '#maxlength' => 10 );
 
 	$country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();	
 	$country_codes['0'] = 'Choose';
 	$form[$group]['t_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
 
-	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '15', '#weight' => 6.1, 
-		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 5 );
-	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '15', '#weight' => 6.2, 
-		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 5 );
+	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
+		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 20 );
+	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
+		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 20 );
 	
 	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 7, 
-		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 15 );
+		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 25 );
 	$form[$group]['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 8, 
 		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 20 );
 
@@ -174,7 +168,12 @@ function dh_manage_at()
 
 function dh_atportal_profile_submit($form, &$form_state)
 {
-	global $user;
+	global $user;	
+	if (arg(3) == 'me')
+		$at_code = substr($user->name, 0, strpos($user->name, "."));		
+	else
+		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
+
 	$input = $form_state['input'];
 	if (arg(2) == 'edit')
 		$form_state['redirect'] = 'at-portal';
@@ -187,11 +186,14 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
+	if ($t['t_age'] == '')
+		$t['t_age'] = NULL;
+
 	if ( arg(2) == 'edit')
 	{
 		$t['t_updated_by'] = $user->uid;
 		$t['t_updated'] = date('Y-m-d H:i:s');
-		db_update('dh_teacher')->fields($t)->condition('t_code', $user->name )->execute();
+		db_update('dh_teacher')->fields($t)->condition('t_code', $at_code )->execute();
 	}
 
 	else 
@@ -200,4 +202,7 @@ function dh_atportal_profile_submit($form, &$form_state)
 		$t['t_created'] = date('Y-m-d H:i:s');
 		db_insert('dh_teacher')->fields($t)->execute();
 	}
+
+	drupal_set_message(t("Details updated successfully"), 'status');
+
 }
