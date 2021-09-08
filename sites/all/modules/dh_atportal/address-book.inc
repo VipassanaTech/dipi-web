@@ -163,5 +163,5 @@ function dh_manage_at()
 			$row = db_query("select * from dh_teacher where t_code='".$at_code."'")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
-	}	
+	}
 }
