@@ -127,13 +127,15 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '20', '#weight' => 5.2, 
 		'#default_value' => (isset($edit_data['t_zip']))?$edit_data['t_pincode']:'', '#maxlength' => 20 );
 
-	$country_codes = db_query("select c_isd_code, CONCAT(c_name,' ','(',c_isd_code,')') from dh_country order by c_name")->fetchAllKeyed();	
+	$country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();	
 	$country_codes['0'] = 'Choose';
 	$form[$group]['t_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
 
-	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
-		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#required' => 1, '#maxlength' => 5 );
+	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '15', '#weight' => 6.1, 
+		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 5 );
+	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '15', '#weight' => 6.2, 
+		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 5 );
 	
 	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 7, 
 		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 15 );
@@ -145,6 +147,8 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	else
 		$action = 'Update';
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
+
+	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 
 	return $form;		
 }
