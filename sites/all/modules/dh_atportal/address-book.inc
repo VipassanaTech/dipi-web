@@ -146,8 +146,13 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => true);
+		$statuses = array('Choose','Active','Inactive');
+		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
+			'#default_value' => isset($edit_data['t_status'])?$edit_data['t_status']:'', '#weight' => 9);
 		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '10', '#weight' => 10, 
 			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 10  );
+		$form[$group]['t_year_appointed'] = array('#title' => 'Year of Appointment', '#type' => 'textfield', '#size' => '10', '#weight' => 10.1, 
+			'#default_value' => isset($edit_data['t_year_appointed'])?$edit_data['t_year_appointed']:'', '#maxlength' => 10  );
 		$form[$group]['t_sat'] = array('#title' => '&nbsp;SAT', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_sat'])?$edit_data['t_sat']:'0',  '#weight' => 13);
 		$form[$group]['t_full_t'] = array('#title' => '&nbsp;T', '#type' => 'checkbox',
@@ -205,7 +210,7 @@ function dh_atportal_profile_submit($form, &$form_state)
 	$input = $form_state['input'];
 	if (arg(2) == 'edit')
 		$form_state['redirect'] = 'at-portal';
-	elseif ( arg(1) == 'add')
+	elseif ( arg(2) == 'add')
 		$form_state['redirect'] = 'at-portal/address-book';
 
 	foreach ($form_state['input'] as $key => $value) 
