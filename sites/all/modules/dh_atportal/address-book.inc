@@ -12,8 +12,11 @@ function address_book_search()
 	// The `db` parameter represents the column name in the database, while the `dt`
 	// parameter represents the DataTables column identifier. In this case simple
 	// indexes
+	$edit_at = function($d, $row) { return $d; };
+	if (user_access('add assistant teacher'))
+		$edit_at = function($d, $row) { return $d." (".l("Edit", "/at-portal/address-book/edit/".strtolower($d.".".$row['t_gender'])).')'; };
 	$columns = array(
-	    array( 'db' => 't_code', 'dt' => 0 ),
+	    array( 'db' => 't_code', 'dt' => 0, 'formatter' => $edit_at),
 	    array( 'db' => 't_gender',     'dt' => 1 ),
 	    array( 'db' => 't_f_name', 'dt' => 2 ),
 	    array( 'db' => 't_l_name',  'dt' => 3 ),
@@ -143,5 +146,5 @@ function dh_manage_at()
 			$row = db_query("select * from dh_teacher where t_code='an3'")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
-	}	
+	}
 }
