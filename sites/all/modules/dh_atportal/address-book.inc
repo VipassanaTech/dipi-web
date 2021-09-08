@@ -146,8 +146,8 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => true);
-		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '5', '#weight' => 10, 
-			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 5  );
+		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '10', '#weight' => 10, 
+			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 10  );
 		$form[$group]['t_sat'] = array('#title' => '&nbsp;SAT', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_sat'])?$edit_data['t_sat']:'0',  '#weight' => 13);
 		$form[$group]['t_full_t'] = array('#title' => '&nbsp;T', '#type' => 'checkbox',
@@ -214,8 +214,18 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
-	if ($t['t_age'] == '')
-		$t['t_age'] = NULL;
+	if ($t['t_dob'] == '')
+		$t['t_dob'] = NULL;
+	if ($t['t_sat'] == '')
+		$t['t_sat'] = '0';
+	if ($t['t_full_t'] == '')
+		$t['t_full_t'] = '0';
+	if ($t['t_ct'] == '')
+		$t['t_ct'] = '0';
+	if ($t['t_cat'] == '')
+		$t['t_cat'] = '0';
+	if ($t['t_bhante'] == '')
+		$t['t_bhante'] = '0';
 
 	if ( arg(2) == 'edit')
 	{
