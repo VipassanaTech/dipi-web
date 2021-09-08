@@ -153,6 +153,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
 function dh_manage_at()
 {
+	global $user;
 	$at_code = substr($user->name, 0, strpos($user->name, "."));
 	switch( arg(2) )
 	{
