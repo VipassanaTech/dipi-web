@@ -51,7 +51,7 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-    $items['at-portal/address-book/edit/%atcode'] = array( 'title' => t('My Profile'),
+    $items['at-portal/address-book/edit/%atcode'] = array( 'title' => t('Edit Profile'),
 	       'page callback' => 'dh_manage_at',
 	       'page arguments' => array('dh_manage_at', 3),
 	       'access arguments' => array('access at profile'),
