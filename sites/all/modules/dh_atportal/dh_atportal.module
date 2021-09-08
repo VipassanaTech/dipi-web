@@ -51,9 +51,9 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-    $items['at-portal/address-book/edit/%atcode'] = array( 'title' => t('My Profile'),
+    $items['at-portal/address-book/edit/me'] = array( 'title' => t('My Profile'),
 	       'page callback' => 'dh_manage_at',
-	       'page arguments' => array('dh_manage_at', 2),
+	       'page arguments' => array('me'),
 	       'access arguments' => array('access at profile'),
 	       'type' => MENU_CALLBACK);
 
@@ -64,7 +64,7 @@ function dh_atportal_menu()
 
     $items['at-portal/address-book/add'] = array( 'title' => t('Add AT'),
 	       'page callback' => 'drupal_get_form',
-	       'page arguments' => array('dh_atportal_profile', 'new'),
+	       'page arguments' => array('dh_manage_at', 'add'),
 	       'access arguments' => array('add assistant teacher'),
 	       'type' => MENU_CALLBACK);
 
@@ -265,7 +265,7 @@ function dh_atportal_dashboard()
 {
 	$out = '<h1>AT Portal Dashboard</h1><ul><li><h2>'.l("Reviews Assigned to me", "lc-review/me").'</h2></li>'.
 	'<li><h2>'.l("All Reviews", "lc-review/all").'</h2></li>'.
-	'<li><h2>'.l("My Profile", "at-portal/address-book/edit/an3.m").'</h2></li>'.
+	'<li><h2>'.l("My Profile", "at-portal/address-book/edit/me").'</h2></li>'.
 	'<li><h2>'.l("AT Address Book", "at-portal/address-book").'</h2></li>'.
 	'</ul>';
 	return $out;
