@@ -2,6 +2,7 @@
 
 function address_book_search()
 {
+	global $databases;
 	// DB table to use
 	$table = 'dh_teacher';
 	 
@@ -32,10 +33,10 @@ function address_book_search()
 	);
 	// SQL server connection information
 	$sql_details = array(
-	    'user' => 'dipi',
-	    'pass' => 'sdfkj38443iufnkdfjkn',
-	    'db'   => 'dipi',
-	    'host' => 'localhost'
+	    'user' => $databases['default']['default']['username'],
+	    'pass' => $databases['default']['default']['password'],
+	    'db'   => $databases['default']['default']['database'],
+	    'host' => $databases['default']['default']['host']
 	);
 	 
 	 

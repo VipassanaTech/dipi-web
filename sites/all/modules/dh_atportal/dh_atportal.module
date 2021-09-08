@@ -178,7 +178,7 @@ function dh_atportal_check_and_register_user( $username, $password = '', $logout
 		$mail = '';
 		if ($row['t_email'] <> '')
 			$mail = $row['t_email']; 
-		user_save($account, array('mail' => 'natuankur@gmail.com' ));
+		user_save($account, array('mail' => $mail ));
 		$role = user_role_load_by_name("AT Portal");
 		user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);		
 		if ($logout)
@@ -222,38 +222,6 @@ function dh_atportal_login_validate($form, &$form_state)
 
 
 	return dh_atportal_check_and_register_user( $username, $password, False, $form, $form_state );
-	/*
-	$q = "select count(name) from users where name=:user";
-	$check = db_query($q, array(':user' => $username))->fetchField();
-	if ($check)
-	{
-		//watchdog('dh_atportal', "User $username found, exiting", array(), WATCHDOG_NOTICE, 'link');
-		return;
-	}
-
-	$q = "select CONCAT(t_f_name, ' ', t_l_name) as 'FullName', t_year_appointed, t_email  from dh_teacher where CONCAT(t_code,'.',t_gender) = :user limit 1";
-	$row = db_query($q, array(':user' => $username))->fetchAssoc();
-	if (!$row)
-		return False;
-
-	if ($row['t_year_appointed'] == $password)
-	{
-		user_external_login_register($username, 'dh_atportal');
-		$account = user_external_load($username);
-		// Save the password the user entered.
-		$mail = '';
-		if ($row['t_email'] <> '')
-			$mail = $row['t_email']; 
-		user_save($account, array('pass' => $password, 'mail' => $mail ));
-		$role = user_role_load_by_name("AT Portal");
-		user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);		
-	}
-	else
-	{
-		watchdog('dh_atportal', "$username, Year: ".$row['t_year_appointed'].", P: ".$password, array(), WATCHDOG_NOTICE, 'link');
-		return False;
-	}
-	*/
 	// Always add uid into form state regardless of whether
 	// user_external_login_register is being used.
 	// As we are using our own validate handler. user module needs $form_state['uid'].
