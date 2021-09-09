@@ -225,7 +225,7 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
-	if ($t['t_dob'] == '')
+	if ($t['t_dob']['date'] == '')
 		$t['t_dob'] = NULL;
 	if ($t['t_sat'] == '')
 		$t['t_sat'] = '0';
@@ -240,6 +240,7 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	if ( arg(2) == 'edit')
 	{
+		//drupal_set_message(print_r($t, true));
 		$t['t_updated_by'] = $user->uid;
 		$t['t_updated'] = date('Y-m-d H:i:s');
 		db_update('dh_teacher')->fields($t)->condition('t_code', $at_code )->execute();
