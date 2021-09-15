@@ -141,7 +141,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 7, 
 		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 25 );
 	$form[$group]['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 8, 
-		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 20 );
+		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 50 );
 
 	if (user_access('add assistant teacher'))
 	{
