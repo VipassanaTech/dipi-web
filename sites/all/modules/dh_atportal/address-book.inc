@@ -191,7 +191,11 @@ function dh_manage_at()
 {
 	global $user;
 	if (arg(3) == 'me')
-		$at_code = substr($user->name, 0, strpos($user->name, "."));		
+	{		
+		$at = explode(".", $user->name);
+		$at_code = $at[0];
+		$gender = $at[1];
+	}
 	else
 		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
 	switch( arg(2) )
@@ -200,7 +204,7 @@ function dh_manage_at()
 			return drupal_get_form('dh_atportal_profile');
 			break;
 		case 'edit':						
-			$row = db_query("select * from dh_teacher where t_code='".$at_code."'")->fetchAssoc();
+			$row = db_query("select * from dh_teacher where t_code='".$at_code."' and t_gender='".$gender."'")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
 	}
@@ -210,7 +214,11 @@ function dh_atportal_profile_submit($form, &$form_state)
 {
 	global $user;	
 	if (arg(3) == 'me')
-		$at_code = substr($user->name, 0, strpos($user->name, "."));		
+	{		
+		$at = explode(".", $user->name);
+		$at_code = $at[0];
+		$gender = $at[1];
+	}
 	else
 		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
 
@@ -244,7 +252,7 @@ function dh_atportal_profile_submit($form, &$form_state)
 		//drupal_set_message(print_r($t, true));
 		$t['t_updated_by'] = $user->uid;
 		$t['t_updated'] = date('Y-m-d H:i:s');
-		db_update('dh_teacher')->fields($t)->condition('t_code', $at_code )->execute();
+		db_update('dh_teacher')->fields($t)->condition('t_code', $at_code )->condition('t_gender', $gender )->execute();
 	}
 
 	else 
