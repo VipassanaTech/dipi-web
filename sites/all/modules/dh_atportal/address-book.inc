@@ -223,7 +223,10 @@ function dh_atportal_profile_submit($form, &$form_state)
 		$gender = $at[1];
 	}
 	else
+	{
 		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
+		$gender = substr(arg(3), -1);
+	}
 
 	$input = $form_state['input'];
 	if (arg(2) == 'edit')
