@@ -197,7 +197,10 @@ function dh_manage_at()
 		$gender = $at[1];
 	}
 	else
+	{
 		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
+		$gender = substr(arg(3), -1);
+	}
 	switch( arg(2) )
 	{
 		case 'add':
