@@ -394,7 +394,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 		$form[$group]['al_left_course_details'] = array('#title' => 'Refused Admission/Left Course Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 21, '#maxlength' => 100, 
+			'#rows' => 3, '#weight' => 21, 
 			'#default_value' => isset($edit_data['al_left_course_details'])?$edit_data['al_left_course_details']:'', '#required' => 0, );
 		$form[$group]['al_reduce_practice_details'] = array('#title' => 'Asked to reduce meditation Details', '#type' => 'textarea', 
 			'#rows' => 3, '#weight' => 22, '#maxlength' => 100, 
@@ -406,7 +406,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#rows' => 3, '#weight' => 24, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_difficulty_details'])?$edit_data['al_difficulty_details']:'', '#required' => 0, );
 		$form[$group]['al_special_req_details'] = array('#title' => 'Special Requirement Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 25, '#maxlength' => 120,
+			'#rows' => 3, '#weight' => 25,
 			'#default_value' => isset($edit_data['al_special_req_details'])?$edit_data['al_special_req_details']:'', '#required' => 0, );
 		$form[$group]['al_additional_info'] = array('#title' => 'Any Additional Information', '#type' => 'textarea', 
 			'#rows' => 3, '#weight' => 26, '#maxlength' => 100,
