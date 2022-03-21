@@ -107,12 +107,12 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['t_l_name'])?$edit_data['t_l_name']:'', '#required' => 1, '#maxlength' => 50);
 	$form[$group]['t_gender'] = array('#title' => 'Gender', '#type' => 'radios', '#options' => array("M" => 'Male', 'F' => 'Female')  , 
 		'#default_value' => isset($edit_data['t_gender'])?$edit_data['t_gender']:'M', '#weight' => 3, '#required' => 1 , 
-		'#ajax' => array(
+		/*'#ajax' => array(
 		      // most notably 'mousedown', 'blur', and 'submit'.
 		      // 'event' => 'change',
 		      'callback' => 'ajax_section_dropdown_callback',
 		      'wrapper' => 'dropdown-section-replace',
-		    ),
+		    ),*/
 		);
 
 	$form[$group]['t_dob'] = array('#title' => 'Date of Birth', '#type' => 'date_popup', '#size' => '20', '#weight' => 4, 
