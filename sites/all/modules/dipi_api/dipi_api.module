@@ -445,7 +445,7 @@ function _api_post_application( $centre, $course, $data )
     if (!isset($vals['age']) && ( !isset($vals['dob']) ) )
       return array("Result" => "Error", "Message" => 'Age/DOB not present');
 
-    if (isset($vals['age']) && (($vals['age'] < 15) || ($vals['age'] > 95)) )
+    if (isset($vals['age']) && (($vals['age'] < 8) || ($vals['age'] > 95)) )
       return array("Result" => "Error", "Message" => "Age incorrect");
     else
       $r['a_dob'] = date("Y", strtotime("-".$vals['age']." year"))."-01-01";
