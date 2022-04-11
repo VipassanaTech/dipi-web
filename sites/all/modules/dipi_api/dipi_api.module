@@ -13,7 +13,7 @@ function dipi_api_permission() {
     $perms['access sms api'] = array('title' => t('Access SMS API') );
     $perms['access voice api'] = array('title' => t('Access VOICE API') );
     $perms['get application status'] = array('title' => t('Access Application Status') );
-    $perms['at portal access'] = array('title' => t('Access AT Portal APIs'))
+    $perms['at portal access'] = array('title' => t('Access AT Portal APIs'));
 
     return $perms;
 }
