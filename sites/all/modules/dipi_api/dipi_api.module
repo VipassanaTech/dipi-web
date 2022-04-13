@@ -308,18 +308,118 @@ function dipi_api_services_resources() {
           ),
 
 
-        'get-apps-for-at' => array(
-              'help' => t("Get applications for AT code"),
+        'get-current-apps-for-at' => array(
+              'help' => t("Get current applications for AT code"),
               'access arguments' => array('at portal access'),
               'access arguments append' => FALSE,
-              'callback' => '_get_apps_for_at',
+              'callback' => '_get_current_apps_for_at',
               'args' => array(
                 array(
-                  'name' => 'data',
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+              ),
+          ),
+
+
+        'get-completed-apps-for-at' => array(
+              'help' => t("Get Completed applications for AT code"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_get_completed_apps_for_at',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+              ),
+          ),
+
+
+        'get-app-detail' => array(
+              'help' => t("Get Application Detail"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_get_app_detail',
+              'args' => array(
+                array(
+                  'name' => 'appid',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Application ID',
+                ),
+              ),
+          ),
+
+
+        'process-lc-application' => array(
+              'help' => t("Process LC Application"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_process_lc_application',
+              'args' => array(
+                array(
+                  'name' => 'appid',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Application ID',
+                ),
+                array(
+                  'name' => 'at_code',
                   'optional' => FALSE,
                   'source' => 'data',
                   'type' => 'string',
-                  'description' => 'AT code',
+                  'description' => 'AT Code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'String',
+                  'description' => 'AT Gender',
+                ),
+                array(
+                  'name' => 'status',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Application status',
+                ),
+                array(
+                  'name' => 'comment',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Comments if any',
+                ),
+                array(
+                  'name' => 'teacher',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Selected Teacher',
                 ),
               ),
           ),
@@ -1843,24 +1943,123 @@ function sms_sa_send_sms($to, $message)
    return $return;
 }
 
-function _get_apps_for_at( $data )
+function _get_apps_for_at( $at_code, $gender, $type )
 {
-    $q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$data' limit 1";
+    if (!$at_code)
+        return array('Error' => 'No AT Code');
+    if (! in_array ( strtoupper( $gender ), array('M', 'F')) )
+        return array('Error' => 'No/Invalid Gender');
+    $q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_code = '$at_code' and t_gender = '$gender' limit 1";
     $at_name = db_query($q)->fetchField();
     if ($at_name == '')
         return array('Error' => 'Invalid AT Code');
 
+    $append = '';
+    $limit = 'limit 300';
+    if ($type == 'current')
+    {
+        $append = '<= 0';
+        $limit = '';
+    }
+    else
+        $append = '> 0';
+
     $where = "(al.al_recommending = :frname or al.al_area_at = :faname )";
     $where_opts = array( ':frname' => $at_name, ':faname' => $at_name );
 
-    $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved, al.al_area_at_approved, DATEDIFF(CURDATE(), cr.c_start) as 'diff',
-        a_uri, a_id
+    $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved, al.al_area_at_approved, DATEDIFF(CURDATE(), cr.c_start) as 'diff',a_id, al_recommending, al_area_at
         from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where $where
-          and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) <= 365  order by a_created desc";
+          and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) $append  order by a_created desc $limit";
     $res = db_query($q, $where_opts);
     $rows = array();
+    $c = 0;
     while( $row = $res->fetchAssoc() )
+    {
       $rows[] = $row;
+      $c++;
+    }
 
-    return $rows;
+
+    $all_rows = array('count' => $c);
+    $all_rows['data'] = $rows;
+    return $all_rows;
 }
+
+
+function _get_current_apps_for_at( $at_code, $gender )
+{
+    return _get_apps_for_at( $at_code, $gender, 'current' );
+}
+
+function _get_completed_apps_for_at( $at_code, $gender )
+{
+    return _get_apps_for_at( $at_code, $gender, 'completed' );
+}
+
+function _get_app_detail( $appid )
+{
+    if (!$appid)
+        return array('Error' => 'No App Id');
+    if (! is_numeric($appid))
+        return array('Error' => 'Invalid App Id');
+
+    $q = "select * from dh_applicant a left join dh_applicant_lc al on (a.a_id=al.al_applicant) left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_center c on (a.a_center=c.c_id) left join dh_course co on (a.a_course=co.c_id) where a_id= $appid";
+    $res = db_query($q);
+    $row = $res->fetchAssoc();
+    return $row;
+}
+
+
+function _process_lc_application( $appid, $data)
+{
+    if (!$appid)
+        return array('Error' => 'No App Id');
+    if (! is_numeric($appid))
+        return array('Error' => 'Invalid App Id');
+
+    if (! in_array($data['status'], array('Approved', 'Rejected', 'Transfer to Registrar')))
+        return array('Error' => 'Invalid Status');
+
+    if (! in_array($data['gender'], array('M', 'F')))
+        return array('Error' => 'Invalid AT Gender');
+
+
+    if (($data['status'] == 'Rejected'  ) && ($data['comment'] == ''))
+        return array('Error' => 'Comment is required');        
+
+    if ($data['comment'] <> '')
+        if (strlen($data['comment']) > 250)
+            return array('Error' => 'Comment must be less than 250 chars');
+
+    $q = "select * from dh_applicant a left join dh_applicant_lc al on (a.a_id=al.al_applicant) left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_center c on (a.a_center=c.c_id) left join dh_course co on (a.a_course=co.c_id) left join dh_type_detail td on co.c_course_type=td.td_id where a_id= $appid";
+    $res = db_query($q);
+    $row = $res->fetchAssoc();
+    if (!$row)
+        return  array('Error' => 'Invalid App Id');
+
+    if ($row['td_val3'] <> 'LC')
+        return  array('Error' => 'App Id is not a LC application');        
+
+    if (! in_array($row['a_status'], array('R-ATReview', 'A-ATReview')) )
+        return  array('Error' => 'App Id is in R-ATReview, A-ATReview');                
+
+    $q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_code = '".$data['at_code']."' and t_gender = '".$data['gender']."' limit 1";
+    $at_name = db_query($q)->fetchField();
+    if ($at_name == '')
+        return array('Error' => 'Invalid AT Code');
+
+    if ($row['a_status'] == 'R-ATReview')
+        $type = 'al_recommending';
+    else
+        $type = 'al_area_at';
+
+    if ($at_name <> $row[$type])
+        return array('Error' => 'AT '.$at_name." cannot process this application");
+
+    if ($row['a_status'] == 'R-ATReview')
+        if ($data['teacher'] == '')
+            return array('Error' => 'Area Teacher is required');            
+
+    return array($appid, $data);
+}
+
