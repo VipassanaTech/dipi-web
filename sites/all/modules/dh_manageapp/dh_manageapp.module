@@ -1534,7 +1534,7 @@ function generate_conf_no( $app_id )
 		$pre = 'S'.$row['a_gender'];
 	else
 		$pre = ($row['a_old']?'O':'N').$row['a_gender'];
-	$new_conf_no = $pre.db_query("select nextval('".$row['a_course']."-$pre')")->fetchField();
+	$new_conf_no = $pre.db_query("select nextval1('".$row['a_course']."-$pre')")->fetchField();
 	return $new_conf_no;
 }
 

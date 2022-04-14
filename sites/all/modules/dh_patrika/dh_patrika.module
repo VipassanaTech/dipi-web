@@ -1110,7 +1110,7 @@ function dh_patrika_addedit_submit($form, &$form_state)
 	if ($add)
 	{
 		$rec['p_created_by'] = $user->uid;
-		$vray_id = db_query("select nextval('patrika')")->fetchField();
+		$vray_id = db_query("select nextval1('patrika')")->fetchField();
 		$rec['p_vray_id'] = $vray_id;
 		$patrika_id = db_insert('dh_patrika')->fields($rec)->execute();
 
@@ -1280,7 +1280,7 @@ function dh_patrika_add_course_students($course)
 		//echo $r['p_address']."\n\n";
 
 		$r['p_mode'] = 'PAPER';
-		$r['p_vray_id'] = db_query("select nextval('patrika')")->fetchField();
+		$r['p_vray_id'] = db_query("select nextval1('patrika')")->fetchField();
 		$r['p_language'] = 'hi';		
 		$r['p_subscription_type'] = 'Privilege';
 		$r['p_start_date'] = date('Y-m-d');
