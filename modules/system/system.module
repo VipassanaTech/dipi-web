@@ -323,6 +323,10 @@ function system_element_info() {
     '#group_callback' => 'drupal_group_css',
     '#aggregate_callback' => 'drupal_aggregate_css',
   );
+  $types['scripts'] = array(
+    '#items' => array(),
+    '#pre_render' => array('drupal_pre_render_scripts'),
+  );
 
   // Input elements.
   $types['submit'] = array(
@@ -1182,6 +1186,10 @@ function system_library() {
     'version' => '1.4.4',
     'js' => array(
       'misc/jquery.js' => array('group' => JS_LIBRARY, 'weight' => -20),
+      // These include security fixes, so assign a weight that makes them load
+      // as soon after jquery.js is loaded as possible.
+      'misc/jquery-extend-3.4.0.js' => array('group' => JS_LIBRARY, 'weight' => -19),
+      'misc/jquery-html-prefilter-3.5.0-backport.js' => array('group' => JS_LIBRARY, 'weight' => -19),
     ),
   );
 
@@ -1320,6 +1328,7 @@ function system_library() {
     'version' => '1.8.7',
     'js' => array(
       'misc/ui/jquery.ui.datepicker.min.js' => array(),
+      'misc/ui/jquery.ui.datepicker-1.13.0-backport.js' => array(),
     ),
     'css' => array(
       'misc/ui/jquery.ui.datepicker.css' => array(),
@@ -1333,7 +1342,8 @@ function system_library() {
     'website' => 'http://jqueryui.com/demos/dialog/',
     'version' => '1.8.7',
     'js' => array(
-      'misc/ui/jquery.ui.dialog.min.js' => array(),
+      'misc/ui/jquery.ui.dialog.min.js' =>  array(),
+      'misc/ui/jquery.ui.dialog-1.13.0-backport.js' => array(),
     ),
     'css' => array(
       'misc/ui/jquery.ui.dialog.css' => array(),
@@ -1389,6 +1399,7 @@ function system_library() {
     'version' => '1.8.7',
     'js' => array(
       'misc/ui/jquery.ui.position.min.js' => array(),
+      'misc/ui/jquery.ui.position-1.13.0-backport.js' => array(),
     ),
   );
   $libraries['ui.progressbar'] = array(

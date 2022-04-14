@@ -8,7 +8,7 @@
 /**
  * The current system version.
  */
-define('VERSION', '7.59');
+define('VERSION', '7.89');
 
 /**
  * Core API compatibility.
@@ -359,6 +359,7 @@ abstract class DrupalCacheArray implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetExists().
    */
+  #[\ReturnTypeWillChange]
   public function offsetExists($offset) {
     return $this->offsetGet($offset) !== NULL;
   }
@@ -366,6 +367,7 @@ abstract class DrupalCacheArray implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetGet().
    */
+  #[\ReturnTypeWillChange]
   public function offsetGet($offset) {
     if (isset($this->storage[$offset]) || array_key_exists($offset, $this->storage)) {
       return $this->storage[$offset];
@@ -378,6 +380,7 @@ abstract class DrupalCacheArray implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetSet().
    */
+  #[\ReturnTypeWillChange]
   public function offsetSet($offset, $value) {
     $this->storage[$offset] = $value;
   }
@@ -385,6 +388,7 @@ abstract class DrupalCacheArray implements ArrayAccess {
   /**
    * Implements ArrayAccess::offsetUnset().
    */
+  #[\ReturnTypeWillChange]
   public function offsetUnset($offset) {
     unset($this->storage[$offset]);
   }
@@ -704,6 +708,19 @@ function drupal_environment_initialize() {
   // Set sane locale settings, to ensure consistent string, dates, times and
   // numbers handling.
   setlocale(LC_ALL, 'C');
+
+  // PHP's built-in phar:// stream wrapper is not sufficiently secure. Override
+  // it with a more secure one, which requires PHP 5.3.3. For lower versions,
+  // unregister the built-in one without replacing it. Sites needing phar
+  // support for lower PHP versions must implement hook_stream_wrappers() to
+  // register their desired implementation.
+  if (in_array('phar', stream_get_wrappers(), TRUE)) {
+    stream_wrapper_unregister('phar');
+    if (version_compare(PHP_VERSION, '5.3.3', '>=')) {
+      include_once DRUPAL_ROOT . '/includes/file.phar.inc';
+      file_register_phar_wrapper();
+    }
+  }
 }
 
 /**
@@ -790,14 +807,17 @@ function drupal_settings_initialize() {
     // HTTP_HOST can be modified by a visitor, but we already sanitized it
     // in drupal_settings_initialize().
     if (!empty($_SERVER['HTTP_HOST'])) {
-      $cookie_domain = $_SERVER['HTTP_HOST'];
-      // Strip leading periods, www., and port numbers from cookie domain.
-      $cookie_domain = ltrim($cookie_domain, '.');
-      if (strpos($cookie_domain, 'www.') === 0) {
-        $cookie_domain = substr($cookie_domain, 4);
-      }
-      $cookie_domain = explode(':', $cookie_domain);
-      $cookie_domain = '.' . $cookie_domain[0];
+      $cookie_domain = _drupal_get_cookie_domain($_SERVER['HTTP_HOST']);
+    }
+
+    // Drupal 7.83 included a security improvement whereby www. is no longer
+    // stripped from the cookie domain. However, this can cause problems with
+    // existing session cookies where some users are left unable to login. In
+    // order to avoid that, prepend a leading dot to the session_name that was
+    // derived from the base_url when a www. subdomain is in use.
+    // @see https://www.drupal.org/project/drupal/issues/2522002
+    if (strpos($session_name, 'www.') === 0) {
+      $session_name = '.' . $session_name;
     }
   }
   // Per RFC 2109, cookie domains must contain at least one dot other than the
@@ -816,6 +836,24 @@ function drupal_settings_initialize() {
   }
   $prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
   session_name($prefix . substr(hash('sha256', $session_name), 0, 32));
+}
+
+/**
+ * Derive the cookie domain to use for session cookies.
+ *
+ * @param $host
+ *   The value of the HTTP host name.
+ *
+ * @return
+ *   The string to use as a cookie domain.
+ */
+function _drupal_get_cookie_domain($host) {
+  $cookie_domain = $host;
+  // Strip leading periods and port numbers from cookie domain.
+  $cookie_domain = ltrim($cookie_domain, '.');
+  $cookie_domain = explode(':', $cookie_domain);
+  $cookie_domain = '.' . $cookie_domain[0];
+  return $cookie_domain;
 }
 
 /**
@@ -1145,6 +1183,31 @@ function _drupal_trigger_error_with_delayed_logging($error_msg, $error_type = E_
 }
 
 /**
+ * Invoke trigger_error() using a fatal error that will terminate the request.
+ *
+ * Normally, Drupal's error handler does not terminate script execution on
+ * user-level errors, even if the error is of type E_USER_ERROR. This function
+ * triggers an error of type E_USER_ERROR that is explicitly forced to be a
+ * fatal error which terminates script execution.
+ *
+ * @param string $error_msg
+ *   The error message to trigger. As with trigger_error() itself, this is
+ *   limited to 1024 bytes; additional characters beyond that will be removed.
+ *
+ * @see _drupal_error_handler_real()
+ */
+function drupal_trigger_fatal_error($error_msg) {
+  $fatal_error = &drupal_static(__FUNCTION__, FALSE);
+  $fatal_error = TRUE;
+  trigger_error($error_msg, E_USER_ERROR);
+  $fatal_error = FALSE;
+  // The standard Drupal error handler should have treated this as a fatal
+  // error and already ended the page request. But in case another error
+  // handler is being used, terminate execution explicitly here also.
+  exit;
+}
+
+/**
  * Writes the file scan cache to the persistent cache.
  *
  * This cache stores all files marked as missing or moved after a file scan
@@ -1176,19 +1239,21 @@ function variable_initialize($conf = array()) {
     $variables = $cached->data;
   }
   else {
-    // Cache miss. Avoid a stampede.
+    // Cache miss. Avoid a stampede by acquiring a lock. If the lock fails to
+    // acquire, optionally just continue with uncached processing.
     $name = 'variable_init';
-    if (!lock_acquire($name, 1)) {
-      // Another request is building the variable cache.
-      // Wait, then re-run this function.
+    $lock_acquired = lock_acquire($name, 1);
+    if (!$lock_acquired && variable_get('variable_initialize_wait_for_lock', FALSE)) {
       lock_wait($name);
       return variable_initialize($conf);
     }
     else {
-      // Proceed with variable rebuild.
+      // Load the variables from the table.
       $variables = array_map('unserialize', db_query('SELECT name, value FROM {variable}')->fetchAllKeyed());
-      cache_set('variables', $variables, 'cache_bootstrap');
-      lock_release($name);
+      if ($lock_acquired) {
+        cache_set('variables', $variables, 'cache_bootstrap');
+        lock_release($name);
+      }
     }
   }
 
@@ -1840,7 +1905,7 @@ function format_string($string, array $args = array()) {
  * @ingroup sanitization
  */
 function check_plain($text) {
-  return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+  return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
 }
 
 /**
@@ -1985,7 +2050,7 @@ function watchdog($type, $message, $variables = array(), $severity = WATCHDOG_NO
 
   // It is possible that the error handling will itself trigger an error. In that case, we could
   // end up in an infinite loop. To avoid that, we implement a simple static semaphore.
-  if (!$in_error_state && function_exists('module_implements')) {
+  if (!$in_error_state && function_exists('module_invoke_all')) {
     $in_error_state = TRUE;
 
     // The user object may not exist in all conditions, so 0 is substituted if needed.
@@ -2008,9 +2073,7 @@ function watchdog($type, $message, $variables = array(), $severity = WATCHDOG_NO
     );
 
     // Call the logging hooks to log/process the message
-    foreach (module_implements('watchdog') as $module) {
-      module_invoke($module, 'watchdog', $log_entry);
-    }
+    module_invoke_all('watchdog', $log_entry);
 
     // It is critical that the semaphore is only cleared here, in the parent
     // watchdog() call (not outside the loop), to prevent recursive execution.
@@ -2252,7 +2315,7 @@ function drupal_random_bytes($count)  {
   // $random_state does not use drupal_static as it stores random bytes.
   static $random_state, $bytes, $has_openssl;
 
-  $missing_bytes = $count - strlen($bytes);
+  $missing_bytes = $count - strlen((string) $bytes);
 
   if ($missing_bytes > 0) {
     // PHP versions prior 5.3.4 experienced openssl_random_pseudo_bytes()
@@ -2505,6 +2568,7 @@ function drupal_bootstrap($phase = NULL, $new_phase = TRUE) {
 
       switch ($current_phase) {
         case DRUPAL_BOOTSTRAP_CONFIGURATION:
+          require_once DRUPAL_ROOT . '/includes/request-sanitizer.inc';
           _drupal_bootstrap_configuration();
           break;
 
@@ -2582,13 +2646,10 @@ function drupal_get_hash_salt() {
  *   The filename that the error was raised in.
  * @param $line
  *   The line number the error was raised at.
- * @param $context
- *   An array that points to the active symbol table at the point the error
- *   occurred.
  */
-function _drupal_error_handler($error_level, $message, $filename, $line, $context) {
+function _drupal_error_handler($error_level, $message, $filename, $line) {
   require_once DRUPAL_ROOT . '/includes/errors.inc';
-  _drupal_error_handler_real($error_level, $message, $filename, $line, $context);
+  _drupal_error_handler_real($error_level, $message, $filename, $line);
 }
 
 /**
@@ -2609,6 +2670,10 @@ function _drupal_exception_handler($exception) {
     _drupal_log_error(_drupal_decode_exception($exception), TRUE);
   }
   catch (Exception $exception2) {
+    // Add a 500 status code in case an exception was thrown before the 500
+    // status could be set (e.g. while loading a maintenance theme from cache).
+    drupal_add_http_header('Status', '500 Internal Server Error');
+
     // Another uncaught exception was thrown while handling the first one.
     // If we are displaying errors, then do so with no possibility of a further uncaught exception being thrown.
     if (error_displayable()) {
@@ -2634,7 +2699,6 @@ function _drupal_bootstrap_configuration() {
   drupal_settings_initialize();
 
   // Sanitize unsafe keys from the request.
-  require_once DRUPAL_ROOT . '/includes/request-sanitizer.inc';
   DrupalRequestSanitizer::sanitize();
 }
 
@@ -3785,8 +3849,12 @@ function _drupal_shutdown_function() {
   chdir(DRUPAL_ROOT);
 
   try {
-    while (list($key, $callback) = each($callbacks)) {
+    // Manually iterate over the array instead of using a foreach loop.
+    // A foreach operates on a copy of the array, so any shutdown functions that
+    // were added from other shutdown functions would never be called.
+    while ($callback = current($callbacks)) {
       call_user_func_array($callback['callback'], $callback['arguments']);
+      next($callbacks);
     }
   }
   catch (Exception $exception) {
@@ -3857,4 +3925,86 @@ function drupal_clear_opcode_cache($filepath) {
     // @see http://php.net/apc-delete-file
     @apc_delete_file($filepath);
   }
+}
+
+/**
+ * Drupal's wrapper around PHP's setcookie() function.
+ *
+ * This allows the cookie's $value and $options to be altered.
+ *
+ * @param $name
+ *   The name of the cookie.
+ * @param $value
+ *   The value of the cookie.
+ * @param $options
+ *   An associative array which may have any of the keys expires, path, domain,
+ *   secure, httponly, samesite.
+ *
+ * @see setcookie()
+ * @ingroup php_wrappers
+ */
+function drupal_setcookie($name, $value, $options) {
+  $options = _drupal_cookie_params($options);
+  if (\PHP_VERSION_ID >= 70300) {
+    setcookie($name, $value, $options);
+  }
+  else {
+    setcookie($name, $value, $options['expires'], $options['path'], $options['domain'], $options['secure'], $options['httponly']);
+  }
+}
+
+/**
+ * Process the params for cookies. This emulates support for the SameSite
+ * attribute in earlier versions of PHP, and allows the value of that attribute
+ * to be overridden.
+ *
+ * @param $options
+ *   An associative array which may have any of the keys expires, path, domain,
+ *   secure, httponly, samesite.
+ *
+ * @return
+ *   An associative array which may have any of the keys expires, path, domain,
+ *   secure, httponly, and samesite.
+ */
+function _drupal_cookie_params($options) {
+  $options['samesite'] = _drupal_samesite_cookie($options);
+  if (\PHP_VERSION_ID < 70300) {
+    // Emulate SameSite support in older PHP versions.
+    if (!empty($options['samesite'])) {
+      // Ensure the SameSite attribute is only added once.
+      if (!preg_match('/SameSite=/i', $options['path'])) {
+        $options['path'] .= '; SameSite=' . $options['samesite'];
+      }
+    }
+  }
+  return $options;
+}
+
+/**
+ * Determine the value for the samesite cookie attribute, in the following order
+ * of precedence:
+ *
+ * 1) A value explicitly passed to drupal_setcookie()
+ * 2) A value set in $conf['samesite_cookie_value']
+ * 3) The setting from php ini
+ * 4) The default of None, or FALSE (no attribute) if the cookie is not Secure
+ *
+ * @param $options
+ *   An associative array as passed to drupal_setcookie().
+ * @return
+ *   The value for the samesite cookie attribute.
+ */
+function _drupal_samesite_cookie($options) {
+  if (isset($options['samesite'])) {
+    return $options['samesite'];
+  }
+  $override = variable_get('samesite_cookie_value', NULL);
+  if ($override !== NULL) {
+    return $override;
+  }
+  $ini_options = session_get_cookie_params();
+  if (isset($ini_options['samesite'])) {
+    return $ini_options['samesite'];
+  }
+  return empty($options['secure']) ? FALSE : 'None';
 }

@@ -217,5 +217,26 @@ function database_test_schema() {
     ),
   );
 
+  $schema['virtual'] = array(
+    'description' => 'Basic test table with a reserved name.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'function' => array(
+        'description' => "A column with a reserved name.",
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+  $schema['TEST_UPPERCASE'] = $schema['test'];
+
   return $schema;
 }
