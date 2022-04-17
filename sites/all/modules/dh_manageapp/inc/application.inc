@@ -826,7 +826,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 				{
 					if (( $conf_no == '' ) || ( substr($conf_no,0,2) <> $new ))
 					{
-						$new_conf_no = $new.db_query("select nextval('".$res['a_course']."-$new')")->fetchField();
+						$new_conf_no = $new.db_query("select nextval1('".$res['a_course']."-$new')")->fetchField();
 						$app['a_conf_no'] = $new_conf_no; 
 					}				
 				}				
@@ -847,7 +847,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		else
 		{
 			$status_confirmed = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
-			$new_conf_no = $new.db_query("select nextval('".arg(3)."-$new')")->fetchField();
+			$new_conf_no = $new.db_query("select nextval1('".arg(3)."-$new')")->fetchField();
 			$app['a_status'] =  $status_confirmed;
 			$app['a_conf_no'] = $new_conf_no; 
 		}
