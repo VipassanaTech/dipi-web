@@ -227,23 +227,33 @@ function create_application_pdf( $application_id )
 	$uri = 'private://';
 	$path= drupal_realpath($uri);
 	$dir = $path."/applications/".$row['a_center']."/".$row['c_id'];
+	/*
 	if (!is_dir($dir))
 	{
 		if (posix_getuid() == 0)
 			posix_setuid(33);
 		mkdir($dir, 0775, true);		
-	}
-	$out_pdf = $dir."/app-".$application_id.".pdf";
+	}*/
+	//$out_pdf = $dir."/app-".$application_id.".pdf";
+	$out_pdf = tempnam("/var/dipi", "app-");
 	$out_uri = $uri."/applications/".$row['a_center']."/".$row['c_id']."/app-".$application_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 	if ($row['a_photo'] <> '')
 	{
 		$photo_path = str_replace("private://", $path."/", $row['a_photo'] );
+		$photo_path = str_replace("private://", '', $row['a_photo'] );
+		$ret = s3_get_file('vri-dipi', $photo_path, 'file');
+		if (!$ret['success'])
+			watchdog('S3Pdf', $ret['message']);
 		$type = (strtoupper($row['td_val3']) == 'LC')?'LC':'GEN';
-		exec("/dhamma/scripts/merge-img ".$photo_path." $type $out_pdf");		
+		exec("/dhamma/scripts/merge-img ".$ret['data']." $type $out_pdf");		
 	}
-	chown($out_pdf, "www-data");
+	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
+	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private://", '', $out_uri) );
+	if (!$ret['success'])
+		watchdog('S3Pdf', $ret['message']);
+	unlink($out_pdf);
 	db_update('dh_applicant')->fields(array('a_uri' => $out_uri))->condition('a_id', $application_id)->execute();
 	return $out_uri;
 }

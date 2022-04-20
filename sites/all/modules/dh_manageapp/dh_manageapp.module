@@ -9,6 +9,8 @@ include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
 include_once(dirname(__FILE__)."/inc/referral.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
+include_once dirname(__FILE__) . "/inc/dana-s3.inc";
+
 
 function dh_manageapp_help($path, $arg)
 {
