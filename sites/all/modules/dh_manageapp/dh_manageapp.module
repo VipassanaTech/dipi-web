@@ -1994,12 +1994,10 @@ function show_application_photo( $app_id )
 		$content_type = "image/png";
 
 	header("Content-Type: $content_type");
-	header('Content-disposition:inline; filename="'.basename($url).'"');
-	header('Cache-Control: private');
+	//header('Content-disposition:inline; filename="'.basename($url).'"');
+	//header('Cache-Control: private');
 	// If you're serving to IE 9, then the following may be needed
 	//header('Cache-Control: max-age=1');
-	if (!$ret['success'])
-		watchdog('S3Debug', print_r($ret, true));
 	print($ret['data']);
 	exit();
 

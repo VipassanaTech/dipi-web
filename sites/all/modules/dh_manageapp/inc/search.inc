@@ -202,7 +202,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		
 		$rs['photo'] = '';
 		if ( $r['a_photo'] <> '')
-			$rs['photo'] = file_create_url($r['a_photo']);
+		{
+			//$rs['photo'] = file_create_url($r['a_photo']);
+			$rs['photo'] = file_create_url("show-photo/".$r['a_id']);
+		}
 		$rs['passport'] = $r['a_passport'];
 		$rs['voterid'] = $r['a_voter_id'];
 		$rs['pancard'] = $r['a_pancard'];
