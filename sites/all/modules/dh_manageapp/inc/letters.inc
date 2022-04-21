@@ -577,14 +577,17 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+		$ret = s3_get_file('vri-dipi', str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
+		$attachment[] = $ret['data'];
 	}
 	if ( in_array($event, array('R-ATReview', 'A-ATReview')))
 	{
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+		$ret = s3_get_file('vri-dipi', str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
+		//$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+		$attachment[] = $ret['data'];	
 		if ($row['a_email'] == '')
 		{
 			$log = "No email found for AT ";
