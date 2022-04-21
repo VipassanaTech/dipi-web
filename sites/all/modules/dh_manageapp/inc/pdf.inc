@@ -235,7 +235,7 @@ function create_application_pdf( $application_id )
 		mkdir($dir, 0775, true);		
 	}*/
 	//$out_pdf = $dir."/app-".$application_id.".pdf";
-	$out_pdf = tempnam("/var/dipi", "app-");
+	$out_pdf = tempnam("/var/dipi", "app-").".pdf";
 	$out_uri = $uri."/applications/".$row['a_center']."/".$row['c_id']."/app-".$application_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 	if ($row['a_photo'] <> '')
@@ -250,7 +250,7 @@ function create_application_pdf( $application_id )
 	}
 	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
-	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private://", '', $out_uri) );
+	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
 		watchdog('S3Pdf', $ret['message']);
 	unlink($out_pdf);
