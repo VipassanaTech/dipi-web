@@ -468,6 +468,14 @@ function dh_manageapp_menu()
 	       'type' => MENU_CALLBACK);
 
 
+	$items['show-clarification/%app_id/%clarification_id'] = array( 'title' => t('Applicant Clarification Data'),
+	       'page callback' => 'show_clarification',
+	       'page arguments' => array(1,2),
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+
+
 	return $items;
 }
 
@@ -577,6 +585,13 @@ function dh_manageapp_file_download($uri)
 	}
 }
 
+function clarification_id_load( $id )
+{
+	if (!is_numeric($id))
+		return false;
+
+	return $id;
+}
 
 
 function centre_id_load( $id )
@@ -1429,7 +1444,7 @@ function _search_course()
 function _get_clarifications()
 {
 	$app_id = arg(1);
-	$q = "select ac_msg, ac_file, ac_tstamp from dh_applicant_clarification where ac_app='$app_id'";
+	$q = "select ac_msg, ac_file, ac_tstamp, ac_id from dh_applicant_clarification where ac_app='$app_id'";
 	$res = db_query($q);
 	$rows = array();
 	while( $row = $res->fetchAssoc())
@@ -1438,7 +1453,10 @@ function _get_clarifications()
 		$r[] = $row['ac_tstamp'];
 		$r[] = $row['ac_msg'];
 		if ($row['ac_file'])
-			$r[] = l("View", file_create_url($row['ac_file']));
+		{
+			//$r[] = l("View", file_create_url($row['ac_file']));
+			$r[] = l("View", "show-clarification/$app_id/".$row['ac_id']);
+		}
 		else
 			$r[] = 'No Upload';
 		$rows[] = $r;
@@ -2002,3 +2020,24 @@ function show_application_photo( $app_id )
 	exit();
 
 }
+
+
+function show_clarification( $app_id, $clarification_id )
+{
+	$q = "select ac_file from dh_applicant_clarification where ac_id=".$clarification_id." and ac_app=".$app_id;
+	$url = db_query($q)->fetchField();
+
+	$url = str_replace("private:///", '', $url);
+	$ret = s3_get_file('vri-dipi', $url, 'stream');
+	if (!$ret['success'])
+		watchdog('S3PDF', $ret['message']);
+
+	header("Content-Type: application/pdf");
+	header('Content-disposition:inline; filename="'.basename($url).'"');
+	header('Cache-Control: private');
+
+	print($ret['data']);
+	exit();
+
+}
+
