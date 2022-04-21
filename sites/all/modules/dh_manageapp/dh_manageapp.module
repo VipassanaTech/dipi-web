@@ -457,6 +457,7 @@ function dh_manageapp_menu()
 
 	$items['show-application/%app_id'] = array( 'title' => t('Application PDF'),
 	       'page callback' => 'show_application_pdf',
+	       'page arguments' => array(1),
 	       'access arguments' => array('access application pdf'),
 	       'type' => MENU_CALLBACK);
 
