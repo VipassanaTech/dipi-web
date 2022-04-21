@@ -1,4 +1,4 @@
- <?php
+<?php
 
 if (isset($_REQUEST['store_center_id']) && $_REQUEST['store_center_id'] == 1) {
     $status = 0;
