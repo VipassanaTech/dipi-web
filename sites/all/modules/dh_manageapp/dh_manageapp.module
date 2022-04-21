@@ -1964,9 +1964,9 @@ function show_application_pdf( $app_id )
 	header('Cache-Control: private');
 	// If you're serving to IE 9, then the following may be needed
 	//header('Cache-Control: max-age=1');
-	if (!$data['success'])
-		watchdog('S3Debug', print_r($data, true));
-	print($data['data']);
+	if (!$ret['success'])
+		watchdog('S3Debug', print_r($ret, true));
+	print($ret['data']);
 	exit();
 
 }
