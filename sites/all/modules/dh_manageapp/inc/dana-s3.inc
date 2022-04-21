@@ -43,7 +43,7 @@ function s3_put_file($bucket, $file_local, $file_remote){
     }
 }
 
-function s3_get_file($bucket, $file_remote, $type){
+function s3_get_file($bucket, $file_remote, $type, $ext = ''){
     $retry = 5;
     $tmp_dir = '/var/dana';
 
@@ -81,6 +81,8 @@ function s3_get_file($bucket, $file_remote, $type){
 
             if ($type == 'file'){
                 $tmp_file = tempnam($tmp_dir, 'fs3_');
+                if ($ext)
+                    $tmp_file .= '.'.$ext;
                 if (! file_put_contents($tmp_file, $data )){
                     if ($i == $retry){
                         $ret['message'] = "S3: Unable to write remote file '$file_remote' as local file '$tmp_file'.";
