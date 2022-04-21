@@ -1176,11 +1176,17 @@ function _api_post_application( $centre, $course, $data )
       $photo_dir = drupal_realpath('private://');
       $dir = $photo_dir."/photo-id/".$centre."/".$course;
       $fname = $dir."/app-".$app_id.".".$path['extension'];
-      if (!is_dir($dir))
+      /*if (!is_dir($dir))
           mkdir($dir, 0755, true);
       file_put_contents($fname, $temp);
+      */
+        $file_local = tempnam("/var/dana", "photo-app-");
+        file_put_contents($file_local, $temp);
       $ph = array();
       $ph['a_photo'] = "private://photo-id/$centre/$course/app-$app_id.".$path['extension'];
+        $ret = s3_put_file('vri-dipi', $file_local, str_replace("private://", '', $ph['a_photo']));
+        if (!$ret['success'])
+            watchdog( 'S3Photo', $ret['messsage']);
       db_update('dh_applicant')->fields($ph)->condition('a_id', $app_id)->execute();
     }
     $old = getcwd();    
