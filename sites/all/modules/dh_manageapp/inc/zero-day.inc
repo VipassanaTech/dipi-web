@@ -270,7 +270,10 @@ function dh_manageapp_list($centre_id, $course_id)
 		$rs[] = $r['ConfNo'];
 		$pdf_link = '';
 		if ( $r['a_uri'] <> '' )
-			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+		{
+			//$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+			$pdf_link = '&nbsp;('.l("PDF", "show-application/".$r['a_id'], array('attributes' => array("target" => "_blank") ) ).')';
+		}
 		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit', array('attributes' => array('appid' => $r['a_id'] )) ).$pdf_link;
 		$rs[] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		$rs[] = $r['c_name']?$r['c_name']:$r['a_city_str']; 
