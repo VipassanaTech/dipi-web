@@ -235,7 +235,7 @@ function create_application_pdf( $application_id )
 		mkdir($dir, 0775, true);		
 	}*/
 	//$out_pdf = $dir."/app-".$application_id.".pdf";
-	$out_pdf = tempnam("/var/dipi", "app-").".pdf";
+	$out_pdf = tempnam("/var/dipi", "app-")."-".$application_id.".pdf";
 	$out_uri = $uri."/applications/".$row['a_center']."/".$row['c_id']."/app-".$application_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 	if ($row['a_photo'] <> '')
