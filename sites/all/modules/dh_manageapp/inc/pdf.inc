@@ -255,10 +255,10 @@ function create_application_pdf( $application_id )
 			watchdog('S3Pdf', $ret['message']);
 		$type = (strtoupper($row['td_val3']) == 'LC')?'LC':'GEN';
 		exec("/dhamma/scripts/merge-img ".$ret['data']." $type $out_pdf");		
+		unlink($ret['data']) ;
 	}
 	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
-	unlink($ret['data']) ;
 	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
 		watchdog('S3Pdf', $ret['message']);
