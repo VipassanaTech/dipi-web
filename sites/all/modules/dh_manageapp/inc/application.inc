@@ -197,7 +197,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		if ($edit_data['a_uri'] <> '')
 		{
 			//$photo = '<div class="right"><a href="'.file_create_url($edit_data['a_uri']).'"><img width="220px" src="'.file_create_url($edit_data['a_photo']).'"/></a></div>';
-			$photo = '<div class="right"><a href="'.file_create_url($edit_data['a_uri']).'"><img width="220px" src="'.file_create_url("show-photo/".arg(1)).'"/></a></div>';
+			$photo = '<div class="right"><a href="'.file_create_url("show-application/".arg(1)).'"><img width="220px" src="'.file_create_url("show-photo/".arg(1)).'"/></a></div>';
 		}
 		if ($add)
 		{
