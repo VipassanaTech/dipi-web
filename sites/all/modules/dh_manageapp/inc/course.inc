@@ -790,8 +790,12 @@ function course_day11_report()
 	$pdf = create_d11_report_pdf($course_id);
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=Day11-Report.pdf");
-	@readfile($pdf);
-
+	//@readfile($pdf);
+	$ret = s3_get_file('vri-dipi', $pdf, 'stream');
+	if (!$ret['success'])
+		watchdog('S3PDF', $ret['message']);
+	print($ret['data']);
+	exit();
 }
 
 

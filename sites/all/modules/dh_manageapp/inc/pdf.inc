@@ -153,21 +153,29 @@ function create_d11_report_pdf( $course_id )
 	$uri = 'private://';
 	$path= drupal_realpath($uri);
 	$dir = $path."/reports/".$centre_id."/".$year;
+	/*
 	if (!is_dir($dir))
 	{
 		if (posix_getuid() == 0)
 			posix_setuid(33);
 		mkdir($dir, 0775, true);
 	}
-		
-	$out_pdf = $dir."/report-Day11-".$course_id.".pdf";
+	*/	
+	//$out_pdf = $dir."/report-Day11-".$course_id.".pdf";
+	$out_pdf = tempnam("/var/dipi", "report-D11-")."-".$course_id.".pdf";	
 	$out_uri = $uri."/reports/".$centre_id."/".$year."/report-Day11-".$course_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
-	chown($out_pdf, "www-data");
+
+	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
+	if (!$ret['success'])
+		watchdog('S3Pdf', $ret['message']);
+	unlink($out_pdf);
+
+	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
 	db_update('dh_course')->fields(array('c_uri' => $out_uri))->condition('c_id', $course_id)->execute();
 
-	return $out_pdf;
+	return str_replace("private:///", '', $out_uri);
 }
 
 
