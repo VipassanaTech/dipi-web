@@ -455,6 +455,11 @@ function dh_manageapp_menu()
     //     'type' => MENU_CALLBACK,);
 
 
+	$items['show-application/%app_id'] = array( 'title' => t('Application PDF'),
+	       'page callback' => 'show_application_pdf',
+	       'access arguments' => array('access application pdf'),
+	       'type' => MENU_CALLBACK);
+
 
 	return $items;
 }
@@ -1943,6 +1948,25 @@ function _get_sms_count()
 	exit;
 }
 
+function show_application_pdf( $app_id )
+{
+	$q = "select a_uri from dh_applicant where a_id=".$app_id;
+	$url = db_query($q)->fetchField();
 
+	$url = str_replace("private:///", '', $url);
+	$ret = s3_get_file('vri-dipi', $url, 'stream');
+	if (!$ret['success'])
+		watchdog('S3PDF', $ret['message']);
 
+	header("Content-Type: application/pdf");
+	header('Content-disposition:inline; filename="'.basename($url).'"');
+	header('Cache-Control: private');
+	// If you're serving to IE 9, then the following may be needed
+	//header('Cache-Control: max-age=1');
+	if (!$data['success'])
+		watchdog('S3Debug', print_r($data, true));
+	print($data['data']);
+	exit();
+
+}
 
