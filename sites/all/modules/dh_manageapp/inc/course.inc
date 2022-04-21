@@ -961,10 +961,17 @@ function finalize_course( $course_id )
 			$new_photo_uri = 'private://'.$temp;
 			//$student['s_photo'] = $new_photo_uri;
 			db_update('dh_student')->fields(array('s_photo' => $new_photo_uri))->condition('s_id', $sid)->execute();
-			if (!is_dir(dirname($new_photo)))
+			/*if (!is_dir(dirname($new_photo)))
 				mkdir(dirname($new_photo), 0775, true);		
 			copy($old_photo, $new_photo);
-			
+			*/
+			$ret = s3_get_file('vri-dipi', str_replace("private://", "", $student['s_photo']), 'file' );
+			if (!$ret['success'])
+				watchdog('S3Photo', $ret['message']);
+
+			$ret = s3_put_file('vri-dipi', $ret['data'], $temp  );
+			if (!$ret['success'])
+				watchdog('S3Photo', $ret['message']);
 		}
 
 
@@ -1021,10 +1028,19 @@ function finalize_course( $course_id )
 			$new_pdf = $path.'/'.$temp;
 			$new_uri = 'private://'.$temp;
 			$student_c['sc_uri'] = $new_uri;
-
+			/*
 			if (!is_dir(dirname($new_pdf)))
 				mkdir(dirname($new_pdf), 0775, true);		
 			copy($app_pdf, $new_pdf);
+			*/
+			$ret = s3_get_file('vri-dipi', str_replace("private:///", "", $r['a_uri']), 'file' );
+			if (!$ret['success'])
+				watchdog('S3Photo', $ret['message']);
+
+			$ret = s3_put_file('vri-dipi', $ret['data'], $temp  );
+			if (!$ret['success'])
+				watchdog('S3Photo', $ret['message']);
+
 		}
 
 		if ($sid_c > 0 )

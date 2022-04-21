@@ -237,6 +237,11 @@ function dh_letters_form_submit($form, &$form_state)
 	    // Save file status.
 	    file_save($file);
 	    $fname = $file->uri;
+	    /*
+		$ret = s3_put_file('vri-dipi', str_replace("private:///", '', $file->uri), str_replace("private:///", '', $file->uri));	    
+		if (!$ret['success'])
+			watchdog('S3Letters', $ret['message']);
+		*/
 		$fields['l_attachment'] = $fname;
 
 	}
