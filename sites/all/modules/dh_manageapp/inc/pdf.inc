@@ -250,6 +250,7 @@ function create_application_pdf( $application_id )
 	}
 	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
+	unlink($ret['data']) ;
 	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
 		watchdog('S3Pdf', $ret['message']);
