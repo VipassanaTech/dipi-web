@@ -628,7 +628,10 @@ function dh_manageapp_attended( $centre, $course_id )
 		$rs[] = $r['ConfNo'];
 		$pdf_link = '';
 		if ( $r['a_uri'] <> '' )
-			$pdf_link = '<br>('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+		{
+			//$pdf_link = '<br>('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+			$pdf_link = '<br>('.l("PDF", "show-application/".$r['a_id'], array('attributes' => array("target" => "_blank") ) ).')';
+		}
 		$rs[] = l($r['Full Name'],'app/'.$r['a_id'].'/edit',array('attributes' => array('appid' => $r['a_id'] ))).$pdf_link;
 		$rs[] = ($r['a_gender']=='M')?'Male':'Female';
 		$rs[] = $r['a_type'];
