@@ -1098,7 +1098,8 @@ function generate_course_pdf($course_id, $type = 'M')
 		}
 
 		if ($r['a_uri'] <> '')
-		{			
+		{	
+			/*		
 			if ($i == 0)
 			{
 				$path = drupal_realpath($r['a_uri']);
@@ -1110,6 +1111,11 @@ function generate_course_pdf($course_id, $type = 'M')
 				$pdfs[] =  basename($r['a_uri']);
 			else
 				$pdfs[] =  $dirname_t."/".basename($r['a_uri']);
+			*/
+			$ret = s3_get_file( 'vri-dipi', str_replace("private:///", '', $r['a_uri']), 'file', 'pdf' );
+			if (!$ret['success'])
+				watchdog('S3PDF', $ret['message']);
+			$pdfs[] = $ret['data'];
 			$i++;
 		}
 	}
@@ -1141,14 +1147,21 @@ function generate_course_pdf($course_id, $type = 'M')
 		if ($generate)
 		{
 			$cur_dir = getcwd();
-			echo "Dir: $dirname\n";
+			//echo "Dir: $dirname\n";
 			//print_r($pdfs);
-			chdir($dirname);
-			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile course-$type.pdf";
+			//chdir($dirname);
+			$out_pdf = tempnam("/var/dipi", "mega-").".pdf";
+			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile $out_pdf";
 			//echo "$cmd\n";
 			watchdog('DIPI', 'generate_course_pdf cmd '.$cmd, array(), WATCHDOG_NOTICE, 'link');
 			exec($cmd);
-			chdir($cur_dir);			
+			$s3_uri = "applications/".arg(1)."/".$course_id."/course-$type.pdf";
+			s3_put_file('vri-dipi', $out_pdf, $s3_uri);
+			foreach ($pdf as $f) {
+				unlink($f);
+			}
+			unlink($out_pdf);
+			//chdir($cur_dir);
 			if ( isset($json) && (is_array($json)) && (count($json) > 0))
 			{
 				$json[$type] = $meta_data[$type];
@@ -1181,8 +1194,13 @@ function course_pdf()
 	}
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=course-".$type.".pdf");
-	$uri = 'private://';
-	@readfile($uri."/applications/".arg(1)."/".arg(2)."/course-".$type.".pdf");
+	$uri = "applications/".arg(1)."/".arg(2)."/course-".$type.".pdf";
+	$ret = s3_get_file('vri-dipi', $uri, 'stream' );
+	if (!$ret['success'])
+		watchdog('S3PDF', $ret['message']);
+	print($ret['data']);
+	exit();
+	//@readfile($uri."/applications/".arg(1)."/".arg(2)."/course-".$type.".pdf");
 }
 
 
