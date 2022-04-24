@@ -717,6 +717,9 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form['important_notice'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Urgent Important Notice', 
  		'#default_value' => variable_get('important_notice', ''));
 
+ 	$form['s3_bucket_name'] = array('#type' => 'textfield',  '#title' => 'S3 Bucket Name', 
+ 		'#default_value' => variable_get('s3_bucket_name', 'vri-dipi'));
+
  	$group = 'Test Mode Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => $group , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['mode_test'] = array('#type' => 'radios', '#options' => array('0' => 'No', '1' => 'Yes' ) , '#title' => 'Test mode on?', 
