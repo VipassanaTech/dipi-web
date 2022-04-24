@@ -450,7 +450,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		$r['a_photo'] = base64_encode($ret['data']); //file_create_url($r['a_photo']);
 	$pdf_link = '';
 	if ( $r['a_uri'] <> '' )
-		$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+		$pdf_link = '&nbsp;('.l("PDF", "show-application-at/".$appid, array('attributes' => array("target" => "_blank") ) ).')';
 		$r['a_uri'] = $pdf_link;
 	$r['al_reco_status'] = dh_atportal_make_pretty($r['al_recommending_approved']);
 	if ($r['al_recommending'])
