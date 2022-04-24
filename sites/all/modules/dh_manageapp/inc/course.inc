@@ -791,7 +791,7 @@ function course_day11_report()
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=Day11-Report.pdf");
 	//@readfile($pdf);
-	$ret = s3_get_file('vri-dipi', $pdf, 'stream');
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $pdf, 'stream');
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
 	print($ret['data']);
@@ -965,11 +965,11 @@ function finalize_course( $course_id )
 				mkdir(dirname($new_photo), 0775, true);		
 			copy($old_photo, $new_photo);
 			*/
-			$ret = s3_get_file('vri-dipi', str_replace("private://", "", $student['s_photo']), 'file' );
+			$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private://", "", $student['s_photo']), 'file' );
 			if (!$ret['success'])
 				watchdog('S3Photo', $ret['message']);
 
-			$ret = s3_put_file('vri-dipi', $ret['data'], $temp  );
+			$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
 			if (!$ret['success'])
 				watchdog('S3Photo', $ret['message']);
 		}
@@ -1033,11 +1033,11 @@ function finalize_course( $course_id )
 				mkdir(dirname($new_pdf), 0775, true);		
 			copy($app_pdf, $new_pdf);
 			*/
-			$ret = s3_get_file('vri-dipi', str_replace("private:///", "", $r['a_uri']), 'file' );
+			$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", "", $r['a_uri']), 'file' );
 			if (!$ret['success'])
 				watchdog('S3Photo', $ret['message']);
 
-			$ret = s3_put_file('vri-dipi', $ret['data'], $temp  );
+			$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
 			if (!$ret['success'])
 				watchdog('S3Photo', $ret['message']);
 
@@ -1128,7 +1128,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			else
 				$pdfs[] =  $dirname_t."/".basename($r['a_uri']);
 			*/
-			$ret = s3_get_file( 'vri-dipi', str_replace("private:///", '', $r['a_uri']), 'file', 'pdf' );
+			$ret = s3_get_file( variable_get('s3_bucket_name', ''), str_replace("private:///", '', $r['a_uri']), 'file', 'pdf' );
 			if (!$ret['success'])
 				watchdog('S3PDF', $ret['message']);
 			$pdfs[] = $ret['data'];
@@ -1172,7 +1172,7 @@ function generate_course_pdf($course_id, $type = 'M')
 			watchdog('DIPI', 'generate_course_pdf cmd '.$cmd, array(), WATCHDOG_NOTICE, 'link');
 			exec($cmd);
 			$s3_uri = "applications/".arg(1)."/".$course_id."/course-$type.pdf";
-			s3_put_file('vri-dipi', $out_pdf, $s3_uri);
+			s3_put_file(variable_get('s3_bucket_name', ''), $out_pdf, $s3_uri);
 			foreach ($pdf as $f) {
 				unlink($f);
 			}
@@ -1211,7 +1211,7 @@ function course_pdf()
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=course-".$type.".pdf");
 	$uri = "applications/".arg(1)."/".arg(2)."/course-".$type.".pdf";
-	$ret = s3_get_file('vri-dipi', $uri, 'stream' );
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $uri, 'stream' );
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
 	print($ret['data']);

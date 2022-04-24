@@ -238,7 +238,7 @@ function dh_letters_form_submit($form, &$form_state)
 	    file_save($file);
 	    $fname = $file->uri;
 	    /*
-		$ret = s3_put_file('vri-dipi', str_replace("private:///", '', $file->uri), str_replace("private:///", '', $file->uri));	    
+		$ret = s3_put_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $file->uri), str_replace("private:///", '', $file->uri));	    
 		if (!$ret['success'])
 			watchdog('S3Letters', $ret['message']);
 		*/
@@ -577,7 +577,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$ret = s3_get_file('vri-dipi', str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
+		$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
 		$attachment[] = $ret['data'];
 	}
 	if ( in_array($event, array('R-ATReview', 'A-ATReview')))
@@ -585,7 +585,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$ret = s3_get_file('vri-dipi', str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
+		$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
 		//$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
 		$attachment[] = $ret['data'];	
 		if ($row['a_email'] == '')

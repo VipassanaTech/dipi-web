@@ -718,7 +718,7 @@ function dh_manageapp_admin_form($form, &$form_state)
  		'#default_value' => variable_get('important_notice', ''));
 
  	$form['s3_bucket_name'] = array('#type' => 'textfield',  '#title' => 'S3 Bucket Name', 
- 		'#default_value' => variable_get('s3_bucket_name', 'vri-dipi'));
+ 		'#default_value' => variable_get('s3_bucket_name', variable_get('s3_bucket_name', '')));
 
  	$group = 'Test Mode Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => $group , '#collapsible' => true, '#collapsed' => false);
@@ -1982,7 +1982,7 @@ function show_application_pdf( $app_id )
 	$url = db_query($q)->fetchField();
 
 	$url = str_replace("private:///", '', $url);
-	$ret = s3_get_file('vri-dipi', $url, 'stream');
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $url, 'stream');
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
 
@@ -2005,7 +2005,7 @@ function show_application_photo( $app_id )
 	$url = db_query($q)->fetchField();
 
 	$url = str_replace("private://", '', $url);
-	$ret = s3_get_file('vri-dipi', $url, 'stream');
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $url, 'stream');
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
 
@@ -2031,7 +2031,7 @@ function show_clarification( $app_id, $clarification_id )
 	$url = db_query($q)->fetchField();
 
 	$url = str_replace("private:///", '', $url);
-	$ret = s3_get_file('vri-dipi', $url, 'stream');
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $url, 'stream');
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
 

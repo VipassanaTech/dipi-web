@@ -440,7 +440,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$result = db_query($q);
 	$r = $result->fetchAssoc();
 
-	$ret = s3_get_file('vri-dipi', str_replace('private://', '', $r['a_photo']), 'stream');
+	$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace('private://', '', $r['a_photo']), 'stream');
 	if (!$ret['success'])
 		watchdog('S3Photo', $ret['message']);
 

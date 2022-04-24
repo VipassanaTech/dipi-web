@@ -166,7 +166,7 @@ function create_d11_report_pdf( $course_id )
 	$out_uri = $uri."/reports/".$centre_id."/".$year."/report-Day11-".$course_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 
-	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
+	$ret = s3_put_file(variable_get('s3_bucket_name', ''), $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
 		watchdog('S3Pdf', $ret['message']);
 	unlink($out_pdf);
@@ -250,7 +250,7 @@ function create_application_pdf( $application_id )
 	{
 		$photo_path = str_replace("private://", $path."/", $row['a_photo'] );
 		$photo_path = str_replace("private://", '', $row['a_photo'] );
-		$ret = s3_get_file('vri-dipi', $photo_path, 'file');
+		$ret = s3_get_file(variable_get('s3_bucket_name', ''), $photo_path, 'file');
 		if (!$ret['success'])
 			watchdog('S3Pdf', $ret['message']);
 		$type = (strtoupper($row['td_val3']) == 'LC')?'LC':'GEN';
@@ -259,7 +259,7 @@ function create_application_pdf( $application_id )
 	}
 	//chown($out_pdf, "www-data");
 	//drupal_set_message($out_uri." called ");
-	$ret = s3_put_file('vri-dipi', $out_pdf, str_replace("private:///", '', $out_uri) );
+	$ret = s3_put_file(variable_get('s3_bucket_name', ''), $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
 		watchdog('S3Pdf', $ret['message']);
 	unlink($out_pdf);
