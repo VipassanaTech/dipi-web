@@ -3,7 +3,7 @@
 		<tbody>
 			<tr class="align-center">
 				<td colspan="3"><h2><?php echo $data['Name']?><?php echo $data['a_uri']; ?></h2></td>
-				<td rowspan="7"><img width="220px" src="<?php echo $data['a_photo']; ?>"></td>
+				<td rowspan="7"><img width="220px" src="data:image/png;base64,<?php echo $data['a_photo']; ?>"></td>
 			</tr>
 			<tr class="align-left">
 				<td><label>Course</label></td>

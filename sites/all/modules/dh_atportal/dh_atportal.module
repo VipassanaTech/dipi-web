@@ -79,6 +79,13 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at address book'),
 	       'type' => MENU_CALLBACK);
 
+	$items['show-application-at/%lcappid'] = array( 'title' => t('Application PDF'),
+	       'page callback' => 'show_lc_application_pdf',
+	       'page arguments' => array(1),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+
     return $items;
 }
 
@@ -351,7 +358,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 		$rs['CourseDt'] = $r['CourseStart']." - ".$r['CourseEnd'];
 		$pdf_link = '';
 		if ( $r['a_uri'] <> '' )
-			$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
+			$pdf_link = '&nbsp;('.l("PDF", "show-application-at/".$r['a_id'], array('attributes' => array("target" => "_blank") ) ).')';
 
 		$rs['NameDetails'] = $r['Student Name'].$pdf_link."<br>".$r['Gender']."&nbsp;|&nbsp;".(($r['Sit/Serve']=='Student')?'Sit':'Serve');
 		$rs['Email'] = $r['Email']."<br>".$r['a_phone_mobile'];
@@ -423,6 +430,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
+
 	$at_code = $user->name;
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
@@ -431,10 +439,15 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
 	$result = db_query($q);
 	$r = $result->fetchAssoc();
+
+	$ret = s3_get_file('vri-dipi', str_replace('private://', '', $r['a_photo']), 'stream');
+	if (!$ret['success'])
+		watchdog('S3Photo', $ret['message']);
+
 	if ($r['City'] == '')
 		$r['City'] = $r['a_city_str'];
 	if ($r['a_photo'])
-		$r['a_photo'] = file_create_url($r['a_photo']);
+		$r['a_photo'] = base64_encode($ret['data']); //file_create_url($r['a_photo']);
 	$pdf_link = '';
 	if ( $r['a_uri'] <> '' )
 		$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
@@ -661,4 +674,9 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	}
 
 	drupal_goto("lc-review/me");
+}
+
+function show_lc_application_pdf( $app_id )
+{
+	show_application_pdf( $app_id );
 }
