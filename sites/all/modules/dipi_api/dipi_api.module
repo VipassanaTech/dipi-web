@@ -2126,8 +2126,8 @@ function _process_lc_application( $appid, $data)
 
         if ($data['status'] == 'Transfer to Registrar')
         {
-            $upd['al_recommending'] = ''
-            $upd['al_area_at'] = ''            
+            $upd['al_recommending'] = '';
+            $upd['al_area_at'] = '';            
         }
 
         db_update('dh_applicant_lc')->fields($upd)->condition('al_applicant', $appid)->execute();
