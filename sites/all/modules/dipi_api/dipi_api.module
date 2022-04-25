@@ -2074,6 +2074,7 @@ function _process_lc_application( $appid, $data)
     }
 
     $action = "";
+    $type = '';
     if ($row['a_status'] == 'R-ATReview')
     {
         $action= 'reco';
@@ -2093,8 +2094,8 @@ function _process_lc_application( $appid, $data)
     if ($row['a_status'] == 'R-ATReview')
     {
         if ($is_cat)
-            $data['teacher_code'] = $data['a_code'].'.'.$data['gender'];
-        if ($data['teacher_code'] == '')
+            $data['teacher_code'] = $data['at_code'].'.'.$data['gender'];
+        if ($data['teacher_code'] == '' && $data['status'] == 'Approved')
             return array('Error' => 'Area Teacher code is required');            
     }
 
@@ -2102,18 +2103,15 @@ function _process_lc_application( $appid, $data)
     $new_status = '';
     if ($action == 'reco')
     {
-        if ($is_cat)
+        $upd['al_recommending_comments'] = $data['comment'];
+        $upd['al_recommending_approved'] = $data['status'];
+        if ($data['status'] == 'Approved')
         {
-            $upd['al_recommending_comments'] = $data['comment'];
-            $upd['al_recommending_approved'] = $data['status'];
-            $upd['al_area_at'] = $data['teacher_code'];            
-            $upd['al_area_at_comments'] = $data['comment'];
-            $upd['al_area_at_approved'] = $data['status'];
-        }
-        else
-        {
-            $upd['al_recommending_comments'] = $data['comment'];
-            $upd['al_recommending_approved'] = $data['status'];
+            if ($is_cat)
+            {
+                $upd['al_area_at_comments'] = $data['comment'];
+                $upd['al_area_at_approved'] = $data['status'];
+            }
             $upd['al_area_at'] = $data['teacher_code'];
 
             $gender = substr($data['teacher_code'], -1);
@@ -2122,9 +2120,7 @@ function _process_lc_application( $appid, $data)
             $at_name = db_query($q)->fetchField();
             if ($at_name == '')
                 return array('Error' => 'Invalid Area Teacher AT Code');
-        }
-        if ($data['status'] == 'Approved')
-        {
+
             $new_status = 'A-ATReview';
             if ($is_cat)
                 $new_status = 'Received';
