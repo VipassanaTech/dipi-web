@@ -2057,7 +2057,7 @@ function _process_lc_application( $appid, $data)
     if (! in_array($row['a_status'], array('R-ATReview', 'A-ATReview')) )
         return  array('Error' => 'App Id is not in R-ATReview, A-ATReview');                
 
-    $q = "select CONCAT(t_f_name, ' ', t_l_name) as 'name', t_cat from dh_teacher where t_code = '".$data['at_code']."' and t_gender = '".$data['gender']."' limit 1";
+    $q = "select CONCAT(t_f_name, ' ', t_l_name) as 'name', t_cat, t_full_t from dh_teacher where t_code = '".$data['at_code']."' and t_gender = '".$data['gender']."' limit 1";
     $row_at = db_query($q)->fetchAssoc();
     $is_cat = 0;
     $at_name='';
@@ -2065,7 +2065,8 @@ function _process_lc_application( $appid, $data)
     {
         if ($row_at['name'] == '')
             return array('Error' => 'Invalid AT Code');
-        $is_cat = $row_at['t_cat'];
+        if ($row_at['t_cat'] || $row_at['t_full_t'])
+            $is_cat = 1;
         $at_name = $row_at['name'];      
     }
     else
