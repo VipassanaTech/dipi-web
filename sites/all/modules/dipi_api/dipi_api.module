@@ -2143,7 +2143,7 @@ function _process_lc_application( $appid, $data)
     elseif ($action == 'area')
     {
         $upd['al_area_at_comments'] = $data['comment'];
-        $upd['al_area_at_comments'] = $data['status'];
+        $upd['al_area_at_approved'] = $data['status'];
         db_update('dh_applicant_lc')->fields($upd)->condition('al_applicant', $appid)->execute();
         if ($data['status'] == 'Approved')
             $new_status = 'Received';
