@@ -2045,11 +2045,14 @@ function _process_lc_application( $appid, $data)
         if (strlen($data['comment']) > 250)
             return array('Error' => 'Comment must be less than 250 chars');
 
-    $q = "select * from dh_applicant a left join dh_applicant_lc al on (a.a_id=al.al_applicant) left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_center c on (a.a_center=c.c_id) left join dh_course co on (a.a_course=co.c_id) left join dh_type_detail td on co.c_course_type=td.td_id where a_id= $appid";
+    $q = "select *, DATEDIFF(CURDATE(), co.c_start) as 'diff' from dh_applicant a left join dh_applicant_lc al on (a.a_id=al.al_applicant) left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_center c on (a.a_center=c.c_id) left join dh_course co on (a.a_course=co.c_id) left join dh_type_detail td on co.c_course_type=td.td_id where a_id= $appid";
     $res = db_query($q);
     $row = $res->fetchAssoc();
     if (!$row)
         return  array('Error' => 'Invalid App Id');
+
+    if ($row['diff'] > 0)
+        return  array('Error' => 'Course is already started'); 
 
     if ($row['td_val3'] <> 'LC')
         return  array('Error' => 'App Id is not a LC application');        
