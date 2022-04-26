@@ -2113,13 +2113,13 @@ function _process_lc_application( $appid, $data)
                 $upd['al_area_at_comments'] = $data['comment'];
                 $upd['al_area_at_approved'] = $data['status'];
             }
-            $upd['al_area_at'] = $data['teacher_code'];
+            //$upd['al_area_at'] = $data['teacher_code'];
 
             $gender = substr($data['teacher_code'], -1);
             $t_code = substr($data['teacher_code'], 0, -2);
             $q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_code = '".$t_code."' and t_gender = '".$gender."' and (t_cat = 1 or t_full_t = 1)  limit 1";
-            $at_name = db_query($q)->fetchField();
-            if ($at_name == '')
+            $upd['al_area_at'] = db_query($q)->fetchField();
+            if ($upd['al_area_at'] == '')
                 return array('Error' => 'Invalid Area Teacher AT Code');
 
             $new_status = 'A-ATReview';
