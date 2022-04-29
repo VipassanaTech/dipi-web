@@ -24,6 +24,10 @@ function dh_manage_letters()
 			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Letter deleted successfully");
 			drupal_goto("letters/".arg(1));
+		case 'delattach':
+			db_update("dh_letter")->fields(array('l_attachment' => null))->condition('l_id', arg(3))->execute();
+			drupal_set_message("Attachment deleted successfully");
+			drupal_goto("letters/".arg(1)."/edit/".arg(3));
 		default:
 			return dh_letters_listing();
 			break;
@@ -148,13 +152,15 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['l_sms'], '#required' => 0,  );
 
 	$attach_link = '';
+	$delete_attach_link = '';
 	if (!$add)
 		if ( isset($edit_data['l_attachment']))
 		{
 			$attach_link = l( "View Attachment" , file_create_url($edit_data['l_attachment']));
+			$delete_attach_link = l( "    (Delete Attachment)" , "letters/".arg(1)."/delattach/".arg(3), array("attributes" => array('id' => array("delete-letter-attachment"))));
 		}
 	$form['l_attachment'] = array('#title' => 'Attachment', '#type' => 'file', '#weight' => 5, 
-		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link  );
+		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link.$delete_attach_link  );
 
 	if ($add)
 		$action = 'Add Letter';
@@ -174,6 +180,13 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 			        $txt.val(textAreaTxt.substring(0, caretPos) + txtToAdd + textAreaTxt.substring(caretPos) );
 
 					return false;
+				});
+				$("#delete-letter-attachment").click(function () {
+					var r = confirm("Are you sure you want to delete the attachment ?");
+					if ( r == false )
+						return false;
+					else
+						return true;
 				});
 			});
 
