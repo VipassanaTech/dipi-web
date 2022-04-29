@@ -155,7 +155,7 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	if (!$add)
 		if ( isset($edit_data['l_attachment']))
 		{
-			$attach_link = l( "View Attachment" , file_create_url($edit_data['l_attachment']))."  |  ".l( "(Delete Attachment)" , "letters/".arg(1)."/delattach/".arg(3), array("attributes" => array('id' => array("delete-letter-attachment"))));
+			$attach_link = l( "View Attachment" , file_create_url($edit_data['l_attachment']))."  |  ".l( "Delete Attachment" , "letters/".arg(1)."/delattach/".arg(3), array("attributes" => array('id' => array("delete-letter-attachment"))));
 		}
 	$form['l_attachment'] = array('#title' => 'Attachment', '#type' => 'file', '#weight' => 5, 
 		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link  );
