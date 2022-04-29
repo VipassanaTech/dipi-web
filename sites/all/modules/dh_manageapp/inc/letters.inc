@@ -152,15 +152,13 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['l_sms'], '#required' => 0,  );
 
 	$attach_link = '';
-	$delete_attach_link = '';
 	if (!$add)
 		if ( isset($edit_data['l_attachment']))
 		{
-			$attach_link = l( "View Attachment" , file_create_url($edit_data['l_attachment']));
-			$delete_attach_link = l( "    (Delete Attachment)" , "letters/".arg(1)."/delattach/".arg(3), array("attributes" => array('id' => array("delete-letter-attachment"))));
+			$attach_link = l( "View Attachment" , file_create_url($edit_data['l_attachment']))."  |  ".l( "(Delete Attachment)" , "letters/".arg(1)."/delattach/".arg(3), array("attributes" => array('id' => array("delete-letter-attachment"))));
 		}
 	$form['l_attachment'] = array('#title' => 'Attachment', '#type' => 'file', '#weight' => 5, 
-		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link.$delete_attach_link  );
+		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link  );
 
 	if ($add)
 		$action = 'Add Letter';
