@@ -55,7 +55,21 @@ final class HttpClientException extends \RuntimeException implements Exception
 
     public static function badRequest(ResponseInterface $response = null)
     {
-        return new self('The parameters passed to the API were invalid. Check your inputs!', 400, $response);
+        $message = 'The parameters passed to the API were invalid. Check your inputs!';
+
+        if (null !== $response) {
+            $body = $response->getBody()->__toString();
+            if (0 !== strpos($response->getHeaderLine('Content-Type'), 'application/json')) {
+                $validationMessage = $body;
+            } else {
+                $jsonDecoded = json_decode($body, true);
+                $validationMessage = isset($jsonDecoded['message']) ? $jsonDecoded['message'] : $body;
+            }
+
+            $message = sprintf("%s\n\n%s", $message, $validationMessage);
+        }
+
+        return new self($message, 400, $response);
     }
 
     public static function unauthorized(ResponseInterface $response = null)
@@ -71,6 +85,11 @@ final class HttpClientException extends \RuntimeException implements Exception
     public static function notFound(ResponseInterface $response = null)
     {
         return new self('The endpoint you have tried to access does not exist. Check if the domain matches the domain you have configure on Mailgun.', 404, $response);
+    }
+
+    public static function payloadTooLarge(ResponseInterface $response = null)
+    {
+        return new self('Payload too large, your total attachment size is too big.', 413, $response);
     }
 
     /**

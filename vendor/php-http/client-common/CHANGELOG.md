@@ -1,5 +1,65 @@
 # Change Log
 
+## 1.11.0 - 2021-07-11
+
+### Changed
+
+- Backported from version 2: AddPathPlugin: Do not add the prefix if the URL already has the same prefix.
+
+## 1.10.0 - 2019-11-18
+
+### Added
+
+- Support for Symfony 5
+
+## 1.9.1 - 2019-02-02
+
+### Added
+
+- Updated type hints in doc blocks.
+
+## 1.9.0 - 2019-01-03
+
+### Added
+
+- Support for PSR-18 clients
+- Added traits `VersionBridgePlugin` and `VersionBridgeClient` to help plugins and clients to support both
+  1.x and 2.x version of `php-http/client-common` and `php-http/httplug`.
+
+### Changed
+
+- [RetryPlugin] Renamed the configuration options for the exception retry callback from `decider` to `exception_decider`
+  and `delay` to `exception_delay`. The old names still work but are deprecated.
+
+## 1.8.2 - 2018-12-14
+
+### Changed
+
+- When multiple cookies exist, a single header with all cookies is sent as per RFC 6265 Section 5.4
+- AddPathPlugin will now trim of ending slashes in paths
+
+## 1.8.1 - 2018-10-09
+
+### Fixed
+
+- Reverted change to RetryPlugin so it again waits when retrying to avoid "can only throw objects" error.
+
+## 1.8.0 - 2018-09-21
+
+### Added
+
+ - Add an option on ErrorPlugin to only throw exception on response with 5XX status code.
+
+### Changed
+
+- AddPathPlugin no longer add prefix multiple times if a request is restarted - it now only adds the prefix if that request chain has not yet passed through the AddPathPlugin
+- RetryPlugin no longer wait for retried requests and use a deferred promise instead
+
+### Fixed
+
+- Decoder plugin will now remove header when there is no more encoding, instead of setting to an empty array
+
+
 ## 1.7.0 - 2017-11-30
 
 ### Added 
