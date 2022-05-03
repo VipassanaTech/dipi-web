@@ -1293,7 +1293,15 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 				if ( isset($count_cur[$key]) && ( $count_cur[$key] >= $val ) && ( $val > 0) && ($full_done[$key] == False) )
 				{
 					$full_done[$key] = True;
-					watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$key] );
+					//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$key] );
+					$fields = array();
+					$fields['l_user'] = 15;
+					$fields['l_center'] = $center_id;
+					$fields['l_msg'] = "Gender: $gender, Type: $key, ConfigCount: $val, Count $c_status: ".$count_cur[$key];
+					$fields['l_module'] = 'dh_course';
+					$fields['l_event'] = "AUTO-COURSE-STATUS";
+					$fields['l_identifier'] = $course_id;
+					db_insert('dh_log')->fields($fields)->execute();
 
 					$new_status = ($c_status == 'full'? 'Course Full':'Wait List');
 					if ($key == 'all')
