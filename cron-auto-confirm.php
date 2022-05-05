@@ -19,12 +19,19 @@ while ($row = $result->fetchAssoc())
    echo $row['a_id']." - ".$row['a_f_name']." ".$row['a_l_name']."\n";
    $check = "select count(a_id) from dh_applicant where a_course=".$row['a_course']." and a_f_name= :fname and a_l_name = :lname and a_email = :email";
    $ret = db_query($check, array(':fname' => $row['a_f_name'], ':lname' => $row['a_l_name'], ':email' => $row['a_email']))->fetchField();
-   if ($ret <= 0)
-      update_status_external($row['a_id'], 'Confirmed');
-   else
+   try 
    {
-      update_status_external($row['a_id'], 'Rejected');
-      logit($row['a_center'], 'Auto-Reject', $row['a_id'], 'Auto rejected due to duplicate applications');
+      if ($ret <= 0)
+         update_status_external($row['a_id'], 'Confirmed');
+      else
+      {
+         update_status_external($row['a_id'], 'Rejected');
+         logit($row['a_center'], 'Auto-Reject', $row['a_id'], 'Auto rejected due to duplicate applications');
+      }
+      
+   } catch (Exception $e) 
+   {
+      //   
    }
 }
 
