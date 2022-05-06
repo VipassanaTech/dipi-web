@@ -14,6 +14,7 @@ function dipi_api_permission() {
     $perms['access voice api'] = array('title' => t('Access VOICE API') );
     $perms['get application status'] = array('title' => t('Access Application Status') );
     $perms['at portal access'] = array('title' => t('Access AT Portal APIs'));
+    $perms['zero day by conf num access'] = array('title' => t('Access Zero Day by Conf Num'));
 
     return $perms;
 }
@@ -423,6 +424,41 @@ function dipi_api_services_resources() {
                 ),
               ),
           ),
+
+
+          'app-info-by-conf-num' => array(
+                  'help' => t("Get Application Info by Confirmation Number"),
+                  'access arguments' => array('zero day by conf num access'),
+              'access arguments append' => FALSE,
+                  'callback' => '_app_info_by_conf_num',
+            'args' => array(
+              array(
+                'name' => 'conf_num',
+                'optional' => FALSE,
+                'source' => array('path' => 1),
+                'type' => 'string',
+                'description' => 'Confirmation Number',
+              ),
+            ),
+          ),
+
+
+          'mark-attended-by-conf-num' => array(
+                  'help' => t("Mark Applicant as Attended by Confirmation Number"),
+                  'access arguments' => array('zero day by conf num access'),
+              'access arguments append' => FALSE,
+                  'callback' => '_mark_attended_by_conf_num',
+            'args' => array(
+              array(
+                'name' => 'conf_num',
+                'optional' => FALSE,
+                'source' => array('path' => 1),
+                'type' => 'string',
+                'description' => 'Confirmation Number',
+              ),
+            ),
+          ),
+
 
 
         ),
@@ -2163,3 +2199,138 @@ function _process_lc_application( $appid, $data)
     return array('success' => True);
 }
 
+
+function _app_info_by_conf_num ( $conf_num )
+{
+
+    $ret = array(
+        'Success'=>'',
+        'Message'=>'',
+        'FirstName'=>'',
+        'LastName'=>'',
+        'Email'=>'',
+        'City'=>'',
+        'Attended'=>'',
+    );
+
+    if (!$conf_num)
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "Confirmation number required.";
+        return $ret;
+    }
+
+    if (!in_array(strtoupper(substr($conf_num, 0, 2)), array('NM', 'OM', 'SM', 'NF', 'OF', 'SF')))
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "Confirmation number must have first two characters as 'NM', 'OM', 'SM', 'NF', 'OF' or 'SF'.";
+        return $ret;
+    }
+
+    if (!(is_int(substr($conf_num, 2)) || ctype_digit(substr($conf_num, 2))))
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "Confirmation number must be like 'NM21', 'OM2', 'SM42', 'NF2', 'OF1' or 'SF102'.";
+        return $ret;
+    }
+
+    global $user;
+    $user_id = $user->uid;
+
+    try
+    {
+
+        $q = "select uc_center from dh_user_center where uc_user=".$user_id." and uc_deleted=0";
+        $result = db_query($q);
+
+        if ($result->rowCount()==0 || $result->rowCount() > 1)
+        {
+            $ret['Success'] = False;
+            $ret['Message'] = "Logged in user must be affilated to one center only.";
+            return $ret;
+        }
+
+        $center_id = $result->fetchField();
+
+        $q = "select c_id from dh_course where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
+        $result = db_query($q);
+
+        if ($result->rowCount()==0)
+        {
+            $ret['Success'] = False;
+            $ret['Message'] = "Today is not Zero Day for any course.";
+            return $ret;
+        }
+
+        $course_id = $result->fetchField();
+
+        $q = "select a_f_name, a_l_name, a_email, IF(a_city is null, a_city_str, c_name) as city, a_attended from dh_applicant left join dh_city on (dh_applicant.a_city=dh_city.c_id) where a_course=".$course_id." and a_conf_no=:a_conf_no";
+        $result = db_query($q, array(':a_conf_no'=>$conf_num));
+
+        if ($result->rowCount()==0)
+        {
+            $ret['Success'] = False;
+            $ret['Message'] = "There is no applicant with provided confirmation number.";
+            return $ret;
+        }
+
+        $out = $result->fetchAssoc();
+
+
+        $ret['FirstName'] = $out['a_f_name'];
+        $ret['LastName'] = $out['a_l_name'];
+        $ret['Email'] = $out['a_email'];
+        $ret['City'] = $out['city'];
+        $ret['Attended'] = $out['a_attended'];
+        $ret['Success'] = True;
+
+        return $ret;
+    }
+    catch(Exception $e)
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "There is some error.";
+        return $ret;
+    }
+}
+
+
+
+function _mark_attended_by_conf_num( $conf_num )
+{
+    $ret = array(
+        'Success'=>'',
+        'Message'=>'',
+    );
+
+    $out = _app_info_by_conf_num ( $conf_num );
+
+    if(!$out['Success'])
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = $out['Message'];
+        return $ret;
+    }
+
+    if ($out['a_attended']==1)
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "The applicant is already marked as attended.";
+        return $ret;
+    }
+
+    try
+    {
+
+        db_update('dh_applicant')->fields(array('a_attended'=>1))->condition('a_conf_no', $conf_num)->execute();
+        $ret['Success'] = True;
+        $ret['Message'] = "The applicant having conf number ".$conf_num." is successfully marked as attended.";
+        return $ret;
+    }
+    catch(Exception $e)
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "There is some error.";
+        return $ret;
+    }
+}
