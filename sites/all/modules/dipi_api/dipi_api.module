@@ -2206,8 +2206,7 @@ function _app_info_by_conf_num ( $conf_num )
     $ret = array(
         'Success'=>'',
         'Message'=>'',
-        'FirstName'=>'',
-        'LastName'=>'',
+        'Name'=>'',
         'Email'=>'',
         'City'=>'',
         'Attended'=>'',
@@ -2264,7 +2263,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $course_id = $result->fetchField();
 
-        $q = "select a_f_name, a_l_name, a_email, IF(a_city is null, a_city_str, c_name) as city, a_attended from dh_applicant left join dh_city on (dh_applicant.a_city=dh_city.c_id) where a_course=".$course_id." and a_conf_no=:a_conf_no";
+        $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'name', a_email, IF(a_city is null, a_city_str, c_name) as city, a_attended from dh_applicant left join dh_city on (dh_applicant.a_city=dh_city.c_id) where a_course=".$course_id." and a_conf_no=:a_conf_no";
         $result = db_query($q, array(':a_conf_no'=>$conf_num));
 
         if ($result->rowCount()==0)
@@ -2276,9 +2275,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $out = $result->fetchAssoc();
 
-
-        $ret['FirstName'] = $out['a_f_name'];
-        $ret['LastName'] = $out['a_l_name'];
+        $ret['Name'] = $out['name'];
         $ret['Email'] = $out['a_email'];
         $ret['City'] = $out['city'];
         $ret['Attended'] = $out['a_attended'];
