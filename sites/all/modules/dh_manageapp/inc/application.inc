@@ -1098,9 +1098,14 @@ function is_in_referal_list( $row )
 {
 	$referral = 0;
 	$q = "select r_id from dh_referral r left join dh_student s on (r.r_student=s.s_id) 
-		where s_f_name = '".$row['a_f_name']."' and s_l_name='".$row['a_l_name']."' and 
-		( s_email='".$row['a_email']."' or s_phone_mobile='".$row['a_phone_mobile']."' ) limit 1";
-	$referral = db_query($q)->fetchField();
+		where s_f_name = :s_f_name and s_l_name = :s_l_name and 
+		( s_email = :s_email or s_phone_mobile = :s_phone_mobile ) limit 1";
+	$q_array = array (':s_f_name' => $row['a_f_name'],
+					':s_l_name' => $row['a_l_name'],
+					':s_email' => $row['a_email'],
+					':s_phone_mobile' => $row['a_phone_mobile'],
+					);
+	$referral = db_query($q, $q_array)->fetchField();
 	return $referral;
 }
 
