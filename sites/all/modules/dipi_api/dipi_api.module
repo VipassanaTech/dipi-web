@@ -2208,7 +2208,7 @@ function _app_info_by_conf_num ( $conf_num )
         'Message'=>'',
         'Name'=>'',
         'Email'=>'',
-        'City'=>'',
+        'LastCourse'=>'',
         'Attended'=>'',
     );
 
@@ -2263,7 +2263,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $course_id = $result->fetchField();
 
-        $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'name', a_email, IF(a_city is null, a_city_str, c_name) as city, a_attended from dh_applicant left join dh_city on (dh_applicant.a_city=dh_city.c_id) where a_course=".$course_id." and a_conf_no=:a_conf_no";
+        $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'name', a_email, CONCAT(ac_last_location_str, '   ',ac_last_day, '-', ac_last_month, '-', ac_last_year) as 'last_coures_detail', a_attended from dh_applicant left join dh_applicant_course on (dh_applicant.a_id=dh_applicant_course.ac_applicant) where a_course=".$course_id." and a_conf_no=:a_conf_no";
         $result = db_query($q, array(':a_conf_no'=>$conf_num));
 
         if ($result->rowCount()==0)
@@ -2277,7 +2277,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $ret['Name'] = $out['name'];
         $ret['Email'] = $out['a_email'];
-        $ret['City'] = $out['city'];
+        $ret['LastCourse'] = $out['last_coures_detail'];
         $ret['Attended'] = $out['a_attended'];
         $ret['Success'] = True;
 
