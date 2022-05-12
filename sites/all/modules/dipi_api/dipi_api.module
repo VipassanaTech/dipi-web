@@ -461,6 +461,15 @@ function dipi_api_services_resources() {
 
 
 
+          'attended-stats' => array(
+                  'help' => t("Attended Status on Zero Day"),
+                  'access arguments' => array('zero day by conf num access'),
+              'access arguments append' => FALSE,
+                  'callback' => '_attended_stats',
+          ),
+
+
+
         ),
      )
   );
@@ -2323,6 +2332,69 @@ function _mark_attended_by_conf_num( $conf_num )
         $ret['Success'] = True;
         $ret['Message'] = "The applicant having conf number ".$conf_num." is successfully marked as attended.";
         return $ret;
+    }
+    catch(Exception $e)
+    {
+        $ret['Success'] = False;
+        $ret['Message'] = "There is some error.";
+        return $ret;
+    }
+}
+
+
+function _attended_stats()
+{
+    $ret = array(
+        'Success'=>'',
+        'Message'=>'',
+        'NewMaleCount'=>'',
+        'NewFemaleCount'=>'',
+        'OldMaleCount'=>'',
+        'OldFemaleCount'=>'',
+    );
+
+    global $user;
+    $user_id = $user->uid;
+
+    try
+    {
+        $q = "select uc_center from dh_user_center where uc_user=".$user_id." and uc_deleted=0";
+        $result = db_query($q);
+
+        if ($result->rowCount()==0 || $result->rowCount() > 1)
+        {
+            $ret['Success'] = False;
+            $ret['Message'] = "Logged in user must be affilated to one center only.";
+            return $ret;
+        }
+
+        $center_id = $result->fetchField();
+
+        $q = "select c_id from dh_course where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
+        $result = db_query($q);
+
+        if ($result->rowCount()==0)
+        {
+            $ret['Success'] = False;
+            $ret['Message'] = "Today is not Zero Day for any course.";
+            return $ret;
+        }
+
+        $course_id = $result->fetchField();
+
+        $q = "select count(case when a_gender = 'M' and a_old = 0 then a_id end) AS 'NewMaleCount', count(case when a_gender = 'F' and a_old = 0 then a_id end) AS 'NewFemaleCount', count(case when a_gender = 'M' and a_old = 1 then a_id end) AS 'OldMaleCount', count(case when a_gender = 'F' and a_old = 1 then a_id end) AS 'OldFemaleCount' from dh_applicant where a_attended=1 and a_type='Student' and a_course=".$course_id;
+
+        $result = db_query($q)->fetchAssoc();;
+
+        $ret['NewMaleCount']=$result['NewMaleCount'];
+        $ret['NewFemaleCount']=$result['NewFemaleCount'];
+        $ret['OldMaleCount']=$result['OldMaleCount'];
+        $ret['OldFemaleCount']=$result['OldFemaleCount'];
+        $ret['Success'] = True;
+
+        return $ret;
+
+
     }
     catch(Exception $e)
     {
