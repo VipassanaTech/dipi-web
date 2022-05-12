@@ -17,7 +17,7 @@ $result = db_query($q);
 while ($row = $result->fetchAssoc()) 
 {
    echo $row['a_id']." - ".$row['a_f_name']." ".$row['a_l_name']."\n";
-   $check = "select count(a_id) from dh_applicant where a_course=".$row['a_course']." and a_f_name= :fname and a_l_name = :lname and a_email = :email and a_status = 'Confirmed'";
+   $check = "select count(a_id) from dh_applicant where a_course=".$row['a_course']." and a_f_name= :fname and a_l_name = :lname and a_email = :email and a_status in ('Confirmed', 'Expected', 'ReConfirmation')";
    $ret = db_query($check, array(':fname' => $row['a_f_name'], ':lname' => $row['a_l_name'], ':email' => $row['a_email']))->fetchField();
    try 
    {
