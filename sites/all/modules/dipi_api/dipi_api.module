@@ -2219,7 +2219,6 @@ function _app_info_by_conf_num ( $conf_num )
         'Email'=>'',
         'LastCourse'=>'',
         'Attended'=>'',
-        'Course'=>'',
     );
 
     if (!$conf_num)
@@ -2273,7 +2272,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $course_id = $result->fetchField();
 
-        $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'name', a_email, CONCAT(ac_last_location_str, '   ',ac_last_day, '-', ac_last_month, '-', ac_last_year) as 'last_coures_detail', a_attended, c_name from dh_applicant left join dh_applicant_course on (dh_applicant.a_id=dh_applicant_course.ac_applicant) left join dh_course on dh_applicant.a_course=dh_course.c_id where a_course=".$course_id." and a_conf_no=:a_conf_no";
+        $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'name', a_email, CONCAT(ac_last_location_str, '   ',ac_last_day, '-', ac_last_month, '-', ac_last_year) as 'last_coures_detail', a_attended from dh_applicant left join dh_applicant_course on (dh_applicant.a_id=dh_applicant_course.ac_applicant) where a_course=".$course_id." and a_conf_no=:a_conf_no";
         $result = db_query($q, array(':a_conf_no'=>$conf_num));
 
         if ($result->rowCount()==0)
@@ -2289,7 +2288,6 @@ function _app_info_by_conf_num ( $conf_num )
         $ret['Email'] = $out['a_email'];
         $ret['LastCourse'] = $out['last_coures_detail'];
         $ret['Attended'] = $out['a_attended'];
-        $ret['Course'] = $out['c_name'];
         $ret['Success'] = True;
 
         return $ret;
@@ -2373,7 +2371,7 @@ function _attended_stats()
 
         $center_id = $result->fetchField();
 
-        $q = "select c_id from dh_course where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
+        $q = "select c_id, CONCAT(td_val1, ' - ', DATE_FORMAT(c_start, '%d-%b-%Y')) as Course from dh_course left join dh_type_detail on dh_course.c_course_type=dh_type_detail.td_id where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
         $result = db_query($q);
 
         if ($result->rowCount()==0)
@@ -2383,17 +2381,18 @@ function _attended_stats()
             return $ret;
         }
 
-        $course_id = $result->fetchField();
+        $out = $result->fetchAssoc();
+        $course_id = $out['c_id'];
+        $ret['Course']=$result['Course'];
 
-        $q = "select count(case when a_gender = 'M' and a_old = 0 then a_id end) AS 'NewMaleCount', count(case when a_gender = 'F' and a_old = 0 then a_id end) AS 'NewFemaleCount', count(case when a_gender = 'M' and a_old = 1 then a_id end) AS 'OldMaleCount', count(case when a_gender = 'F' and a_old = 1 then a_id end) AS 'OldFemaleCount', c_name from dh_applicant left join dh_course on dh_applicant.a_course=dh_course.c_id where a_attended=1 and a_type='Student' and a_course=".$course_id;
+        $q = "select count(case when a_gender = 'M' and a_old = 0 then a_id end) AS 'NewMaleCount', count(case when a_gender = 'F' and a_old = 0 then a_id end) AS 'NewFemaleCount', count(case when a_gender = 'M' and a_old = 1 then a_id end) AS 'OldMaleCount', count(case when a_gender = 'F' and a_old = 1 then a_id end) AS 'OldFemaleCount' from dh_applicant where a_attended=1 and a_type='Student' and a_course=".$course_id;
 
-        $result = db_query($q)->fetchAssoc();;
+        $result = db_query($q)->fetchAssoc();
 
         $ret['NewMaleCount']=$result['NewMaleCount'];
         $ret['NewFemaleCount']=$result['NewFemaleCount'];
         $ret['OldMaleCount']=$result['OldMaleCount'];
         $ret['OldFemaleCount']=$result['OldFemaleCount'];
-        $ret['Course']=$result['c_name'];
         $ret['Success'] = True;
 
         return $ret;
