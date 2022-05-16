@@ -88,14 +88,15 @@ function create_d11_report_pdf( $course_id )
 
 	$q = "select a_gender, a_old, a_country, count(a_id) as 'tot' from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and (aa_left=1 or a_status='LEFT') group by a_gender, a_old, a_country";
 	$hand = db_query($q);
-	$left['M'][0]['IN'] = $left['M'][1]['IN'] = $left['F'][0]['IN'] = $left['F'][1]['IN'] = 0;
-	$left['M'][0]['NON-IN'] = $left['M'][1]['NON-IN'] = $left['F'][0]['NON-IN'] = $left['F'][1]['NON-IN'] = 0;
+	$left['STUDENT']['M'][0]['IN'] = $left['STUDENT']['M'][1]['IN'] = $left['STUDENT']['F'][0]['IN'] = $left['STUDENT']['F'][1]['IN'] = 0;
+	$left['STUDENT']['M'][0]['NON-IN'] = $left['STUDENT']['M'][1]['NON-IN'] = $left['STUDENT']['F'][0]['NON-IN'] = $left['STUDENT']['F'][1]['NON-IN'] = 0;
+	$left['SEVAK']['M'][1]['IN'] = $left['SEVAK']['F'][1]['IN'] = $left['SEVAK']['M'][1]['NON-IN'] = $left['SEVAK']['F'][1]['NON-IN'] = 0;
 	while( $row = $hand->fetchAssoc())
 	{
 		if ( in_array(strtoupper($row['a_country']), array('IN', '') ) )
-			$left[strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
+			$left[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['IN'] += $row['tot'];
 		else
-			$left[strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
+			$left[strtoupper($row['a_type'])][strtoupper($row['a_gender'])][$row['a_old']]['NON-IN'] += $row['tot'];
 	}
 
 	$fields = array();
@@ -141,12 +142,12 @@ function create_d11_report_pdf( $course_id )
 	$fields['form1[0].#subform[0].Table2[0].Row4[0].T3[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].IN4[0]'] = $left['M'][0]['IN'] + $left['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].IO4[0]'] = $left['M'][1]['IN'] + $left['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].FN4[0]'] = $left['M'][0]['NON-IN'] + $left['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].FO4[0]'] = $left['M'][1]['NON-IN'] + $left['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].DS4[0]'] = '0';
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].T4[0]'] = $left['M'][0]['IN'] + $left['F'][0]['IN'] + $left['M'][1]['IN'] + $left['F'][1]['IN'] + $left['M'][0]['NON-IN'] + $left['F'][0]['NON-IN'] + $left['M'][1]['NON-IN'] + $left['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].IN4[0]'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].IO4[0]'] = $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].FN4[0]'] = $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].FO4[0]'] = $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].DS4[0]'] = $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
+	$fields['form1[0].#subform[0].Table2[0].Row5[0].T4[0]'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'] + $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'] + $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'] + $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'] + $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
 
 
 	$template = drupal_get_path("module", "dh_manageapp")."/templates/report-d11-template.pdf";
