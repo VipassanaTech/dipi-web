@@ -1948,7 +1948,7 @@ function _get_student_finalize()
     global $user;
     $c_course = arg(1);
 
-    $q = "SELECT count(a_attended) as TotalAttended from dh_applicant where a_attended=1 and a_course=$c_course";
+    $q = "SELECT count(a_attended) as TotalAttended from dh_applicant a left join dh_course c on a.a_course=c.c_id where c_end <= CURDATE() and a_attended=1 and a_course=$c_course";
     $result = db_query($q);
     $Count = $result->rowCount();
     if ($Count > 0) 

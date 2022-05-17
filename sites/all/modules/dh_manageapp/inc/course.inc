@@ -258,7 +258,7 @@ function dh_manage_courses()
 			                				}
 			                				else
 			                				{
-			                					alert("Students who have attended course have not been updated. Please update via Zero Day section");
+			                					alert("Course is not yet finished or Students who have attended course have not been updated. Please update via Zero Day section");
 			                					return;
 			                				}
 			                			}
