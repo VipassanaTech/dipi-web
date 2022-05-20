@@ -978,7 +978,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		if ($trigger_letter_reco)
 			dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
 		if ($trigger_letter_area)
-			dh_send_letter('a-teacher', $app_id, 'R-ATReview' );
+			dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
 	}
 
 	if ($input['attending'])
