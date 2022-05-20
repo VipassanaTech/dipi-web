@@ -2304,6 +2304,7 @@ function _app_info_by_conf_num ( $conf_num )
 
 function _mark_attended_by_conf_num( $conf_num )
 {
+    global $user;
     $ret = array(
         'Success'=>'',
         'Message'=>'',
@@ -2327,8 +2328,9 @@ function _mark_attended_by_conf_num( $conf_num )
 
     try
     {
-
-        db_update('dh_applicant')->fields(array('a_attended'=>1))->condition('a_conf_no', $conf_num)->execute();
+        $q = "select c_id from dh_course c left join dh_user_center uc on (c.c_center=uc.uc_center) where c_start = CURDATE() and uc.uc_user = ".$user->uid." limit 1";
+        $cid = db_query($q);
+        db_update('dh_applicant')->fields(array('a_attended'=>1))->condition('a_course', $cid)->condition('a_conf_no', $conf_num)->execute();
         $ret['Success'] = True;
         $ret['Message'] = "The applicant having conf number ".$conf_num." is successfully marked as attended.";
         return $ret;
