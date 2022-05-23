@@ -179,3 +179,148 @@ function dh_center_sms_report()
 	return $out;
 
 }
+
+
+function dh_center_course_report_form($form, &$form_state)
+{
+	$centre_id = arg(1);
+
+	$form = array();
+	$form['dashboard'] = array(
+  		'#markup' => '<h2>'.l("Back to Dashboard", "/centre/$centre_id").'</h2>',
+	);
+	$form['heading'] = array(
+  		'#markup' => '<h2>Get Report for Courses Having Start Date:</h2>',
+	);
+	$form['report_from_date'] = array(
+		'#type' => 'date_popup',
+		'#default_value' => date('Y-m-d', strtotime('-1 year')),
+		'#title' => t('From'),
+		'#size' => 12,
+		'#weight' => 5,
+		'#date_format' => 'Y-m-d',
+		'#date_year_range' => '-100:+0',
+		'#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'),
+		'#datepicker_options' => array(
+			'maxDate' => 0,
+			'#required' => 1,
+			'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+		),
+	);
+
+	$form['report_to_date'] = array(
+		'#type' => 'date_popup',
+		'#default_value' => date('Y-m-d'),
+		'#title' => t('To'),
+		'#size' => 12,
+		'#weight' => 10,
+		'#date_format' => 'Y-m-d',
+		'#date_year_range' => '-100:+0',
+		'#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'),
+		'#datepicker_options' => array(
+			'maxDate' => 0,
+			'#required' => 1,
+			'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+		),
+	);
+
+	$form['#attached']['css'][] = array(
+		'data' => '#edit-report-from-date, #edit-report-to-date { float: none; }',
+		'type' => 'inline',
+	);
+
+
+	$form['sub'] = array(
+		'#type' => 'submit',
+		'#value' => 'Download Course Report',
+		'#weight' => 15,
+		'#prefix' => '<br>',
+	);
+	return $form;
+}
+
+
+function dh_center_course_report_form_submit($form, &$form_state)
+{
+	$centre_id = arg(1);
+	$from_date = $form_state['input']['report_from_date']['date'];
+	$to_date = $form_state['input']['report_to_date']['date'];
+
+	$q = "select CourseID, Course, NewMale, NewFemale, (NewMale + NewFemale) as NewTotal, OldMale, OldFemale, (OldMale + OldFemale) as OldTotal , (NewMale + NewFemale + OldMale + OldFemale) as StudentTotal, SevakMale, SevakFemale, (SevakMale + SevakFemale) as SevakTotal from 
+		( select co.c_id as 'CourseID', co.c_name as Course, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 0 then a.a_id end) as NewMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 0 then a.a_id end) AS NewFemale, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 1 then a.a_id end) AS OldMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 1 then a.a_id end) AS OldFemale, count(case when a.a_type='Sevak' and a.a_gender = 'M' then a.a_id end) AS SevakMale, count(case when a.a_type='Sevak' and a.a_gender = 'F' then a.a_id end) AS SevakFemale from dh_applicant a left join dh_course co on a.a_course=co.c_id where a.a_attended=1 and DATE(co.c_start)>='$from_date' and DATE(co.c_start)<='$to_date' and a.a_center=$centre_id group by co.c_name order by co.c_start) q";
+
+	$result = db_query($q);
+
+
+	$header = array('Course', 'NewMale', 'NewFemale', 'NewTotal', 'OldMale', 'OldFemale', 'OldTotal', 'StudentTotal', 'SevakMale', 'SevakFemale', 'SevakTotal', 'ConductingTeachers', 'AssistingTeachers', 'TrainingTeachers');
+
+	$fname = tempnam(sys_get_temp_dir(), "course_report");
+	$fp = fopen($fname, "w");
+	fputcsv($fp, $header);
+
+	$new_male_total=0;
+	$new_female_total=0;
+	$new_total=0;
+	$old_male_total=0;
+	$old_female_total=0;
+	$old_total=0;
+	$student_total=0;
+	$sevak_male_total=0;
+	$sevak_female_total=0;
+	$sevak_total=0;
+
+	while($row = $result->fetchAssoc())
+	{
+		$course_id = $row['CourseID'];
+		$q = "SELECT ct_type, CONCAT(t_f_name, ' ', t_l_name, ' (', t_gender, ')') as 'name' FROM dh_course_teacher ct left join dh_teacher t on ct.ct_teacher=t.t_id where ct_course=$course_id order by t_gender";
+		unset($row['CourseID']);
+		$out = db_query($q);
+
+		$row['Conducting']='';
+		$row['Assisting']='';
+		$row['Training']='';
+		while($r = $out->fetchAssoc())
+		{
+			$row[$r['ct_type']] = $row[$r['ct_type']].$r['name']."\n";
+		}
+		$row['Conducting'] = trim($row['Conducting']);
+		$row['Assisting'] = trim($row['Assisting']);
+		$row['Training'] = trim($row['Training']);
+		fputcsv($fp, $row);
+
+		$new_male_total = $new_male_total + $row['NewMale'];
+		$new_female_total = $new_female_total + $row['NewFemale'];
+		$new_total = $new_total + $row['NewTotal'];
+		$old_male_total = $old_male_total + $row['OldMale'];
+		$old_female_total = $old_female_total + $row['OldFemale'];
+		$old_total = $old_total + $row['OldTotal'];
+		$student_total = $student_total + $row['StudentTotal'];
+		$sevak_male_total = $sevak_male_total + $row['SevakMale'];
+		$sevak_female_total = $sevak_female_total + $row['SevakFemale'];
+		$sevak_total = $sevak_total + $row['SevakTotal'];
+
+	}
+
+	fputcsv($fp, array('', 'NewMale', 'NewFemale', 'NewTotal', 'OldMale', 'OldFemale', 'OldTotal', 'StudentTotal', 'SevakMale', 'SevakFemale', 'SevakTotal',));
+
+	fputcsv($fp, array('Total',$new_male_total, $new_female_total, $new_total, $old_male_total, $old_female_total, $old_total, $student_total, $sevak_male_total, $sevak_female_total, $sevak_total));
+
+	fclose($fp);
+
+	header("Content-Type: text/csv");
+	header('Content-disposition:attachment; filename="course report '.$from_date.' to '.$to_date.'.csv"');
+	header('Cache-Control: max-age=0');
+	// If you're serving to IE 9, then the following may be needed
+	//header('Cache-Control: max-age=1');
+
+	// If you're serving to IE over SSL, then the following may be needed
+	header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+	header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); // always modified
+	header ('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+	header ('Pragma: public'); // HTTP/1.0
+	readfile($fname);
+	unlink($fname);
+	exit();
+}

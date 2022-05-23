@@ -66,6 +66,7 @@ function dh_manageapp_permission()
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
 	$perms['view sms report'] = array('title' => t('View SMS report'));
+	$perms['view course report'] = array('title' => t('View Course report'));
 	$perms['access webhook'] = array('title' => t('Allow Webhook'));
 	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
@@ -229,6 +230,12 @@ function dh_manageapp_menu()
 	$items['sms-count/%course_id'] = array( 'title' => 'SMS Report',
 	       'page callback' => '_get_sms_count',
 	       'access arguments' => array('view sms report'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/course-report'] = array('title' => t('Course Report'),
+    		'page arguments' => array('dh_center_course_report_form'),
+	       'page callback' => 'drupal_get_form',
+	       'access arguments' => array('view course report'),
 	       'type' => MENU_CALLBACK);
 
 	$items['zero-day'] = array( 'title' => t('Day Zero'),
