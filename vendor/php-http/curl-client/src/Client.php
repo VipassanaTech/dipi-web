@@ -132,7 +132,7 @@ class Client implements HttpClient, HttpAsyncClient
             case CURLE_COULDNT_CONNECT:
             case CURLE_OPERATION_TIMEOUTED:
             case CURLE_SSL_CONNECT_ERROR:
-                throw new Exception\NetworkException(curl_error($this->handle), $request);
+                //throw new Exception\NetworkException(curl_error($this->handle), $request);
             default:
                 throw new Exception\RequestException(curl_error($this->handle), $request);
         }
