@@ -222,8 +222,21 @@ function create_application_pdf( $application_id )
 		$fields = map_application_fields($row);
 		$fields['dad'] = $row['ae_father']; 	
 		$fields['mom'] = $row['ae_mother'];
-		$fields['atsig'] = $row['al_recommending'];
 		$fields['comp_course'] = $row['ae_parent_course']?'Yes':'No';
+
+		if ($row['ae_ch_course'] == 1)
+			$fields['ccc_yes'] = 'Yes';
+		else
+			$fields['ccc_no'] = 'Yes';
+
+		$fields['ccc_detail'] = $row['ae_ch_course_detail'];
+
+		if ($row['ae_ch_practice'] == 1)
+			$fields['pana_yes'] = 'Yes';
+		else
+			$fields['pana_no'] = 'Yes';
+
+		$fields['pana_detail'] = $row['ae_ch_practice_detail'];
 			
 		$template = drupal_get_path("module", "dh_manageapp")."/templates/teenager-template.pdf";
 	}
