@@ -399,6 +399,8 @@ function map_application_fields($row)
 		$fields['Most Recent Course Sat  Date'] = $row['ac_last_year'].'-'.$row['ac_last_month'].'-'.$row['ac_last_day'];; 	
 		$fields['Location_2'] = $row['ac_last_location_str'];	$fields['Teachers_2'] = $row['ac_last_teacher_str'];
 
+		$fields['teen'] = $row['ac_teen'];
+
 		$fields['10'] = $row['ac_10d'];		$fields['stp'] = $row['ac_stp'];	$fields['20'] = $row['ac_20d'];		$fields['spl'] = $row['ac_spl'];		
 		$fields['tsc'] = $row['ac_tsc']; 	$fields['30'] = $row['ac_30d'];		$fields['45'] = $row['ac_45d'];		$fields['60'] = $row['ac_60d'];
 		$fields['seva'] = $row['ac_service'];				
