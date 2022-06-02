@@ -222,6 +222,7 @@ function create_application_pdf( $application_id )
 		$fields = map_application_fields($row);
 		$fields['dad'] = $row['ae_father']; 	
 		$fields['mom'] = $row['ae_mother'];
+		$fields['Std'] = $row['ae_teen_std'];
 		$fields['comp_course'] = $row['ae_parent_course']?'Yes':'No';
 
 		if ($row['ae_ch_course'] == 1)
