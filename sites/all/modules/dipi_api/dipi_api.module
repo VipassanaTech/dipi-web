@@ -470,6 +470,38 @@ function dipi_api_services_resources() {
 
 
 
+        'post-oneday-application' => array(
+              'help' => t("Post an application to oneday course"),
+              'access arguments' => array('post application'),
+              'access arguments append' => FALSE,
+              'callback' => '_api_post_oneday_application',
+              'args' => array(
+                array(
+                  'name' => 'centre',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Centre ID',
+                ),
+                array(
+                  'name' => 'course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Base64 Encoded Query string key value pairs',
+                ),
+              ),
+        ),          
+
+
+
         ),
      )
   );
@@ -2409,4 +2441,302 @@ function _attended_stats()
         $ret['Message'] = "There is some error.";
         return $ret;
     }
+}
+
+
+
+
+function _api_post_oneday_application( $centre, $course, $data )
+{
+    log_app( "Centre: $centre, Course: $course, D: ".print_r($data, true) );
+    if (!$centre)
+      return array( "Result" => "Error", 'Message' => 'Invalid Centre');
+
+    if (!$course)
+      return array( "Result" => "Error", "Message" => 'Invalid Course');
+
+    if (!$data)
+      return array( "Result" => "Error", "Message" => 'Invalid Data');
+
+    $course_data = db_query("select c_id,c_status_nf,c_status_nm,c_status_of,c_status_om,c_status_svr_f,c_status_svr_m, c_status from 
+        dh_course where c_center=$centre and c_id=$course")->fetchAssoc();
+    $row_ctype = db_query("select td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
+    $course_type = $row_ctype['td_val3'];
+    if ( isset($course_data) && ( $course_data['c_id'] <> $course) )
+        return array("Result" => "Error", "Message" => "Course or Centre ID Invalid");
+
+    if ( $course_type <> '1-Day' )
+        return array("Result" => "Error", "Message" => "Not a 1 Day Course");
+
+
+    $vals = array();
+    parse_str($data['data'], $vals);
+    if ( isset($vals['photo_data']) )
+    {
+       $vals['photo_data'] = str_replace(" ", "+", $vals['photo_data']);
+    }
+    $r = array();
+    $oldstudent = 0;
+
+    if (!isset($vals['type']) || ( !in_array($vals['type'], array('Student', 'Sevak')) )  )
+      return array("Result" => "Error", "Message" => 'Applicant Type not present or not equal to Student or Sevak ' );
+
+    if (!isset($vals['oldstudent']) || ( !in_array($vals['oldstudent'], array('1')) )  )
+      return array("Result" => "Error", "Message" => 'Old Student not present or not equal to 1' );
+
+
+    $oldstudent = $vals['oldstudent'];
+    if ($vals['type'] == 'Sevak')
+    {
+      $check_field = 'c_status_svr_'.strtolower($vals['gender']);  
+    }
+    else
+    {
+       $check_field = 'c_status_'.($oldstudent?'o':'n').strtolower($vals['gender']);
+    }
+    
+    if ( in_array( strtolower($course_data[$check_field]), array('full', 'course full', 'closed') ) || ( in_array( strtolower($course_data['c_status']), array('closed') ) ) )
+        return array("Result" => "Error", "Message" => "Cannot accept applications as status is full/closed");
+
+    if (!isset($vals['fname']) || (strlen($vals['fname']) > 50)  )
+      return array("Result" => "Error", "Message" => 'First Name not present or more than 50 chars' );
+    $r['a_f_name'] = $vals['fname'];
+
+    if (!isset($vals['lname']) || (strlen($vals['lname']) > 50) )
+      return array("Result" => "Error", "Message" => 'Last Name not present or more than 50 chars');
+    $r['a_l_name'] = $vals['lname'];
+
+    if (isset($vals['mname']) && (strlen($vals['mname']) > 50) )
+      return array("Result" => "Error", "Message" => 'Middle Name more than 50 chars');
+    
+    if (!isset($vals['mname']))
+      $r['a_m_name'] = '';
+    else
+      $r['a_m_name'] = $vals['mname'];  
+
+    if (!isset($vals['gender']) || (!in_array($vals['gender'], array("M", "F")) ) )
+      return array("Result" => "Error", "Message" => 'Gender not present or not "M"/"F" ');
+    $r['a_gender'] = $vals['gender'];
+
+    if (!isset($vals['age']) && ( !isset($vals['dob']) ) )
+      return array("Result" => "Error", "Message" => 'Age/DOB not present');
+
+    if (isset($vals['age']) && (($vals['age'] < 8) || ($vals['age'] > 95)) )
+      return array("Result" => "Error", "Message" => "Age incorrect");
+    else
+      $r['a_dob'] = date("Y", strtotime("-".$vals['age']." year"))."-01-01";
+
+    if (isset($vals['dob']) && (!preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/",$vals['dob'])) )
+      return array("Result" => "Error", "Message" => "DOB not in yyyy-mm-dd format");
+    else
+      $r['a_dob'] = $vals['dob'];
+
+    //if (!isset($vals['mobile']) || (!preg_match("/^[0-9]{10}$/", $vals['mobile']) ) )
+    $is_value = false;
+    $phone_type = -1;
+    $mobile_format = \libphonenumber\PhoneNumberUtil::getInstance();
+    $country_code = '';
+    try {
+      $m_phone = $mobile_format->parse("+".$vals['mobile'], null, null, true);
+      $is_valid = $mobile_format->isValidNumber($m_phone);
+      $phone_type = $mobile_format->getNumberType($m_phone); 
+      $country_code = $m_phone->getCountryCode();
+      $r['a_mob_country'] = $country_code;
+      $vals['mobile'] = substr($vals['mobile'], strlen((string)$country_code));
+      /*
+      if ($country_code == '91')
+      {
+         $vals['mobile'] = substr($vals['mobile'], -10);
+      }*/
+    } catch (Exception $e) {
+      
+    }
+    
+    if (!isset($vals['mobile']) || ( !$is_valid  ) || ( ! in_array($phone_type, array(1,2)) ) ) 
+      return array("Result" => "Error", "Message" => 'Mobile not present or not a valid mobile '.$is_valid.' '.$phone_type.' '.$country_code);
+    $r['a_phone_mobile'] = $vals['mobile'];
+
+
+    if (!isset($vals['email']) || ( !filter_var($vals['email'], FILTER_VALIDATE_EMAIL) ) )
+      return array("Result" => "Error", "Message" => 'Email not present or not a valid email');
+    $r['a_email'] = $vals['email'];
+
+    if (!isset($vals['zip']) )
+      return array("Result" => "Error", "Message" => 'Zipcode not present');
+    $r['a_zip'] = $vals['zip'];
+
+    if (!isset($vals['country']) || (strlen($vals['country']) > 2 ) )  
+      return array("Result" => "Error", "Message" => 'Country not present or not ISO code');
+    $r['a_country'] = $vals['country'];
+
+    if (!isset($vals['state']) || (strlen($vals['state']) > 2) )  
+      return array("Result" => "Error", "Message" => 'State not present or not ISO code');
+    $r['a_state'] = $vals['state'];
+
+    if (!isset($vals['city']) || (strlen($vals['city']) > 100) )  
+      return array("Result" => "Error", "Message" => 'City not present or more than 100 chars');
+    $r['a_city'] = $vals['city'];
+
+    if (!isset($vals['address']) || ( strlen($vals['address']) > 160 ) )
+      return array("Result" => "Error", "Message" => 'Address not present or more than 160 chars');
+    $r['a_address'] = $vals['address'];
+
+    $r['ac_10d'] = 0;
+
+    if (isset($vals['10d'])  && ((!is_numeric($vals['10d'])) || ($vals['10d'] <= 0)) )
+        return array("Result" => "Error", "Message" => "10day courses must be greater than 0");
+    if (isset($vals['10d'])) $r['ac_10d'] = $vals['10d'];
+
+
+    if (!isset($vals['last_course_location']) || ( strlen($vals['last_course_location']) > 100 ) )
+      return array("Result" => "Error", "Message" => 'Last Course Location not present or more than 100 chars');
+    $r['ac_last_location_str'] = $vals['last_course_location'];
+
+
+    if (!isset($vals['last_course_year']) || ( !is_numeric($vals['last_course_year']) ) )
+      return array("Result" => "Error", "Message" => 'Last Course Year not present or not numeric');
+    if (isset($vals['last_course_year'])) $r['ac_last_year'] = $vals['last_course_year'];
+
+    if (isset($vals['last_course_month']) && ( !is_numeric($vals['last_course_month']) ) )
+      return array("Result" => "Error", "Message" => 'Last Course Month not present or not numeric');
+    if (isset($vals['last_course_month'])) $r['ac_last_month'] = $vals['last_course_month'];
+
+    if (isset($vals['last_course_day']) && ( !is_numeric($vals['last_course_day']) ) )
+      return array("Result" => "Error", "Message" => 'Last Course Day not numeric');
+    if (isset($vals['last_course_day'])) $r['ac_last_day'] = $vals['last_course_day'];
+
+
+
+
+    if (isset($vals['photo_name']) && ($vals['photo_name'] <> '') )
+    {
+       if (!isset($vals['photo_data']) || ($vals['photo_data'] == ''))
+         return array("Result" => "Error", "Message" => 'Photo Data not found');
+       //if (strstr( trim($vals['photo_data']), " " ))
+       //   return array("Result" => "Error", "Message" => 'Photo Data is not base64 encoded');
+    }
+
+    if (!isset($vals['emergency_name']) || ( strlen($vals['emergency_name']) > 50 ) )
+      return array("Result" => "Error", "Message" => 'Emergency Name not present or more than 50 chars');
+    $r['a_emergency_name'] = $vals['emergency_name'];
+
+
+    if (!isset($vals['emergency_num']) || ( strlen($vals['emergency_num']) > 40 ) )
+      return array("Result" => "Error", "Message" => 'Emergency Number not present or more than 40 chars');
+    $r['a_emergency_num'] = $vals['emergency_num'];
+
+    if (trim($vals['passport']) <> '')
+    {
+      if (strlen($vals['passport']) > 20 )
+         return array("Result" => "Error", "Message" => 'Passport more than 20 chars');
+      $r['a_passport'] = $vals['passport'];
+    }
+
+    if (trim($vals['voter_id']) <> '')
+    {
+      if (strlen($vals['voter_id']) > 20 )
+         return array("Result" => "Error", "Message" => 'Voter ID more than 20 chars');
+      $r['a_voter_id'] = $vals['voter_id'];
+    }
+
+    if (trim($vals['pancard']) <> '')
+    {
+      if (strlen($vals['pancard']) > 20 )
+         return array("Result" => "Error", "Message" => 'Pancard more than 20 chars');
+      $r['a_pancard'] = $vals['pancard'];
+    }
+
+    if (trim($vals['aadhar']) <> '')
+    {
+      if (strlen($vals['aadhar']) > 20 )
+         return array("Result" => "Error", "Message" => 'Aadhar more than 20 chars');
+      $r['a_aadhar'] = $vals['aadhar'];
+    }
+
+
+    $app['a_course'] = $course;
+    $app['a_center'] = $centre;
+    $app['a_old'] = $oldstudent; // Assuming old student, since first phase is only for seva
+    $app['a_type'] = $vals['type'];
+    $app['a_status'] =  ''; //'Received';
+    $app['a_source'] = 'VRI-app';
+    $system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();    
+    $app['a_center'] = $centre;
+    $app['a_course'] = $course;
+    $app['a_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
+    $app['a_created'] = date('Y-m-d H:i:s');
+    $app['a_updated_by'] = $system_uids['COURSE-APPLICANT-UID'];
+    $app['a_updated'] = date('Y-m-d H:i:s');
+    $app['a_attended'] = 0;
+
+    foreach ($r as $key => $value) 
+    {
+        if ( substr($key,0,2) == 'a_')
+            $app[$key] = $value;
+        if ( substr($key,0,3) == 'ac_')
+            $app_ac[$key] = $value;
+    }
+    if ($app['a_city'] <> '')
+    {   
+        $q = "select c_id from dh_city where c_country='".$app['a_country']."' and c_state='".$app['a_state']."' and c_name='".$app['a_city']."' limit 1";
+        $city_id = db_query($q)->fetchField();
+        if ( $city_id <> '')
+            $app['a_city'] = $city_id;
+        else
+        {
+            $q = "select ci.c_id from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join 
+                dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where 
+                pc_pin='".$app['a_zip']."' limit 0,1";
+            $city = db_query($q)->fetchField();
+            if ($city > 0)
+                $app['a_city'] = $city;
+            else
+            {
+                /* We just could not find the city, so lets just add it */
+                $f['c_country'] = $app['a_country'];
+                $f['c_state'] = $app['a_state'];
+                $f['c_name'] = $app['a_city'];
+                $city = db_insert('dh_city')->fields($f)->execute();
+                $app['a_city'] = $city;
+            }
+        }
+    }
+
+    $app_id = db_insert('dh_applicant')->fields($app)->execute();
+    dh_send_letter('applicant', $app_id, $app['a_status'] );
+
+    if (isset($app_ac))
+    {
+        $app_ac['ac_applicant'] = $app_id;
+        $app_ac['ac_updated_by'] = $app_ac['ac_created_by'] = $system_uids['COURSE-APPLICANT-UID'];
+        $app_ac['ac_updated'] = $app_ac['ac_created'] = date('Y-m-d H:i:s');        
+        db_insert('dh_applicant_course')->fields($app_ac)->execute();               
+    }
+
+
+    if (isset($vals['photo_name']) && ($vals['photo_name'] <> '') )
+    {
+      $temp = base64_decode($vals['photo_data']);
+      $path = pathinfo($vals['photo_name']);
+      $photo_dir = drupal_realpath('private://');
+      $dir = $photo_dir."/photo-id/".$centre."/".$course;
+      $fname = $dir."/app-".$app_id.".".$path['extension'];
+      /*if (!is_dir($dir))
+          mkdir($dir, 0755, true);
+      file_put_contents($fname, $temp);
+      */
+        $file_local = tempnam("/var/dana", "photo-app-");
+        file_put_contents($file_local, $temp);
+      $ph = array();
+      $ph['a_photo'] = "private://photo-id/$centre/$course/app-$app_id.".$path['extension'];
+        $ret = s3_put_file(variable_get('s3_bucket_name', ''), $file_local, str_replace("private://", '', $ph['a_photo']));
+        if (!$ret['success'])
+            watchdog( 'S3Photo', $ret['messsage']);
+      db_update('dh_applicant')->fields($ph)->condition('a_id', $app_id)->execute();
+    }
+    $old = getcwd();    
+    $cmd = "/usr/bin/php status-trigger.php $app_id 'Received'";
+    exec($cmd);
+    $msg = "Application submitted successfully";
+    return array("Result" => "Success", "Message" => $msg, 'ID' => $app_id );
 }
