@@ -238,8 +238,17 @@ function create_application_pdf( $application_id )
 			$fields['pana_no'] = 'Yes';
 
 		$fields['pana_detail'] = $row['ae_ch_practice_detail'];
-			
-		$template = drupal_get_path("module", "dh_manageapp")."/templates/teenager-template.pdf";
+
+		if ($row['td_val3'] == 'Teen')
+		{
+			$template = drupal_get_path("module", "dh_manageapp")."/templates/teenager-template.pdf";
+		}
+		elseif ($row['td_val3'] == 'Child')
+		{
+			$fields['extra'] = $row['a_extra'];
+			$template = drupal_get_path("module", "dh_manageapp")."/templates/children-template.pdf";
+		}
+		
 	}
 
 	else

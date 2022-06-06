@@ -39,13 +39,15 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		drupal_goto("course/$centre_id/$course_id");
 	}
 
-	$LC = $TEEN = false;
+	$LC = $TEEN = $CHILD = false;
 
 	$course_check = strtolower(db_query("select td_val3 from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchField());
 	if ($course_check == 'lc')
 		$LC = true;
 	elseif ($course_check == 'teen')
 		$TEEN = true;
+	elseif ($course_check == 'child')
+		$CHILD = true;
 		
 	
 	$group = 'Personal Information';
@@ -133,7 +135,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_education'])?$edit_data['a_education']:'', '#required' => 0, '#maxlength' => 25 );
 	$form[$group]['a_occupation'] = array('#title' => 'Occupation', '#type' => 'textfield', '#size' => '20', '#weight' => 36, 
 		'#default_value' => isset($edit_data['a_occupation'])?$edit_data['a_occupation']:'', '#required' => 0, '#maxlength' => 50 );
-	if ( !$TEEN )
+	if ( !($TEEN || $CHILD))
 	{
 		$form[$group]['a_company'] = array('#title' => 'Company', '#type' => 'textfield', '#size' => '20', '#weight' => 37, 
 		'#default_value' => isset($edit_data['a_company'])?$edit_data['a_company']:'', '#required' => 0, '#maxlength' => 50 );
@@ -441,9 +443,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	}
 
-	if ( $TEEN )
+	if ( $TEEN || $CHILD)
 	{
-		$group = 'Teenagers Course Information';
+		$group = 'Teenagers/Children Course Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 		$form[$group]['ae_father'] = array('#title' => 'Name of Father', '#type' => 'textfield', '#weight' => 0,
 			'#default_value' => isset($edit_data['ae_father'])?$edit_data['ae_father']:'', '#required' => 0, );
