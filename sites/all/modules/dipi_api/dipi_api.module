@@ -467,6 +467,7 @@ function dipi_api_services_resources() {
               'access arguments append' => FALSE,
                   'callback' => '_attended_stats',
           ),
+         
 
 
 
@@ -682,21 +683,151 @@ function _api_post_application( $centre, $course, $data )
       return array("Result" => "Error", "Message" => 'Address not present or more than 160 chars');
     $r['a_address'] = $vals['address'];
 
-    if (!isset($vals['education']) || ( strlen($vals['education']) > 25 ) )
-      return array("Result" => "Error", "Message" => 'Education not present or more than 25 chars');
-    $r['a_education'] = $vals['education'];
 
-    if (!isset($vals['occupation']) || ( strlen($vals['occupation']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Occupation not present or more than 50 chars');
-    $r['a_occupation'] = $vals['occupation'];
+    if ($course_type <> '1-Day')
+    {
+        if (!isset($vals['education']) || ( strlen($vals['education']) > 25 ) )
+          return array("Result" => "Error", "Message" => 'Education not present or more than 25 chars');
+        $r['a_education'] = $vals['education'];
 
-    if (!isset($vals['designation']) || ( strlen($vals['designation']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Designation not present or more than 50 chars');
-    $r['a_designation'] = $vals['designation'];
+        if (!isset($vals['occupation']) || ( strlen($vals['occupation']) > 50 ) )
+          return array("Result" => "Error", "Message" => 'Occupation not present or more than 50 chars');
+        $r['a_occupation'] = $vals['occupation'];
 
-    if (!isset($vals['company']) || ( strlen($vals['company']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Company not present or more than 50 chars');
-    $r['a_company'] = $vals['company'];
+        if (!isset($vals['designation']) || ( strlen($vals['designation']) > 50 ) )
+          return array("Result" => "Error", "Message" => 'Designation not present or more than 50 chars');
+        $r['a_designation'] = $vals['designation'];
+
+        if (!isset($vals['company']) || ( strlen($vals['company']) > 50 ) )
+          return array("Result" => "Error", "Message" => 'Company not present or more than 50 chars');
+        $r['a_company'] = $vals['company'];
+
+        if ($oldstudent)
+        {
+            if (!isset($vals['first_course_location']) || ( strlen($vals['first_course_location']) > 100 ) )
+            return array("Result" => "Error", "Message" => 'First Course Location not present or more than 100 chars');
+            $r['ac_first_location_str'] = $vals['first_course_location'];
+
+            if (!isset($vals['first_course_teacher']) || ( strlen($vals['first_course_teacher']) > 100 ) )
+            return array("Result" => "Error", "Message" => 'First Course teacher not present or more than 100 chars');
+            $r['ac_first_teacher_str'] = $vals['first_course_teacher'];    
+
+            if (!isset($vals['first_course_year']) || ( !is_numeric($vals['first_course_year']) ) )
+            return array("Result" => "Error", "Message" => 'First Course Year not present or not numeric');
+            if (isset($vals['first_course_year'])) $r['ac_first_year'] = $vals['first_course_year'];
+
+            if (isset($vals['first_course_month']) && ( !is_numeric($vals['first_course_month']) ) )
+            return array("Result" => "Error", "Message" => 'First Course Month not present or not numeric');
+            if (isset($vals['first_course_month'])) $r['ac_first_month'] = $vals['first_course_month'];
+
+            if (isset($vals['first_course_day']) && ( !is_numeric($vals['first_course_day']) ) )
+            return array("Result" => "Error", "Message" => 'First Course Day not numeric');
+            if (isset($vals['first_course_day'])) $r['ac_first_day'] = $vals['first_course_day'];
+
+
+            if (!isset($vals['practice_details']) || ( strlen($vals['practice_details']) > 100 ) )
+                return array("Result" => "Error", "Message" => 'Practice Details not present or more than 100 chars');
+            if (trim($vals['practice_details']) <> '')
+            {
+                $r['ac_practice'] = 1;
+                $r['ac_practice_details'] = $vals['practice_details'];
+            }
+            else
+                $r['ac_practice'] = 0;                                
+        }
+
+        if (!isset($vals['lang1']) || ( strlen($vals['lang1']) > 50 ) )
+          return array("Result" => "Error", "Message" => 'Lang1 not present or more than 50 chars');
+        $r['a_lang_1'] = $vals['lang1'];
+
+        if (!isset($vals['lang1_level']) || ( strlen($vals['lang1_level']) > 15 ) )
+          return array("Result" => "Error", "Message" => 'Lang1 Level not present or more than 15 chars');
+        $r['a_lang_1_level'] = $vals['lang1_level'];
+
+        if (!isset($vals['lang2']) || ( strlen($vals['lang2']) > 50 ) )
+          return array("Result" => "Error", "Message" => 'Lang2 not present or more than 50 chars');
+        $r['a_lang_2'] = $vals['lang2'];
+
+        if (!isset($vals['lang2_level']) || ( strlen($vals['lang2_level']) > 15 ) )
+          return array("Result" => "Error", "Message" => 'Lang2 Level not present or more than 15 chars');
+        $r['a_lang_2_level'] = $vals['lang2_level'];
+
+
+        if (isset($vals['seva_details']) && ( strlen($vals['seva_details']) > 300 ) )
+          return array("Result" => "Error", "Message" => 'Seva Detais not present or more than 300 chars');
+        if (trim($vals['seva_details']) <> '')
+            $r['ae_seva_details'] = $vals['seva_details'];
+
+
+        if (!isset($vals['mental']))
+          return array("Result" => "Error", "Message" => 'Mental not present');
+        if (trim($vals['mental']) <> '')
+        {
+            $r['a_problem_mental'] = 1;
+            $r['ae_desc_mental'] = $vals['mental'];
+        }
+        else
+            $r['a_problem_mental'] = 0;
+
+        if (!isset($vals['physical']))
+          return array("Result" => "Error", "Message" => 'Physical not present');
+        if (trim($vals['physical']) <> '')
+        {
+            $r['a_problem_physical'] = 1;
+            $r['ae_desc_physical'] = $vals['physical'];
+        }
+        else
+            $r['a_problem_physical'] = 0;
+
+        if (!isset($vals['medication']))
+          return array("Result" => "Error", "Message" => 'Medication not present');
+        if (trim($vals['medication']) <> '')
+        {
+            $r['a_medication'] = 1;
+            $r['ae_desc_medication'] = $vals['medication'];
+        }
+        else
+            $r['a_medication'] = 0;
+
+        if (!isset($vals['intox']))
+          return array("Result" => "Error", "Message" => 'Intox not present');
+        if (trim($vals['intox']) <> '')
+        {
+            $r['a_addiction_current'] = 1;
+            $r['ae_desc_addiction_current'] = $vals['intox'];
+        }
+        else
+            $r['a_addiction_current'] = 0;
+
+        if (!isset($vals['othermeditaion']))
+          return array("Result" => "Error", "Message" => 'Othermeditation not present');
+        if (trim($vals['othermeditaion']) <> '')
+        {
+            $r['a_other_technique'] = 1;
+            $r['ae_desc_other_technique'] = $vals['othermeditaion'];
+        }
+        else
+            $r['a_other_technique'] = 0;
+
+
+        if (!isset($vals['othermeditaion_old']))
+          return array("Result" => "Error", "Message" => 'Othermeditation Old Students not present');
+        if (trim($vals['othermeditaion_old']) <> '')
+        {
+            $r['a_other_technique_old'] = 1;
+            $r['ae_desc_other_technique_old'] = $vals['othermeditaion_old'];
+        }
+        else
+            $r['a_other_technique_old'] = 0;
+
+        if (!isset($vals['emergency_relation']) || ( strlen($vals['emergency_relation']) > 50 ) )
+            return array("Result" => "Error", "Message" => 'Emergency Relation not present or more than 50 chars');
+        $r['a_emergency_relation'] = $vals['emergency_relation'];
+
+    }
+
+
+
 
 
 
@@ -739,13 +870,7 @@ function _api_post_application( $centre, $course, $data )
           return array("Result" => "Error", "Message" => "Service Courses must be numeric");
       if (isset($vals['service'])) $r['ac_service'] = $vals['service'];
 
-      if (!isset($vals['first_course_location']) || ( strlen($vals['first_course_location']) > 100 ) )
-        return array("Result" => "Error", "Message" => 'First Course Location not present or more than 100 chars');
-      $r['ac_first_location_str'] = $vals['first_course_location'];
 
-      if (!isset($vals['first_course_teacher']) || ( strlen($vals['first_course_teacher']) > 100 ) )
-        return array("Result" => "Error", "Message" => 'First Course teacher not present or more than 100 chars');
-      $r['ac_first_teacher_str'] = $vals['first_course_teacher'];
 
       if (!isset($vals['last_course_location']) || ( strlen($vals['last_course_location']) > 100 ) )
         return array("Result" => "Error", "Message" => 'Last Course Location not present or more than 100 chars');
@@ -755,18 +880,6 @@ function _api_post_application( $centre, $course, $data )
         return array("Result" => "Error", "Message" => 'Last Course teacher not present or more than 100 chars');
       $r['ac_last_teacher_str'] = $vals['last_course_teacher'];
 
-
-      if (!isset($vals['first_course_year']) || ( !is_numeric($vals['first_course_year']) ) )
-        return array("Result" => "Error", "Message" => 'First Course Year not present or not numeric');
-      if (isset($vals['first_course_year'])) $r['ac_first_year'] = $vals['first_course_year'];
-
-      if (isset($vals['first_course_month']) && ( !is_numeric($vals['first_course_month']) ) )
-        return array("Result" => "Error", "Message" => 'First Course Month not present or not numeric');
-      if (isset($vals['first_course_month'])) $r['ac_first_month'] = $vals['first_course_month'];
-
-      if (isset($vals['first_course_day']) && ( !is_numeric($vals['first_course_day']) ) )
-        return array("Result" => "Error", "Message" => 'First Course Day not numeric');
-      if (isset($vals['first_course_day'])) $r['ac_first_day'] = $vals['first_course_day'];
 
       if (!isset($vals['last_course_year']) || ( !is_numeric($vals['last_course_year']) ) )
         return array("Result" => "Error", "Message" => 'Last Course Year not present or not numeric');
@@ -780,113 +893,8 @@ function _api_post_application( $centre, $course, $data )
         return array("Result" => "Error", "Message" => 'Last Course Day not numeric');
       if (isset($vals['last_course_day'])) $r['ac_last_day'] = $vals['last_course_day'];
 
-      if (!isset($vals['practice_details']) || ( strlen($vals['practice_details']) > 100 ) )
-        return array("Result" => "Error", "Message" => 'Practice Details not present or more than 100 chars');
-      if (trim($vals['practice_details']) <> '')
-      {
-          $r['ac_practice'] = 1;
-          $r['ac_practice_details'] = $vals['practice_details'];
-      }
-      else
-          $r['ac_practice'] = 0;
-
     }
 
-
-    if (!isset($vals['lang1']) || ( strlen($vals['lang1']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Lang1 not present or more than 50 chars');
-    $r['a_lang_1'] = $vals['lang1'];
-
-    if (!isset($vals['lang1_level']) || ( strlen($vals['lang1_level']) > 15 ) )
-      return array("Result" => "Error", "Message" => 'Lang1 Level not present or more than 15 chars');
-    $r['a_lang_1_level'] = $vals['lang1_level'];
-
-    if (!isset($vals['lang2']) || ( strlen($vals['lang2']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Lang2 not present or more than 50 chars');
-    $r['a_lang_2'] = $vals['lang2'];
-
-    if (!isset($vals['lang2_level']) || ( strlen($vals['lang2_level']) > 15 ) )
-      return array("Result" => "Error", "Message" => 'Lang2 Level not present or more than 15 chars');
-    $r['a_lang_2_level'] = $vals['lang2_level'];
-
-
-    if (isset($vals['seva_details']) && ( strlen($vals['seva_details']) > 300 ) )
-      return array("Result" => "Error", "Message" => 'Seva Detais not present or more than 300 chars');
-    if (trim($vals['seva_details']) <> '')
-        $r['ae_seva_details'] = $vals['seva_details'];
-
-
-    if (!isset($vals['mental']))
-      return array("Result" => "Error", "Message" => 'Mental not present');
-    if (trim($vals['mental']) <> '')
-    {
-        $r['a_problem_mental'] = 1;
-        $r['ae_desc_mental'] = $vals['mental'];
-    }
-    else
-        $r['a_problem_mental'] = 0;
-
-    if (!isset($vals['physical']))
-      return array("Result" => "Error", "Message" => 'Physical not present');
-    if (trim($vals['physical']) <> '')
-    {
-        $r['a_problem_physical'] = 1;
-        $r['ae_desc_physical'] = $vals['physical'];
-    }
-    else
-        $r['a_problem_physical'] = 0;
-
-    if (!isset($vals['medication']))
-      return array("Result" => "Error", "Message" => 'Medication not present');
-    if (trim($vals['medication']) <> '')
-    {
-        $r['a_medication'] = 1;
-        $r['ae_desc_medication'] = $vals['medication'];
-    }
-    else
-        $r['a_medication'] = 0;
-
-    if (!isset($vals['intox']))
-      return array("Result" => "Error", "Message" => 'Intox not present');
-    if (trim($vals['intox']) <> '')
-    {
-        $r['a_addiction_current'] = 1;
-        $r['ae_desc_addiction_current'] = $vals['intox'];
-    }
-    else
-        $r['a_addiction_current'] = 0;
-
-    if (!isset($vals['othermeditaion']))
-      return array("Result" => "Error", "Message" => 'Othermeditation not present');
-    if (trim($vals['othermeditaion']) <> '')
-    {
-        $r['a_other_technique'] = 1;
-        $r['ae_desc_other_technique'] = $vals['othermeditaion'];
-    }
-    else
-        $r['a_other_technique'] = 0;
-
-
-    if (!isset($vals['othermeditaion_old']))
-      return array("Result" => "Error", "Message" => 'Othermeditation Old Students not present');
-    if (trim($vals['othermeditaion_old']) <> '')
-    {
-        $r['a_other_technique_old'] = 1;
-        $r['ae_desc_other_technique_old'] = $vals['othermeditaion_old'];
-    }
-    else
-        $r['a_other_technique_old'] = 0;
-
-
-    if (!isset($vals['teach_other_details']))
-      return array("Result" => "Error", "Message" => 'Teach other details not present');
-    if (trim($vals['teach_other_details']) <> '')
-    {
-        $r['a_teach_others'] = 1;
-        $r['ae_teach_other_details'] = $vals['teach_other_details'];
-    }
-    else
-        $r['a_teach_others'] = 0;
 
 
 
@@ -902,9 +910,6 @@ function _api_post_application( $centre, $course, $data )
       return array("Result" => "Error", "Message" => 'Emergency Name not present or more than 50 chars');
     $r['a_emergency_name'] = $vals['emergency_name'];
 
-    if (!isset($vals['emergency_relation']) || ( strlen($vals['emergency_relation']) > 50 ) )
-      return array("Result" => "Error", "Message" => 'Emergency Relation not present or more than 50 chars');
-    $r['a_emergency_relation'] = $vals['emergency_relation'];
 
     if (!isset($vals['emergency_num']) || ( strlen($vals['emergency_num']) > 40 ) )
       return array("Result" => "Error", "Message" => 'Emergency Number not present or more than 40 chars');
