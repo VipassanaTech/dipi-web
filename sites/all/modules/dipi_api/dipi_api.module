@@ -733,7 +733,12 @@ function _api_post_application( $centre, $course, $data )
                 $r['ac_practice_details'] = $vals['practice_details'];
             }
             else
-                $r['ac_practice'] = 0;                                
+                $r['ac_practice'] = 0;    
+
+            if (!isset($vals['last_course_teacher']) || ( strlen($vals['last_course_teacher']) > 100 ) )
+                return array("Result" => "Error", "Message" => 'Last Course teacher not present or more than 100 chars');
+            $r['ac_last_teacher_str'] = $vals['last_course_teacher'];       
+
         }
 
         if (!isset($vals['lang1']) || ( strlen($vals['lang1']) > 50 ) )
@@ -875,10 +880,6 @@ function _api_post_application( $centre, $course, $data )
       if (!isset($vals['last_course_location']) || ( strlen($vals['last_course_location']) > 100 ) )
         return array("Result" => "Error", "Message" => 'Last Course Location not present or more than 100 chars');
       $r['ac_last_location_str'] = $vals['last_course_location'];
-
-      if (!isset($vals['last_course_teacher']) || ( strlen($vals['last_course_teacher']) > 100 ) )
-        return array("Result" => "Error", "Message" => 'Last Course teacher not present or more than 100 chars');
-      $r['ac_last_teacher_str'] = $vals['last_course_teacher'];
 
 
       if (!isset($vals['last_course_year']) || ( !is_numeric($vals['last_course_year']) ) )
