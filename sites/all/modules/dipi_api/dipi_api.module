@@ -547,7 +547,7 @@ function _api_post_application( $centre, $course, $data )
 
     $course_data = db_query("select c_id,c_status_nf,c_status_nm,c_status_of,c_status_om,c_status_svr_f,c_status_svr_m, c_status from 
         dh_course where c_center=$centre and c_id=$course")->fetchAssoc();
-    $row_ctype = db_query("select td_val3, td_val2 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
+    $row_ctype = db_query("select td_val1, td_val3, td_val2 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
     $course_type = $row_ctype['td_val3'];
     $total_days = $row_ctype['td_val2'];
     if ( isset($course_data) && ( $course_data['c_id'] <> $course) )
@@ -567,6 +567,10 @@ function _api_post_application( $centre, $course, $data )
 
     if (!isset($vals['oldstudent']) || ( !in_array($vals['oldstudent'], array('0', '1')) )  )
       return array("Result" => "Error", "Message" => 'Old Student not present or not equal to 0 or 1' );
+
+    if ($vals['oldstudent'] == 0 && (in_array($row_ctype['td_val1'], array('1 Day Course', '2 Day Course', '3 Day Course', 'STP Course', 'STP-9', 'Work Period', 'AT Workshop/Meeting')) || $course_type == 'LC'))
+        return array("Result" => "Error", "Message" => 'Only old student can apply for this course' );
+
 
     if (($vals['type'] == 'Sevak') && ($vals['oldstudent'] == '0'))
     {
