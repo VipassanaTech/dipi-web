@@ -308,7 +308,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
-	if ($at_name == '')
+	if (($at_name == '') && (!user_access('approve applications')))
 	{
 		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
 		return $form;
