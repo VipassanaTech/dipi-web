@@ -503,7 +503,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	if ($area_done && ($r['al_area_at'] == $at_name) )
 		return $form;
 
-	if ($reco_done && ($r['al_recommending'] == $at_name) && ($r['al_area_t'] != $at_name))
+	if ($reco_done && ($r['al_recommending'] == $at_name) && ($r['al_area_at'] != $at_name))
 		return $form;
 
 	if (($r['al_recommending'] == $at_name) || ($r['al_area_at'] == $at_name) )
