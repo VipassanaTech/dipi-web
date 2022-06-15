@@ -567,7 +567,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					$("#"+a).attr("required", true);
 				}
 
-				if (val == "Transfer to Registrar")
+				if ((val == "Transfer to Registrar") || (val == "Rejected"))
 				{
 					$("#edit-area-teacher").attr("required", false);
 				}
