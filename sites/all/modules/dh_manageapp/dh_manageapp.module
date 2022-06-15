@@ -1122,7 +1122,7 @@ function _search_student()
 	else
 		$append = " and a_dob='".$d['a_dob']."'";
 
-	$q = "select c_name, a_address, a_attended, a_type, a_status from dh_applicant left join dh_course on a_course=c_id where a_f_name=:a_f_name and a_l_name=:a_l_name $append order by c_created desc limit 15";
+	$q = "select c_name, a_address, a_attended, a_type, a_status from dh_applicant left join dh_course on a_course=c_id left join dh_type_detail on td_id=c_course_type where a_f_name=:a_f_name and a_l_name=:a_l_name and td_val3 not in ('1-Day') $append order by c_start desc limit 15";
 	
 	$q_array = array(
 		'a_f_name' => $d['a_f_name'],
