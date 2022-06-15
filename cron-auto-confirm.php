@@ -12,7 +12,7 @@ require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
 
-$q = "select a_id, a_course, a_f_name, a_l_name, a_email, a_status from dh_applicant a left join dh_course c on (a.a_course=c.c_id) where c.c_start >= CURDATE() and c.c_auto_confirm=1 and a.a_status in ('Received') limit 200";
+$q = "select a_id, a_course, a_f_name, a_l_name, a_email, a_status from dh_applicant a left join dh_course c on (a.a_course=c.c_id) where c.c_start >= CURDATE() and c.c_auto_confirm=1 and a.a_status in ('Received') and a_type='Student' limit 200";
 $result = db_query($q);
 while ($row = $result->fetchAssoc()) 
 {
