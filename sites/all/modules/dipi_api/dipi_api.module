@@ -2124,7 +2124,7 @@ function _process_lc_application( $appid, $data)
         if ($row_at['name'] == '')
             return array('Error' => 'Invalid AT Code');
         if ($row_at['t_cat'] || $row_at['t_full_t'])
-            $is_cat = 1;
+            $is_cat = 0;
         $at_name = $row_at['name'];      
     }
     else
