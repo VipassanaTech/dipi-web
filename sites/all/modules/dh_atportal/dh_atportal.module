@@ -583,7 +583,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					check_required($(this).attr("id").replace("-action", ""), $(this).val());
 				});
 				$("#edit-sub").click(function(){
-					if (($("#edit-action").val() != "Transfer to Registrar") || ($("#edit-action").val() != "Rejected"))
+					if (($("#edit-action").val() != "Transfer to Registrar") && ($("#edit-action").val() != "Rejected"))
 					{
 						if ($("#edit-area-teacher").val() == "")
 						{
