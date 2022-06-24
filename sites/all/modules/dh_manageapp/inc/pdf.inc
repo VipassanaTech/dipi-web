@@ -495,175 +495,213 @@ function map_application_fields_lc($row)
 {
 	$fields = array();
 	$temp = explode("/", $row['c_name']);
-	$fields['form1[0].#subform[0].centre[0]'] = trim($temp[0]);
+	$fields['Centre Name'] = trim($temp[0]);
 	if( strtolower($row['a_type']) == 'student' )
-		$fields['form1[0].#subform[0].#area[0].Radio1[0]'] = "1";
+		$fields['Sit'] = 'Yes';
 	else
-		$fields['form1[0].#subform[0].#area[0].Radio2[0]'] = "1";
+		$fields['Serve'] = 'Yes';
 
-	$fields['form1[0].#subform[0].conf[0]'] = $row['a_conf_no'];
+	$fields['Conf No'] = $row['a_conf_no'];
 	if ( $row['aa_acco'] )
-		$fields['form1[0].#subform[0].acc[0]'] = $row['aa_section']."-".$row['aa_acco'];
+		$fields['Acc No'] = $row['aa_section']."-".$row['aa_acco'];
 	//$fields['form1[0].#subform[0].seat[0]'] = '';
-	$fields['form1[0].#subform[0].cell[0]'] = $row['aa_cell'];
+	$fields['Cell No'] = $row['aa_cell'];
 
-	$fields['form1[0].#subform[0].ctype[0]'] = $row['td_val1'];
+	$fields['Course Type'] = $row['td_val1'];
 
 	$temp = explode("-", $row['c_start']); $temp1 = explode("-", $row['c_end']);
-	$fields['form1[0].#subform[0].cdate[0]'] = $temp[2].'/'.$temp[1].'/'.$temp[0].' To '.$temp1[2].'/'.$temp1[1].'/'.$temp1[0];
-	$fields['form1[0].#subform[0].gender[0]'] = ($row['a_gender'] == 'M')?'Male':'Female';
-	$fields['form1[0].#subform[0].age[0]'] = $row['Age'];
+	$fields['Course Date'] = $temp[2].'/'.$temp[1].'/'.$temp[0].' To '.$temp1[2].'/'.$temp1[1].'/'.$temp1[0];
+	$fields['Gender'] = ($row['a_gender'] == 'M')?'Male':'Female';
+	$fields['Age'] = $row['Age'];
 	$temp = explode("-", $row['a_dob']);	
-	$fields['form1[0].#subform[0].dob[0]'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
+	$fields['DOB'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
 
-	$fields['form1[0].#subform[0].fullname[0]'] = $row['a_f_name'].' '.$row['a_m_name'].' '.$row['a_l_name'];
-	$fields['form1[0].#subform[0].address[0]'] = $row['a_address'].', '.$row['City'].', '.$row['a_state'].', '.$row['a_country'].' - '.$row['a_zip'];
-	$fields['form1[0].#subform[0].home[0]'] = $row['a_phone_home']; 	
-	$fields['form1[0].#subform[0].office[0]'] = $row['a_phone_office'];	
-	$fields['form1[0].#subform[0].mobile[0]'] = $row['a_phone_mobile']; 
-	$fields['form1[0].#subform[0].email[0]'] = $row['a_email'];
+	$fields['Full Name'] = $row['a_f_name'].' '.$row['a_m_name'].' '.$row['a_l_name'];
+	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['a_state'].', '.$row['a_country'].' - '.$row['a_zip'];
 
-	$fields['form1[0].#subform[0].education[0]'] = $row['a_education'];
+
+	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
+	if ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
+	if ($row['a_voter_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
+	if ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
+
+	$fields['Home'] = $row['a_phone_home']; 	
+	$fields['Office'] = $row['a_phone_office'];	
+	$fields['Mobile'] = $row['a_phone_mobile']; 
+	$fields['Email'] = $row['a_email'];
+
+	$fields['Education'] = $row['a_education'];
 
 	$occupation = strtolower($row['a_occupation']);
 	if ( $row['a_occupation_past'] )
 		$occupation = $row['a_occupation_past'];
-	$fields['form1[0].#subform[0].occupation[0]'] = $occupation;
-	$fields['form1[0].#subform[0].designation[0]'] = $row['a_designation'];
-	$fields['form1[0].#subform[0].company[0]'] = $row['a_company'];
-	$fields['form1[0].#subform[0].atapptyear[0]'] = $row['al_at_year'];
+	$fields['Occupation'] = $occupation;
+	$fields['Designation'] = $row['a_designation'];
+	$fields['Company Name'] = $row['a_company'];
+	if ($row['al_at_year']) $fields['AT Year of Appointment'] = $row['al_at_year'];
 	
-	$fields['form1[0].#subform[0].ename[0]'] = $row['a_emergency_name'];
-	$fields['form1[0].#subform[0].erelation[0]'] = $row['a_emergency_relation'];
-	$fields['form1[0].#subform[0].emobile[0]'] = $row['a_emergency_num'];
+	$fields['Ename'] = $row['a_emergency_name'];
+	$fields['Erelation'] = $row['a_emergency_relation'];
+	$fields['Emobile'] = $row['a_emergency_num'];
 	
-	if ($row['al_committed']) $fields['form1[0].#subform[0].pd1[0]'] = '1'; else $fields['form1[0].#subform[0].pd2[0]'] = '1';
-	if ($row['al_exclusive_2yrs']) $fields['form1[0].#subform[0].pd3[0]'] = '1'; else $fields['form1[0].#subform[0].pd4[0]'] = '1';
+	if ($row['al_committed']) $fields['Committed Y'] = 'Yes'; else $fields['Committed N'] = 'Yes';
+	if ($row['al_exclusive_2yrs']) $fields['Exclusive Y'] = 'Yes'; else $fields['Exclusive N'] = 'Yes';
 
-	$fields['form1[0].#subform[0].dailypractice[0]'] = $row['al_daily_practice_yrs'];
-	$fields['form1[0].#subform[0].practicedetails[0]'] = $row['al_daily_practice_details'];
+	$fields['Dailypractice'] = $row['al_daily_practice_yrs'];
+	$fields['practicedetails'] = $row['al_daily_practice_details'];
 
-	if ($row['al_5_precepts']) $fields['form1[0].#subform[1].pd5[0]'] = '1'; else $fields['form1[0].#subform[1].pd6[0]'] = '1';
-	if ($row['al_sexual_misconduct']) $fields['form1[0].#subform[1].pd7[0]'] = '1'; else $fields['form1[0].#subform[1].pd8[0]'] = '1';
-	if ($row['al_intoxicants']) $fields['form1[0].#subform[1].pd9[0]'] = '1'; else $fields['form1[0].#subform[1].pd10[0]'] = '1';
+	if ($row['al_5_precepts']) $fields['5 Precepts Y'] = 'Yes'; else $fields['5 Precepts N'] = 'Yes';
+	if ($row['al_sexual_misconduct']) $fields['Sexual Misconduct Y'] = 'Yes'; else $fields['Sexual Misconduct N'] = 'Yes';
+	if ($row['al_intoxicants']) $fields['Intoxicants Y'] = 'Yes'; else $fields['Intoxicants N'] = 'Yes';
 	//if ($row['al_requirements']) $fields['form1[0].#subform[0].pd11[0]'] = 'Yes'; else $fields['form1[0].#subform[0].pd12[0]'] = 'Yes';
 	//$fields['form1[0].#subform[1].creqdetails[0]'] = $row['al_requirements_details'];
 
-	$fields['form1[0].#subform[1].Table1[0].Row1[0].L1[0]'] = $row['ac_first_location_str'];
-	$fields['form1[0].#subform[1].Table1[0].Row1[0].D1[0]'] = $row['ac_first_day'].'/'.$row['ac_first_month'].'/'.$row['ac_first_year'];
-	$fields['form1[0].#subform[1].Table1[0].Row1[0].C1[0]'] = $row['ac_first_teacher_str'];
-	$fields['form1[0].#subform[1].Table1[0].Row2[0].L2[0]'] = $row['ac_last_location_str'];
-	$fields['form1[0].#subform[1].Table1[0].Row2[0].D2[0]'] = $row['ac_last_day'].'/'.$row['ac_last_month'].'/'.$row['ac_last_year'];
-	$fields['form1[0].#subform[1].Table1[0].Row2[0].C2[0]'] = $row['ac_last_teacher_str'];
-	$fields['form1[0].#subform[1].Table1[0].Row2[0].rec_course[0]'] = $row['al_recent_sat_type'];
-	$fields['form1[0].#subform[1].Table1[0].Row3[0].L3[0]'] = $row['al_last_lc_location'];
-	$fields['form1[0].#subform[1].Table1[0].Row3[0].D3[0]'] = $row['al_last_lc_date'];
-	$fields['form1[0].#subform[1].Table1[0].Row3[0].C3[0]'] = $row['al_last_lc_teacher'];
-	$fields['form1[0].#subform[1].Table1[0].Row3[0].rec_lc[0]'] = $row['al_last_lc_type'];
+	$fields['First Location'] = $row['ac_first_location_str'];
+	$fields['First Date'] = $row['ac_first_day'].'/'.$row['ac_first_month'].'/'.$row['ac_first_year'];
+	$fields['First Teacher'] = $row['ac_first_teacher_str'];
+	$fields['Last Location'] = $row['ac_last_location_str'];
+	$fields['Last Date'] = $row['ac_last_day'].'/'.$row['ac_last_month'].'/'.$row['ac_last_year'];
+	$fields['Last Teacher'] = $row['ac_last_teacher_str'];
+	$fields['Last Course Type'] = $row['al_recent_sat_type'];
+	$fields['Last LC Location'] = $row['al_last_lc_location'];
+	$fields['Last LC Teacher'] = $row['al_last_lc_teacher'];
+	$fields['Last LC Type'] = $row['al_last_lc_type'];	
 
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd1[0]'] = $row['ac_10d'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd2[0]'] = $row['ac_stp'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd3[0]'] = $row['ac_spl'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd4[0]'] = $row['ac_20d'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd5[0]'] = $row['ac_30d'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd6[0]'] = $row['ac_45d'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd7[0]'] = $row['ac_60d'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd8[0]'] = $row['ac_tsc'];
-	$fields['form1[0].#subform[1].Table2[0].Row2[0].cd9[0]'] = $row['ac_service'];
-	$fields['form1[0].#subform[1].sevadetails[0]'] = $row['al_served_other'];
+	if ($row['al_last_lc_date'])
+	{
+		$temp = explode('/', str_replace('-', '/', $row['al_last_lc_date']));
+		$temp1='';
+		foreach ($temp as $val)
+	    {   
+	        $temp1 = "/$val$temp1";
+	    }   
+	    $fields['Last LC Date'] = ltrim($temp1, '/');
+	}
+
+
+	$fields['10Day'] = $row['ac_10d'];
+	$fields['STP'] = $row['ac_stp'];
+	$fields['10Day SPL'] = $row['ac_spl'];
+	$fields['20Day'] = $row['ac_20d'];
+	$fields['30Day'] = $row['ac_30d'];
+	$fields['45Day'] = $row['ac_45d'];
+	$fields['60Day'] = $row['ac_60d'];
+	$fields['TSC'] = $row['ac_tsc'];
+	$fields['Dhamma Service'] = $row['ac_service'];
+	$fields['Other courses served'] = $row['al_served_other'];
 
 	//form1[0].#subform[1].cd1[0] = Yes form1[0].#subform[1].cd2[0] = No Done 10d after 30d/45d ? 
 
-	if ($row['al_relationship']) $fields['form1[0].#subform[1].rd1[0]'] = '1'; else $fields['form1[0].#subform[1].rd2[0]'] = '1';
+	if($row['al_last_lc_type'] && $row['al_last_lc_date'])
+	{
+		$q = "select td_val2 from dh_type_detail where td_key=:td_key";
+		$lc_days = db_query($q, array('td_key' => $row['al_last_lc_type']))->fetchField();
+		if ($lc_days)
+		{
+			if (($last_lc_start_time = strtotime(str_replace('/', '-', $row['al_last_lc_date']))) !== false)
+			{
+				$last_lc_end_time = $last_lc_start_time + ($lc_days*24*60*60);
+				$current_lc_start_time = strtotime($row['c_start']);
+				if ($current_lc_start_time > $last_lc_end_time)
+				{
+					$diff_days = round(($current_lc_start_time - $last_lc_end_time) / (60 * 60 * 24));
+					$fields['gap'] = floor($diff_days / 30)." Months, ".($diff_days % 30)." Days";
+				}
+			}
+		}
+	}
+	 
+
+
+	if ($row['al_relationship']) $fields['Relationship Y'] = 'Yes'; else $fields['Relationship N'] = 'Yes';
 	if ($row['al_relationship'])
 	{
-		if ($row['al_relationship_lifelong']) $fields['form1[0].#subform[1].rd3[0]'] = '1'; else $fields['form1[0].#subform[1].rd4[0]'] = '1';
-		$fields['form1[0].#subform[1].spouse[0]'] = $row['al_spouse_name'];
-		if ($row['al_relationship_lifelong']) $fields['form1[0].#subform[1].rd3[0]'] = '1'; else $fields['form1[0].#subform[1].rd4[0]'] = '1';
-		if ($row['al_relation_harmonious']) $fields['form1[0].#subform[1].rd5[0]'] = '1'; else $fields['form1[0].#subform[1].rd6[0]'] = '1';
-		if ($row['al_spouse_approve']) $fields['form1[0].#subform[1].rd7[0]'] = '1'; else $fields['form1[0].#subform[1].rd8[0]'] = '1';
-		if ($row['al_spouse_meditator']) $fields['form1[0].#subform[1].rd9[0]'] = '1'; else $fields['form1[0].#subform[1].rd10[0]'] = '1';
-		if ($row['al_spouse_other_technique']) $fields['form1[0].#subform[1].rd11[0]'] = '1'; else $fields['form1[0].#subform[1].rd12[0]'] = '1';
+		if ($row['al_relationship_lifelong']) $fields['Relationship Lifelong Y'] = 'Yes'; else $fields['Relationship Lifelong N'] = 'Yes';
+		$fields['Spouse'] = $row['al_spouse_name'];
+		if ($row['al_relation_harmonious']) $fields['Relation Harmonious Y'] = 'Yes'; else $fields['Relation Harmonious N'] = 'Yes';
+		if ($row['al_spouse_approve']) $fields['Spouse Approve Y'] = 'Yes'; else $fields['Spouse Approve N'] = 'Yes';
+		if ($row['al_spouse_meditator']) $fields['Spouse Meditator Y'] = 'Yes'; else $fields['Spouse Meditator N'] = 'Yes';
+		if ($row['al_spouse_other_technique']) $fields['Spouse Other Tech Y'] = 'Yes'; else $fields['Spouse Other Tech N'] = 'Yes';
 
 	}
 
 	if ( $row['a_problem_physical'])
 	{
-		$fields['form1[0].#subform[1].hi3[0]'] = '1';
-		$fields['form1[0].#subform[1].physicalinfo[0]'] =  $row['ae_desc_physical']; 	
+		$fields['Physical Y'] = 'Yes';
+		$fields['Physical Detail'] =  $row['ae_desc_physical']; 	
 	}
 	else
-		$fields['form1[0].#subform[1].hi4[0]'] = '1';
+		$fields['Physical N'] = 'Yes';
 
 	if ( $row['a_problem_mental'])
 	{
-		$fields['form1[0].#subform[1].mentalinfo[0]'] = $row['ae_desc_mental']; 
-		$fields['form1[0].#subform[1].hi1[0]'] = '1';
+		$fields['Mental Detail'] = $row['ae_desc_mental']; 
+		$fields['Mental Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[1].hi2[0]'] = '1';
+		$fields['Mental N'] = 'Yes';
 
 
 	if ( $row['a_medication'])
 	{
-		$fields['form1[0].#subform[1].medinfo[0]'] = $row['ae_desc_medication']; 
-		$fields['form1[0].#subform[1].hi5[0]'] = '1';
+		$fields['Medication Detail'] = $row['ae_desc_medication']; 
+		$fields['Medication Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[1].hi6[0]'] = '1';
+		$fields['Medication N'] = 'Yes';
 
 
 	if ( $row['al_left_course'])
 	{
-		$fields['form1[0].#subform[4].refusedinfo[0]'] = $row['al_left_course_details']; 
-		$fields['form1[0].#subform[4].ec1[0]'] = '1';
+		$fields['Left Course Detail'] = $row['al_left_course_details']; 
+		$fields['Left Course Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[4].ec2[0]'] = '1';
+		$fields['Left Course N'] = 'Yes';
 
 
 	if ( $row['al_reduce_practice'])
 	{
-		$fields['form1[0].#subform[4].diffinfo[0]'] = $row['al_reduce_practice_details']; 
-		$fields['form1[0].#subform[4].ec3[0]'] = '1';
+		$fields['Reduce Practice Detail'] = $row['al_reduce_practice_details']; 
+		$fields['Reduce Practice Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[4].ec4[0]'] = '1';
+		$fields['Reduce Practice N'] = 'Yes';
 
 
 	if ( $row['al_personal_tragedy'])
 	{
-		$fields['form1[0].#subform[4].tragicinfo[0]'] = $row['al_personal_tragedy_details']; 
-		$fields['form1[0].#subform[4].ec5[0]'] = '1';
+		$fields['Tragedy Detail'] = $row['al_personal_tragedy_details']; 
+		$fields['Tragedy Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[4].ec6[0]'] = '1';
+		$fields['Tragedy N'] = 'Yes';
 
 
 	if ( $row['al_difficulty'])
 	{
-		$fields['form1[0].#subform[4].partdiff[0]'] = $row['al_difficulty_details']; 
-		$fields['form1[0].#subform[4].ec7[0]'] = '1';
+		$fields['Difficulty Detail'] = $row['al_difficulty_details']; 
+		$fields['Difficulty Y'] = 'Yes';
 	}
 	else
-		$fields['form1[0].#subform[4].ec8[0]'] = '1';
+		$fields['Difficulty N'] = 'Yes';
 
 
-	$fields['form1[0].#subform[4].specialreq[0]'] = $row['al_special_req_details']; 
+	$fields['Special Req'] = $row['al_special_req_details']; 
 
-	$fields['form1[0].#subform[4].Table3[0].Row1[1].lang1[0]'] = $row['a_lang_1'];
-	$fields['form1[0].#subform[4].Table3[0].Row1[1].lang1prof[0]'] = $row['a_lang_1_level'];
-	$fields['form1[0].#subform[4].Table3[0].Row2[0].lang2[0]'] = $row['a_lang_2'];
-	$fields['form1[0].#subform[4].Table3[0].Row2[0].lang2prof[0]'] = $row['a_lang_2_level'];
-	$fields['form1[0].#subform[4].Table3[0].Row2[1].lang3[0]'] = $row['a_lang_3'];
-	$fields['form1[0].#subform[4].Table3[0].Row2[1].lang3prof[0]'] = $row['a_lang_3_level'];
-	$fields['form1[0].#subform[4].arrival[0]'] = $row['al_arrival'];
+	$fields['lang1'] = $row['a_lang_1'];
+	$fields['l1_level'] = $row['a_lang_1_level'];
+	$fields['lang2'] = $row['a_lang_2'];
+	$fields['l2_level'] = $row['a_lang_2_level'];
+	$fields['lang3'] = $row['a_lang_3'];
+	$fields['l3_level'] = $row['a_lang_3_level'];
+	$fields['Arrival'] = $row['al_arrival'];
 	$temp = explode("-", $row['c_start']); 
-	$fields['form1[0].#subform[4].date[0]'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
-	$fields['form1[0].#subform[4].lingo[0]'] = $row['al_lang_discourse'];
-	$fields['form1[0].#subform[4].otherlingo[0]'] = $row['a_langs'];
-	$fields['form1[0].#subform[4].Table4[0].Row2[0].recomat[0]'] = $row['al_recommending'];
-	$fields['form1[0].#subform[4].Table4[0].Row3[0].areat[0]'] = $row['al_area_at'];
+	$fields['Date'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
+	$fields['lingo'] = $row['al_lang_discourse'];
+	$fields['otherlingo'] = $row['a_langs'];
+	$fields['R AT'] = $row['al_recommending'];
+	$fields['A AT'] = $row['al_area_at'];
 
 	return $fields;
 
