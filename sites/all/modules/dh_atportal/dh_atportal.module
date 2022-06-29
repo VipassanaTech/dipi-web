@@ -123,7 +123,7 @@ function lcappid_load( $id )
 	if (user_access('approve applications on behalf of at'))
 		$at_names = dh_atportal_get_ats_assigned();
 
-	$at_name = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
+	$at_name = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
 
 	if ($at_name)
 		$at_names[] = $at_name;
@@ -343,7 +343,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	$diff_days = 730;
 	$where = '';
 	$where_opts = array(); 
-	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
+	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
 	if (($at_name == '') && (!user_access('approve applications')) && (!user_access('approve applications on behalf of at')))
@@ -497,7 +497,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		$at_names = dh_atportal_get_ats_assigned();
 	}
 	$at_code = $user->name;
-	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
+	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
 	if ($at_name)
