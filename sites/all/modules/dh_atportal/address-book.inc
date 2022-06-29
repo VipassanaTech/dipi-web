@@ -265,6 +265,8 @@ function dh_atportal_profile_submit($form, &$form_state)
 	{
 		$t['t_created_by'] = $user->uid;
 		$t['t_created'] = date('Y-m-d H:i:s');
+		$t['t_updated_by'] = $user->uid;
+		$t['t_updated'] = date('Y-m-d H:i:s');
 		db_insert('dh_teacher')->fields($t)->execute();
 	}
 
