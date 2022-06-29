@@ -133,13 +133,18 @@ function dh_zero_select_centre($form, &$form_state)
     else if (user_access('access all center dashboard')) {
         drupal_goto('vri-management');
     }
-    else if (user_access('r-at review')) {
-    	$search_lc = '<ul><li><h2>'.l("R-AT Review", "search-lc/r-atreview").'</h2></li></ul>';
+    else if (user_access('approve applications')) {
+    	$search_lc = '<ul><li><h2>'.l("AT-Portal", "at-portal").'</h2></li>'.'<li><h2>'.l("R-AT Review", "search-lc/r-atreview").'</h2></li>'.'<li><h2>'.l("A-AT Review", "search-lc/a-atreview").'</h2></li></ul>';
     	$form['a'] = array('#markup' => $search_lc );
     	$q = "select c_id, c_name from dh_center left join dh_user_center on (c_id=uc_center and uc_deleted=0) where uc_user='".$user->uid."' order by c_name";
     }
     else if (user_access('a-at review')) {
     	$search_lc = '<ul><li><h2>'.l("R-AT Review", "search-lc/r-atreview").'</h2></li>'.'<li><h2>'.l("A-AT Review", "search-lc/a-atreview").'</h2></li></ul>';
+    	$form['a'] = array('#markup' => $search_lc );
+    	$q = "select c_id, c_name from dh_center left join dh_user_center on (c_id=uc_center and uc_deleted=0) where uc_user='".$user->uid."' order by c_name";
+    }
+    else if (user_access('r-at review')) {
+    	$search_lc = '<ul><li><h2>'.l("R-AT Review", "search-lc/r-atreview").'</h2></li></ul>';
     	$form['a'] = array('#markup' => $search_lc );
     	$q = "select c_id, c_name from dh_center left join dh_user_center on (c_id=uc_center and uc_deleted=0) where uc_user='".$user->uid."' order by c_name";
     }

@@ -15,7 +15,8 @@ function dh_atportal_permission()
 	$perms['access any profile'] = array('title' => t('Access Any AT Profile') );
 	$perms['add assistant teacher'] = array('title' => t('Add AT'));
 	$perms['at portal superadmin'] = array('title' => t('AT Portal Superadmin'));
-	$perms['approve applications'] = array('title' => t('LC Admin Approve/Reject Apps'));
+	$perms['approve applications'] = array('title' => t('Center LC Admin Approve/Reject Apps'));
+	$perms['approve applications on behalf of at'] = array('title' => t('Teacher LC Admin Approve/Reject Apps'));
 	return $perms;
 }
 
@@ -117,12 +118,24 @@ function lcappid_load( $id )
 	if (user_access("access any profile"))
 		return $id;
 
+	$at_names = array();
+
+	if (user_access('approve applications on behalf of at'))
+		$at_names = dh_atportal_get_ats_assigned();
 
 	$at_name = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
-	$check_q = "select count(al_id) from dh_applicant_lc where al_applicant = $id and  (al_recommending = :frname OR al_area_at = :faname) ";
-	$check = db_query($check_q, array(':frname' => $at_name, ':faname' => $at_name))->fetchField();
-	if ($check)
-		return $id;
+
+	if ($at_name)
+		$at_names[] = $at_name;
+
+	if (count($at_names)>0)
+	{
+		$q = "select al_recommending, al_area_at from dh_applicant_lc where al_applicant=:al_applicant";
+		$row = db_query($q, array(':al_applicant' => $id))->fetchAssoc();
+
+		if (in_array($row['al_recommending'], $at_names) || in_array($row['al_area_at'], $at_names))
+			return $id;
+	}
 
 	$count = db_query("select count(uc_id) from dh_user_center where uc_center='$centre_id' and uc_user='".$user->uid."'  and uc_deleted=0")->fetchField();
 	if ( $count <= 0  )
@@ -244,11 +257,20 @@ function dh_atportal_login_validate($form, &$form_state)
 
 function dh_atportal_dashboard()
 {
-	$out = '<h1>AT Portal Dashboard</h1><ul><li><h2>'.l("Reviews Assigned to me", "lc-review/me").'</h2></li>'.
-	'<li><h2>'.l("All Reviews", "lc-review/all").'</h2></li>'.
-	'<li><h2>'.l("My Profile", "at-portal/address-book/edit/me").'</h2></li>'.
-	'<li><h2>'.l("AT Address Book", "at-portal/address-book").'</h2></li>'.
-	'</ul>';
+	$modules = array(
+		'Reviews Assigned to me' => 'lc-review/me',
+		'All Reviews' => 'lc-review/all',
+		'My Profile' => 'at-portal/address-book/edit/me',
+		'AT Address Book' => 'at-portal/address-book',
+	);
+	$out = '<h1>AT Portal Dashboard</h1><ul>';
+
+	foreach($modules as $key => $val )
+	{
+		if (drupal_valid_path($val))
+			$out .= '<h2><li>'.l($key, $val).'</li></h2>';
+	}
+	$out .= '</ul>';
 	return $out;
 }
 
@@ -293,6 +315,22 @@ function dh_atportal_get_centers_assigned()
 	return $center_access;
 }
 
+function dh_atportal_get_ats_assigned()
+{
+	global $user;
+	$q = "select CONCAT(t.t_f_name, ' ', t.t_l_name) as teacher FROM dh_lc_admin la left join dh_teacher t on (t.t_id=la.la_teacher or t.t_city=la.la_city or t.t_state=la.la_state or t.t_country=la.la_country or t.t_region=la.la_region) where la.la_deleted<>1 and t.t_status='Active' and la.la_user='".$user->uid."'";
+	$result = db_query($q);
+
+	$at_access = array();
+	while( $row = $result->fetchAssoc() )
+	{
+		if ($row['teacher'])
+			$at_access[] = $row['teacher'];
+	}
+
+	return $at_access;
+}
+
 function dh_atportal_apps_form($form, &$form_state, $type)
 {
 	global $user;
@@ -308,7 +346,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
-	if (($at_name == '') && (!user_access('approve applications')))
+	if (($at_name == '') && (!user_access('approve applications')) && (!user_access('approve applications on behalf of at')))
 	{
 		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
 		return $form;
@@ -328,10 +366,27 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 			break;
 		case 'all':
 			$diff_days = 365;
-			$cntrs = dh_atportal_get_centers_assigned();
-			$where = 'a_center in (-1)';
-			if (count($cntrs) > 0)
-				$where = "a_center in (".implode(",", $cntrs).") ";
+			if (user_access('approve applications'))
+			{
+				$cntrs = dh_atportal_get_centers_assigned();
+				$where = 'a_center in (-1)';
+				if (count($cntrs) > 0)
+					$where = "a_center in (".implode(",", $cntrs).") ";
+			}
+			elseif (user_access('approve applications on behalf of at'))
+			{
+				$ats = dh_atportal_get_ats_assigned();
+				$where = 'a_center in (-1)';
+				if (count($ats) > 0)
+				{
+					$where = "(al.al_recommending in (:frnames) or al.al_area_at in (:fanames) )";
+					$where_opts = array( ':frnames' => $ats, ':fanames' => $ats );
+				}
+			}
+			else
+			{
+				$where = 'a_center in (-1)';
+			}
 			break;
 	}
 
@@ -436,9 +491,18 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
 
+	$at_names = array();
+	if (user_access('approve applications on behalf of at') && (! user_access("approve applications")))
+	{
+		$at_names = dh_atportal_get_ats_assigned();
+	}
 	$at_code = $user->name;
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
+
+	if ($at_name)
+		$at_names[] = $at_name;
+
 	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo,  
 		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri,  
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
@@ -500,13 +564,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	if (in_array($r['al_area_at_approved'], array('Approved', 'Rejected')))
 		$area_done = True;
 
-	if ($area_done && ($r['al_area_at'] == $at_name) )
+	if ($area_done && in_array($r['al_area_at'], $at_names) )
 		return $form;
 
-	if ($reco_done && ($r['al_recommending'] == $at_name) && ($r['al_area_at'] != $at_name))
+	if ($reco_done && in_array($r['al_recommending'], $at_names) && (!in_array($r['al_area_at'], $at_names)))
 		return $form;
 
-	if (($r['al_recommending'] == $at_name) || ($r['al_area_at'] == $at_name) )
+	if (in_array($r['al_recommending'], $at_names) || in_array($r['al_area_at'], $at_names) )
 		$owner = True;
 
 	if ($reco_done && $area_done && (!user_access('approve applications'))  )
@@ -516,14 +580,14 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		return $form;
 	//drupal_set_message("Rdone: ".$reco_done." ($at_name | ".$r['al_recommending'].")");
 
-	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1) order by t_f_name, t_l_name")->fetchAllKeyed();
+	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1) and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
 		'Approved' => 'Approve', 'Rejected' => 'Reject', 'Transfer to Registrar' => 'Transfer to Registrar'));
 
 	if (user_access('approve applications'))
 	{
-		$options_reco_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher order by t_f_name, t_l_name")->fetchAllKeyed();
+		$options_reco_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 		$options_reco_t[''] = 'Select Recommending AT';
 		$form['reco_teacher'] = array('#type' => 'select', '#options' => $options_reco_t, '#title' => 'Select Recommending AT');	
 		$form['reco_action'] = $form['action'];
@@ -543,6 +607,10 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		if (!$reco_done)
 		{
 			$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => 'Select Area Teacher'); // '#required' => True
+		}
+		if ($reco_done)
+		{
+			unset($form['action']['#options']['Transfer to Registrar']);
 		}
 		$form['comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
 	}
@@ -567,13 +635,15 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					$("#"+a).attr("required", true);
 				}
 
-				if ((val == "Transfer to Registrar") || (val == "Rejected"))
+				if ((val != "Approved") && (sel == "edit"))
 				{
 					$("#edit-area-teacher").attr("required", false);
+					$(".form-item-area-teacher").hide();	
 				}
-				else
+				elseif ((val == "Approved") && (sel == "edit"))
 				{
 					$("#edit-area-teacher").attr("required", true);
+					$(".form-item-area-teacher").show();
 				}
 			}
 			$(document).ready(function(){
@@ -583,7 +653,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					check_required($(this).attr("id").replace("-action", ""), $(this).val());
 				});
 				$("#edit-sub").click(function(){
-					if (($("#edit-action").val() != "Transfer to Registrar") && ($("#edit-action").val() != "Rejected"))
+					if (($("#edit-action").val() == "Approved") || ($("#edit-reco-action").val() == "Approved"))
 					{
 						if ($("#edit-area-teacher").val() == "")
 						{
@@ -678,7 +748,10 @@ function dh_atportal_review_form_submit($form, &$form_state )
 		}
 	}
 
-	drupal_goto("lc-review/me");
+	if (user_access('approve applications') || user_access('approve applications on behalf of at'))
+		drupal_goto("lc-review/all");
+	else
+		drupal_goto("lc-review/me");
 }
 
 function show_lc_application_pdf( $app_id )
