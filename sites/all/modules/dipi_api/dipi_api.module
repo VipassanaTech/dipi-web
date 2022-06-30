@@ -1952,7 +1952,7 @@ function _api_teachers_get( $lastupdated )
        t_mob_phone as 'PhoneMobile', t_unique_code as 'UniqueCode', t_sat as 'SAT', t_ct as 'CT', t_full_t as 'FullT', t_cat as 'CAT', 
        t_bhante as 'Bhante', t_responsibility as 'Responsibility', t_current_status as 'CurrentStatus',
        t_status as 'Status', t_gender as 'Gender', t_year_appointed as 'YearAppointed'
-        from dh_teacher where t_status='Active' and date_format(t_updated, '%Y%m%d%H%i') > $last and t_f_name <> '' order by t_f_name, t_l_name";
+        from dh_teacher where date_format(t_updated, '%Y%m%d%H%i') > $last and t_f_name <> '' order by t_f_name, t_l_name";
     $res = db_query($q);
     $rows = array( 'Last Updated' => $last);
     while( $row = $res->fetchAssoc() )
