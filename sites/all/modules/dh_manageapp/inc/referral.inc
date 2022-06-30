@@ -346,7 +346,32 @@ function dh_referral_form_submit($form, &$form_state)
 		$app_r['r_student'] = $ref_id;
 		$app_r['r_created_by'] = $user->uid;
 		$app_r['r_created'] = date('Y-m-d H:i:s');
-		db_insert('dh_referral')->fields($app_r)->execute();
+		$app_r['r_updated_by'] = $user->uid;
+		$app_r['r_updated'] = date('Y-m-d H:i:s');
+		$r_id = db_insert('dh_referral')->fields($app_r)->execute();
+
+		/*update dh_applicant with a_referral for newly inserted referral*/
+
+		if ($r_id)
+		{
+			$q = "update dh_applicant a
+				left join dh_course co on a.a_course=co.c_id
+				set a.a_referral = :a_referral
+				where co.c_start>curdate() and a.a_f_name = :a_f_name and a.a_l_name = :a_l_name
+				and ( a.a_email = :a_email or a.a_phone_mobile = :a_phone_mobile )";
+
+			$q_array = array (
+				':a_referral' => $r_id,
+				':a_f_name' => $app['s_f_name'],
+				':a_l_name' => $app['s_l_name'],
+				':a_email' => $app['s_email'],
+				':a_phone_mobile' => $app['s_phone_mobile'],
+			);
+
+			db_query($q, $q_array);
+		}
+
+
 	}
 
 	/*insert or update dh_student_course_input*/
