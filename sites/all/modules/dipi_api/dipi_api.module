@@ -2195,6 +2195,7 @@ function _process_lc_application( $appid, $data)
             return array('Error' => 'Area Teacher code is required');            
     }
 
+    global $user;
     $upd = array();
     $new_status = '';
     if ($action == 'reco')
@@ -2232,6 +2233,7 @@ function _process_lc_application( $appid, $data)
             $upd['al_area_at'] = '';            
         }
 
+        db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $appid)->execute();
         db_update('dh_applicant_lc')->fields($upd)->condition('al_applicant', $appid)->execute();
 
     }
@@ -2239,6 +2241,7 @@ function _process_lc_application( $appid, $data)
     {
         $upd['al_area_at_comments'] = $data['comment'];
         $upd['al_area_at_approved'] = $data['status'];
+        db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $appid)->execute();
         db_update('dh_applicant_lc')->fields($upd)->condition('al_applicant', $appid)->execute();
         if ($data['status'] == 'Approved')
             $new_status = 'Received';
@@ -2646,6 +2649,7 @@ function _update_cred($data)
             $q = "update users set pass=:pass where name=:name limit 1";
             db_query($q, array(':pass' => $new_hash, ':name' => $uname));
 
+            apilogit( 0, 'Api-App dh_teacher', $t_id, 'Password Update', 'Password Update' );
 
             $ret['Success'] = true;
             $ret['Message'] = "Password updated";
