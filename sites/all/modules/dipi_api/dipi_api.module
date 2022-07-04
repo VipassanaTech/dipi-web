@@ -2511,6 +2511,16 @@ function _check_cred($data)
         $uname = $tmp[0];
         $pwd = $tmp[1];
 
+        $q = "select t_id from dh_teacher where CONCAT(t_code,'.',t_gender)=:name limit 1";
+        $t_id = db_query($q, array(':name' => $uname))->fetchField();
+
+        if (!$t_id)
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials don't match.";
+            return $ret; 
+        }
+
 
         $q = "select pass from users where name=:name limit 1";
         $hash_stored = db_query($q, array(':name' => $uname))->fetchField();
@@ -2592,6 +2602,18 @@ function _update_cred($data)
         $pwd_old = $tmp[1];
         $pwd_new = $tmp[2];
 
+
+        $q = "select t_id from dh_teacher where CONCAT(t_code,'.',t_gender)=:name limit 1";
+        $t_id = db_query($q, array(':name' => $uname))->fetchField();
+
+        if (!$t_id)
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials don't match.";
+            return $ret; 
+        }
+
+
         $q = "select pass from users where name=:name limit 1";
         $hash_stored = db_query($q, array(':name' => $uname))->fetchField();
 
@@ -2624,6 +2646,7 @@ function _update_cred($data)
             $q = "update users set pass=:pass where name=:name limit 1";
             db_query($q, array(':pass' => $new_hash, ':name' => $uname));
 
+
             $ret['Success'] = true;
             $ret['Message'] = "Password updated";
             return $ret;
@@ -2643,4 +2666,18 @@ function _update_cred($data)
         return $ret;
     }
 
+}
+
+
+function apilogit( $centre, $module, $identifier, $event, $msg, $uid = 0 )
+{
+    global $user;
+    $log_uid = $uid?$uid:$user->uid;
+    $fields['l_user'] = $log_uid;
+    $fields['l_center'] = $centre;
+    $fields['l_msg'] = $msg;
+    $fields['l_module'] = $module;
+    $fields['l_event'] = $event;
+    $fields['l_identifier'] = $identifier;
+    db_insert('dh_log')->fields($fields)->execute();
 }
