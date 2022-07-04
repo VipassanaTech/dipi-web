@@ -1,0 +1,75 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Mailgun module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function mailgun_uninstall() {
+  global $language;
+
+  // We need to load our module to make possible use constants.
+  // See hook_uninstall() for details.
+  drupal_load('module', 'mailgun');
+
+  // Get title and description from mailgun_variable_info().
+  module_load_include('inc', 'mailgun', 'mailgun.variable');
+  $variables = module_invoke('mailgun', 'variable_info', array('language' => $language));
+
+  // Delete variables.
+  foreach ($variables as $variable => $data) {
+    variable_del($variable);
+  }
+}
+
+/**
+ * Implements hook_enable().
+ */
+function mailgun_enable() {
+  mailsystem_set(array('mailgun_test' => 'MailgunMailSystem'));
+}
+
+/**
+ * Implements hook_disable().
+ */
+function mailgun_disable() {
+  // Tell Mail System to remove Mailgun and restore to defaults.
+  mailsystem_clear(array('mailgun_test' => 'MailgunMailSystem'));
+  watchdog('mailgun', 'Mailgun has been disabled.');
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function mailgun_requirements($phase) {
+  // Ensure translations don't break during installation.
+  $t = get_t();
+  $requirements = array();
+
+  if ($phase !== 'runtime') {
+    return $requirements;
+  }
+
+  $requirements['mailgun']['title'] = $t('Mailgun');
+  if (mailgun_check_library() === FALSE) {
+    $requirements['mailgun']['value'] = $t('The Mailgun library has not been installed correctly.');
+    $requirements['mailgun']['severity'] = REQUIREMENT_ERROR;
+  }
+  else {
+    if (mailgun_check_api_settings() === FALSE) {
+      $requirements['mailgun']['value'] = $t('The Mailgun library is installed but API settings are not configured. Please check your !link.', [
+        '!link' => l($t('settings'), MAILGUN_ADMIN_PAGE),
+      ]);
+      $requirements['mailgun']['severity'] = REQUIREMENT_WARNING;
+    }
+    else {
+      $requirements['mailgun']['value'] = $t('The Mailgun library is installed correctly. API settings are configured.');
+      $requirements['mailgun']['severity'] = REQUIREMENT_OK;
+    }
+  }
+
+  return $requirements;
+}
