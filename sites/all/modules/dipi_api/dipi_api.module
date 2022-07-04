@@ -426,6 +426,43 @@ function dipi_api_services_resources() {
           ),
 
 
+
+        'check-cred' => array(
+              'help' => t("Check Credentials"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_check_cred',
+              'args' => array(
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Base64 Credentials',
+                ),
+              ),
+          ),
+
+
+
+
+        'update-cred' => array(
+              'help' => t("Update Credentials"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_update_cred',
+              'args' => array(
+                array(
+                  'name' => 'data',
+                  'optional' => FALSE,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Base64 Credentials',
+                ),
+              ),
+          ),
+
+
           'app-info-by-conf-num' => array(
                   'help' => t("Get Application Info by Confirmation Number"),
                   'access arguments' => array('zero day by conf num access'),
@@ -2419,4 +2456,191 @@ function _attended_stats()
         $ret['Message'] = "There is some error.";
         return $ret;
     }
+}
+
+
+
+function _check_cred($data)
+{
+    require_once DRUPAL_ROOT . '/' . variable_get('password_inc', 'includes/password.inc');
+    $cred_cry_base64 = $data['data'];
+    $ret = array(
+        'Success'=>'',
+        'Message'=>'',
+    );
+
+
+    if (!$cred_cry_base64)
+    {
+        $ret['Success'] = false;
+        $ret['Message'] = "Credentials string required.";
+        return $ret;  
+    }
+
+
+    try
+    {
+        $sodium_key_pair_base64 = variable_get('sodium_key_pair_base64', NULL);
+
+        if (!$sodium_key_pair_base64)
+        {
+          $ret['Success'] = false;
+          $ret['Message'] = "There is some error.";
+          return $ret;  
+        }
+
+        $sodium_key_pair_bin = sodium_base642bin($sodium_key_pair_base64, SODIUM_BASE64_VARIANT_ORIGINAL);
+        $cred_cry_bin = sodium_base642bin($cred_cry_base64, SODIUM_BASE64_VARIANT_ORIGINAL);
+        $cred = sodium_crypto_box_seal_open($cred_cry_bin, $sodium_key_pair_bin);
+        if(!$cred || !strstr($cred, '|||'))
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials string is not as per the pattern.";
+            return $ret;  
+        }
+
+        $tmp = explode('|||', $cred);
+
+        if(count($tmp) != 2)
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials string is not as per the pattern.";
+            return $ret; 
+        }
+
+        $uname = $tmp[0];
+        $pwd = $tmp[1];
+
+
+        $q = "select pass from users where name=:name limit 1";
+        $hash_stored = db_query($q, array(':name' => $uname))->fetchField();
+
+
+        if (!$hash_stored)
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials don't match.";
+            return $ret;
+        }
+
+        $hash_new = _password_crypt('sha512', $pwd, $hash_stored);
+
+        if ($hash_stored === $hash_new)
+        {
+            $ret['Success'] = true;
+            $ret['Message'] = "Crednetials match";
+            return $ret;
+        }
+        else
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials don't match.";
+            return $ret;
+        }
+    }
+    catch(Exception $e)
+    {
+        $ret['Success'] = false;
+        $ret['Message'] = "There is some error.";
+        return $ret;
+    }
+
+}
+
+
+function _update_cred($data)
+{
+    require_once DRUPAL_ROOT . '/' . variable_get('password_inc', 'includes/password.inc');
+    $update_cred_cry_base64 = $data['data'];
+    $ret = array(
+        'Success'=>'',
+        'Message'=>'',
+    );
+
+    try
+    {
+        $sodium_key_pair_base64 = variable_get('sodium_key_pair_base64', NULL);
+
+        if (!$sodium_key_pair_base64)
+        {
+          $ret['Success'] = false;
+          $ret['Message'] = "There is some error.";
+          return $ret;  
+        }
+
+        $sodium_key_pair = sodium_base642bin($sodium_key_pair_base64, SODIUM_BASE64_VARIANT_ORIGINAL);
+        $update_cred_cry_bin = sodium_base642bin($update_cred_cry_base64, SODIUM_BASE64_VARIANT_ORIGINAL);
+        $update_cred = sodium_crypto_box_seal_open($update_cred_cry_bin, $sodium_key_pair);
+
+        if(!$update_cred || !strstr($update_cred, '|||'))
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials string is not as per the pattern.";
+            return $ret;  
+        }
+
+        $tmp = explode('|||', $update_cred);
+
+        if(count($tmp) != 3)
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials string is not as per the pattern.";
+            return $ret; 
+        }
+
+        $uname = $tmp[0];
+        $pwd_old = $tmp[1];
+        $pwd_new = $tmp[2];
+
+        $q = "select pass from users where name=:name limit 1";
+        $hash_stored = db_query($q, array(':name' => $uname))->fetchField();
+
+
+        if (!$hash_stored)
+        {
+        $ret['Success'] = false;
+        $ret['Message'] = "Credentials don't match.";
+        return $ret;
+        }
+
+        $hash_new = _password_crypt('sha512', $pwd_old, $hash_stored);
+
+        if ($hash_stored === $hash_new)
+        {
+            if (strlen($pwd_new) < 8)
+            {
+                $ret['Success'] = false;
+                $ret['Message'] = "New Password Must Contain At Least 8 Characters and At Least 1 Number!";
+                return $ret;
+            }
+            elseif(!preg_match("#[0-9]+#",$pwd_new))
+            {
+                $ret['Success'] = false;
+                $ret['Message'] = "New Password Must Contain At Least 8 Characters and At Least 1 Number!";
+                return $ret;
+            }
+
+            $new_hash = user_hash_password($pwd_new);
+            $q = "update users set pass=:pass where name=:name limit 1";
+            db_query($q, array(':pass' => $new_hash, ':name' => $uname));
+
+            $ret['Success'] = true;
+            $ret['Message'] = "Password updated";
+            return $ret;
+        }
+        else
+        {
+            $ret['Success'] = false;
+            $ret['Message'] = "Credentials don't match.";
+            return $ret;
+        }
+
+    }
+    catch(Exception $e)
+    {
+        $ret['Success'] = false;
+        $ret['Message'] = "There is some error.";
+        return $ret;
+    }
+
 }
