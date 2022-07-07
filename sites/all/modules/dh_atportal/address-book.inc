@@ -242,16 +242,21 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	if ($t['t_dob']['date'] == '')
 		$t['t_dob'] = NULL;
-	if ($t['t_sat'] == '')
-		$t['t_sat'] = '0';
-	if ($t['t_full_t'] == '')
-		$t['t_full_t'] = '0';
-	if ($t['t_ct'] == '')
-		$t['t_ct'] = '0';
-	if ($t['t_cat'] == '')
-		$t['t_cat'] = '0';
-	if ($t['t_bhante'] == '')
-		$t['t_bhante'] = '0';
+
+	if (user_access('add assistant teacher'))
+	{
+			if ($t['t_sat'] == '')
+				$t['t_sat'] = '0';
+			if ($t['t_full_t'] == '')
+				$t['t_full_t'] = '0';
+			if ($t['t_ct'] == '')
+				$t['t_ct'] = '0';
+			if ($t['t_cat'] == '')
+				$t['t_cat'] = '0';
+			if ($t['t_bhante'] == '')
+				$t['t_bhante'] = '0';
+	}
+
 
 	if ( arg(2) == 'edit')
 	{
