@@ -2514,7 +2514,7 @@ function _check_cred($data)
         $uname = $tmp[0];
         $pwd = $tmp[1];
 
-        $q = "select t_id from dh_teacher where CONCAT(t_code,'.',t_gender)=:name limit 1";
+        $q = "select t_id from dh_teacher where CONCAT(t_code,'.',t_gender)=:name and t_status='Active' limit 1";
         $t_id = db_query($q, array(':name' => $uname))->fetchField();
 
         if (!$t_id)
