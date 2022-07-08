@@ -611,6 +611,8 @@ function map_application_fields_lc($row)
 		}
 	}
 	 
+	if ($row['ae_pregnant_detail'])
+		$fields['Pregnant'] = $row['ae_pregnant_detail']; // Pregnancy	 
 
 
 	if ($row['al_relationship']) $fields['Relationship Y'] = 'Yes'; else $fields['Relationship N'] = 'Yes';
