@@ -561,7 +561,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['b']['c'] = array('#markup' => $out);
 
 	$today = date('Y-m-d');
-	if ( $today >= $r['c_start'] )
+	if ( $today > $r['c_start'] )
 		return $form;
 
 	$owner = False;
