@@ -146,7 +146,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	if (user_access('add assistant teacher'))
 	{
 		$group = 'AT Role Information';
-		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => true);
+		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
 		$statuses = array('' => 'Choose', 'Active' => 'Active', 'Inactive' => 'Inactive');
 		$default_status = '';
 		if ( !empty($edit_data) )
