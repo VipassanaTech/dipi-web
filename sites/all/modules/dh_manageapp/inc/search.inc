@@ -523,10 +523,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ],
 					                "visible": false,
 					                "searchable": false
-					            }
+					            },
+					            {
+					                "targets": [ 3, 4 ],
+					                "visible": false,
+					                "searchable": true
+					            },
 			        ],					
 			        columns: [
 			            {
@@ -538,6 +543,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            },				        
 			            { data: "name", "title" : "Applicant Name" },
 			            { data: "eocd", "title" : "Edu/Occ/Comp/Desig" },
+			            { data: "contact_mobile", "title" : "Mobile" },
+			            { data: "contact_email", "title" : "Email" },
 			            { data: "status", "title" : "Status" },
 			            { data: "o_n", "title" : "Type" },
 				        { data: "age", "title" : "Age"},
@@ -565,8 +572,6 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        		str += "</select>";
 				        		return str;
 				        } },
-				        { data: null, "title": "" },
-				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
