@@ -624,13 +624,13 @@ function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expecte
 					_update_status($row['a_id'], $new_status, $UID_SYSTEM);
 					dh_send_letter('applicant', $row['a_id'], $new_status );
 					
-				} catch (Exception $e) {
+				} catch (Throwable $e) {
 
 					sleep(5);
 
 					try {
 						dh_send_letter('applicant', $row['a_id'], $new_status );
-					} catch (Exception $e) {
+					} catch (Throwable $e) {
 						logit($r['cs_center'], 'CRON-RC-EXPECTED', $row['a_id'], 'Problem '.$e->getMessage());	
 						sleep(5);
 
