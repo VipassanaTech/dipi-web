@@ -625,7 +625,16 @@ function cron_rc_expected($centre_id=0, $course_id=0, $expected_or_rc = 'expecte
 					dh_send_letter('applicant', $row['a_id'], $new_status );
 					
 				} catch (Exception $e) {
-					logit($r['cs_center'], 'CRON-RC-EXPECTED', $row['a_id'], 'Problem '.$e->getMessage());									
+
+					sleep(5);
+
+					try {
+						dh_send_letter('applicant', $row['a_id'], $new_status );
+					} catch (Exception $e) {
+						logit($r['cs_center'], 'CRON-RC-EXPECTED', $row['a_id'], 'Problem '.$e->getMessage());	
+						sleep(5);
+
+					}
 				}
 
 			}			
