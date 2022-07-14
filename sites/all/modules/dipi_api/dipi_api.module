@@ -2065,7 +2065,8 @@ function _get_apps_for_at( $at_code, $gender, $type )
     $where = "(al.al_recommending = :frname or al.al_area_at = :faname )";
     $where_opts = array( ':frname' => $at_name, ':faname' => $at_name );
 
-    $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved as 'RecommendingAtApproved', al.al_area_at_approved as 'AreaAtApproved', DATEDIFF(CURDATE(), cr.c_start) as 'Diff',a_id as 'AppID', al_recommending as 'RecommendingAT', al_area_at as 'AreaAT'
+    $q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved as 'RecommendingAtApproved', al.al_area_at_approved as 'AreaAtApproved', DATEDIFF(CURDATE(), cr.c_start) as 'Diff',a_id as 'AppID', al_recommending as 'RecommendingAT', al_area_at as 'AreaAT',
+      a_status as 'Status'
         from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where $where
           and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) $append  order by a_created desc $limit";
     $res = db_query($q, $where_opts);
