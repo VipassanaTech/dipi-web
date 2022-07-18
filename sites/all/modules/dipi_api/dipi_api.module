@@ -1331,6 +1331,7 @@ function _api_handle_sms($params)
         _sms_log($sender, $keyword, $params['content'], $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
+
     switch ( strtoupper($keyword) ) 
     {
       case 'HELP':
@@ -1401,7 +1402,8 @@ function _sms_log( $from, $keyword, $content, $response )
     $rec['sl_keyword'] = $keyword;
     $rec['sl_content'] = $content;
     $rec['sl_response'] = $response;
-    db_insert('dh_sms_log')->fields($rec)->execute();
+    if ((strlen($keyword) <= 20) && (strlen($content) <= 60 ))
+        db_insert('dh_sms_log')->fields($rec)->execute();
 }
 
 function _api_sms_keyword_help()
@@ -2800,6 +2802,16 @@ function handle_whatsapp_msg($sender, $data)
         //_sms_log($sender, $keyword, $data, $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
+
+    $content = str_replace(array("'", '"', '&','$','#','%','`','~'), '', $content);
+    if ((strlen($content) > 60))
+    {
+        $response = "Invalid Data, try HELP";
+        $result = send_whatsapp_360($sender, "", $response, "text");
+        //_sms_log($sender, $keyword, $content, $response);
+        return array("Result" => "Bad Content $keyword"); //['status']        
+    }
+
     switch ( strtoupper($keyword) ) 
     {
         case 'HELP':
