@@ -2787,6 +2787,11 @@ function handle_whatsapp_msg($sender, $data)
     $temp = explode(" ", $data);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $data));
+    if ((strlen($keyword) > 20) || (!is_string($keyword)) )
+        return array("Result" => "Bad Keyword $keyword");
+
+    if ((strlen($content) > 60) || (!is_string($content)) )
+        return array("Result" => "Bad data $content");
 
     if (!in_array( strtoupper($keyword), $keywords ))
     {

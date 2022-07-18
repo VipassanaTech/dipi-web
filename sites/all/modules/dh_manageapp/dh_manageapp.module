@@ -2101,7 +2101,7 @@ function whatsapp_hook()
 	           file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".$log_data."\n", FILE_APPEND);
 	        }
 	    }
-	    else if (is_array($data) && (isset($data['messages'])) && (is_array($data['messages'])))
+	    elseif (is_array($data) && (isset($data['messages'])) && (is_array($data['messages'])))
 	    {
 	    	file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
 	    	foreach($data['messages'] as $msg)
@@ -2114,7 +2114,8 @@ function whatsapp_hook()
 	    }
 	    else
 	       file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
-	}	
+	}
+	echo "OK";
+	exit(0);
 }
-
 
