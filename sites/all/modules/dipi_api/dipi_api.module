@@ -2689,8 +2689,6 @@ function apilogit( $centre, $module, $identifier, $event, $msg, $uid = 0 )
 
 function send_whatsapp_360( $to, $template, $params)
 {
-    $url = "https://waba-sandbox.360dialog.io/v1/messages";
-
     $namespace = variable_get('wa360_namespace', '');
     $wa_url = variable_get('wa360_url', '');
     $wa_api_key = variable_get('wa360_api_key', '');
@@ -2732,7 +2730,7 @@ function send_whatsapp_360( $to, $template, $params)
     $curl = curl_init();
 
     curl_setopt_array($curl, [
-        CURLOPT_URL => $url,
+        CURLOPT_URL => $wa_url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST => "POST",
         CURLOPT_POSTFIELDS => $payload,
