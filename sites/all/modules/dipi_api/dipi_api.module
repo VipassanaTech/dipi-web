@@ -2792,7 +2792,7 @@ function handle_whatsapp_msg($sender, $data)
     {
         $response = "Unknown Keyword $keyword, try HELP";
         $result = send_whatsapp_360($sender, "", $response, "text");
-        //_sms_log($sender, $keyword, $params['content'], $response);
+        _sms_log($sender, $keyword, $data, $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
     switch ( strtoupper($keyword) ) 
@@ -2823,7 +2823,7 @@ function handle_whatsapp_msg($sender, $data)
             {
               $response = "TRANSFER <centre> <YYYY-mm-dd>\nPlease send in above format";
               $result = send_whatsapp_360($sender, "", $response, "text");
-              //_sms_log($sender, $keyword, $params['content'], $response);
+              _sms_log($sender, $keyword, $data, $response);
               return array("Result" => "Bad format ".$content); //['status']            
             }
             $centre = $temp[1];
@@ -2839,7 +2839,7 @@ function handle_whatsapp_msg($sender, $data)
             {
               $response = "PATRIKA <subscriber id> <pincode>\nPlease send in above format";
               $result = send_whatsapp_360($sender, "", $response, "text");
-              //_sms_log($sender, $keyword, $params['content'], $response);
+              _sms_log($sender, $keyword, $data, $response);
               return array("Result" => "Bad format ".$content); //['status']            
             }
             $pid = $temp[1];
@@ -2851,6 +2851,7 @@ function handle_whatsapp_msg($sender, $data)
     }
     if ($response)
     {
+        _sms_log($sender, $keyword, $data, $response);
         send_whatsapp_360($sender, "", $response, "text");
     }
 }
