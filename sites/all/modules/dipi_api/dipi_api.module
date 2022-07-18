@@ -2787,17 +2787,17 @@ function handle_whatsapp_msg($sender, $data)
     $temp = explode(" ", $data);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $data));
-    if ((strlen($keyword) > 20) || (!is_string($keyword)) )
+    /*if ((strlen($keyword) > 20) || (!is_string($keyword)) )
         return array("Result" => "Bad Keyword $keyword");
 
     if ((strlen($content) > 60) || (!is_string($content)) )
         return array("Result" => "Bad data $content");
-
+    */
     if (!in_array( strtoupper($keyword), $keywords ))
     {
         $response = "Unknown Keyword $keyword, try HELP";
         $result = send_whatsapp_360($sender, "", $response, "text");
-        _sms_log($sender, $keyword, $data, $response);
+        //_sms_log($sender, $keyword, $data, $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
     switch ( strtoupper($keyword) ) 
