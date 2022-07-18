@@ -2108,7 +2108,7 @@ function whatsapp_hook()
 	    	{
 	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
 	    		{
-	    			send_whatsapp_360($msg['from'], "help", "");
+	    			handle_whatsapp_msg($msg['from'], $msg['text']['body']);
 	    		}
 	    	}
 	    }

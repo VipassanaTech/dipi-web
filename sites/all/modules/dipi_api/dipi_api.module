@@ -2687,25 +2687,25 @@ function apilogit( $centre, $module, $identifier, $event, $msg, $uid = 0 )
     db_insert('dh_log')->fields($fields)->execute();
 }
 
-function send_whatsapp_360( $to, $template, $params)
+function send_whatsapp_360( $to, $template, $params, $type = "template")
 {
     $namespace = variable_get('wa360_namespace', '');
     $wa_url = variable_get('wa360_url', '');
     $wa_api_key = variable_get('wa360_api_key', '');
-    $p_str = '';
+    $p_arr = array();
     if ($params)
     {
         foreach($params as $key => $val)
         {
-            $p_str .= '{"type": "text", "text": "'.addslashes($val).'" },';
+            $p_arr[] = array("type" => "text", "text" => $val );
         }
     }
-    if ($p_str)
-        $p_str = array(substr($p_str, 0, -1));
-    else
-        $p_str = array();
 
-    $payload = json_encode(array('to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_str)))));
+    if ($type == 'template')
+        $payload = json_encode(array('to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
+    else
+        $payload = json_encode(array('to' => $to, "type" => 'text', 'text' => array("body" => $params) ));
+
     $headers = [
         "Content-Type: application/json",
         "D360-Api-Key: $wa_api_key",
@@ -2728,10 +2728,86 @@ function send_whatsapp_360( $to, $template, $params)
     $ret = '';
 
     if ($err) {
-        watchdog('dipi_api', 'Unable to send Whatsapp: '.$to.' template: '.$template.': '.$err, array(), WATCHDOG_ERROR);
+        watchdog('dipi_api', 'Unable to send Whatsapp: '.$to.' template: '.$template.': '.$err.': '.$response, array(), WATCHDOG_ERROR);
     } else {
         $ret = json_decode($response)->messages[0]->id;
     }
     return $ret;
+}
+
+
+function handle_whatsapp_msg($sender, $data)
+{
+    $keywords = _api_sms_keywords();
+    $response = "";
+    $temp = explode(" ", $data);
+    $keyword = $temp[0];
+    $content = trim(str_replace($keyword, "", $data));
+
+    if (!in_array( strtoupper($keyword), $keywords ))
+    {
+        $response = "Unknown Keyword $keyword, try HELP";
+        $result = send_whatsapp_360($sender, "", $response, "text");
+        //_sms_log($sender, $keyword, $params['content'], $response);
+        return array("Result" => "Bad Keyword $keyword"); //['status']
+    }
+    switch ( strtoupper($keyword) ) 
+    {
+        case 'HELP':
+            $response = _api_sms_keyword_help();
+            break;
+        case 'ADDRESS':
+            $response = _api_sms_keyword_address( $content ) ;
+            break;      
+        case 'CONTACT':
+            $response = _api_sms_keyword_contact( $content ) ;
+            break;              
+        case 'CENTRES':
+            $response = _api_sms_keyword_centres();
+            break;      
+        case 'STATUS':
+            $response = _api_sms_keyword_status($sender);
+            break;
+        case 'CANCEL':
+            $response = _api_sms_keyword_cancel($sender, $content);
+            break;
+        case 'CONFIRM':
+            $response = _api_sms_keyword_confirm($sender, $content);
+            break;
+        case 'TRANSFER':
+            if (count($temp) < 3)
+            {
+              $response = "TRANSFER <centre> <YYYY-mm-dd>\nPlease send in above format";
+              $result = send_whatsapp_360($sender, "", $response, "text");
+              //_sms_log($sender, $keyword, $params['content'], $response);
+              return array("Result" => "Bad format ".$content); //['status']            
+            }
+            $centre = $temp[1];
+            $start_date = $temp[2];
+            if (!isset($temp[3]))
+                $id = "";
+            else
+                $id = $temp[3];
+            $response = _api_sms_keyword_transfer($sender,  $centre, $start_date, $id );
+            break;
+        case 'PATRIKA':
+            if (count($temp) < 3)
+            {
+              $response = "PATRIKA <subscriber id> <pincode>\nPlease send in above format";
+              $result = send_whatsapp_360($sender, "", $response, "text");
+              //_sms_log($sender, $keyword, $params['content'], $response);
+              return array("Result" => "Bad format ".$content); //['status']            
+            }
+            $pid = $temp[1];
+            $pincode = $temp[2];
+            $response = _api_sms_keyword_patrika($pid, $pincode);
+            break;
+        default:
+            $response = _api_sms_keyword_help();
+    }
+    if ($response)
+    {
+        send_whatsapp_360($sender, "", $response, "text");
+    }
 }
 
