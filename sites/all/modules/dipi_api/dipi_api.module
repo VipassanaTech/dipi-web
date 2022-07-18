@@ -2804,7 +2804,7 @@ function handle_whatsapp_msg($sender, $data)
     }
 
     $content = str_replace(array("'", '"', '&','$','#','%','`','~'), '', $content);
-    if ((strlen($content) > 60))
+    if ((strlen($content) > 60) || (!mb_detect_encoding($content, 'ASCII', true)))
     {
         $response = "Invalid Data, try HELP";
         $result = send_whatsapp_360($sender, "", $response, "text");
