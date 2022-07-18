@@ -443,11 +443,19 @@ function map_application_fields($row)
 
 	if ( $row['a_problem_physical'])
 	{
-		$fields['physical'] = $row['ae_desc_physical']."\n".$row['ae_desc_medication']; 	
+		$fields['physical'] = $row['ae_desc_physical']; 	
 		$fields['medical_yes'] = 'Yes';	
 	}
 	else
 		$fields['medical_no'] = 'Yes';
+
+	if ($row['a_medication'])
+	{
+		$fields['medication'] = $row['ae_desc_medication']; 	
+		$fields['medication_yes'] = 'Yes';
+	}
+	else
+		$fields['medication_no'] = 'Yes';
 
 	if ( $row['a_problem_mental'])
 	{
