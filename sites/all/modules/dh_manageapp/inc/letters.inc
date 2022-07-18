@@ -399,7 +399,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	switch( $type )
 	{
 		case 'applicant':
-			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms, al.al_recommending, al.al_area_at
+			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_mob_country, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms, al.al_recommending, al.al_area_at
 				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id left join dh_applicant_lc al on a.a_id=al.al_applicant where a.a_id='$id' ";
 			break;
 		case 'student':
@@ -407,7 +407,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		case 'r-teacher':
 		case 'a-teacher':
 		case 'lc-admin':
-			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms, al.al_recommending, al.al_area_at
+			$q = "select a.a_id, a.a_type, a.a_center, a.a_course, a.a_f_name, a.a_m_name, a.a_l_name, a.a_address, a.a_zip, a.a_phone_mobile, a.a_mob_country, a.a_email, a.a_gender, a.a_dob, a_conf_no, a.a_auth_code, a_login, a.a_center as 'CentreID', a_uri, ci.c_name as 'a_city', co.c_name as 'a_country', s.s_name as 'a_state', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode,  cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, td.td_val1 as 'c_course_type_str', cr.c_course_type, ct_teacher, ce.c_sms, al.al_recommending, al.al_area_at
 				from dh_applicant a left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city ci on a.a_city=ci.c_id  left join dh_center ce on a.a_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id left join dh_course_teacher on ct_course = cr.c_id left join dh_applicant_lc al on a.a_id=al.al_applicant where a.a_id='$id' ";			
 			break;
 	}
@@ -436,7 +436,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
  		$row['a_auth_code'] = generate_random_str(30);
 		db_update('dh_applicant')->fields(array('a_auth_code' => $row['a_auth_code'], 'a_login' => $row['a_login']))->condition('a_id', $id)->execute();
 	}
-		
+	$delivery_type = DELIVERY_TYPE_BOTH;	
 	if (in_array($type, array('r-teacher', 'a-teacher', 'lc-admin')))
 	{
 		$teacher = '';
@@ -561,6 +561,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 {
 	global $user;
 
+	$orig_letter_id = $letter_id;
 	$ret = dh_get_letter($type, $id, $event, $letter_id, $comment);
 
 	if (!$ret['result'])
@@ -581,6 +582,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	else
 		$delivery_type = $ret['delivery_type'];
 	$letter_name = $ret['letter_name'];
+	$delivery_type = DELIVERY_TYPE_BOTH;
 
 	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
 	if (  in_array($event, array($STATUS_CONFIRMED)) )
@@ -648,20 +650,26 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	if ( ($delivery_type == DELIVERY_TYPE_SMS) || ($delivery_type == DELIVERY_TYPE_BOTH) )
 	{
 		$sms_url = variable_get('sms_url', '');
-		if ($sms_body <> '' )
+		//$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
+		//$response = file_get_contents($sms_url);
+		if (($orig_letter_id == 0) && (in_array($type, array('applicant', 'student') )))
 		{
-			$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
-			$response = file_get_contents($sms_url);
-			$log = "Letter sent (SMS) - ".$letter_name." ( Response: $response )";
-			dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile'], strlen($sms_body) );
-			logit($centre,  'Letter', $id, $log );
+			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
+			$wa_id = whatsapp_360_get_waid("+".$row['a_mob_country'].$row['a_phone_mobile']);
+			if ($wa_id)
+			{
+				$response = send_whatsapp_360($wa_id, "status_update", $params );
+				$log = "Letter sent (Whatsapp) - ".$letter_name." ( Response: $response )";
+				dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
+				logit($centre,  'Letter', $id, $log );					
+			}
+			else
+				logit($centre,  'Letter', $id, "Could not get contact whatsapp id to send" );
 		}
-		else
-			logit($centre, 'Letter', $id, "No SMS Body found in $letter_name!");
 	}
 }
 
-function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile, $size )
+function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
 {
 	$sms = array();
 	$sms['cs_center'] = $centre;
@@ -669,10 +677,11 @@ function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile, $size )
 	$sms['cs_letter'] = $letter;
 	$sms['cs_applicant'] = $applicant;
 	$sms['cs_mobile'] = $mobile;
-	$credits = floor($size/160);
+	/*$credits = floor($size/160);
 	if (($size % 160) > 0)
 		$credits += 1;
-	$sms['cs_credits_used'] = $credits;
+	*/
+	$sms['cs_credits_used'] = 1;
 	db_insert('dh_center_sms')->fields($sms)->execute();
 }
 

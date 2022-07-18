@@ -2714,7 +2714,7 @@ function send_whatsapp_360( $to, $template, $params, $type = "template")
     $curl = curl_init();
 
     curl_setopt_array($curl, [
-        CURLOPT_URL => $wa_url,
+        CURLOPT_URL => $wa_url.'/messages',
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST => "POST",
         CURLOPT_POSTFIELDS => $payload,
@@ -2734,6 +2734,50 @@ function send_whatsapp_360( $to, $template, $params, $type = "template")
     }
     return $ret;
 }
+
+
+function whatsapp_360_get_waid( $to )
+{
+    $namespace = variable_get('wa360_namespace', '');
+    $wa_url = variable_get('wa360_url', '');
+    $wa_api_key = variable_get('wa360_api_key', '');
+    $p_arr = array();
+
+    $payload = json_encode(array("blocking" => "wait", "contacts" => array($to),  "force_check" => True));
+
+    $headers = [
+        "Content-Type: application/json",
+        "D360-Api-Key: $wa_api_key",
+    ];
+
+    $curl = curl_init();
+
+    curl_setopt_array($curl, [
+        CURLOPT_URL => $wa_url.'/contacts',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => "POST",
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+
+    $response = curl_exec($curl);
+    $err = curl_error($curl);
+
+    curl_close($curl);
+    $ret = '';
+
+    if ($err) {
+        watchdog('dipi_api', 'Unable to get Whatsapp ID: '.$to.': '.$err.': '.$response, array(), WATCHDOG_ERROR);
+    } else {
+        $ret = json_decode($response);
+        if (($ret->contacts[0]->status == 'valid') && isset($ret->contacts[0]->wa_id))
+            $ret = $ret->contacts[0]->wa_id;
+        else
+            $ret = '';
+    }
+    return $ret;
+}
+
 
 
 function handle_whatsapp_msg($sender, $data)
