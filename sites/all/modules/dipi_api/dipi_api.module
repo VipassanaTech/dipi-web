@@ -2701,27 +2701,11 @@ function send_whatsapp_360( $to, $template, $params)
         }
     }
     if ($p_str)
-        $p_str = substr($p_str, 0, -1);
-    $payload = <<<'PAYLOAD'
-        {
-            "to": "$to",
-            "type": "template",
-            "template": {
-                "namespace": $namespace,
-                "language": {
-                    "policy": "deterministic",
-                    "code": "en"
-                },
-                "name": "$template",
-                "components": [{
-                        "type": "body",
-                        "parameters": [$p_str]
-                    }
-                ]
-            }
-        }
-    PAYLOAD;
+        $p_str = array(substr($p_str, 0, -1));
+    else
+        $p_str = array();
 
+    $payload = json_encode(array('to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_str)))));
     $headers = [
         "Content-Type: application/json",
         "D360-Api-Key: $wa_api_key",
@@ -2746,8 +2730,8 @@ function send_whatsapp_360( $to, $template, $params)
     if ($err) {
         watchdog('dipi_api', 'Unable to send Whatsapp: '.$to.' template: '.$template.': '.$err, array(), WATCHDOG_ERROR);
     } else {
-        $ret = $response->messages[0]->id;
-    }    
+        $ret = json_decode($response)->messages[0]->id;
+    }
     return $ret;
 }
 
