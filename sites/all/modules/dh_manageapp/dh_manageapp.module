@@ -486,6 +486,10 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_CALLBACK);
 
+	$items['wa-hook'] = array( 'title' => t('Whatsapp Hook'),
+	       'page callback' => 'whatsapp_hook',
+	       'access arguments' => array('access webhook'),
+	       'type' => MENU_CALLBACK);
 
 
 	return $items;
@@ -2069,4 +2073,37 @@ function show_clarification( $app_id, $clarification_id )
 	exit();
 
 }
+
+function whatsapp_hook()
+{
+	$LOG = "/var/log/whatsapp.log";
+	$data = $_REQUEST;
+	if ( empty($data) )
+	   $data = json_decode( file_get_contents( 'php://input' ), true );
+
+	if (! empty($data))
+	{
+	    if ( is_array($data) && (isset($data['statuses'])) && (is_array($data['statuses'])) )
+	    {
+	        $msgs = array();
+	        foreach($data['statuses'] as $r )
+	        {
+	           if ( isset($r['id']) && (isset($r['recipient_id'])) && (isset($r['status'])) )
+	           {
+					$msgs[] = $r['id']." | ".$r['recipient_id']." | ".$r['status']." | ".$r['timestamp'] ;
+					if (!in_array($r['status'], array('sent', 'delivered')))
+						file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($r, true)."\n", FILE_APPEND);
+	           }
+	        }
+	        if (count($msgs) > 0)
+	        {
+	           $log_data = implode("\n" , $msgs);
+	           file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".$log_data."\n", FILE_APPEND);
+	        }
+	    }
+	    else
+	       file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
+	}	
+}
+
 
