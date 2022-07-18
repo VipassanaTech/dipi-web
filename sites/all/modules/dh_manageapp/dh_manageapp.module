@@ -2101,6 +2101,17 @@ function whatsapp_hook()
 	           file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".$log_data."\n", FILE_APPEND);
 	        }
 	    }
+	    else if (is_array($data) && (isset($data['messages'])) && (is_array($data['messages'])))
+	    {
+	    	file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
+	    	foreach($data['messages'] as $msg)
+	    	{
+	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
+	    		{
+	    			send_whatsapp_360($msg['from'], "help", "");
+	    		}
+	    	}
+	    }
 	    else
 	       file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
 	}	
