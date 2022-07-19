@@ -1062,12 +1062,93 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   <script>
   $( function() {
-    $( ".sortable-m" ).sortable({ items: "td" });
-    $( ".sortable-m" ).disableSelection();
-    $( ".sortable-f" ).sortable({ items: "td" });
-    $( ".sortable-f" ).disableSelection();
-    $(".chowky-div").sortable({ items: "td" });
-    $(".chowky-div").disableSelection();
+
+    //$( ".sortable-m" ).sortable({ items: "td" });
+    //$( ".sortable-m" ).disableSelection();
+    //$( ".sortable-f" ).sortable({ items: "td" });
+    //$( ".sortable-f" ).disableSelection();
+    //$(".chowky-div").sortable({ items: "td" });
+    //$(".chowky-div").disableSelection();
+
+	$(".sortable-m .seatnumber").empty();
+	$(".bg-table-m .s-acco").empty();
+	$(".bg-table-m .s-name").empty();
+	$(".bg-table-m .s-old-student").empty();
+	$(".bg-table-m .s-age").empty();
+	$(".bg-table-m .s-backrest").empty();
+	$(".bg-table-m .cwch").empty();
+
+	$(".sortable-f .seatnumber").empty();
+	$(".bg-table-f .s-acco").empty();
+	$(".bg-table-f .s-name").empty();
+	$(".bg-table-f .s-old-student").empty();
+	$(".bg-table-f .s-age").empty();
+	$(".bg-table-f .s-backrest").empty();
+	$(".bg-table-f .cwch").empty();
+
+
+	var a = $(".main-div .sortable-m").innerWidth();
+	var b = $(".chowky-div .sortable-m").innerWidth();	
+	var c = $(".main-div .sortable-f").innerWidth();
+	var d = $(".chowky-div .sortable-f").innerWidth();
+
+	$(".main-div .sortable-m").width(a);
+	$(".chowky-div .sortable-m").width(b);
+	$(".main-div .sortable-f").width(c);
+	$(".chowky-div .sortable-f").width(d);
+
+    $(".sortable-m td, .sortable-f td").replaceWith(function(){
+      return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
+    });
+    $(".sortable-m tr, .sortable-f tr").replaceWith(function(){
+      return this.outerHTML.replace("<tr>", "").replace("</tr>", "")
+    });
+    $(".sortable-m tbody, .sortable-f tbody").replaceWith(function(){
+      return this.outerHTML.replace("<tbody>", "").replace("</tbody>", "")
+    });     
+    $(".sortable-m, .sortable-f").replaceWith(function(){
+      return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
+    });
+
+    var e = $(".main-div .bg-table-m").innerWidth();
+	var f = $(".chowky-div .bg-table-m").innerWidth();	
+	var g = $(".main-div .bg-table-f").innerWidth();
+	var h = $(".chowky-div .bg-table-f").innerWidth();
+
+	$(".main-div .bg-table-m").width(e);
+	$(".chowky-div .bg-table-m").width(f);
+	$(".main-div .bg-table-f").width(g);
+	$(".chowky-div .bg-table-f").width(h);
+
+    $(".bg-table-m td, .bg-table-f td").replaceWith(function(){
+      return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
+    });
+    $(".bg-table-m tr, .bg-table-f tr").replaceWith(function(){
+      return this.outerHTML.replace("<tr>", "").replace("</tr>", "")
+    });
+    $(".bg-table-m tbody, .bg-table-f tbody").replaceWith(function(){
+      return this.outerHTML.replace("<tbody>", "").replace("</tbody>", "")
+    });     
+    $(".bg-table-m, .bg-table-f").replaceWith(function(){
+      return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
+    });
+
+    $(".add-row").click(function(){
+	var cols = $(this).val();
+	for (var i=1 ; i <= cols ; i++)
+	{
+	    $(this).prev().prepend(\'<li class="ui-state-default"></li>\');
+    	$(this).prev().prev().prepend(\'<li class="ui-state-default"></li>\');
+	}
+
+});
+
+    $(".sortable-m").sortable();
+    $(".sortable-m").disableSelection();
+
+    $(".sortable-f").sortable();
+    $(".sortable-f").disableSelection();
+
   } );
   </script>
 ';
@@ -1121,8 +1202,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	}
 
 	$place = 'RIGHT';
-	//$seats['seats'] = dh_allocate_seats($data['M'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
-	//$seats['chowky'] = dh_allocate_seats($chowky['M'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
+
 	if ($ini['RIGHT']['gender'] == 'M')
 		$male_dir = LEFT_TO_RIGHT;
 	else
@@ -1145,8 +1225,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		$female_dir = LEFT_TO_RIGHT;
 
 	$place = 'LEFT';
-	//$seats['seats'] = dh_get_seats($data['F'], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place] );
-	//$seats['chowky'] = dh_get_seats($chowky['F'], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place] );
+
 	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';	
 	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div', $alpha);
 	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div', $alpha);
@@ -1350,23 +1429,22 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 
 function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 {
-//	$seats = $seat_data['seats'];
+
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
-	$out = '<div class="'.$div.'"><table class="sortable'.$append.'">'; // id=
-//	$out = '<div class="main-div"><ul id="sortable">';
-	$inc = count($seats)*$cushion_cols;
+	$ret = '<div class="'.$div.'">';
+	$out = '<table class="sortable'.$append.'">';
+
 	for ($row = count($seats)-1; $row >= 0; $row--)
 	{
 		$out .= '<tr>';
 		for ($col=0; $col< $cushion_cols; $col++)
 		{
 			$out .= '<td class="ui-state-default">';
-			//$out .= '<li  class="ui-state-default">';
 
-			if ($direction == LEFT_TO_RIGHT)
-				$col2 = $col;
-			else
+			//if ($direction == LEFT_TO_RIGHT)
+				//$col2 = $col;
+			//else
 				$col2 = ($cushion_cols - $col -1);
 			if ( isset($seats[$row][$col2]) )
 			{
@@ -1377,16 +1455,17 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 				if ($alpha) {
 					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
 				}
+				$s_no = '<span class="seatnumber">'.$s_no.'</span>';
 				if ($r['aa_chowky'])
-					$s_no = 'CW-'.$s_no;
+					$s_no = '<span class="cwch">CW-</span>'.$s_no;
 				if ($r['aa_chair'])
-					$s_no = 'CH-'.$s_no;
+					$s_no = '<span class="cwch">CH-</span>'.$s_no;
 
 				$seat_no = '<div class="seat-no">'.$s_no.'</div>';
 				$br = '';
 				if ($r['aa_backrest'] || $r['aa_chowky']) $br = 's-backrest-yes';
 				$age_info = ' ('.$r['Age'].')'; 
-				//$info = $r['Full Name'].'<br>'.$t.' '.$r['aa_section'].'-'.$r['aa_acco'].$age_info.$br.'<br><br>'.$seat_no;
+
 				$short_courses = $long_courses = '';
 				if ( $r['a_old'] )
 				{
@@ -1401,60 +1480,22 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 						'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.						
 						'<div class="s-age">Age: '.$age_info.'</div>'.
 						'<div class="s-backrest '.$br.'"></div>';
-				//$out .= '<div class="grid-item">'.$info.'</div>';
+
 				$out .= $info;
 			}
 			$out .= '</td>';
-			//$out .= '</li>';
 		}			
-		$out .= '</tr>';		
+		$out .= '</tr>';	
+
 	}
-//	$out .= '</ul>';
-	$out .= '</table></div>';
+	$out .= '</table>';
+	$out = str_replace('class="sortable', 'class="bg-table', $out).$out;
+	$ret .= $out;
+	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= '</div>';
+	
 
-	$out_chowky = '';
-	/*
-	$out_chowky = '<div class="chowky-div"><table>';
-	for ($i=count($seat_data['chowky'])-1; $i>=0; $i--) 
-	{
-		$r = $seat_data['chowky'][$i];
-		$out_chowky .= '<tr><td>';
-		if ($r['a_old']) $t = '(O)'; else $t ='';
-		$type = 'CHOWKY'; $br = 's-backrest-yes';
-		if ($r['aa_chair']) 
-		{
-			$type = 'CHAIR';
-			$br = '';
-		}	
-//		$info = $r['Full Name'].'<br>'.$t.' '.$r['aa_section'].'-'.$r['aa_acco'].' ('.$r['Age'].')<br><br>'.$type;
-		$short_courses = $long_courses = '';
-		$teacher = '';
-		if ( $r['a_old'] )
-		{
-			$short_courses = 's:'.($r['ac_10d'] + $r['ac_stp']);
-			$long_courses = 'L:'.($r['ac_20d'] + $r['ac_30d'] + $r['ac_45d'] + $r['ac_60d'] + $r['ac_tsc'] + $r['ac_spl']);		
-		  
-		    if( $r['ac_teacher'] )
-	  	   		$teacher = "s-teacher";
-		}
-
-		$info = '<div class="s-seat-no">'.$seat_no.'</div>'.
-				'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].'</div>'.
-				'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
-				'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.						
-				'<div class="s-age">Age: '.$age_info.'</div>'.
-				'<div class="s-backrest '.$br.'"></div>';
-
-		$out_chowky .= $info.'</td></tr>';
-	}
-
-	$out_chowky .= '</table></div>';
-	*/
-
-	if ($direction == LEFT_TO_RIGHT)
-		return $out.$out_chowky;
-	else
-		return $out_chowky.$out;
+	return $ret;
 }
 
 function dh_zero_day_list($centre, $course, $pdf = '')

@@ -1,46 +1,23 @@
-div,td {
+div,td, li {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 	line-height: 1.42857143;
 	color: #333;
 }
 
-.grid-item {
-	width: 160px;
-	height: 160px;
-	background-color: #cecece;
-}
-
-
-.grid-6 {
-	width: 1050px;
-}
-
-.grid-5 {
-	width: 860px;
-}
-
-.grid-4 {
-	width: 700px;
+ul {
+    list-style-type: none;
+    padding-inline-start: 0px;
 }
 
 .main-div {
-	/*width: 780px;*/
-	max-width: 1135px;
-	margin-right: 30px;
+	margin-right: 15px;
 }
 .chowky-div {
-	max-width: 250px;
-	margin-right: 30px;
+	margin-right: 15px;
 }
 
-table {
-	border: 1px;
-	border-color: #000000;
-	border-spacing: 0;
-	border-collapse: collapse;
-}
 
-td {
+.ui-state-default {
 	font-size: 14px;
 	text-align: center;
 	vertical-align: middle;
@@ -50,6 +27,21 @@ td {
 	font-weight: bold;
 	padding-top: 5px;
 }
+
+
+
+.sortable-m .ui-state-default, .bg-table-m .ui-state-default {
+	float: right;
+}
+
+.sortable-f .ui-state-default, .bg-table-f .ui-state-default {
+	float: left;
+}
+
+.bg-table-m .ui-state-default, .bg-table-f .ui-state-default {
+	border: 1px solid #000000;
+}
+
 
 .seat-no {
 	font-size: 16px;
@@ -70,23 +62,9 @@ td {
 .footer {
 	page-break-after: always;
 }
-
-#sortable { list-style-type: none; margin: 0; padding: 0; width: 800px; }
-#sortable li { 
-	margin: 0; 
-	padding: 1px; 
-	float: left; 
-	width: 150px; 
-	height: 130px; 
-	font-size: 14px; 
-	text-align: center; 
-	border: 1px solid #000000;
-	vertical-align: top;
-
-}
   
 .s-seat-no {
-	width: 40px;
+	width: 45px;
 	float: left;
 }
 
@@ -109,7 +87,7 @@ td {
 }
 
 .s-old-student {
-	width: 68px;
+	width: 74px;
 	float: left;
 	text-align: left;
 	margin-left: 5px;
@@ -117,9 +95,9 @@ td {
 }
 
 .s-age {
-	width: 58px;
+	width: 55px;
 	float: right;
-	padding-right: 5px;
+	padding-right: 2px;
 	font-size: 12px;
 }
 
@@ -132,7 +110,40 @@ td {
 	background-color: #000000;
 }
 
+.bg-table-m .s-backrest-yes, .bg-table-f .s-backrest-yes {
+	background-color: #ffffff;
+}
+
 .s-teacher {
 	background-color: #c6c6c6;
 }
 
+
+.bg-table-m .s-teacher, .bg-table-f .s-teacher {
+	background-color: #ffffff;
+}
+/*
+.seat-background, .background-seat-no {
+	position:absolute;
+	z-index: -1000 !important;	
+}
+*/
+
+.bg-table-m, .bg-table-f {
+	position:absolute;
+	z-index: -1000 !important;
+}
+
+
+.bg-table-m .cwch, .bg-table-f .cwch {
+	margin-left: 40px;
+}
+
+
+@media print
+{    
+    .no-print, .no-print *
+    {
+        display: none !important;
+    }
+}
