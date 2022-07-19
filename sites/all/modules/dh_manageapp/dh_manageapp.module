@@ -486,6 +486,10 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_CALLBACK);
 
+	$items['wa-hook'] = array( 'title' => t('Whatsapp Hook'),
+	       'page callback' => 'whatsapp_hook',
+	       'access arguments' => array('access webhook'),
+	       'type' => MENU_CALLBACK);
 
 
 	return $items;
@@ -762,6 +766,14 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$group = 'Applicant Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Applicant Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['applicant_url'] = array('#title' => 'Applicant URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('applicant_url', ''));
+
+
+ 	$group = 'Whatsapp Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'Whatsapp Settings' , '#collapsible' => true, '#collapsed' => false);
+ 	$form[$group]['wa360_url'] = array('#title' => 'URL', '#type' => 'textfield', '#size' => 200, '#maxlength' => 250, '#default_value' => variable_get('wa360_url', ''));
+ 	$form[$group]['wa360_api_key'] = array('#title' => 'API Key', '#type' => 'textfield', '#size' => 200, '#maxlength' => 250, '#default_value' => variable_get('wa360_api_key', ''));
+ 	$form[$group]['wa360_namespace'] = array('#title' => 'Namespace', '#type' => 'textfield', '#size' => 200, '#maxlength' => 250, '#default_value' => variable_get('wa360_namespace', ''));
+
 
  	$group = 'DIPI Statistics Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Statistics Settings' , '#collapsible' => true, '#collapsed' => false);
@@ -2060,5 +2072,50 @@ function show_clarification( $app_id, $clarification_id )
 	print($ret['data']);
 	exit();
 
+}
+
+function whatsapp_hook()
+{
+	$LOG = "/var/log/whatsapp.log";
+	$data = $_REQUEST;
+	if ( empty($data) )
+	   $data = json_decode( file_get_contents( 'php://input' ), true );
+
+	if (! empty($data))
+	{
+	    if ( is_array($data) && (isset($data['statuses'])) && (is_array($data['statuses'])) )
+	    {
+	        $msgs = array();
+	        foreach($data['statuses'] as $r )
+	        {
+	           if ( isset($r['id']) && (isset($r['recipient_id'])) && (isset($r['status'])) )
+	           {
+					$msgs[] = $r['id']." | ".$r['recipient_id']." | ".$r['status']." | ".$r['timestamp'] ;
+					if (!in_array($r['status'], array('sent', 'delivered')))
+						file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($r, true)."\n", FILE_APPEND);
+	           }
+	        }
+	        if (count($msgs) > 0)
+	        {
+	           $log_data = implode("\n" , $msgs);
+	           file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".$log_data."\n", FILE_APPEND);
+	        }
+	    }
+	    elseif (is_array($data) && (isset($data['messages'])) && (is_array($data['messages'])))
+	    {
+	    	file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
+	    	foreach($data['messages'] as $msg)
+	    	{
+	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
+	    		{
+	    			handle_whatsapp_msg($msg['from'], $msg['text']['body']);
+	    		}
+	    	}
+	    }
+	    else
+	       file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
+	}
+	echo "OK";
+	exit(0);
 }
 
