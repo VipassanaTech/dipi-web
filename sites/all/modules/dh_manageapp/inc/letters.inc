@@ -652,7 +652,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$sms_url = variable_get('sms_url', '');
 		//$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
 		//$response = file_get_contents($sms_url);
-		if (($orig_letter_id == 0) && (in_array($type, array('applicant', 'student') )))
+		if (( strtolower($event) <> 'custom') && (in_array($type, array('applicant', 'student') )))
 		{
 			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
 			$wa_id = whatsapp_360_get_waid("+".$row['a_mob_country'].$row['a_phone_mobile']);
