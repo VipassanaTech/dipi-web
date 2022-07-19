@@ -1429,6 +1429,8 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 
 function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 {
+	if (count($seats) <= 0)
+		return '';
 
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
