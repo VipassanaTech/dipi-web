@@ -784,10 +784,10 @@ function dh_manageapp_admin_form($form, &$form_state)
 
  	$group = 'DIPI RabbitMQ Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'RabbitMQ Settings' , '#collapsible' => true, '#collapsed' => true);
- 	$form[$group]['mq_host'] = array('#title' => 'MQ Host', '#type' => 'textfield', '#size' => 50, '#maxlength' => 50, '#default_value' => variable_get('MQ_HOST', ''));
- 	$form[$group]['mq_port'] = array('#title' => 'MQ Port', '#type' => 'textfield', '#size' => 20, '#maxlength' => 5, '#default_value' => variable_get('MQ_PORT', ''));
- 	$form[$group]['mq_user'] = array('#title' => 'MQ User', '#type' => 'textfield', '#size' => 30, '#maxlength' => 30, '#default_value' => variable_get('MQ_USER', ''));
- 	$form[$group]['mq_passwd'] = array('#title' => 'MQ Password', '#type' => 'textfield', '#size' => 30, '#maxlength' => 60, '#default_value' => variable_get('MQ_PASSWD', ''));
+ 	$form[$group]['mq_host'] = array('#title' => 'MQ Host', '#type' => 'textfield', '#size' => 50, '#maxlength' => 50, '#default_value' => variable_get('mq_host', ''));
+ 	$form[$group]['mq_port'] = array('#title' => 'MQ Port', '#type' => 'textfield', '#size' => 20, '#maxlength' => 5, '#default_value' => variable_get('mq_port', ''));
+ 	$form[$group]['mq_user'] = array('#title' => 'MQ User', '#type' => 'textfield', '#size' => 30, '#maxlength' => 30, '#default_value' => variable_get('mq_user', ''));
+ 	$form[$group]['mq_passwd'] = array('#title' => 'MQ Password', '#type' => 'textfield', '#size' => 30, '#maxlength' => 60, '#default_value' => variable_get('mq_passwd', ''));
 
    return system_settings_form($form);
 }
@@ -2133,7 +2133,7 @@ function push_to_queue( $vhost, $queue, $msg )
 {
 	try 
 	{
-		$connection = new AMQPStreamConnection(variable_get('MQ_HOST', ''), int(variable_get('MQ_PORT', '')), variable_get('MQ_USER'), variable_get('MQ_PASSWD'), $vhost);
+		$connection = new AMQPStreamConnection(variable_get('mq_host', ''), int(variable_get('mq_port', '')), variable_get('mq_user'), variable_get('mq_passwd'), $vhost);
 		$channel = $connection->channel();
 
 		$channel->queue_declare($queue, false, true, false, false);
