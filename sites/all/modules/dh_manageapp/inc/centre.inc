@@ -166,6 +166,17 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'0':$edit_data['cs_expected_enable'], '#required' => 1,  );
 	$form[$group]['cs_expected_days'] = array('#title' => 'Send Reminder (Days before Start Date)', '#type' => 'textfield', '#weight' => 7,
 		'#default_value' => $add?'3':$edit_data['cs_expected_days'], '#required' => 0, '#size' => 5 );
+
+
+	$form[$group]['cs_whatsapp_preconf'] = array('#title' => 'Allow WhatsApp Confirmation in case of PreConfirmation', '#type' => 'radios', '#weight' => 1,
+		'#options' => array(1 => 'Yes', 0 => 'No'), 
+		'#default_value' => $add?'1':$edit_data['cs_whatsapp_preconf'], '#required' => 1,  );
+
+	$form[$group]['cs_whatsapp_reconf'] = array('#title' => 'Allow WhatsApp Confirmation in case of ReConfirmation', '#type' => 'radios', '#weight' => 1,
+		'#options' => array(1 => 'Yes', 0 => 'No'), 
+		'#default_value' => $add?'1':$edit_data['cs_whatsapp_reconf'], '#required' => 1,  );
+
+
 	$form[$group]['c_lc_admin_email'] = array('#title' => 'Long course admin email', '#type' => 'textfield', '#weight' => 8,
 		'#default_value' => $add?'':$edit_data['c_lc_admin_email'], '#required' => 0, '#description' => 'Multiple emails can be added comma-separated' );
 
