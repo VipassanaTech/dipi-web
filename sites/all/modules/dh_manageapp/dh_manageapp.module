@@ -1,4 +1,8 @@
 <?php
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Exchange\AMQPExchangeType;
+
 include_once(dirname(__FILE__)."/inc/centre.inc");
 include_once(dirname(__FILE__)."/inc/pdf.inc");
 include_once(dirname(__FILE__)."/inc/letters.inc");
@@ -10,7 +14,6 @@ include_once(dirname(__FILE__)."/inc/reports.inc");
 include_once(dirname(__FILE__)."/inc/referral.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
-
 
 function dh_manageapp_help($path, $arg)
 {
@@ -779,7 +782,12 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Statistics Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['stats_url'] = array('#title' => 'Stats URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('stats_url', ''));
 
-
+ 	$group = 'DIPI RabbitMQ Settings';
+ 	$form[$group] = array('#type' => 'fieldset','#title' => 'RabbitMQ Settings' , '#collapsible' => true, '#collapsed' => true);
+ 	$form[$group]['mq_host'] = array('#title' => 'MQ Host', '#type' => 'textfield', '#size' => 50, '#maxlength' => 50, '#default_value' => variable_get('MQ_HOST', ''));
+ 	$form[$group]['mq_port'] = array('#title' => 'MQ Port', '#type' => 'textfield', '#size' => 20, '#maxlength' => 5, '#default_value' => variable_get('MQ_PORT', ''));
+ 	$form[$group]['mq_user'] = array('#title' => 'MQ User', '#type' => 'textfield', '#size' => 30, '#maxlength' => 30, '#default_value' => variable_get('MQ_USER', ''));
+ 	$form[$group]['mq_passwd'] = array('#title' => 'MQ Password', '#type' => 'textfield', '#size' => 30, '#maxlength' => 60, '#default_value' => variable_get('MQ_PASSWD', ''));
 
    return system_settings_form($form);
 }
@@ -2109,6 +2117,7 @@ function whatsapp_hook()
 	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
 	    		{
 	    			handle_whatsapp_msg($msg['from'], $msg['text']['body']);
+	    			push_to_queue( 'Dipi', 'whatsapp', json_encode( array('from' => $msg['from'], 'msg' => $msg['text']['body'])) );
 	    		}
 	    	}
 	    }
@@ -2119,3 +2128,27 @@ function whatsapp_hook()
 	exit(0);
 }
 
+
+function push_to_queue( $vhost, $queue, $msg )
+{
+	try 
+	{
+		$connection = new AMQPStreamConnection(variable_get('MQ_HOST', ''), int(variable_get('MQ_PORT', '')), variable_get('MQ_USER'), variable_get('MQ_PASSWD'), $vhost);
+		$channel = $connection->channel();
+
+		$channel->queue_declare($queue, false, true, false, false);
+		$channel->exchange_declare($queue, AMQPExchangeType::DIRECT, false, true, false);
+
+		$channel->queue_bind($queue, $queue);
+
+		$message = new AMQPMessage($msg, array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
+		$channel->basic_publish($message, $queue);
+
+		$channel->close();
+		$connection->close();
+		
+	} catch (\Throwable $e) {
+		watchdog('RabbitMQ', 'push_to_queue: '.$e->getMessage(), array(), WATCHDOG_NOTICE);
+	}
+
+}
