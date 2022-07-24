@@ -2133,7 +2133,7 @@ function push_to_queue( $vhost, $queue, $msg )
 {
 	try 
 	{
-		$connection = new AMQPStreamConnection(variable_get('mq_host', ''), int(variable_get('mq_port', '')), variable_get('mq_user'), variable_get('mq_passwd'), $vhost);
+		$connection = new AMQPStreamConnection(variable_get('mq_host', ''), (int)variable_get('mq_port', ''), variable_get('mq_user'), variable_get('mq_passwd'), $vhost);
 		$channel = $connection->channel();
 
 		$channel->queue_declare($queue, false, true, false, false);
