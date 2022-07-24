@@ -6,6 +6,7 @@
         "guzzlehttp/psr7": "^1.4",
         "giggsey/libphonenumber-for-php": "^8.12",
         "rmccue/requests": "^1.7",
-	"aws/aws-sdk-php": "^3.220"
+	"aws/aws-sdk-php": "^3.220",
+	"php-amqplib/php-amqplib": "^3.1"
     }
 }
