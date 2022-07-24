@@ -1561,14 +1561,14 @@ function _api_sms_keyword_confirm($phone, $id)
         $r = $res->fetchAssoc();
         if ($r['a_status'] == 'PreConfirmation')
         {
-          if ( !$r['cs_whatsapp_preconf'] )
+          if ( !($r['cs_whatsapp_preconf']) )
             return "This Vipassana Centre don't allow PreConfirmation from WhatsApp, please check your email for the insturctions.";
           $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
           $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
         }
         else
         {
-          if ( !$r['cs_whatsapp_reconf'] )
+          if ( !($r['cs_whatsapp_reconf']) )
             return "This Vipassana Centre don't allow ReConfirmation from WhatsApp, please check your email for the insturctions.";
           $out = "Application Id ".$r['a_id']." for ".$r['c_name']." reconfirmed successfully";
           $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Expected'";
