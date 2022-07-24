@@ -1525,8 +1525,9 @@ function _api_sms_keyword_confirm($phone, $id)
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
-    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
-      left join dh_course on (a_course=c_id) 
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name, cs_whatsapp_preconf, cs_whatsapp_reconf from dh_applicant 
+      left join dh_course on (a_course=c_id)
+      left join dh_center_setting on (a_center=cs_center) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone' and a_status IN ('PreConfirmation','ReConfirmation')";
 
     if ($id <> '')
@@ -1560,11 +1561,15 @@ function _api_sms_keyword_confirm($phone, $id)
         $r = $res->fetchAssoc();
         if ($r['a_status'] == 'PreConfirmation')
         {
+          if ( !$r['cs_whatsapp_preconf'] )
+            return "This Vipassana Centre don't allow PreConfirmation from WhatsApp, please check your email for the insturctions.";
           $out = "Application Id ".$r['a_id']." for ".$r['c_name']." confirmed successfully";
           $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Confirmed'";
         }
         else
         {
+          if ( !$r['cs_whatsapp_reconf'] )
+            return "This Vipassana Centre don't allow ReConfirmation from WhatsApp, please check your email for the insturctions.";
           $out = "Application Id ".$r['a_id']." for ".$r['c_name']." reconfirmed successfully";
           $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Expected'";
         }
