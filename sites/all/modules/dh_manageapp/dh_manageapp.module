@@ -2116,7 +2116,7 @@ function whatsapp_hook()
 	    	{
 	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
 	    		{
-	    			handle_whatsapp_msg($msg['from'], $msg['text']['body']);
+	    			//handle_whatsapp_msg($msg['from'], $msg['text']['body']);
 	    			push_to_queue( 'Dipi', 'whatsapp', json_encode( array('from' => $msg['from'], 'msg' => $msg['text']['body'])) );
 	    		}
 	    	}
