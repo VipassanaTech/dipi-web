@@ -1640,8 +1640,9 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
 
-    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, a_gender, a_old, a_type, c_name, c_course_type  from dh_applicant 
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, a_gender, a_old, a_type, c_name, c_course_type, td_val3  from dh_applicant 
       left join dh_course on (a_course=c_id) 
+      left join dh_type_detail on (c_course_type=td_id)
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
     if ($id <> '')
     {
@@ -1670,6 +1671,12 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     {
         $res = db_query($q);
         $r = $res->fetchAssoc();
+
+        if ($r['td_val3'] == 'LC')
+        {
+            $out = "Long Course applications can not be transferred.";
+            return $out;
+        }
 
         $q = "select co.c_id, co.c_center, co.c_name from dh_course co left join dh_center c on co.c_center=c.c_id where 
           c_subdomain='$centre' and c_start='$start_date' and c_course_type='".$r['c_course_type']."' limit 1";
