@@ -1458,6 +1458,9 @@ function _api_sms_keyword_status($phone)
     $out = '';
     while($r = $res->fetchAssoc())
     {
+        if ($r['a_status'] == 'Expected')
+            $r['a_status'] = 'Confirmed';
+
         $out .= $r['c_name']."\n".$r['name']." - ".$r['a_status'];
         if ($r['a_conf_no'] <> '')
             $out .= " (".$r['a_conf_no'].")";

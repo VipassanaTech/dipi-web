@@ -552,7 +552,8 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$delivery_type = DELIVERY_TYPE_BOTH;
 	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 
 		'subject' => $subject, 'body' => $body, 'sms_body' => $sms_body, 
-		'delivery_type' => $delivery_type, 'letter_name' => $letter_name, 'letter_id' => $letter_id);
+		'delivery_type' => $delivery_type, 'letter_name' => $letter_name,
+		'letter_id' => $letter_id, 'conf_no' => $row['a_conf_no'] );
 	return $out;
 }
 
@@ -574,6 +575,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$subject = $ret['subject'];
 	$body = $ret['body'];
 	$sms_body = $ret['sms_body'];
+	$conf_no = $ret['conf_no'];
 	$attachment = array();
 	if ( $ret['attachment'] <> '')
 		$attachment[] = $ret['attachment'];
@@ -654,6 +656,9 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		//$response = file_get_contents($sms_url);
 		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) )
 		{
+			if ($conf_no <> '')
+            	$event .= " (".$conf_no.")";
+
 			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
 			$wa_id = whatsapp_360_get_waid("+".$row['a_mob_country'].$row['a_phone_mobile']);
 			if ($wa_id)
