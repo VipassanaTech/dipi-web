@@ -105,6 +105,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['o_n'] = $r['a_old']?"Old":"New";
 		$rs['o_n'] .= '<br>'.$rs['gender'];
 		$rs['courseid'] = $r['a_course'];
+
+		$course_type = db_query("SELECT td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchField();
+
+		if ($course_type == 'LC')
+			$rs['allowtransfer'] = 0;
+
 		$rs['centreid'] = $r['a_center'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
 		if ( $r['a_attended'] ||  in_array($r['a_status'], array($system_statues['STATUS-LEFT'],$system_statues['STATUS-ATTENDED'] ))  )

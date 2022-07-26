@@ -169,7 +169,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
 		'#default_value' => isset($edit_data['a_langs'])?$edit_data['a_langs']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 44, 
-		'#default_value' => isset($edit_data['a_email'])?$edit_data['a_email']:'', '#required' => 0, '#maxlength' => 100 );
+		'#default_value' => isset($edit_data['a_email'])?$edit_data['a_email']:'', '#required' => 1, '#maxlength' => 100 );
 
 	$proficiency = db_query("select td_key, td_key from dh_type_detail where td_type='LANG-PROFICIENCY'")->fetchAllKeyed();
 	$proficiency[''] = 'Choose';
@@ -424,7 +424,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
 			 '#weight' => 29, '#maxlength' => 100,
-			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 0, 
+			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 1, 
 				'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
@@ -868,12 +868,22 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		}
 		$app['a_center'] = arg(2);
 		$app['a_course'] = arg(3);
+
+		$course_type = db_query("SELECT td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$app['a_course']))->fetchField();
+
+		if ($course_type == 'LC')
+			$app['a_status'] =  'R-ATReview';
+
 		$app['a_created_by'] = $user->uid;
 		$app['a_created'] = date('Y-m-d H:i:s');
 		$centre_id = arg(2);
 		$course_id = arg(3);
 		$app_id = db_insert('dh_applicant')->fields($app)->execute();
-		dh_send_letter('applicant', $app_id, $app['a_status'] );
+
+		if ($course_type == 'LC')
+			dh_send_letter('applicant', $app_id, 'Received' );
+		else
+			dh_send_letter('applicant', $app_id, $app['a_status'] );
 
 	}
 	/* Insert or update applicant_extra */
