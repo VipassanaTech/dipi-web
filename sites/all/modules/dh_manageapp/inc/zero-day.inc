@@ -1381,6 +1381,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 		}
 	}
 
+	/*
 	if (!$alpha)
 	{
 		foreach ($data['new'] as $r) 
@@ -1400,6 +1401,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 	}
 	else
 	{
+	*/
 		//	print "Max cols - $max_col, Total rows = $total_rows";
 		
 		for($c=0; $c< $max_col; $c++)
@@ -1421,7 +1423,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 				$seats[$r][$c] = $seat_data;
 			}
 		}		
-	}
+	//}
 
 	
 	return $seats;
@@ -1431,6 +1433,12 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 {
 	if (count($seats) <= 0)
 		return '';
+
+	$counter = 0;
+
+	foreach ($seats as $a)
+		foreach ($a as $b)
+			$counter++;
 
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
@@ -1453,7 +1461,9 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 				$r = $seats[$row][$col2];
 				if ($r['a_old']) $t = '(O)'; else $t ='';
 				$teacher = "";	
-				$s_no = $r['counter'];
+				//$s_no = $r['counter'];
+				$s_no = $counter;
+				$counter--;
 				if ($alpha) {
 					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
 				}
