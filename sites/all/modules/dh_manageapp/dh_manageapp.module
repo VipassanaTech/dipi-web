@@ -1513,7 +1513,7 @@ function _get_clarifications()
 function _get_activity()
 {
 	$app_id = arg(1);
-	$q = "select l_msg , name, l_tstamp from dh_log left join users on l_user=uid where l_module='Applicant' and l_identifier='$app_id' and l_event in ('Status Change', 'Letter') order by l_tstamp desc";
+	$q = "select l_msg , name, l_tstamp from dh_log left join users on l_user=uid where l_module='Applicant' and l_identifier='$app_id' and l_event in ('Status Change', 'Letter', 'LC Workflow') order by l_tstamp desc";
 	$res = db_query($q);
 	$rows = array();
 	while( $row = $res->fetchAssoc())
