@@ -2006,6 +2006,7 @@ function _api_teachers_get( $lastupdated )
     $q = "select t_id as 'ID', t_code as 'ATCode', t_f_name as 'FirstName', t_l_name as 'LastName', t_email as 'Email', 
        t_mob_phone as 'PhoneMobile', t_unique_code as 'UniqueCode', t_sat as 'SAT', t_ct as 'CT', t_full_t as 'FullT', t_cat as 'CAT', 
        t_bhante as 'Bhante', t_responsibility as 'Responsibility', t_current_status as 'CurrentStatus',
+       t_lc_area as 'LCAreaReviewAccess',
        t_status as 'Status', t_gender as 'Gender', t_year_appointed as 'YearAppointed'
         from dh_teacher where date_format(t_updated, '%Y%m%d%H%i') > $last and t_f_name <> '' order by t_f_name, t_l_name";
     $res = db_query($q);
@@ -2131,6 +2132,28 @@ function _get_app_detail( $appid )
     if (!$ret['success'])
         watchdog('S3Photo', "Dipi API ".$ret['messsage']);
     $row['Photo'] = base64_encode($ret['data']);
+
+    if($row['LastLcType'] && $row['LastLcDate'])
+    {
+        $q = "select td_val2 from dh_type_detail where td_key=:td_key";
+        $lc_days = db_query($q, array('td_key' => $row['LastLcType']))->fetchField();
+        if ($lc_days)
+        {
+            if (($last_lc_start_time = strtotime(str_replace('/', '-', $row['LastLcDate']))) !== false)
+            {
+                $last_lc_end_time = $last_lc_start_time + ($lc_days*24*60*60);
+                $current_lc_start_time = strtotime($row['CourseStartDate']);
+                if ($current_lc_start_time > $last_lc_end_time)
+                {
+                    $diff_days = round(($current_lc_start_time - $last_lc_end_time) / (60 * 60 * 24));
+                    $row['CourseDurationGap'] = floor($diff_days / 30)." Months, ".($diff_days % 30)." Days";
+                }
+            }
+        }
+    }
+
+
+
     return $row;
 }
 
