@@ -1117,7 +1117,7 @@ function _get_teacher( $search )
 {
 	$append = '';
 	if (isset($_REQUEST['type']) && ($_REQUEST['type'] == 'full-t') )
-		$append = ' and (t_full_t =1 or t_cat = 1)';
+		$append = ' and (t_full_t =1 or t_cat = 1 or t_lc_area=1)';
 	$matches = array();
 	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c' from dh_teacher where t_status='Active' and CONCAT(t_f_name, ' ', t_l_name) like '%$search%' $append limit 10";
 	$return = db_query($q); // array(':name', $search)
