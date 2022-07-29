@@ -26,6 +26,7 @@ ul {
 	border: 1px solid #000000;
 	font-weight: bold;
 	padding-top: 5px;
+	position:relative;
 }
 
 
@@ -146,4 +147,18 @@ ul {
     {
         display: none !important;
     }
+}
+
+.drag-img img
+{
+	width:  20px;
+	position:absolute;
+	z-index: 2000 !important;
+	top: 0;
+	left: 0;
+}
+
+.helptext
+{
+	background-color: LightBlue;
 }

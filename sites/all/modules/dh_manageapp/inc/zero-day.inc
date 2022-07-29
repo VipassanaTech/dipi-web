@@ -1086,6 +1086,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$(".bg-table-f .s-backrest").empty();
 	$(".bg-table-f .cwch").empty();
 
+	$(".bg-table-m .drag-img").empty();
+	$(".bg-table-f .drag-img").empty();
+
 
 	var a = $(".main-div .sortable-m").innerWidth();
 	var b = $(".chowky-div .sortable-m").innerWidth();	
@@ -1133,15 +1136,36 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
       return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
     });
 
-    $(".add-row").click(function(){
-	var cols = $(this).val();
-	for (var i=1 ; i <= cols ; i++)
-	{
-	    $(this).prev().prepend(\'<li class="ui-state-default"></li>\');
-    	$(this).prev().prev().prepend(\'<li class="ui-state-default"></li>\');
-	}
+    $(document).on("click", ".add-row", function(){
+		var cols = $(this).val();
+		for (var i=1 ; i <= cols ; i++)
+		{
+		    $(this).prev().prepend(\'<li class="ui-state-default"><div class="drag-img no-print"><img src="/sites/all/modules/dh_manageapp/imgs/drag.png" alt="drag"></div></li>\');
+	    	$(this).prev().prev().prepend(\'<li class="ui-state-default"></li>\');
+    		$(".sortable-m .drag-img").hide();
+			$(".sortable-f .drag-img").hide();
+		}
+	});
 
-});
+	$(".sortable-m .drag-img").hide();
+	$(".sortable-f .drag-img").hide();
+
+
+	$(document).on("mouseenter", ".ui-state-default", function(){
+			$(this).css({"cursor": "grab"});
+	        $(this).find(".drag-img").show();
+	});
+	$(document).on("mouseleave", ".ui-state-default", function(){
+	        $(this).find(".drag-img").hide();
+	        $(this).css({"cursor": "default"});
+	});
+
+	$(document).on("mousedown", ".ui-state-default", function(){
+			$(this).css({"cursor": "move"});
+	});
+	$(document).on("mouseup", ".ui-state-default", function(){
+	        $(this).css({"cursor": "grab"});
+	});
 
     $(".sortable-m").sortable();
     $(".sortable-m").disableSelection();
@@ -1164,6 +1188,16 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		$ini['RIGHT']['gender'] = 'M';
 
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style></head><body>';
+	$out .= '<div class="helptext no-print">
+		<h2>Editing Seating Plan:</h2>
+		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
+		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
+		<p>3- Create empty rows for a grid by clicking "Add Empty Row" button if needed.</p>
+		<p>4- Print by clicking "Print Seating Plan" button or CTL-P.</p>
+		<p>5- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+		<p>Note: All help text and buttons will be ignored on print.</p>
+		</div>
+		<button class="no-print" onclick="window.print()">Print Seating Plan</button>';
 	if ( is_array($course) )
 	{
 		$course_name = '';
@@ -1451,6 +1485,8 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 		for ($col=0; $col< $cushion_cols; $col++)
 		{
 			$out .= '<td class="ui-state-default">';
+			
+			$out .= '<div class="drag-img no-print"><img src="/sites/all/modules/dh_manageapp/imgs/drag.png" alt="drag"></div>';
 
 			//if ($direction == LEFT_TO_RIGHT)
 				//$col2 = $col;
