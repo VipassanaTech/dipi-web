@@ -2133,6 +2133,7 @@ function _get_app_detail( $appid )
         watchdog('S3Photo', "Dipi API ".$ret['messsage']);
     $row['Photo'] = base64_encode($ret['data']);
 
+    $row['CourseDurationGap'] ='';
     if($row['LastLcType'] && $row['LastLcDate'])
     {
         $q = "select td_val2 from dh_type_detail where td_key=:td_key";
