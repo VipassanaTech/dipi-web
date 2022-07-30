@@ -125,7 +125,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#size' => '150', '#weight' => 5, 
 		'#default_value' => isset($edit_data['t_address'])?$edit_data['t_address']:'', '#required' => 1, '#maxlength' => 150);	
 	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '10', '#weight' => 5.2, 
-		'#default_value' => (isset($edit_data['t_zip']))?$edit_data['t_pincode']:'', '#maxlength' => 10 );
+		'#default_value' => (isset($edit_data['t_pincode']))?$edit_data['t_pincode']:'', '#maxlength' => 10 );
 
 	$country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();	
 	$country_codes['0'] = 'Choose';
@@ -157,6 +157,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
 			'#default_value' => $default_status, '#weight' => 9);
 		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '10', '#weight' => 10, 
+			'#required' => 1,
 			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 10  );
 		$form[$group]['t_year_appointed'] = array('#title' => 'Year of Appointment', '#type' => 'textfield', '#size' => '10', '#weight' => 10.1, 
 			'#default_value' => isset($edit_data['t_year_appointed'])?$edit_data['t_year_appointed']:'', '#maxlength' => 10  );
