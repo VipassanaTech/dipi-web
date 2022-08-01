@@ -21,7 +21,7 @@ function address_book_search()
 	    array( 'db' => 't_gender',     'dt' => 1 ),
 	    array( 'db' => 't_f_name', 'dt' => 2 ),
 	    array( 'db' => 't_l_name',  'dt' => 3 ),
-	    array( 'db' => 't_current_status',     'dt' => 4 ),
+	    array( 'db' => 't_status',     'dt' => 4 ),
 	    array( 'db' => 't_email',     'dt' => 5 ),
 	    array( 'db' => 't_country',   'dt' => 6 ),
 	    array( 'db' => 't_mob_phone',     'dt' => 7 ),
@@ -60,7 +60,7 @@ function dh_atportal_address_book()
 	$out = '';
 	if (user_access('add assistant teacher'))
 		$out = '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add").'</h2>';
-	$header = array('Code', 'Gender', 'FName', 'LName', 'CurrentStatus', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante'); 
+	$header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante'); 
 	$attributes = array('id' => 'at-address-book');
 
 	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
@@ -147,7 +147,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
-		$statuses = array('' => 'Choose', 'Active' => 'Active', 'Inactive' => 'Inactive');
+		$statuses = array('' => 'Choose', 'Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated');
 		$default_status = '';
 		if ( !empty($edit_data) )
 		{
