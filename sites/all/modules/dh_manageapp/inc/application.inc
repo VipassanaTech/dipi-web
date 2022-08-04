@@ -153,9 +153,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	if (!$add || (isset($edit_data['a_passport'])) )
 	{
 		if ( $edit_data['a_passport'] <> '' ) $default_doc_type = 'a_passport';
-		if ( $edit_data['a_pancard'] <> '' ) $default_doc_type = 'a_pancard';
 		if ( $edit_data['a_aadhar'] <> '' ) $default_doc_type = 'a_aadhar';
 		if ( $edit_data['a_voter_id'] <> '' ) $default_doc_type = 'a_voter_id';
+		if ( $edit_data['a_pancard'] <> '' ) $default_doc_type = 'a_pancard';
 		if ($default_doc_type <> '')
 			$default_doc_id = $edit_data[$default_doc_type];		
 	}
