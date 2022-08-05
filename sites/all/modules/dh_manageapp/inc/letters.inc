@@ -664,7 +664,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			if ($wa_id)
 			{
 				$response = send_whatsapp_360($wa_id, "status_update", $params );
-				$log = "Letter sent (Whatsapp) - ".$letter_name." ( Response: $response )";
+				$log = "WhatsApp sent - ".$event." ( Response: $response )";
 				dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
 				logit($centre,  'Letter', $id, $log );					
 			}
