@@ -241,6 +241,12 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
+	if ($t['t_email'])
+		$t['t_email'] = trim($t['t_email']);
+
+	if ($t['t_mob_phone'])
+		$t['t_mob_phone'] = trim($t['t_mob_phone']);
+
 	if ($t['t_dob']['date'] == '')
 		$t['t_dob'] = NULL;
 
