@@ -1137,7 +1137,7 @@ function _search_student()
 
 	if ($d['a_email'] <> '')
 		$append = " and a_email='".$d['a_email']."'";
-	elseif ($d['a_zip'] == '')
+	elseif ($d['a_zip'] <> '')
 		$append = " and a_zip='".$d['a_zip']."'";
 	else
 		$append = " and a_dob='".$d['a_dob']."'";
