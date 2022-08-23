@@ -2737,7 +2737,7 @@ function send_whatsapp_360( $to, $template, $params, $type = "template")
     $p_arr = array();
     if ($params)
     {
-        foreach((array)$params as $key => $val)
+        foreach((array)$params as $val)
         {
             $p_arr[] = array("type" => "text", "text" => $val );
         }
