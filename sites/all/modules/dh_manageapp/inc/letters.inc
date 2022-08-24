@@ -650,10 +650,16 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		logit($centre,  'Letter', $id, $log );
 
 		if ($mg)
+		{
 			unset($mg);
+			$mg = null;
+		}
 
 		if ($res)
+		{
 			unset($res);
+			$res = null;
+		}
 	}
 	
 	if ( ($delivery_type == DELIVERY_TYPE_SMS) || ($delivery_type == DELIVERY_TYPE_BOTH) )
