@@ -1554,7 +1554,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	$temp = db_query("select c_name,td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
 	$course_name = $temp['c_name'];
 	$c_type = strtolower($temp['td_val3']);
-	$q = "select a_id, a_gender, a_type, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no , a_mob_country, a_phone_mobile, a_email,a_learn_about_vip, a_willing_to_serve, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_education, a_lang_1, a_lang_2, a_langs, a_lang_discourse, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, co.c_name as 'Country' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected', 'ReConfirmation') order by a_type desc, a_gender, a_old DESC, a_f_name, a_l_name, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, a_gender, a_type, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no , a_mob_country, a_phone_mobile, a_email,a_learn_about_vip, a_willing_to_serve, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_designation, a_education, a_lang_1, a_lang_2, a_langs, a_lang_discourse, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, ae_pregnant, ae_pregnant_detail, co.c_name as 'Country' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected', 'ReConfirmation') order by a_type desc, a_gender, a_old DESC, a_f_name, a_l_name, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q); 
 	$data['M']['old'] = $data['M']['new'] = $data['F']['old'] = $data['F']['new'] = array();
 	while($r = $result->fetchAssoc())
@@ -1600,9 +1600,9 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 					else
 						$row[] = $r['a_city_str'];					
 
-					$row[] = $r['a_occupation'];
+					$row[] = "{$r['a_occupation']} ({$r['a_designation']})";
 					$row[] = 'M: '.'('.$r['a_mob_country'].') '.$r['a_phone_mobile'].' Email:'.$r['a_email'];
-					$row[] = $r['a_learn_about_vip'].($r['a_willing_to_serve']?'Can Serve':'').($r['a_lang_discourse']?'<br>'.$r['a_lang_discourse']:'');
+					$row[] = $r['a_learn_about_vip'].($r['a_willing_to_serve']?'Can Serve':'').($r['a_lang_discourse']?'<br>'.$r['a_lang_discourse']:'').($r['ae_pregnant']?'<br>'."Pregnant (Month: {$r['ae_pregnant_detail']})":'');
 				}
 				else
 				{
