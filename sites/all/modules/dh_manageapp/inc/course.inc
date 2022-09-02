@@ -923,135 +923,144 @@ function finalize_course( $course_id )
 	$result = db_query($q);
 	while( $r = $result->fetchAssoc() )
 	{
-		unset($student); unset($student_sci); unset($student_c);
-		$sid_sci = $sid_c = '';
-		$sid = check_student($r);
-		if ($sid > 0)
+		try
 		{
-			//$sid_sci = db_query("select sci_id from dh_student_course_input where sci_student=$sid")->fetchField();
-			//$sid_c = db_query("select sc_id from dh_student_course where sc_student=$sid")->fetchField();			
+
+			unset($student); unset($student_sci); unset($student_c);
+			$sid_sci = $sid_c = '';
+			$sid = check_student($r);
+			if ($sid > 0)
+			{
+				//$sid_sci = db_query("select sci_id from dh_student_course_input where sci_student=$sid")->fetchField();
+				//$sid_c = db_query("select sc_id from dh_student_course where sc_student=$sid")->fetchField();			
+			}
+
+			foreach($fields as $v)
+				$student[$v] = $r[str_replace('s_', 'a_', $v)];
+			if ( ! $r['a_old'] )
+				$student['s_first'] = 1;
+			$student['s_created_by'] = $user->uid;
+			$student['s_updated_by'] = $user->uid;
+			$student['s_updated'] = date('Y-m-d H:i:s');
+
+			if ($student['s_photo'] == '')
+				unset($student['s_photo']);
+
+			if ($sid > 0 )
+			{
+				db_update('dh_student')->fields($student)->condition('s_id', $sid)->execute();
+
+			}
+			else
+				$sid = db_insert('dh_student')->fields($student)->execute();
+
+			if ( isset($student['s_photo']))
+			{
+				//Copy photo to final dir
+				$path = drupal_realpath('private://');
+				$old_photo = $path.'/'. str_replace("private://", "", $student['s_photo']);
+				$temp = 'final/photo-id/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).".jpg";
+				$new_photo = $path.'/'.$temp;
+				$new_photo_uri = 'private://'.$temp;
+				//$student['s_photo'] = $new_photo_uri;
+				db_update('dh_student')->fields(array('s_photo' => $new_photo_uri))->condition('s_id', $sid)->execute();
+				/*if (!is_dir(dirname($new_photo)))
+					mkdir(dirname($new_photo), 0775, true);		
+				copy($old_photo, $new_photo);
+				*/
+				$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private://", "", $student['s_photo']), 'file' );
+				if (!$ret['success'])
+					watchdog('S3Photo', $ret['message']);
+
+				$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
+				if (!$ret['success'])
+					watchdog('S3Photo', $ret['message']);
+			}
+
+
+			$student_sci['sci_10d'] = $r['ac_10d']?$r['ac_10d']:'1';
+			$student_sci['sci_stp'] = $r['ac_stp']?$r['ac_stp']:'0';
+			$student_sci['sci_spl'] = $r['ac_spl']?$r['ac_spl']:'0';
+			$student_sci['sci_20d'] = $r['ac_20d']?$r['ac_20d']:'0';
+			$student_sci['sci_30d'] = $r['ac_30d']?$r['ac_30d']:'0';
+			$student_sci['sci_45d'] = $r['ac_45d']?$r['ac_45d']:'0';
+			$student_sci['sci_60d'] = $r['ac_60d']?$r['ac_60d']:'0';
+			$student_sci['sci_tsc'] = $r['ac_tsc']?$r['ac_tsc']:'0';
+			$student_sci['sci_teacher'] = $r['ac_teacher']?$r['ac_teacher']:'0';
+			$student_sci['sci_service'] = $r['ac_service']?$r['ac_service']:'0';
+			$student_sci['sci_first_year'] = $r['ac_first_year'];
+			$student_sci['sci_first_month'] = $r['ac_first_month'];
+			$student_sci['sci_first_day'] = $r['ac_first_day'];
+			$student_sci['sci_first_location_str'] = $r['ac_first_teacher_str'];
+			$student_sci['sci_first_teacher_str'] = $r['ac_first_teacher_str'];
+
+			if ($sid_sci > 0 )
+				db_update('dh_student_course_input')->fields($student_sci)->condition('sci_id', $sid_sci)->execute();
+			else
+			{
+				$student_sci['sci_student'] = $sid;
+				db_insert('dh_student_course_input')->fields($student_sci)->execute();
+			}
+
+			//$student_c['sc_student'] = ;
+			$student_c['sc_center'] = $r['a_center'];
+			$student_c['sc_course'] = $r['a_course'];
+			$student_c['sc_teacher'] = $teacher[$r['a_gender']][$r['aa_group']];
+			$student_c['sc_group'] = $r['aa_group'];
+			$student_c['sc_acco'] = $r['aa_section'].'-'.$r['aa_acco'];
+			$student_c['sc_laundry'] = $r['aa_laundry'];
+			$student_c['sc_valuable'] = $r['aa_valuable'];
+			$student_c['sc_cell'] = $r['aa_cell'];
+			$student_c['sc_chowky'] = $r['aa_chowky'];
+			$student_c['sc_chair'] = $r['aa_chair'];
+			$student_c['sc_seat_row'] = $r['aa_seat_row'];
+			$student_c['sc_seat_col'] = $r['aa_seat_col'];
+			$student_c['sc_comment'] = $r['aa_comment'];
+			$student_c['sc_desc_physical'] = $r['ae_desc_physical'];
+			$student_c['sc_desc_mental'] = $r['ae_desc_mental'];
+			$student_c['sc_addiction_past'] = $r['ae_desc_addiction_past'];
+			$student_c['sc_addiction_current'] = $r['ae_desc_addiction_current'];
+			$student_c['sc_desc_other_technique'] = $r['ae_desc_other_technique'];
+			$student_c['sc_desc_medication'] = $r['ae_desc_medication'];
+			$student_c['sc_teach_other_details'] = $r['ae_teach_other_details'];
+			if ( $r['a_uri'] <> '')
+			{
+				$path = drupal_realpath('private://');
+				$app_pdf = $path.'/'.str_replace("private://", "", $r['a_uri']);
+				$temp = 'final/applications/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).'-'.sprintf("%06d", $r['a_course']).".pdf";
+				$new_pdf = $path.'/'.$temp;
+				$new_uri = 'private://'.$temp;
+				$student_c['sc_uri'] = $new_uri;
+				/*
+				if (!is_dir(dirname($new_pdf)))
+					mkdir(dirname($new_pdf), 0775, true);		
+				copy($app_pdf, $new_pdf);
+				*/
+				$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", "", $r['a_uri']), 'file' );
+				if (!$ret['success'])
+					watchdog('S3Photo', $ret['message']);
+
+				$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
+				if (!$ret['success'])
+					watchdog('S3Photo', $ret['message']);
+
+			}
+
+			if ($sid_c > 0 )
+				db_update('dh_student_course')->fields($student_c)->condition('sc_id', $sid_c)->execute();
+			else
+			{
+				$student_c['sc_student'] = $sid;
+				db_insert('dh_student_course')->fields($student_c)->execute();
+
+			}
+			dh_send_letter('applicant', $r['a_id'], $system_statuses['STATUS-ATTENDED'] );
+
 		}
-
-		foreach($fields as $v)
-			$student[$v] = $r[str_replace('s_', 'a_', $v)];
-		if ( ! $r['a_old'] )
-			$student['s_first'] = 1;
-		$student['s_created_by'] = $user->uid;
-		$student['s_updated_by'] = $user->uid;
-		$student['s_updated'] = date('Y-m-d H:i:s');
-
-		if ($student['s_photo'] == '')
-			unset($student['s_photo']);
-
-		if ($sid > 0 )
+		catch(Throwable $t)
 		{
-			db_update('dh_student')->fields($student)->condition('s_id', $sid)->execute();
-
+			watchdog("Finalization Error", $t->getTraceAsString());
 		}
-		else
-			$sid = db_insert('dh_student')->fields($student)->execute();
-
-		if ( isset($student['s_photo']))
-		{
-			//Copy photo to final dir
-			$path = drupal_realpath('private://');
-			$old_photo = $path.'/'. str_replace("private://", "", $student['s_photo']);
-			$temp = 'final/photo-id/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).".jpg";
-			$new_photo = $path.'/'.$temp;
-			$new_photo_uri = 'private://'.$temp;
-			//$student['s_photo'] = $new_photo_uri;
-			db_update('dh_student')->fields(array('s_photo' => $new_photo_uri))->condition('s_id', $sid)->execute();
-			/*if (!is_dir(dirname($new_photo)))
-				mkdir(dirname($new_photo), 0775, true);		
-			copy($old_photo, $new_photo);
-			*/
-			$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private://", "", $student['s_photo']), 'file' );
-			if (!$ret['success'])
-				watchdog('S3Photo', $ret['message']);
-
-			$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
-			if (!$ret['success'])
-				watchdog('S3Photo', $ret['message']);
-		}
-
-
-		$student_sci['sci_10d'] = $r['ac_10d']?$r['ac_10d']:'1';
-		$student_sci['sci_stp'] = $r['ac_stp']?$r['ac_stp']:'0';
-		$student_sci['sci_spl'] = $r['ac_spl']?$r['ac_spl']:'0';
-		$student_sci['sci_20d'] = $r['ac_20d']?$r['ac_20d']:'0';
-		$student_sci['sci_30d'] = $r['ac_30d']?$r['ac_30d']:'0';
-		$student_sci['sci_45d'] = $r['ac_45d']?$r['ac_45d']:'0';
-		$student_sci['sci_60d'] = $r['ac_60d']?$r['ac_60d']:'0';
-		$student_sci['sci_tsc'] = $r['ac_tsc']?$r['ac_tsc']:'0';
-		$student_sci['sci_teacher'] = $r['ac_teacher']?$r['ac_teacher']:'0';
-		$student_sci['sci_service'] = $r['ac_service']?$r['ac_service']:'0';
-		$student_sci['sci_first_year'] = $r['ac_first_year'];
-		$student_sci['sci_first_month'] = $r['ac_first_month'];
-		$student_sci['sci_first_day'] = $r['ac_first_day'];
-		$student_sci['sci_first_location_str'] = $r['ac_first_teacher_str'];
-		$student_sci['sci_first_teacher_str'] = $r['ac_first_teacher_str'];
-
-		if ($sid_sci > 0 )
-			db_update('dh_student_course_input')->fields($student_sci)->condition('sci_id', $sid_sci)->execute();
-		else
-		{
-			$student_sci['sci_student'] = $sid;
-			db_insert('dh_student_course_input')->fields($student_sci)->execute();
-		}
-
-		//$student_c['sc_student'] = ;
-		$student_c['sc_center'] = $r['a_center'];
-		$student_c['sc_course'] = $r['a_course'];
-		$student_c['sc_teacher'] = $teacher[$r['a_gender']][$r['aa_group']];
-		$student_c['sc_group'] = $r['aa_group'];
-		$student_c['sc_acco'] = $r['aa_section'].'-'.$r['aa_acco'];
-		$student_c['sc_laundry'] = $r['aa_laundry'];
-		$student_c['sc_valuable'] = $r['aa_valuable'];
-		$student_c['sc_cell'] = $r['aa_cell'];
-		$student_c['sc_chowky'] = $r['aa_chowky'];
-		$student_c['sc_chair'] = $r['aa_chair'];
-		$student_c['sc_seat_row'] = $r['aa_seat_row'];
-		$student_c['sc_seat_col'] = $r['aa_seat_col'];
-		$student_c['sc_comment'] = $r['aa_comment'];
-		$student_c['sc_desc_physical'] = $r['ae_desc_physical'];
-		$student_c['sc_desc_mental'] = $r['ae_desc_mental'];
-		$student_c['sc_addiction_past'] = $r['ae_desc_addiction_past'];
-		$student_c['sc_addiction_current'] = $r['ae_desc_addiction_current'];
-		$student_c['sc_desc_other_technique'] = $r['ae_desc_other_technique'];
-		$student_c['sc_desc_medication'] = $r['ae_desc_medication'];
-		$student_c['sc_teach_other_details'] = $r['ae_teach_other_details'];
-		if ( $r['a_uri'] <> '')
-		{
-			$path = drupal_realpath('private://');
-			$app_pdf = $path.'/'.str_replace("private://", "", $r['a_uri']);
-			$temp = 'final/applications/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).'-'.sprintf("%06d", $r['a_course']).".pdf";
-			$new_pdf = $path.'/'.$temp;
-			$new_uri = 'private://'.$temp;
-			$student_c['sc_uri'] = $new_uri;
-			/*
-			if (!is_dir(dirname($new_pdf)))
-				mkdir(dirname($new_pdf), 0775, true);		
-			copy($app_pdf, $new_pdf);
-			*/
-			$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", "", $r['a_uri']), 'file' );
-			if (!$ret['success'])
-				watchdog('S3Photo', $ret['message']);
-
-			$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
-			if (!$ret['success'])
-				watchdog('S3Photo', $ret['message']);
-
-		}
-
-		if ($sid_c > 0 )
-			db_update('dh_student_course')->fields($student_c)->condition('sc_id', $sid_c)->execute();
-		else
-		{
-			$student_c['sc_student'] = $sid;
-			db_insert('dh_student_course')->fields($student_c)->execute();
-
-		}
-		dh_send_letter('applicant', $r['a_id'], $system_statuses['STATUS-ATTENDED'] );
 
 	}
 	$res['status'] = true;
