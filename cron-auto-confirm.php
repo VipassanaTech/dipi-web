@@ -16,7 +16,7 @@ db_query("update dh_course set c_auto_confirm=1 where c_center=308 and c_start>c
 
 // auto confirming/rejecting applications for courses set to autoconfirm on
 
-$q = "select a_id, a_course, a_f_name, a_l_name, a_email, a_status from dh_applicant a left join dh_course c on (a.a_course=c.c_id) where c.c_start >= CURDATE() and c.c_auto_confirm=1 and a.a_status in ('Received') and a_type='Student' limit 200";
+$q = "select a_id, a_course, a_f_name, a_l_name, a_email, a_status from dh_applicant a left join dh_course c on (a.a_course=c.c_id) where c.c_start >= CURDATE() and c.c_auto_confirm=1 and a.a_status in ('Received') and a_type='Student' limit 50";
 $result = db_query($q);
 while ($row = $result->fetchAssoc()) 
 {
