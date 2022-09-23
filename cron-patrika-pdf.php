@@ -41,16 +41,18 @@ for ($year = $start_year ; $year <= $current_year ; $year++)
 
 }
 
-//print_r($patrika_links);
 
 $patrika_dir = "public:///patrika-pdf";
+$patrika_recent = array();
+$recent_dir = "$patrika_dir/recent";
+
 if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
 {
   foreach($patrika_links as $year => $languages)
   {
       if(count($languages) > 0)
       {
-      	$year_dir = "public:///patrika-pdf/$year";
+      	$year_dir = "$patrika_dir/$year";
       	if (file_prepare_directory($year_dir, FILE_CREATE_DIRECTORY))
       	{
       		foreach($languages as $language => $months)
@@ -62,7 +64,9 @@ if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
 	      			{
 	      				if ($link <> '')
 	      				{
-	      					$file_name = "public:///patrika-pdf/$year/patrika-$lang_code-$month-$year.pdf";
+	      					$patrika_recent[$lang_code] = $link;
+
+	      					$file_name = "$year_dir/patrika-$lang_code-$month-$year.pdf";
 	      					echo $file_name."\n";
 	      					if (file_exists($file_name))
 	      					{
@@ -94,3 +98,33 @@ if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
   }
 }
 
+
+if (file_prepare_directory($recent_dir, FILE_CREATE_DIRECTORY))
+{
+	foreach($patrika_recent as $lang_code => $link)
+	{
+		$file_name = "$recent_dir/patrika-$lang_code.pdf";
+		echo $file_name."\n";
+		if (file_exists($file_name))
+		{
+			echo "file already present\n";
+			$local_file_size = filesize($file_name);
+			$head = array_change_key_case(get_headers($link, 1));
+			$remote_file_size = $head['content-length'];
+
+			if ($local_file_size <> $remote_file_size)
+			{
+				echo "file changed, downloading\n";
+				system_retrieve_file($link, $file_name, false, $replace = FILE_EXISTS_REPLACE);
+			}
+			else
+				echo "file not changed, not downloading\n";
+		}
+		else
+		{
+			echo "file not present, downloading\n";
+			system_retrieve_file($link, $file_name, false, $replace = FILE_EXISTS_ERROR);
+		}
+		echo "\n";
+	}
+}
