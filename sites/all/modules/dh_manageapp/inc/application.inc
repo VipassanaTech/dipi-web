@@ -726,7 +726,9 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		if ( substr($key,0,2) == 'a_')
 			$app[$key] = $value;
 		if ( substr($key,0,3) == 'ac_')
+		{
 			$app_ac[$key] = $value;
+		}
 		if ( substr($key,0,3) == 'ae_')
 			$app_ae[$key] = $value;
 		if ( substr($key,0,3) == 'aa_')
@@ -946,6 +948,13 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			$app_ac['ac_applicant'] = $app_id;
 			$app_ac['ac_created_by'] = $user->uid;
 			db_insert('dh_applicant_course')->fields($app_ac)->execute();				
+		}
+	}
+	else
+	{
+		if ($app_course_id > 0)
+		{
+			db_delete('dh_applicant_course')->condition('ac_id', $app_course_id)->execute();
 		}
 	}
 
