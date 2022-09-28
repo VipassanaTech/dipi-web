@@ -444,11 +444,19 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if ($type == 'a-teacher') $teacher = $row['al_area_at'];
 		if ($type == 'lc-admin') $teacher = $row['al_recommending'];
 		if (in_array($type, array('r-teacher', 'a-teacher')))
-			$q = "select t_email, t_mob_phone  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
+			$q = "select t_email, t_mob_phone, t_country  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
 		else
 			$q = "select c_lc_admin_email as 't_email' from dh_center where c_id=".$centre;
 		$t_data = db_query($q)->fetchAssoc();
 		$row['a_email'] = $t_data['t_email'];
+
+		if (isset($t_data['t_country']))
+		{
+			if(in_array(strtoupper($t_data['t_country']), variable_get('at_countries_disabled', '')))
+			{
+				$row['eu_union'] = true;
+			}
+		}
 
 		$q = "select al_id, al_area_auth, al_recommending_auth from dh_applicant_lc where al_applicant=".$id;
 		$al_row = db_query($q)->fetchAssoc();
@@ -596,14 +604,18 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
 		$attachment[] = $ret['data'];
 	}
-	if ( in_array($event, array('R-ATReview', 'A-ATReview')))
+	if ( in_array($event, array('R-ATReview', 'A-ATReview')) )
 	{
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
 
-		$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
-		//$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
-		$attachment[] = $ret['data'];	
+		if (!isset($row['eu_union']))
+		{
+			$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", '', $row['a_uri']), 'file', 'pdf');
+			//$attachment[] = str_replace("private://", drupal_realpath("private://"), $row['a_uri']);
+			$attachment[] = $ret['data'];
+		}
+	
 		if ($row['a_email'] == '')
 		{
 			$log = "No email found for AT ";
