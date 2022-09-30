@@ -600,7 +600,7 @@ function map_application_fields_lc($row)
 
 	
 
-	if($row['td_val1'] == '30 Day Course' && ($row['ac_30d']=0 || $row['ac_30d']=''))
+	if($row['td_val1'] == '30 Day Course' && ($row['ac_30d'] == 0 || $row['ac_30d'] == ''))
 	{
 		if ($row['al_recent_sat_type']=='10-Day')
 			$fields['10 Day After LC Y'] = 'Yes';
@@ -608,7 +608,7 @@ function map_application_fields_lc($row)
 			$fields['10 Day After LC N'] = 'Yes';
 	}
 
-	if($row['td_val1'] == '45 Day Course' && ($row['ac_45d']=0 || $row['ac_45d']=''))
+	if($row['td_val1'] == '45 Day Course' && ($row['ac_45d'] == 0 || $row['ac_45d'] == ''))
 	{
 		if ($row['al_recent_sat_type']=='10-Day')
 			$fields['10 Day After LC Y'] = 'Yes';
