@@ -80,9 +80,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	}
 
 	if ( $type == 'applicant')
-		$q = "select c.c_finalized, a_id, a_type, a_center, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile,a_passport, a_voter_id, a_pancard, a_aadhar, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_alist, a_monk, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, a_willing_to_serve, a_extra, a_referral, c.c_end, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, aa_left_comment, aa_section, aa_acco, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, CONCAT(IFNULL(ae_desc_other_technique,''), ' ',IFNULL(ae_desc_other_technique_old,'')) as 'ae_desc_other_technique' , ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_father, ae_mother, ae_parent_course, ae_teen_std from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant)  left join dh_applicant_attended aa on (a_id=aa_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country) left join dh_center ce on (a_center=ce.c_id)  where $where order by a_created,a_vray_id";
+		$q = "select c.c_finalized, a_id, a_type, a_center, a_course, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', a_gender, a_status, ci.c_name as 'City', s.s_name, co.c_name as 'Country', a_city_str, c.c_name, a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile,a_passport, a_voter_id, a_pancard, a_aadhar, a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department, a_emergency_name, a_emergency_relation, a_emergency_num, a_alist, a_monk, a_uri, a_photo, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_lang_1,a_lang_2, a_lang_3, a_langs, a_old, a_attended, a_internal_note, a_willing_to_serve, a_extra, a_referral, c.c_end, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher,ac_service, aa_left_comment, aa_section, aa_acco, CONCAT( IFNULL(ac_first_year, ''),'-',IFNULL(ac_first_month, ''),'-',IFNULL(ac_first_day, ''), ', ', ac_first_location_str) as 'first_course', CONCAT( IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day, ''), ', ', ac_last_location_str) as 'last_course', ac_practice_details,  ae_desc_physical,  ae_desc_medication,  ae_desc_mental, CONCAT(IFNULL(ae_desc_other_technique,''), ' ',IFNULL(ae_desc_other_technique_old,'')) as 'ae_desc_other_technique' , ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_father, ae_mother, ae_parent_course, ae_teen_std from dh_applicant left join dh_applicant_course ac on (a_id=ac_applicant)  left join dh_applicant_attended aa on (a_id=aa_applicant) left join dh_applicant_extra ae on (a_id=ae_applicant) left join dh_course c on (a_course=c.c_id) left join dh_country co on (a_country=co.c_code) left join dh_city ci on a_city=ci.c_id left join dh_state s on (a_state=s.s_code and a_country=s.s_country) left join dh_center ce on (a_center=ce.c_id)  where $where order by a_created,a_vray_id";
 	else
-		$q = "select c.c_finalized, s.s_id as 'a_id', 'Student' as 'a_type', sc_course as 'a_course', sc_conf_no as 'ConfNo', concat(s_f_name, ' ',s_m_name, ' ',s_l_name) as 'Full Name', s_gender as 'a_gender', 'Attended' as 'a_status', ci.c_name as 'City', st.s_name, co.c_name as 'Country', '' as 'a_city_str', c.c_name, s_address as 'a_address', s_zip as 'a_zip', s_email as  'a_email', s_phone_home as  'a_phone_home',s_phone_office as 'a_phone_office',s_phone_mobile as 'a_phone_mobile',s_education as 'a_education',s_occupation as 'a_occupation',s_occupation_past as 'a_occupation_past',s_company as 'a_company', s_designation as 'a_designation', s_department as 'a_department',s_alist as  'a_alist', s_monk as 'a_monk', s_photo as 'a_photo', TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', s_lang_1 as 'a_lang_1', s_lang_2 as 'a_lang_2', s_lang_3 as  'a_lang_3', s_langs as 'a_langs', 1 as 'a_old', 1 as 'a_attended', c.c_end, sci_teen as 'ac_teen',sci_10d as 'ac_10d', sci_stp as 'ac_stp', sci_spl as 'ac_spl', sci_20d as  'ac_20d',sci_30d as  'ac_30d', sci_45d as  'ac_45d', sci_60d as 'ac_60d', sci_tsc as 'ac_tsc', sci_teacher as 'ac_teacher', CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', '' as 'ac_practice_details', sc_desc_physical as 'ae_desc_physical', sc_desc_medication  as 'ae_desc_medication',  sc_desc_mental as 'ae_desc_mental', sc_desc_other_technique as 'ae_desc_other_technique', sc_addiction_current 'ae_desc_addiction_current', '' as 'ae_pregnant', '' as 'ae_pregnant_detail', sc_uri as 'a_uri' from dh_student s left join dh_student_course sc on (s.s_id=sc_student) left join dh_student_course_input sci on (s.s_id=sci_student) left join dh_course c on (sc_course=c.c_id) left join dh_country co on (s.s_country=co.c_code) left join dh_city ci on s_city=ci.c_id left join dh_state st on (s.s_state=st.s_code and s.s_country=st.s_country)  where $where order by s_f_name";
+		$q = "select c.c_finalized, s.s_id as 'a_id', 'Student' as 'a_type', sc_course as 'a_course', sc_conf_no as 'ConfNo', concat(s_f_name, ' ',s_m_name, ' ',s_l_name) as 'Full Name', s_gender as 'a_gender', 'Attended' as 'a_status', ci.c_name as 'City', st.s_name, co.c_name as 'Country', '' as 'a_city_str', c.c_name, s_address as 'a_address', s_zip as 'a_zip', s_email as  'a_email', s_phone_home as  'a_phone_home',s_phone_office as 'a_phone_office',s_phone_mobile as 'a_phone_mobile',s_education as 'a_education',s_occupation as 'a_occupation',s_occupation_past as 'a_occupation_past',s_company as 'a_company', s_designation as 'a_designation', s_department as 'a_department', s_emergency_name as 'a_emergency_name', s_emergency_relation as 'a_emergency_relation', s_emergency_num as 'a_emergency_num', s_alist as  'a_alist', s_monk as 'a_monk', s_photo as 'a_photo', TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', s_lang_1 as 'a_lang_1', s_lang_2 as 'a_lang_2', s_lang_3 as  'a_lang_3', s_langs as 'a_langs', 1 as 'a_old', 1 as 'a_attended', c.c_end, sci_teen as 'ac_teen',sci_10d as 'ac_10d', sci_stp as 'ac_stp', sci_spl as 'ac_spl', sci_20d as  'ac_20d',sci_30d as  'ac_30d', sci_45d as  'ac_45d', sci_60d as 'ac_60d', sci_tsc as 'ac_tsc', sci_teacher as 'ac_teacher', CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', '' as 'ac_practice_details', sc_desc_physical as 'ae_desc_physical', sc_desc_medication  as 'ae_desc_medication',  sc_desc_mental as 'ae_desc_mental', sc_desc_other_technique as 'ae_desc_other_technique', sc_addiction_current 'ae_desc_addiction_current', '' as 'ae_pregnant', '' as 'ae_pregnant_detail', sc_uri as 'a_uri' from dh_student s left join dh_student_course sc on (s.s_id=sc_student) left join dh_student_course_input sci on (s.s_id=sci_student) left join dh_course c on (sc_course=c.c_id) left join dh_country co on (s.s_country=co.c_code) left join dh_city ci on s_city=ci.c_id left join dh_state st on (s.s_state=st.s_code and s.s_country=st.s_country)  where $where order by s_f_name";
 
 	//c.c_name as 'last_course'
 	//drupal_set_message($q);
@@ -155,6 +155,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['occupation'] = $r['a_occupation'];
 		$rs['designation'] = $r['a_designation'];
 		$rs['company'] = $r['a_company'];
+		$rs['emergency_name'] = $r['a_emergency_name'];
+		$rs['emergency_relation'] = $r['a_emergency_relation'];
+		$rs['emergency_num'] = $r['a_emergency_num'];
 		$rs['note'] = $r['a_internal_note'];
 		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
 		$rs['extra'] = $r['a_extra'];
@@ -428,7 +431,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", ""]; 
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No"]; 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -515,6 +518,43 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			                	{
 			                		return (tmp[ row ].passport?tmp[ row ].passport:"") + (tmp[ row ].voterid?tmp[ row ].voterid:"") + (tmp[ row ].pancard?tmp[ row ].pancard:"") + (tmp[ row ].aadhar?tmp[ row ].aadhar:""); 
 			                	}
+			                	else if ( column == 20 )
+			                	{
+			                		return tmp[ row ].confno; 
+			                	}
+			                	else if ( column == 21 )
+			                	{
+			                		return tmp[ row ].physical; 
+			                	}
+			                	else if ( column == 22 )
+			                	{
+			                		return tmp[ row ].mental; 
+			                	}
+			                	else if ( column == 23 )
+			                	{
+			                		return tmp[ row ].medication; 
+			                	}
+			                	else if ( column == 24 )
+			                	{
+			                		return tmp[ row ].pregnant; 
+			                	}
+			                	else if ( column == 25 )
+			                	{
+			                		return tmp[ row ].othertechnique; 
+			                	}
+			                	else if ( column == 26 )
+			                	{
+			                		return tmp[ row ].emergency_name; 
+			                	}
+			                	else if ( column == 27 )
+			                	{
+			                		return tmp[ row ].emergency_relation; 
+			                	}
+			                	else if ( column == 28 )
+			                	{
+			                		return tmp[ row ].emergency_num; 
+			                	}
+		
 			                	return data;
 			                }
 			            }
@@ -529,7 +569,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,],
 					                "visible": false,
 					                "searchable": false
 					            },
@@ -578,6 +618,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        		str += "</select>";
 				        		return str;
 				        } },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
+				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
