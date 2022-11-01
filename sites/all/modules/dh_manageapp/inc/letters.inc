@@ -694,16 +694,23 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
             	$event .= " (".$conf_no.")";
 
 			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
-			$wa_id = whatsapp_360_get_waid("+".$row['a_mob_country'].$row['a_phone_mobile']);
-			if ($wa_id)
+			
+			if ($row['a_phone_mobile'])
 			{
-				$response = send_whatsapp_360($wa_id, "status_update_2", $params );
-				$log = "WhatsApp sent - ".$event." ( Response: $response )";
-				dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
-				logit($centre,  'Letter', $id, $log );					
+				$wa_id = whatsapp_360_get_waid("+".$row['a_mob_country'].$row['a_phone_mobile']);
+				if ($wa_id)
+				{
+					$response = send_whatsapp_360($wa_id, "status_update_2", $params );
+					$log = "WhatsApp sent - ".$event." ( Response: $response )";
+					dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
+					logit($centre,  'Letter', $id, $log );					
+				}
+				else
+					logit($centre,  'Letter', $id, "Could not get contact whatsapp id to send" );
 			}
 			else
-				logit($centre,  'Letter', $id, "Could not get contact whatsapp id to send" );
+				logit($centre,  'Letter', $id, "Mobile number not present, not sending whatsapp" );
+			
 		}
 	}
 }
