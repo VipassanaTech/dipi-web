@@ -252,7 +252,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['a_learn_about_vip'])?$edit_data['a_learn_about_vip']:'', '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255);
 	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
- 		'#default_value' => isset($edit_data['a_friend_family_details'])?$edit_data['a_friend_family_details']:'', '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 50);
+ 		'#default_value' => isset($edit_data['a_friend_family_details'])?$edit_data['a_friend_family_details']:'', '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 100);
 	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
  		'#default_value' => isset($edit_data['a_extra'])?$edit_data['a_extra']:'', '#rows' => 3,  '#weight' => 62, '#required' => 0);
 
@@ -416,7 +416,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#rows' => 3, '#weight' => 25,
 			'#default_value' => isset($edit_data['al_special_req_details'])?$edit_data['al_special_req_details']:'', '#required' => 0, );
 		$form[$group]['al_additional_info'] = array('#title' => 'Any Additional Information', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 26, '#maxlength' => 100,
+			'#rows' => 3, '#weight' => 26,
 			'#default_value' => isset($edit_data['al_additional_info'])?$edit_data['al_additional_info']:'', '#required' => 0, );
 		$form[$group]['al_arrival'] = array('#title' => 'Arrival at Centre?', '#type' => 'textfield', 
 			 '#weight' => 27, '#maxlength' => 50,
