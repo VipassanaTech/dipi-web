@@ -153,6 +153,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		{
 			if ( $edit_data['t_status'] == 'Active' ) $default_status = 'Active';
 			if ( $edit_data['t_status'] == 'Inactive' ) $default_status = 'Inactive';		
+			if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
 		};	
 		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
 			'#default_value' => $default_status, '#weight' => 9);
