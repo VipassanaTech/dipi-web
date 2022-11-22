@@ -147,7 +147,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
-		$statuses = array('' => 'Choose', 'Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated');
+		$statuses = array('Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated');
 		$default_status = '';
 		if ( !empty($edit_data) )
 		{
@@ -156,7 +156,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 			if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
 		};	
 		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
-			'#default_value' => $default_status, '#weight' => 9);
+			'#default_value' => $default_status, '#weight' => 9, '#empty_option' => 'Choose', '#required' => 1);
 		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '10', '#weight' => 10, 
 			'#required' => 1,
 			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 10  );
