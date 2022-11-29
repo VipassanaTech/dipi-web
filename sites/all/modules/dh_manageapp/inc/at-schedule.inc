@@ -107,7 +107,7 @@ function dh_manage_at_schedule()
 		c_at_f_count,
 		t_id,
 		CONCAT(t_f_name, ' ', t_l_name) as 'teacher',
-		t_gender
+		t_gender,
 		ct_id,
 		ct_type as 'Type',
 		ct_status as 'status'
