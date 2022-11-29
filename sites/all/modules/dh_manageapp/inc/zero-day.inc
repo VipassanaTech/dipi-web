@@ -32,9 +32,6 @@ function dh_manage_day_zero()
 			if (isset($_REQUEST['r']))
 				dh_auto_allocate_seats(arg(1), $course);
 			return dh_generate_seating_plan(arg(1), $course);
-		break;
-		case 'assign-teacher':
-			return dh_assign_teacher(arg(1), arg(2));
 		break;		
 		case 'day0-list':
 			return dh_zero_day_list(arg(1), arg(2));
@@ -728,122 +725,6 @@ function dh_manageapp_attended( $centre, $course_id )
 	if (count($rows) > 0 )
 		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 	return $out;
-}
-
-function dh_assign_teacher_form($form, &$form_state)
-{
-	$form['ct_teacher'] = array( '#title' => 'Teacher',  '#type' => 'textfield', 
-		'#weight' => 1, '#size' => 50, '#required' => 1, 
- 		'#attached' => array(
-      		'library' => array(
-        		array('system', 'ui.autocomplete'),
-      	)),
-	 ) ;
-	$types = array('Conducting' => 'Conducting', 'Assisting' => 'Assisting', 'Training' => 'Training' );
-	$form['ct_type'] = array( '#title' => 'Type', '#type' => 'select', '#options' => $types, 
-		'#weight' => 2);
-	$groups = array();
-	for($i=1; $i<10; $i++)
-		$groups[$i] = $i;
-	$form['ct_group'] = array( '#title' => 'Group', '#type' => 'select', '#options' => $groups, '#weight' => 3);
-	$form['sub'] = array('#type' => 'submit', '#value' => 'Assign Teacher', '#weight' => 4);
-	return $form;
-}
-
-function dh_assign_teacher_form_submit($form, &$form_state)
-{
-	global $user;
-	$input = $form_state['input'];
-	$temp = explode("-", $input['ct_teacher']);
-	$tid = db_query("select t_id from dh_teacher where t_code='".$temp[0]."' and t_gender='".$temp[1]."'")->fetchField();
-	$teacher['ct_teacher'] = $tid;
-	$teacher['ct_type'] = $input['ct_type'];
-	$teacher['ct_group'] = $input['ct_group'];
-	$teacher['ct_created_by'] = $user->uid;
-	$teacher['ct_updated_by'] = $user->uid;
-	$teacher['ct_updated'] = date("Y-m-d H:i:s");
-	$teacher['ct_course'] = arg(2);
-	$teacher['ct_status'] = 'Confirmed';
-
-	db_insert('dh_course_teacher')->fields($teacher)->execute();
-}
-
-function dh_assign_teacher($centre, $course)
-{
-	$finalized = db_query("select c_finalized from dh_course where c_id=".$course)->fetchField();
-	if ( $finalized )
-	{
-		drupal_set_message("Course has been Finalized, cannot access Assign Teacher", "error");
-		drupal_goto("course/".$centre."/".$course);
-	}
-
-
-	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
-	//drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
-	drupal_add_js('
-
-		(function ($) {
-			$(document).ready(function(){
-				$("#edit-ct-teacher").autocomplete({
-					source: function( request, response ) {
-						$("#edit-ct-teacher").addClass( "throbbing" );
-				        $.ajax({
-				          url: "/autocomplete/get-teacher/" + request.term,
-				          dataType: "json",
-				          success: function( data ) {
-				          	$("#edit-ct-teacher").removeClass( "throbbing" );
-				            response( data );
-				          }
-				        });
-					},
-		  			minLength: 1,
-		  			select: function( event, ui ) {
-		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
-		        		$( "#edit-ct-teacher" ).val( ui.item.code );
-		        		return false;
-		      		}
-		  		});
-
-				$(".delete-confirm").click(function(){
-					  var ret;
-					  ret = confirm("Are you sure you want to delete ?");
-					  return ret;
-				});				
-			})
-		})(jQuery);
-
-
-		', 'inline');
-
-	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$temp = drupal_get_form('dh_assign_teacher_form');
-	$out = '<h2>'.$course_name.'</h2>';
-	$out .= '<h2>'.l("Back to Course", "course/$centre/$course")."&nbsp;&nbsp;";
-	if ( strpos($_SERVER['HTTP_REFERER'], "at-schedule") )
-		$out .= " | &nbsp;&nbsp; ".l("Back to AT Schedule", "at-schedule/$centre");
-	else
-		$out .=  " | &nbsp;&nbsp; ".l("Back to Zero Day", "zero-day/$centre/$course");
-	$out .= '</h2>';
-	$out .= drupal_render( $temp );
-	$q = "select CONCAT(t_f_name, ' ', t_l_name ) as 'teacher', ct_type, ct_group, ct_id from dh_course_teacher left join dh_teacher on ct_teacher=t_id where ct_course=$course";
-	$res = db_query($q);
-	$rows = array();
-	while($r = $res->fetchAssoc())
-	{
-		$r['ct_id'] = l("Delete", "assign-teacher/delete/$centre/$course/".$r['ct_id'], array('attributes' => array('class' => array('delete-confirm')))) ;  
-		$rows[] = $r;
-	}
-	$header = array("Teacher", "Type", "Group", "Delete");
-	$out .= theme("table", array('header' => $header, 'rows' => $rows ));
-	return $out;
-}
-
-
-function dh_assign_teacher_delete()
-{
-	$id = arg(4);
-	db_query("delete from dh_course_teacher where ct_id=$id");
-	drupal_goto('assign-teacher/'.arg(2).'/'.arg(3));
 }
 
 function dh_generate_teacher_list($centre, $course, $pdf = '')
