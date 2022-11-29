@@ -1,6 +1,7 @@
 <?php
 
 include_once(dirname(__FILE__)."/address-book.inc");
+include_once(dirname(__FILE__)."/schedule.inc");
 
 
 /**
@@ -86,6 +87,31 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
+	$items['at-portal/course-list'] = array( 'title' => t('AT Show Courses List'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('at_course_list_form'),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['at-portal/course-apply/%'] = array( 'title' => t('Apply AT Application'),	
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('apply_at_application_form', 2),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+
+	$items['at-portal/applied-courses-list'] = array( 'title' => t('AT Show Applied Courses List'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('at_applied_courses_list_form'),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
+
+	$items['at-portal/show-course-application/%atappid'] = array( 'title' => t('AT Show Application'),
+	       'page callback' => 'drupal_get_form',
+			'page arguments' => array('show_at_application_form', 2),
+	       'access arguments' => array('access at portal'),
+	       'type' => MENU_CALLBACK);
 
     return $items;
 }
@@ -154,6 +180,44 @@ function atcode_load( $id )
 		return True;
 }
 
+
+function atappid_load ( $id )
+{
+	if (!is_numeric($id))
+		return false;
+	
+	global $user;
+	
+	$q = "select ce.c_id as 'center', t.t_id as 'teacher' from dh_course_teacher ct
+		left join dh_teacher t on ct.ct_teacher=t.t_id
+		left join dh_course co on ct.ct_course=co.c_id
+		left join dh_center ce on co.c_center=ce.c_id
+		where ct.ct_id=:ct_id";
+
+	$res = db_query($q, array(':ct_id'=> $id))->fetchAssoc();
+
+	if (!$res)
+		return false;
+
+	if (user_access("access all centres"))
+		return $id;
+
+	$temp = db_query("select count(uc_id) from dh_user_center where uc_user='".$user->uid."' and uc_center='{$res['center']}' and uc_deleted=0")->fetchField();
+
+	if ($temp > 0 )
+		return $id;
+
+	$at_code = $user->name;
+
+	$q = "select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
+	$at_id = db_query($q)->fetchField();
+
+	if ($at_id == $res['teacher'])
+		return $id;
+
+	return false;
+	
+}
 
 function dh_atportal_form_alter(&$form, &$form_state, $form_id) 
 {
@@ -262,7 +326,10 @@ function dh_atportal_dashboard()
 		'All Reviews' => 'lc-review/all',
 		'My Profile' => 'at-portal/address-book/edit/me',
 		'AT Address Book' => 'at-portal/address-book',
+		'Apply for a Course' => 'at-portal/course-list',
+		'My Courses' => 'at-portal/applied-courses-list',
 	);
+
 	$out = '<h1>AT Portal Dashboard</h1><ul>';
 
 	foreach($modules as $key => $val )
@@ -767,3 +834,5 @@ function show_lc_application_pdf( $app_id )
 {
 	show_application_pdf( $app_id );
 }
+
+

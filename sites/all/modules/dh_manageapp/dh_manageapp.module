@@ -12,6 +12,7 @@ include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
 include_once(dirname(__FILE__)."/inc/referral.inc");
+include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
 
@@ -353,6 +354,46 @@ function dh_manageapp_menu()
 	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
 
+    $items['assign-teacher/%centre_id/%course_id'] = array( 'title' => t('Assign Teachers'),
+	       'page callback' => 'dh_assign_teacher',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/change-status/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'at_app_change',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/change-type/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'at_app_change',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/change-group/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'at_app_change',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/del-trainee-teacher/%centre_id/%course_id/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'del_trainee_teacher',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-schedule/get-at-info/%'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'get_at_info',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['at-app-activity/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => '_get_at_app_activity',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
+    $items['autocomplete/get-trainee-teacher'] = array( 'title' => t('Trainee Teacher'),
+	       'page callback' => '_get_trainee_teacher',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
     $items['referral/%centre_id/add'] = array('title' => t('Referral List'),
 	       'page callback' => 'dh_addedit_referral',
 	       'access arguments' => array('manage referral list'),
@@ -374,15 +415,6 @@ function dh_manageapp_menu()
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
 
-	$items['assign-teacher/%centre_id/%course_id'] = array( 'title' => t('Assign Teachers'),
-	       'page callback' => 'dh_manage_day_zero',
-	       'access arguments' => array('access zero day'),
-	       'type' => MENU_CALLBACK);
-
-	$items['assign-teacher/delete/%centre_id/%course_id/%course_teacher_id'] = array( 'title' => t('Assign Teachers'),
-	       'page callback' => 'dh_assign_teacher_delete',
-	       'access arguments' => array('access zero day'),
-	       'type' => MENU_CALLBACK);
 
     $items['daily-activity/%centre_id'] = array('title' => t('Daily Activity'),
            'page arguments' => array('dh_daily_activity_form'),
@@ -1120,6 +1152,19 @@ function _get_teacher( $search )
 		$append = ' and (t_full_t =1 or t_cat = 1 or t_lc_area=1)';
 	$matches = array();
 	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c' from dh_teacher where t_status='Active' and CONCAT(t_f_name, ' ', t_l_name) like '%$search%' $append limit 10";
+	$return = db_query($q); // array(':name', $search)
+
+  	foreach ($return as $row) {
+    	$matches[] = array('value' =>  $row->a, 'code' => $row->b, 'fullname' => $row->c );
+  	}
+
+  	drupal_json_output($matches);  	
+}
+
+function _get_trainee_teacher( $search )
+{
+	$matches = array();
+	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c' from dh_teacher where t_status='Training' and CONCAT(t_f_name, ' ', t_l_name) like '%$search%' limit 10";
 	$return = db_query($q); // array(':name', $search)
 
   	foreach ($return as $row) {
@@ -2189,3 +2234,5 @@ function whatsapp_consumer($vhost, $queue )
 
    $count = 0;
 }
+
+

@@ -764,36 +764,62 @@ function mailgun_webhook()
 	{
 		if(isset($post_data['timestamp']) && isset($post_data['token']) && isset($post_data['signature']) && hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
 		{
-			switch($post_data['event'])
+			if (isset($post_data['app-id']))
 			{
-				case 'delivered':
-					watchdog('WEBHOOK', "Test Mode: ".$post_data['test-mode'].", App id is ".$post_data['app-id']);
-					break;
-				case 'complained':
-				case 'bounced':
-				case 'dropped':
-				case 'failed':
-				case 'rejected':
-					if (!isset($post_data['app-id']))
+				switch($post_data['event'])
+				{
+					case 'delivered':
+						watchdog('WEBHOOK', "Test Mode: ".$post_data['test-mode'].", App id is ".$post_data['app-id']);
 						break;
-					if ($post_data['test-mode'] == 1)
+					case 'complained':
+					case 'bounced':
+					case 'dropped':
+					case 'failed':
+					case 'rejected':
+						if ($post_data['test-mode'] == 1)
+							break;
+						$desc = strtoupper($post_data['event'])." - ".$post_data['recipient'];
+						if (isset($post_data['error'])) $desc .= " ".$post_data['error'];
+						if (isset($post_data['reason'])) $desc .= " ".$post_data['reason'];
+						if (isset($post_data['notification'])) $desc .= " (".$post_data['notification'].") ";
+						if (isset($post_data['description'])) $desc .= " ".$post_data['description'];
+						$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
+						$centre = $temp['a_center'];
+						$new_email = $temp['a_email'];
+						if ( $new_email == $post_data['recipient'] )
+						{
+							db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['app-id']);
+							logit($centre,  'Letter', $post_data['app-id'], $desc);
+						}
 						break;
-					$desc = strtoupper($post_data['event'])." - ".$post_data['recipient'];
-					if (isset($post_data['error'])) $desc .= " ".$post_data['error'];
-					if (isset($post_data['reason'])) $desc .= " ".$post_data['reason'];
-					if (isset($post_data['notification'])) $desc .= " (".$post_data['notification'].") ";
-					if (isset($post_data['description'])) $desc .= " ".$post_data['description'];
-					$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
-					$centre = $temp['a_center'];
-					$new_email = $temp['a_email'];
-					if ( $new_email == $post_data['recipient'] )
-					{
-						db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['app-id']);
-						logit($centre,  'Letter', $post_data['app-id'], $desc);
-					}
-					break;
 
+				}
 			}
+			elseif (isset($post_data['at-app-id']))
+			{
+				switch($post_data['event'])
+				{
+					case 'delivered':
+						watchdog('WEBHOOK', "Test Mode: ".$post_data['test-mode'].", AT App id is ".$post_data['at-app-id']);
+						break;
+					case 'complained':
+					case 'bounced':
+					case 'dropped':
+					case 'failed':
+					case 'rejected':
+						if ($post_data['test-mode'] == 1)
+							break;
+						$desc = strtoupper($post_data['event'])." - ".$post_data['recipient'];
+						if (isset($post_data['error'])) $desc .= " ".$post_data['error'];
+						if (isset($post_data['reason'])) $desc .= " ".$post_data['reason'];
+						if (isset($post_data['notification'])) $desc .= " (".$post_data['notification'].") ";
+						if (isset($post_data['description'])) $desc .= " ".$post_data['description'];
+						log_course_teacher($post_data['at-app-id'], $desc);
+						break;
+
+				}
+			}
+
 
 			/*}elseif($_POST['event'] == 'bounced'){
 				$subject = "[Mailgun] Bounced Email";

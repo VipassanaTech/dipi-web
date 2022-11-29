@@ -121,6 +121,8 @@ function dh_manage_courses()
 				        { name: "dh_course.c_date_change", label: "Date Change", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_comments", label: "Comments", type: "textarea" },
 				        { name: "dh_course.c_description", label: "Description", type: "textarea" },
+				        { name: "dh_course.c_at_m_count", label: "Male Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
+						{ name: "dh_course.c_at_f_count", label: "Female Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 				        { name: "dh_course.c_combined_seat_course", label: "Combine Seating with Course", type: "select2", def: "0" },
 				        { name: "dh_course.c_deleted", type: "hidden" },
 				        { name: "dh_course.c_finalized", type: "hidden" },
@@ -509,6 +511,8 @@ function dh_manage_course_handler()
 	    \DataTables\Editor\Field::inst( 'dh_course.c_date_change' ),   	            
         \DataTables\Editor\Field::inst( 'dh_course.c_comments' ),            
         \DataTables\Editor\Field::inst( 'dh_course.c_description' ),
+        \DataTables\Editor\Field::inst( 'dh_course.c_at_m_count' ),
+        \DataTables\Editor\Field::inst( 'dh_course.c_at_f_count' ),
 		\DataTables\Editor\Field::inst( 'dh_course.c_combined_seat_course' )
    	            ->options( function() {
 					$now_minus_6month = date('Y-m-d',strtotime("-6 month"));
