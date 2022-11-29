@@ -1284,11 +1284,11 @@ function send_at_schedule_email($at_app_id, $send_to_center=0)
 		$to = trim($row['cs_email_reply_to']);
 		$from = $row['cs_email_from_name'].' <'.trim($row['cs_email_reply_to']).'>';
 
-		$subject = "AT <b>{$row['ct_status']}</b> Application for Course - {$row['course_name']}";
+		$subject = "{$row['ct_status']}, AT Application for Course - {$row['course_name']}";
 		$body = "
 			Dear {$row['cs_email_from_name']},<br><br><br>
 			
-			AT <b>{$row['ct_status']}</b> Application for Course - {$row['course_name']}<br>
+			<b>{$row['ct_status']}</b>, AT Application for Course - {$row['course_name']}<br>
 			AT Name: {$row['t_f_name']} {$row['t_l_name']}.<br><br><br>
 
 
