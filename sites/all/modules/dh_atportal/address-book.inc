@@ -147,13 +147,14 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
-		$statuses = array('Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated');
+		$statuses = array('Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated', 'Training' => 'Training',);
 		$default_status = '';
 		if ( !empty($edit_data) )
 		{
 			if ( $edit_data['t_status'] == 'Active' ) $default_status = 'Active';
 			if ( $edit_data['t_status'] == 'Inactive' ) $default_status = 'Inactive';		
 			if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
+			if ( $edit_data['t_status'] == 'Training' ) $default_status = 'Training';
 		};	
 		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
 			'#default_value' => $default_status, '#weight' => 9, '#empty_option' => 'Choose', '#required' => 1);
