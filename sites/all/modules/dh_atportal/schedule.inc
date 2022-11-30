@@ -245,16 +245,16 @@ function at_course_list_form($form, &$form_state)
 			"&nbsp&nbsp|&nbsp&nbspF: ".
 			($row['female_at_count'] > $row['female_at_conf'] ? '<span style="color:green;">Open</span>' : '<span style="color:red;">Close</span>');
 
-		$uri = "public:///center-img/{$row['center_sub']}.jpg";
-		$placeholder_uri = "public:///center-img/placeholder.png.jpg";
+		// $uri = "public:///center-img/{$row['center_sub']}.jpg";
+		// $placeholder_uri = "public:///center-img/placeholder.png.jpg";
 
-		$row['center_name'] = "<b>{$row['center_name']}</b>";
+		// $row['center_name'] = "<b>{$row['center_name']}</b>";
 
-		if (file_exists($uri)) {
-			$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($uri).'" alt="'.$row['center_sub'].'"></div>'; 
-		}
-		else
-			$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($placeholder_uri).'" alt="'.$row['center_sub'].'"></div>';
+		// if (file_exists($uri)) {
+		// 	$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($uri).'" alt="'.$row['center_sub'].'"></div>'; 
+		// }
+		// else
+		// 	$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($placeholder_uri).'" alt="'.$row['center_sub'].'"></div>';
 
 		$rows[] = $row;
 	}
@@ -1050,16 +1050,16 @@ function at_applied_courses_list_form($form, &$form_state)
 			"&nbsp&nbsp|&nbsp&nbspF: ".
 			($row['female_at_count'] > $row['female_at_conf'] ? '<span style="color:green;">Open</span>' : '<span style="color:red;">Close</span>');
 
-		$uri = "public:///center-img/{$row['center_sub']}.jpg";
-		$placeholder_uri = "public:///center-img/placeholder.png.jpg";
+		// $uri = "public:///center-img/{$row['center_sub']}.jpg";
+		// $placeholder_uri = "public:///center-img/placeholder.png.jpg";
 
-		$row['center_name'] = "<b>{$row['center_name']}</b>";
+		// $row['center_name'] = "<b>{$row['center_name']}</b>";
 
-		if (file_exists($uri)) {
-			$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($uri).'" alt="'.$row['center_sub'].'"></div>'; 
-		}
-		else
-			$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($placeholder_uri).'" alt="'.$row['center_sub'].'"></div>';
+		// if (file_exists($uri)) {
+		// 	$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($uri).'" alt="'.$row['center_sub'].'"></div>'; 
+		// }
+		// else
+		// 	$row['center_name'] .= '<br><div class="center-image"><img src="'.file_create_url($placeholder_uri).'" alt="'.$row['center_sub'].'"></div>';
 
 
 		$rows[] = $row;
