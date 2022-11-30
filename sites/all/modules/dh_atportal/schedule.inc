@@ -327,7 +327,7 @@ function at_course_list_form($form, &$form_state)
 						border: 1px solid black;
 						border-radius: 2px;
 						color: #000;
-						padding: 15px 32px;
+						padding: 5px 25px;
 						text-align: center;
 						text-decoration: none;
 						display: inline-block;
@@ -1132,7 +1132,7 @@ function at_applied_courses_list_form($form, &$form_state)
 						border: 1px solid black;
 						border-radius: 2px;
 						color: #000;
-						padding: 15px 32px;
+						padding: 5px 25px;
 						text-align: center;
 						text-decoration: none;
 						display: inline-block;
