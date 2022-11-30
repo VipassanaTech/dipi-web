@@ -132,6 +132,7 @@ function at_course_list_form($form, &$form_state)
 	$q->addField('co', 'c_at_f_conf', 'female_at_conf');
 	$q->addField('ci', 'c_name', 'city');
 	$q->addField('st', 's_name', 'state');
+	$q->condition('ce.c_id', array('286', '302'), 'NOT IN');
 
 
 	
