@@ -217,10 +217,8 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
-					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No Pending AT Application"},
-					searching: false,
 					"columnDefs": [
 					            {
 					                "targets": [ 0 ],
@@ -353,10 +351,8 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
-					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No course for given criteria."},
-					searching: false,					
 			        columns: [
 			            { data: "course_name", "title" : "Course-Name" },
 			            { data: "at_required", "title" : "AT Needed" },
@@ -372,10 +368,8 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
-					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No course for given criteria."},
-					searching: false,					
 			        columns: [
 			            { data: "course_name", "title" : "Course-Name" },
 			            { data: "teachers", "title" : "Teachers" },
