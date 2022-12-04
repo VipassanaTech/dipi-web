@@ -118,11 +118,11 @@ function dh_manage_at_schedule()
 		where
 		c_center=$centre_id
 		order by
-		c_start,
-		ct_status,
-		t_gender,
+		c_start asc,
+		t_gender asc,
+		ct_status asc,
 		ct_type
-		desc";
+		asc";
 
 	$result = db_query($q);
 	$data = array();
