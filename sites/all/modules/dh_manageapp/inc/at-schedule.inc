@@ -217,14 +217,9 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
+					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No Pending AT Application"},
-					"columnDefs": [
-					            {
-					                "targets": [ 0 ],
-					                "searchable": false
-					            }
-			        ],					
 			        columns: [
 			        	{
 			                "class":          "details-control",
@@ -351,6 +346,7 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
+					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No course for given criteria."},
 			        columns: [
@@ -368,6 +364,7 @@ function dh_manage_at_schedule()
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
 					data: data,
+					"ordering": false,
 					destroy: true,
 					"oLanguage": {"sEmptyTable": "No course for given criteria."},
 			        columns: [
