@@ -415,6 +415,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
 
+    $items['referral'] = array('title' => t('Referral List'),
+	       'page callback' => 'dh_referral_results',
+	       'access arguments' => array('view referral list'),
+	       'type' => MENU_CALLBACK);
+
 
     $items['daily-activity/%centre_id'] = array('title' => t('Daily Activity'),
            'page arguments' => array('dh_daily_activity_form'),

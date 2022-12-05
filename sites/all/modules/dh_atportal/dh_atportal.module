@@ -328,6 +328,7 @@ function dh_atportal_dashboard()
 		'AT Address Book' => 'at-portal/address-book',
 		'Apply for a Course' => 'at-portal/course-list',
 		'My Courses' => 'at-portal/applied-courses-list',
+		'Referral List' => 'referral',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1><ul>';

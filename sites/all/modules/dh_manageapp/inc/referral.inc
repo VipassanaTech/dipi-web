@@ -429,7 +429,10 @@ function dh_referral_results()
 	if (arg(1) <> '')
 		$centre_id = arg(1);
 	
-	$out = '<h2>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp;&nbsp;";
+	if (user_access ('access at profile'))
+	   $out = '<h2>'.l("Back to AT-Portal", "/at-portal")."&nbsp;&nbsp;";
+    else
+        $out = '<h2>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp;&nbsp;";
 
  	if (user_access ('manage referral list'))
  		$out .= "|&nbsp;&nbsp;".l("Add Referral", "referral/".arg(1).'/add');
