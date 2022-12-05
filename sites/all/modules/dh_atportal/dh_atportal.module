@@ -326,7 +326,7 @@ function dh_atportal_dashboard()
 		'All Reviews' => 'lc-review/all',
 		'My Profile' => 'at-portal/address-book/edit/me',
 		'AT Address Book' => 'at-portal/address-book',
-		'Apply for a Course' => 'at-portal/course-list',
+		'Apply for Serving a Course' => 'at-portal/course-list',
 		'Courses Applied/Alloted' => 'at-portal/applied-courses-list',
 		'Referral List' => 'referral',
 	);
