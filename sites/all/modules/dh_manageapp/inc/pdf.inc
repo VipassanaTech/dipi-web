@@ -598,23 +598,33 @@ function map_application_fields_lc($row)
 	$fields['Dhamma Service'] = $row['ac_service'];
 	$fields['Other courses served'] = $row['al_served_other'];
 
-	
-
-	if($row['td_val1'] == '30 Day Course' && ($row['ac_30d'] == 0 || $row['ac_30d'] == ''))
+	if (isset($row['al_10day_after_last_lc']) && !is_null($row['al_10day_after_last_lc']))
 	{
-		if ($row['al_recent_sat_type']=='10-Day')
+		if ($row['al_10day_after_last_lc'])
 			$fields['10 Day After LC Y'] = 'Yes';
 		else
 			$fields['10 Day After LC N'] = 'Yes';
 	}
-
-	if($row['td_val1'] == '45 Day Course' && ($row['ac_45d'] == 0 || $row['ac_45d'] == ''))
+	else
 	{
-		if ($row['al_recent_sat_type']=='10-Day')
-			$fields['10 Day After LC Y'] = 'Yes';
-		else
-			$fields['10 Day After LC N'] = 'Yes';
+		if($row['td_val1'] == '30 Day Course' && ($row['ac_30d'] == 0 || $row['ac_30d'] == ''))
+		{
+			if ($row['al_recent_sat_type']=='10-Day')
+				$fields['10 Day After LC Y'] = 'Yes';
+			else
+				$fields['10 Day After LC N'] = 'Yes';
+		}
+
+		if($row['td_val1'] == '45 Day Course' && ($row['ac_45d'] == 0 || $row['ac_45d'] == ''))
+		{
+			if ($row['al_recent_sat_type']=='10-Day')
+				$fields['10 Day After LC Y'] = 'Yes';
+			else
+				$fields['10 Day After LC N'] = 'Yes';
+		}
 	}
+
+
 
 	if($row['al_last_lc_type'] && $row['al_last_lc_date'])
 	{
