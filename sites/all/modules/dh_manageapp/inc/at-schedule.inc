@@ -13,6 +13,15 @@ function dh_manage_at_schedule()
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
+
+	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
+	$iPhone  = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
+	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
+
+	if ( !($iPad || $iPhone || $iPod) )
+	{
+		drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.print.min.js");
+	}
 	
 
 	
@@ -141,8 +150,11 @@ function dh_manage_at_schedule()
 
 		$row['course_name'] = l($t[1], "assign-teacher/$centre_id/".$t[0]);
 		$row['at_required'] = "M: {$t[3]}&nbsp;&nbsp;|&nbsp;&nbsp;F: {$t[4]}";
+		$row['course_name_uformtd'] = $t[1];
+		$row['at_required_uformtd'] = "M: {$t[3]}  |  F: {$t[4]}";
 		
 		$temp = array();
+		$row['teachers_uformtd'] = "";
 
 
 		foreach($course_data as $data )
@@ -155,17 +167,20 @@ function dh_manage_at_schedule()
 					if ( $data['status'] == "Confirmed")
 					{
 						$temp[] = array('<a href="#" id="'.$data['teacher_id'].'" class="get-at-info" >'.$data['teacher'].'</a>', $data['type'].' '.$gender);
+						$row['teachers_uformtd'] .= "{$data['teacher']} - {$data['type']} {$gender}\n";
 					}
 				}
 				else
 				{
 					$temp[] = array('<a href="#" id="'.$data['teacher_id'].'" class="get-at-info" >'.$data['teacher'].'</a>', $data['type'].' '.$gender, '<b><i>'.$data['status'].'</i></b>');
+					$row['teachers_uformtd'] .= "{$data['teacher']} - {$data['type']} {$gender} ({$data['status']})\n";
 				}
 				
 			}
 		}
 
 		$row['teachers'] = theme("table", array('rows' => $temp, 'attributes' => array('class' => array('teacher-internal-table', ), ), ), );
+		$row['teachers_uformtd'] = trim($row['teachers_uformtd']);
 
 		$date = DateTime::createFromFormat("Y-m-d", $t[2]);
 		$year = $date->format("Y");
@@ -202,6 +217,16 @@ function dh_manage_at_schedule()
 	$out .= theme('table', array('rows' => array(), 'attributes' => array('id' => 'completed-courses-table')));
 
 	$old_rows = json_encode($old_rows);
+
+	$button_access = '';
+	if (user_access('export data'))
+		if ( !($iPad || $iPhone || $iPod) )
+			$button_access = '                        
+				$.extend( true, {}, buttonCommon, {
+      			    extend: "excelHtml5",
+	            	title: "AT-Scheduling"
+				} )
+			';
 
 
 	$js = '
@@ -343,8 +368,37 @@ function dh_manage_at_schedule()
 
 			function do_datatable_upcoming( tid, data )
 			{
+				var buttonCommon = {
+			        exportOptions: {
+			            format: {
+			            	header: function( data, column, node ) {
+			            		var h = ["Course-Name", "AT Needed", "Teachers", ]; 
+			            		return h[column];
+			            	},
+			                body: function ( data, row, column, node ) {
+			                	var tmp = table.rows().data();
+			                	var a;
+			                	if ( column == 0 )
+			                	{
+			                		return tmp[ row ].course_name_uformtd; 
+			                	}
+			                	else if ( column == 1 )
+			                	{
+			                		return tmp[ row ].at_required_uformtd; 
+			                	}
+			                	else if ( column == 2 )
+			                	{
+			                		return tmp[ row ].teachers_uformtd; 
+			                	}
+		
+			                	return data;
+			                }
+			            }
+			        }
+			    };
+
 				var table = $(tid).DataTable({
-					dom: "lfr<\"clear\">tip", 
+					dom: "lBfr<\"clear\">tip", 
 					data: data,
 					"ordering": false,
 					destroy: true,
@@ -354,6 +408,9 @@ function dh_manage_at_schedule()
 			            { data: "at_required", "title" : "AT Needed" },
 			            { data: "teachers", "title" : "Teachers" },
 			        ],
+			        buttons:   [  
+						'.$button_access.'                        
+			         ],
 			    });	
 
 			}
@@ -361,8 +418,33 @@ function dh_manage_at_schedule()
 
 			function do_datatable_completed( tid, data )
 			{
+				var buttonCommon = {
+			        exportOptions: {
+			            format: {
+			            	header: function( data, column, node ) {
+			            		var h = ["Course-Name", "Teachers", ]; 
+			            		return h[column];
+			            	},
+			                body: function ( data, row, column, node ) {
+			                	var tmp = table.rows().data();
+			                	var a;
+			                	if ( column == 0 )
+			                	{
+			                		return tmp[ row ].course_name_uformtd; 
+			                	}
+			                	else if ( column == 1 )
+			                	{
+			                		return tmp[ row ].teachers_uformtd; 
+			                	}
+		
+			                	return data;
+			                }
+			            }
+			        }
+			    };
+
 				var table = $(tid).DataTable({
-					dom: "lfr<\"clear\">tip", 
+					dom: "lBfr<\"clear\">tip", 
 					data: data,
 					"ordering": false,
 					destroy: true,
@@ -371,6 +453,9 @@ function dh_manage_at_schedule()
 			            { data: "course_name", "title" : "Course-Name" },
 			            { data: "teachers", "title" : "Teachers" },
 			        ],
+			        buttons:   [  
+						'.$button_access.'                        
+			         ],
 			    });	
 
 			}
