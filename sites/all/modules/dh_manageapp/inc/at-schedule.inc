@@ -125,6 +125,8 @@ function dh_manage_at_schedule()
 		left join dh_course_teacher on ct_course=c_id
 		left join dh_teacher on ct_teacher=t_id
 		where
+		c_deleted=0 and
+		c_cancelled=0 and
 		c_center=$centre_id
 		order by
 		c_start asc,
