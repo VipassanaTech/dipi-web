@@ -185,12 +185,21 @@ function dh_manage_at_schedule()
 		$row['teachers_uformtd'] = trim($row['teachers_uformtd']);
 
 		$date = DateTime::createFromFormat("Y-m-d", $t[2]);
-		$year = $date->format("Y");
 
-		if ( $t[2]  < date('Y-m-d') ) 
-			$old_rows[$year][] = $row;
+		if ($date)
+		{
+			$year = $date->format("Y");
+
+			if ( $t[2]  < date('Y-m-d') ) 
+				$old_rows[$year][] = $row;
+			else
+				$upcoming_rows[] = $row;
+		}
 		else
-			$upcoming_rows[] = $row;
+		{
+			drupal_set_message("Start date not set for course: {$t[1]}");
+		}
+
 			
 	}
 
