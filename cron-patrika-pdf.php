@@ -64,7 +64,7 @@ if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
 	      			{
 	      				if ($link <> '')
 	      				{
-	      					$patrika_recent[$lang_code] = $link;
+	      					$patrika_recent[$lang_code] = array($language, $link);
 
 	      					$file_name = "$year_dir/patrika-$lang_code-$month-$year.pdf";
 	      					echo $file_name."\n";
@@ -101,8 +101,18 @@ if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
 
 if (file_prepare_directory($recent_dir, FILE_CREATE_DIRECTORY))
 {
-	foreach($patrika_recent as $lang_code => $link)
+	$lang_file = "$patrika_dir/langs";
+
+	if (file_exists($lang_file))
+		unlink($lang_file);
+
+	file_put_contents($lang_file, "*langcode : Language*".PHP_EOL , FILE_APPEND | LOCK_EX);
+
+
+	foreach($patrika_recent as $lang_code => $details)
 	{
+		$language = $details[0];
+		$link = $details[1];
 		$file_name = "$recent_dir/patrika-$lang_code.pdf";
 		echo $file_name."\n";
 		if (file_exists($file_name))
@@ -126,5 +136,9 @@ if (file_prepare_directory($recent_dir, FILE_CREATE_DIRECTORY))
 			system_retrieve_file($link, $file_name, false, $replace = FILE_EXISTS_ERROR);
 		}
 		echo "\n";
+
+		// adding content to lang file
+		file_put_contents($lang_file, "$lang_code : $language".PHP_EOL , FILE_APPEND | LOCK_EX);
+
 	}
 }
