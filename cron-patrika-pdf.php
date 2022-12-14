@@ -45,6 +45,12 @@ for ($year = $start_year ; $year <= $current_year ; $year++)
 $patrika_dir = "public:///patrika-pdf";
 $patrika_recent = array();
 $recent_dir = "$patrika_dir/recent";
+$lang_not_found_file = "$patrika_dir/lang-not-found";
+
+if (file_exists($lang_not_found_file))
+		unlink($lang_not_found_file);
+
+
 
 if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
 {
@@ -58,6 +64,12 @@ if (file_prepare_directory($patrika_dir, FILE_CREATE_DIRECTORY))
       		foreach($languages as $language => $months)
       		{
       			$lang_code = strtolower(db_query("select l_code from dh_languages where l_name=:l_name", array('l_name' => $language))->fetchField());
+
+      			if (!$lang_code)
+      			{
+      				file_put_contents($lang_not_found_file, "$year : $language".PHP_EOL , FILE_APPEND | LOCK_EX);
+      			}
+
       			if ($lang_code)
       			{
 	      			foreach($months as $month => $link)
