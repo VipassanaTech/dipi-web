@@ -1721,30 +1721,73 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
 
 
 
-function _api_sms_keyword_patrika($pid, $pincode)
+function _api_sms_keyword_patrika($pid, $pincode, $lang="", $month="", $year="")
 {
-    $pid = addslashes($pid);
-    $pincode = addslashes($pincode);
+    $out = array("response" => "", "pdf_response" => "");
 
-    $q = "select p_mode, CONCAT(p_f_name, ' ', p_l_name) as 'name', p_address, p_zip, l_name, p_subscription_type, DATE_FORMAT(p_end_date, '%d/%m/%Y')  as 'p_end_date', p_cancelled
-      from dh_patrika left join dh_languages on p_language=l_code where p_vray_id='$pid' and p_zip='$pincode'";
-    $res = db_query($q);
-
-    $out = '';
-    while($r = $res->fetchAssoc())
+    if ($pid)
     {
-        $out = "Name: ".$r['name']."\nMode: ".$r['p_mode']."\nLang: ".$r['l_name']."\nSub Type: ".$r['p_subscription_type']."\n";
+        $pid = addslashes($pid);
+        $pincode = addslashes($pincode);
 
-        if ($r['p_cancelled'])
-            $out .= "Status: Cancelled";
+        $q = "select p_mode, CONCAT(p_f_name, ' ', p_l_name) as 'name', p_address, p_zip, l_name, p_subscription_type, DATE_FORMAT(p_end_date, '%d/%m/%Y')  as 'p_end_date', p_cancelled
+          from dh_patrika left join dh_languages on p_language=l_code where p_vray_id='$pid' and p_zip='$pincode'";
+        $res = db_query($q);
+
+
+        while($r = $res->fetchAssoc())
+        {
+            $out["response"] = "Name: ".$r['name']."\nMode: ".$r['p_mode']."\nLang: ".$r['l_name']."\nSub Type: ".$r['p_subscription_type']."\n";
+
+            if ($r['p_cancelled'])
+                $out["response"] .= "Status: Cancelled";
+            else
+                $out["response"] .= "Subcr End: ".$r['p_end_date'];
+        }
+
+        if ($out["response"] == '')
+            $out["response"] = "No patrika subcriptions found for given subscriber id and pincode";
+ 
+    }
+    else
+    {
+        $patrika_dir = "public:///patrika-pdf";
+
+        if ($lang && $month && $year)
+        {
+            $dir = "{$patrika_dir}/{$year}";
+            $file = "patrika-{$lang}-{$month}-{$year}.pdf";
+        }
+        elseif($lang)
+        {
+            $dir = "{$patrika_dir}/recent";
+            $file = "patrika-{$lang}.pdf";
+        }
         else
-            $out .= "Subcr End: ".$r['p_end_date'];
+        {
+            $dir = "";
+            $file = "";
+        } 
+
+        if ($dir && $file)
+        {
+            $temp = upload_whatsapp_pdf($dir, $file);
+
+            if($temp["success"])
+                $out["pdf_response"] = $temp["ret"];
+            else
+                $out["response"] = "Requested Patrika not found, please check https://www.vridhamma.org/newsletters";
+        }
+        else
+        {
+            $out["response"] = "Requested Patrika not found, please check https://www.vridhamma.org/newsletters";
+        }
+
+        
     }
 
-    if ($out == '')
-        return "No patrika subcriptions found for given subscriber id and pincode";
-
-    return $out;    
+    return $out;
+       
 }
 
 
@@ -2729,7 +2772,7 @@ function apilogit( $centre, $module, $identifier, $event, $msg, $uid = 0 )
     db_insert('dh_log')->fields($fields)->execute();
 }
 
-function send_whatsapp_360( $to, $template, $params, $type = "template")
+function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = null)
 {
     $namespace = variable_get('wa360_namespace', '');
     $wa_url = variable_get('wa360_url', '');
@@ -2743,7 +2786,11 @@ function send_whatsapp_360( $to, $template, $params, $type = "template")
         }
     }
 
-    if ($type == 'template')
+    if ($type == 'pdf')
+    {
+        $payload = json_encode(array('to' => $to, "type" => 'document', 'document' => $pdf ));
+    }
+    elseif ($type == 'template')
         $payload = json_encode(array('to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
     else
         $payload = json_encode(array('to' => $to, "type" => 'text', 'text' => array("body" => $params) ));
@@ -2892,24 +2939,152 @@ function handle_whatsapp_msg($sender, $data)
             $response = _api_sms_keyword_transfer($sender,  $centre, $start_date, $id );
             break;
         case 'PATRIKA':
-            if (count($temp) < 3)
+            if (is_numeric($temp[1]) && count($temp) == 3)
             {
-              $response = "PATRIKA <subscriber id> <pincode>\nPlease send in above format";
-              $result = send_whatsapp_360($sender, "", $response, "text");
-              _sms_log($sender, $keyword, $data, $response);
-              return array("Result" => "Bad format ".$content); //['status']            
+                $pid = $temp[1];
+                $pincode = $temp[2];
+                $out = _api_sms_keyword_patrika($pid, $pincode);
+                $response = $out["response"];
             }
-            $pid = $temp[1];
-            $pincode = $temp[2];
-            $response = _api_sms_keyword_patrika($pid, $pincode);
+            elseif(count($temp) == 2 && is_string($temp[1]))
+            {
+                $lang = strtolower($temp[1]);
+                $out = _api_sms_keyword_patrika("", "", $lang);
+
+                $pdf_response = $out["pdf_response"];
+                $response = $out["response"];
+            }
+            elseif(count($temp) == 4 && is_string($temp[1]) && is_numeric($temp[2]) && is_numeric($temp[3]))
+            {
+
+                $lang = strtolower($temp[1]);
+                $month = $temp[2];
+                $year = $temp[3];
+                $out = _api_sms_keyword_patrika("", "", $lang, $month, $year);
+                $pdf_response = $out["pdf_response"];
+                $response = $out["response"];
+            }
+            else
+            {
+                $lang_file = "public:///patrika-pdf/langs";
+
+                if (file_exists($lang_file))
+                    $patrika_langs = file_get_contents($lang_file);
+                else
+                    $patrika_langs = "";
+
+                $response = "Please send in one of the below format.\n\n*to get status of patrika subcription*\npatrika <subscriber id> <pincode>\n*Eg:*  ```patrika 345 285001```\n\n*to get recent patrika for a language*\npatrika <langcode>\n*Eg:*  ```patrika hi```\n\n*to get a specific patrika for language, month, year*\npatrika <langcode> <month> <year>\n*Eg:*  ```patrika hi 4 2021```\n\n\nFollowing are available languages for patrika:\n\n{$patrika_langs}";
+
+                $result = send_whatsapp_360($sender, "", $response, "text");
+                _sms_log($sender, $keyword, $data, $response);
+                return array("Result" => "Bad format ".$content);
+            }
             break;
         default:
             $response = _api_sms_keyword_help();
     }
-    if ($response)
+
+    if ($pdf_response)
+    {
+        _sms_log($sender, $keyword, $data, $pdf_response['filename']);
+        send_whatsapp_360($sender, "", "", "pdf", $pdf_response);
+    }
+    elseif ($response)
     {
         _sms_log($sender, $keyword, $data, $response);
         send_whatsapp_360($sender, "", $response, "text");
     }
+    
 }
 
+
+function upload_whatsapp_pdf($dir, $file)
+{
+    $out = array("success" => true, "ret" => null);
+
+    if ($file !== basename($file))
+    {
+        $out["success"] = false;
+        return $out;
+    }
+
+    if (!file_exists("{$dir}/{$file}"))
+    {
+        $out["success"] = false;
+        return $out;
+    }
+
+    if (is_dir("{$dir}/{$file}"))
+    {
+        $out["success"] = false;
+        return $out;
+    }
+
+
+    $file_size = filesize("{$dir}/{$file}");
+
+    $uploaded = variable_get("wa_upload_{$file}", '');
+
+    if($uploaded)
+    {
+        if($uploaded["expire"] > strtotime("now") && $uploaded["file_size"] == $file_size)
+        {
+            $out["ret"] = $uploaded["return"];
+            return $out;
+        }
+    }
+
+    $data = file_get_contents("{$dir}/{$file}");
+    $caption = $file;
+    $filename = $file;
+
+    try
+    {  
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+          CURLOPT_URL => variable_get('wa360_url', '').'/media',
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_ENCODING => '',
+          CURLOPT_MAXREDIRS => 10,
+          CURLOPT_TIMEOUT => 0,
+          CURLOPT_FOLLOWLOCATION => true,
+          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+          CURLOPT_CUSTOMREQUEST => 'POST',
+          CURLOPT_POSTFIELDS => $data,
+          CURLOPT_HTTPHEADER => array(
+            'D360-Api-Key: '.variable_get('wa360_api_key', ''),
+            'Content-Type: application/pdf'
+          ),
+        ));
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+
+        $ret = json_decode($response);
+
+        $file_id = $ret->media[0]->id;
+
+        if($file_id)
+        {
+            $out["ret"] = array('id' => $file_id, 'caption' => $caption, 'filename' => $filename);
+
+            variable_set("wa_upload_{$file}", array("expire" => strtotime("+ 12 day"), "file_size" => $file_size,"return" => $out["ret"]));
+
+            return $out;
+        }
+        else
+        {
+            $out["success"] = false;
+            return $out;
+        }
+        
+        
+    }
+    catch (\Throwable $e) 
+    {
+        watchdog("upload_whatsapp_pdf", "Error uploading $filename: ".$e->getMessage());
+        $out["success"] = false;
+        return $out;
+    }
+}
