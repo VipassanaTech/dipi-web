@@ -2973,7 +2973,7 @@ function handle_whatsapp_msg($sender, $data)
                 else
                     $patrika_langs = "";
 
-                $response = "Please send in one of the below format.\n\n*to get status of patrika subcription*\npatrika <subscriber id> <pincode>\n*Eg:*  ```patrika 345 285001```\n\n*to get recent patrika for a language*\npatrika <langcode>\n*Eg:*  ```patrika hi```\n\n*to get a specific patrika for language, month, year*\npatrika <langcode> <month> <year>\n*Eg:*  ```patrika hi 4 2021```\n\n\nFollowing are available languages for patrika:\n\n{$patrika_langs}";
+                $response = "Please send in one of the below format.\n\n*to get status of patrika subscription*\npatrika <subscriber id> <pincode>\n*Eg:*  ```patrika 345 285001```\n\n*to get recent patrika for a language*\npatrika <langcode>\n*Eg:*  ```patrika hi```\n\n*to get a specific patrika for language, month, year*\npatrika <langcode> <month> <year>\n*Eg:*  ```patrika hi 4 2021```\n\n\nFollowing are available languages for patrika:\n\n{$patrika_langs}";
 
                 $result = send_whatsapp_360($sender, "", $response, "text");
                 _sms_log($sender, $keyword, $data, $response);
