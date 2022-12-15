@@ -118,7 +118,7 @@ if (file_prepare_directory($recent_dir, FILE_CREATE_DIRECTORY))
 	if (file_exists($lang_file))
 		unlink($lang_file);
 
-	file_put_contents($lang_file, "*langcode : Language*".PHP_EOL , FILE_APPEND | LOCK_EX);
+	file_put_contents($lang_file, "*Language : langcode*".PHP_EOL , FILE_APPEND | LOCK_EX);
 
 
 	foreach($patrika_recent as $lang_code => $details)
@@ -150,7 +150,7 @@ if (file_prepare_directory($recent_dir, FILE_CREATE_DIRECTORY))
 		echo "\n";
 
 		// adding content to lang file
-		file_put_contents($lang_file, "$lang_code : $language".PHP_EOL , FILE_APPEND | LOCK_EX);
+		file_put_contents($lang_file, "{$language} : ```{$lang_code}```".PHP_EOL , FILE_APPEND | LOCK_EX);
 
 	}
 }
