@@ -68,6 +68,9 @@ function dh_manageapp_permission()
 	$perms['view referral list'] = array('title' => t('View referral list'));
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
+	$perms['view center referral list'] = array('title' => t('View center referral list'));
+	$perms['manage center referral list'] = array('title' => t('Manage center referral list'));
+	$perms['delete center referral list'] = array('title' => t('Delete center referral list'));
 	$perms['access other center courses'] = array('title' => t('Access other center course list'));
 	$perms['view sms report'] = array('title' => t('View SMS report'));
 	$perms['view course report'] = array('title' => t('View Course report'));
@@ -420,6 +423,26 @@ function dh_manageapp_menu()
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
+    $items['center-referral/%centre_id'] = array('title' => t('Center Referral List'),
+	       'page callback' => 'dh_referral_results',
+	       'access arguments' => array('view center referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['center-referral/%centre_id/add'] = array('title' => t('Center Referral List'),
+	       'page callback' => 'dh_addedit_referral',
+	       'access arguments' => array('manage center referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['center-referral/%centre_id/edit/%ref_id'] = array('title' => t('Center Referral List'),
+	       'page callback' => 'dh_addedit_referral',
+	       'access arguments' => array('manage center referral list'),
+	       'type' => MENU_CALLBACK);
+
+    $items['center-referral/%centre_id/%ref_id/delete'] = array('title' => t('Center Referral List'),
+	       'page callback' => 'referral_delete',
+	       'page arguments' => array(2),
+	       'access arguments' => array('delete center referral list'),
+	       'type' => MENU_CALLBACK);
 
     $items['daily-activity/%centre_id'] = array('title' => t('Daily Activity'),
            'page arguments' => array('dh_daily_activity_form'),
@@ -723,12 +746,36 @@ function ref_id_load( $id )
 
 	if (!is_numeric($id))
 		return false;
+
+	$ref_id = db_query("select r_id from dh_referral where r_id=$id and r_deleted = 0")->fetchField();
+
+	if (!$ref_id)
+		return false;
+
+	if (user_access("access all centres"))
+		return $id;
 	
 	if (user_access("manage referral list"))
-		$temp = db_query("select r_student from dh_referral where r_student=$id")->fetchField();
-	if ( $temp <> $id )
-		return false;
-	return $id;
+	{
+		$temp = db_query("select r_id from dh_referral where r_id=$id and r_center=0")->fetchField();
+
+		if ( $temp == $id )
+			return $id;
+	}
+
+	if (user_access("manage center referral list"))
+	{
+		$temp = db_query("select r_id, r_center from dh_referral where r_id=$id")->fetchAssoc();
+		if ($temp['r_id'] == $id)
+		{
+			$count = db_query("select count(uc_id) from dh_user_center where uc_center='{$temp['r_center']}' and uc_user='".$user->uid."' and uc_deleted=0")->fetchField();
+
+			if ( $count > 0 )
+				return $id;
+		}
+	}
+
+	return false;
 }
 
 
@@ -1677,6 +1724,9 @@ function update_status_external($app_id, $new_status)
 	$c_type = $c_data['td_key'];
 	if ( in_array($new_status, array('Received')) )
 	{
+		// set referral
+		set_referral( $app_id );
+		
 		dh_course_status_check( $row['a_center'], $c_type, $row['a_gender'], $row['a_course'] );
 		if (!$is_lc)
 		{

@@ -822,8 +822,6 @@ function dh_ma_applicant_form_submit($form, &$form_state)
    $app['a_f_name'] = ucwords(strtolower($app['a_f_name']) );
    $app['a_l_name'] = ucwords(strtolower($app['a_l_name']) );
 
-   $referral = is_in_referal_list($app);
-   $app['a_referral'] = $referral?$referral:"0";
 	if (arg(2) == 'edit')
 	{
 		$app_id = arg(1);
@@ -888,6 +886,11 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			dh_send_letter('applicant', $app_id, $app['a_status'] );
 
 	}
+
+	// set referral
+	set_referral( $app_id );
+
+
 	/* Insert or update applicant_extra */
 	if ( $app['a_medication'] || $app['a_problem_physical'] || $app['a_problem_mental'] || 
 		$app['a_addiction_current'] || $app['a_other_technique'] || trim($input['ae_pregnant_detail']) <> '' || trim($input['ae_ch_course_detail']) <> '' || trim($input['ae_ch_practice_detail']) <> '' || arg(2) == 'edit' )
@@ -1133,19 +1136,98 @@ function app_delete( $id )
 	db_query($q);
 }
 
-function is_in_referal_list( $row )
+function set_referral( $app_id )
 {
 	$referral = 0;
-	$q = "select r_id from dh_referral r left join dh_student s on (r.r_student=s.s_id) 
-		where s_f_name = :s_f_name and s_l_name = :s_l_name and 
-		( s_email = :s_email or s_phone_mobile = :s_phone_mobile ) limit 1";
-	$q_array = array (':s_f_name' => $row['a_f_name'],
-					':s_l_name' => $row['a_l_name'],
-					':s_email' => $row['a_email'],
-					':s_phone_mobile' => $row['a_phone_mobile'],
-					);
-	$referral = db_query($q, $q_array)->fetchField();
-	return $referral;
+
+	$q = "select
+		a_f_name,
+		a_l_name,
+		a_center,
+		a_email,
+		a_phone_mobile,
+		a_passport,
+		a_voter_id,
+		a_pancard,
+		a_aadhar,
+		a_referral
+		from
+		dh_applicant
+		where
+		a_id = :a_id
+	";
+
+	$res = db_query($q, array(":a_id" => $app_id))->fetchAssoc();
+
+	if ($res)
+	{
+		$doc_type = '';
+		$doc_id = '';
+		
+		if ( $res['a_pancard'] )
+			$doc_type = 's_pancard';
+		elseif ( $res['a_aadhar'] )
+			$doc_type = 's_aadhar';
+		elseif ( $res['a_voter_id'] )
+			$doc_type = 's_voter_id';
+		elseif ( $res['a_passport'] )
+			$doc_type = 's_passport';
+
+		if ($doc_type)
+		{
+			$doc_id = $res[str_replace("s_", "a_", $doc_type)];
+
+			$q ="select
+				r_id
+				from
+				dh_referral r
+				left join dh_student s on (r.r_student=s.s_id) 
+				where
+				r_deleted = 0 and
+				r_center in (0, '{$res['a_center']}') and
+				$doc_type = :doc_id
+				limit 1
+			";
+
+			$referral = db_query($q, array(":doc_id" => $doc_id))->fetchField();
+		}
+
+		if (!$referral)
+		{
+			$q = "select
+				r_id
+				from
+				dh_referral r
+				left join dh_student s on (r.r_student=s.s_id) 
+				where
+				r_deleted = 0 and
+				r_center in (0, {$res['a_center']}) and
+				s_f_name = :s_f_name and
+				s_l_name = :s_l_name and
+				( s_email = :s_email or s_phone_mobile = :s_phone_mobile )
+				limit 1
+			";
+
+			$q_array = array (
+				':s_f_name' => $res['a_f_name'],
+				':s_l_name' => $res['a_l_name'],
+				':s_email' => $res['a_email'],
+				':s_phone_mobile' => $res['a_phone_mobile'],
+			);
+
+			$referral = db_query($q, $q_array)->fetchField();
+		}
+
+
+		if ($referral)
+			db_query("update dh_applicant set a_referral='{$referral}' where a_id='{$app_id}'");
+		elseif($res["a_referral"])
+			db_query("update dh_applicant set a_referral='0' where a_id='{$app_id}'");
+
+	}
+
+	
+
 }
 
 

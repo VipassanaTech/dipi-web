@@ -31,7 +31,18 @@ function dh_manage_centre()
 	$name = db_query("select c_name from dh_center where c_id=".arg(1))->fetchField();
 	drupal_set_title("Manage $name");
 	$out = '<div style="color:#ff0000; font-size:26px; margin-bottom:10px;">'.variable_get('important_notice', '').'</div>';
-	$modules = array('Centre Settings' => 'centre/'.arg(1).'/edit', 'Manage Courses' => 'manage-course/'.arg(1) , 'Manage Letters' => 'letters/'.arg(1),  'Search' => 'search-app/'.arg(1), 'Daily Activity' => 'daily-activity/'.arg(1), 'AT Schedule' => 'at-schedule/'.arg(1), 'Referral List' => 'referral/'.arg(1), 'SMS Report' => 'centre/'.arg(1).'/sms-report' , 'Course Report' => 'centre/'.arg(1).'/course-report' ); // 'Zero Day' => 'zero-day/'.arg(1)
+	$modules = array(
+		'Centre Settings' => 'centre/'.arg(1).'/edit',
+		'Manage Courses' => 'manage-course/'.arg(1) ,
+		'Manage Letters' => 'letters/'.arg(1), 
+		'Search' => 'search-app/'.arg(1),
+		'Daily Activity' => 'daily-activity/'.arg(1),
+		'AT Schedule' => 'at-schedule/'.arg(1),
+		'Referral List' => 'referral/'.arg(1),
+		'Center Referral List' => 'center-referral/'.arg(1),
+		'SMS Report' => 'centre/'.arg(1).'/sms-report' ,
+		'Course Report' => 'centre/'.arg(1).'/course-report',
+	);
 	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )
 	{

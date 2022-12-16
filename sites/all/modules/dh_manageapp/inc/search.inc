@@ -309,6 +309,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$action_select .='<option value=\"Add-referral\">Add Referral</option>';
 			$actions[] = "Add Referral";
 		}
+		if (user_access("manage center referral list")) {
+			$action_select .='<option value=\"Add-center-referral\">Add Center Referral</option>';
+			$actions[] = "Add Center Referral";
+		}
 		if (user_access("delete application")) {
 			$action_select .='<option value=\"Delete\">Delete</option>';
 			$actions[] = "Delete";
@@ -832,6 +836,14 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					
 					window.location.href = "/referral/'.arg(1).'/add?aid="+id;					
 				}
+				function add_center_referral( s )
+				{
+			        var tr = $(s).closest("tr");
+			        var row = table.row( tr );
+			        var id = row.data().aid;
+					
+					window.location.href = "/center-referral/'.arg(1).'/add?aid="+id;					
+				}
 
 				$(document).on("change", "#centre-select", function(){
 
@@ -866,6 +878,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        if (action == "Add Referral")
 			        {
 			        	add_referral(s);
+			        	return;
+			        }
+			        if (action == "Add Center Referral")
+			        {
+			        	add_center_referral(s);
 			        	return;
 			        }
 			        if ( action == "Delete" )
