@@ -751,29 +751,34 @@ function dh_referral_form_submit($form, &$form_state)
 
 		db_query($q, $q_array);
 
-		$q = "update dh_applicant a
-			left join dh_course co on a.a_course=co.c_id
-			set a.a_referral = :a_referral
-			where
-			$conditon
-			co.c_start>curdate() and
-			(
-				a.a_pancard = :a_pancard or
-				a.a_aadhar = :a_aadhar or
-				a.a_voter_id = :a_voter_id or
-				a.a_passport = :a_passport
-			)
-		";
+		if ($app['s_pancard'] || $app['s_aadhar'] || $app['s_voter_id'] || $app['s_passport'])
+		{
+					$q = "update dh_applicant a
+				left join dh_course co on a.a_course=co.c_id
+				set a.a_referral = :a_referral
+				where
+				$conditon
+				co.c_start>curdate() and
+				(
+					a.a_pancard = :a_pancard or
+					a.a_aadhar = :a_aadhar or
+					a.a_voter_id = :a_voter_id or
+					a.a_passport = :a_passport
+				)
+			";
 
-		$q_array = array (
-			':a_referral' => $ref_id,
-			':a_pancard' => $app['s_pancard'],
-			':a_aadhar' => $app['s_aadhar'],
-			':a_voter_id' => $app['s_voter_id'],
-			':a_passport' => $app['s_passport'],
-		);
+			$q_array = array (
+				':a_referral' => $ref_id,
+				':a_pancard' => $app['s_pancard'],
+				':a_aadhar' => $app['s_aadhar'],
+				':a_voter_id' => $app['s_voter_id'],
+				':a_passport' => $app['s_passport'],
+			);
 
-		db_query($q, $q_array);
+			db_query($q, $q_array);
+		}
+
+
 	}
 
 	drupal_set_message(t("Details updated successfully"), 'status');
