@@ -717,7 +717,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					$("#edit-area-teacher").attr("required", false);
 					$(".form-item-area-teacher").hide();	
 				}
-				elseif ((val == "Approved") && (sel == "edit"))
+				else if ((val == "Approved") && (sel == "edit"))
 				{
 					$("#edit-area-teacher").attr("required", true);
 					$(".form-item-area-teacher").show();
