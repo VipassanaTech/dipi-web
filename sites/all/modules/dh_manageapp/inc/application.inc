@@ -278,7 +278,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['ac_60d'])?$edit_data['ac_60d']:'0', '#required' => 0, '#maxlength' => 2 );
 	$form[$group]['ac_tsc'] = array('#title' => 'TSC', '#type' => 'textfield', '#size' => '5', '#weight' => 67, 
 		'#default_value' => isset($edit_data['ac_tsc'])?$edit_data['ac_tsc']:'0', '#required' => 0, '#maxlength' => 2 );
-	$form[$group]['ac_service'] = array('#title' => 'Service', '#type' => 'textfield', '#size' => '5', '#weight' => 68, 
+	$form[$group]['ac_service'] = array('#title' => 'Seva', '#type' => 'textfield', '#size' => '5', '#weight' => 68, 
 		'#default_value' => isset($edit_data['ac_service'])?$edit_data['ac_service']:'0', '#required' => 0, '#maxlength' => 3 );
 	$form[$group]['ac_teacher'] = array('#title' => '&nbsp;&nbsp;Is a Teacher?', '#type' => 'radios', 
 		'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 69, 
