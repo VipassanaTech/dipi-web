@@ -655,7 +655,7 @@ function ajax_acco_dropdown_callback($form, $form_state) {
 function _ajax_get_section_options($gender, $centre)
 {
 	$sections = array('' => 'Choose');
-	$q = "select csa_section from dh_center_setting_acco where csa_center='$centre' and csa_gender='$gender'";
+	$q = "select csa_section from dh_center_setting_acco where csa_center='$centre' and csa_gender='$gender' and csa_deleted=0";
 	$res = db_query($q);
 	while($r = $res->fetchAssoc())
 		$sections[$r['csa_section']] = $r['csa_section'];
@@ -667,7 +667,7 @@ function _ajax_get_acco_options($section, $gender, $centre, $course)
 	//watchdog("acco", "Sec - $section, Gen - $gender, Centre - $centre, Course -  $course");
 	$rooms = array('' => 'Choose');
 
-	$q = "select csa_room from dh_center_setting_acco where csa_center='$centre' and csa_section='$section' and csa_gender='$gender'";
+	$q = "select csa_room from dh_center_setting_acco where csa_center='$centre' and csa_section='$section' and csa_gender='$gender' and csa_deleted=0";
 	$result = db_query($q);
 	$i = 0;
 	while($r = $result->fetchAssoc())
