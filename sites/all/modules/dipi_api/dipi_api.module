@@ -2421,7 +2421,7 @@ function _app_info_by_conf_num ( $conf_num )
 
         $center_id = $result->fetchField();
 
-        $q = "select c_id from dh_course where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
+        $q = "select c_id from dh_course where c_cancelled = 0 and c_deleted = 0 and  c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
         $result = db_query($q);
 
         if ($result->rowCount()==0)
@@ -2489,7 +2489,7 @@ function _mark_attended_by_conf_num( $conf_num )
 
     try
     {
-        $q = "select c_id from dh_course c left join dh_user_center uc on (c.c_center=uc.uc_center) where c_start = CURDATE() and uc.uc_user = ".$user->uid." limit 1";
+        $q = "select c_id from dh_course c left join dh_user_center uc on (c.c_center=uc.uc_center) where c_cancelled = 0 and c_deleted = 0 and c_start = CURDATE() and uc.uc_user = ".$user->uid." limit 1";
         $cid = db_query($q)->fetchField();
         $q = "update dh_applicant set a_attended=1 where a_course=$cid and a_conf_no=:conf_num";
         db_query($q, array(':conf_num' => $conf_num));
