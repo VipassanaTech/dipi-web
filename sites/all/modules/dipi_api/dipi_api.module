@@ -1487,13 +1487,18 @@ function _api_sms_keyword_cancel($phone, $id)
 
     if ($id <> '')
     {
+    	if (!is_numeric($id))
+    		return "AppID must be numeric";
+    	
         $id = addslashes($id);
         $q .= " and a_id='$id'";
         $count_q .= " and a_id='$id'";
     }
     $records = db_query($count_q)->fetchField();
 
-    if ( $records == 0 )
+    if ( $records == 0 && $id <> '')
+        return "No application found for this phone number having AppID: $id";
+    elseif ( $records == 0 )
         return "No applications found for this phone number";        
     elseif ($records > 1)
     {
@@ -1535,6 +1540,9 @@ function _api_sms_keyword_confirm($phone, $id)
 
     if ($id <> '')
     {
+    	if (!is_numeric($id))
+    		return "AppID must be numeric";
+
         $id = addslashes($id);
         $q .= " and a_id='$id'";
         $count_q .= " and a_id='$id'";
@@ -1543,7 +1551,9 @@ function _api_sms_keyword_confirm($phone, $id)
 
     $out = '';
 
-    if ( $records == 0 )
+    if ( $records == 0 && $id <> '')
+        return "No application in PreConfirmation/ReConfirmation status found for this phone number having AppID: $id";
+    elseif ( $records == 0 )
         return "No applications in PreConfirmation/ReConfirmation status found for this phone number";        
     elseif ($records > 1)
     {
