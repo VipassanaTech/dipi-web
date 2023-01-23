@@ -1274,7 +1274,7 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 	if ( ($count_ini['full']['all'] > 0 || $count_ini['full']['Old'] > 0 || $count_ini['full']['New'] > 0 || $count_ini['full']['Server'] > 0 ) || ($count_ini['wait']['all'] > 0 || $count_ini['wait']['Old'] > 0 || $count_ini['wait']['New'] > 0 || $count_ini['wait']['Server'] > 0) )
 	{
 		$SYSTEM_USER_ID = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-		$count_row = db_query("select a_type, a_old, count(a_id) as 'c' from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender' group by a_type, a_old" );
+		$count_row = db_query("select a_type, a_old, count(a_id) as 'c' from dh_applicant where a_center=$center_id and a_course=$course_id and a_gender='$gender' and a_status not in ('Rejected', 'Cancelled') group by a_type, a_old" );
 		$count_cur = array('all' => 0, 'Old' => 0, 'New' => 0, 'Server' => 0);
 		$c = 0;
 		while( $r = $count_row->fetchAssoc() )
