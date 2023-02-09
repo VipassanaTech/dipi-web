@@ -124,6 +124,7 @@ function dh_manage_courses()
 				        { name: "dh_course.c_at_m_count", label: "Male Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 						{ name: "dh_course.c_at_f_count", label: "Female Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 				        { name: "dh_course.c_combined_seat_course", label: "Combine Seating with Course", type: "select2", def: "0" },
+                { name: "dh_course.c_form_langs", label: "Course Form Langs", type: "select2", "opts": {"multiple": true, "placeholder": "Select Form Langguages"}, fieldInfo: "Apply button in schedule.vridhamma.org will show multiple language (entered here) options for application forms (<b>in case application form type has translation present for entered languages</b>)<br>English will be present by default and need not to be selected.<br>This field is only applicable for schedule.vridhamma.org and will not have any impact on dhamma.org schedule/search."},
 				        { name: "dh_course.c_deleted", type: "hidden" },
 				        { name: "dh_course.c_finalized", type: "hidden" },
 				    ],	
@@ -521,6 +522,21 @@ function dh_manage_course_handler()
    	            	$out['None'] = "0";
         			return $out;
          		}),
+              \DataTables\Editor\Field::inst( 'dh_course.c_form_langs' )
+                ->options( \DataTables\Editor\Options::inst()
+                ->table( 'dh_languages' )
+                ->value( 'l_code' )
+                ->label( 'l_name' )
+                ->where( function ($q) {
+                $q->where( 'l_code', 'en', '<>' );
+            }
+            ))
+        ->getFormatter( function ( $data ) {
+        return explode(',', $data);
+        } )
+          ->setFormatter( function ( $data ) {
+                return implode(',', $data);
+        } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_deleted' ),   
 	    \DataTables\Editor\Field::inst( 'dh_course.c_center' )
 	    ->setValue( $centre_id ),
