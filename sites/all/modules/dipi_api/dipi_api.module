@@ -1426,14 +1426,14 @@ function _api_sms_keyword_centres()
 function _api_sms_keyword_address($subdomain)
 {
     $subdomain = addslashes($subdomain);
-    $q = "select c.c_address, c.c_pincode,co.c_name as 'Country', s_name as 'State', ci.c_name as 'City' from dh_center c left join dh_country co on (c.c_country=co.c_code) 
+    $q = "select c.c_map_url, c.c_address, c.c_pincode,co.c_name as 'Country', s_name as 'State', ci.c_name as 'City' from dh_center c left join dh_country co on (c.c_country=co.c_code)
       left join dh_state s on (c.c_country=s.s_country and c.c_state=s.s_code) left join dh_city ci on (c.c_city=ci.c_id) 
       where c_subdomain='$subdomain'";
     $res = db_query($q)->fetchAssoc();
     if ($res['c_address'] == '')
         return "Address <centre>. For list of centres, send CENTRES";
 
-    return "Address:\n".$res['c_address']."-".$res['c_pincode']."\n".$res['City'].",".$res['State'].",".$res['Country'];
+    return "Address:\n".$res['c_address']."-".$res['c_pincode']."\n".$res['City'].",".$res['State'].",".$res['Country']."\n"."Map: {$res['c_map_url']}";
 }
 
 function _api_sms_keyword_contact($subdomain)
