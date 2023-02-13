@@ -819,9 +819,10 @@ function dh_atportal_review_form_submit($form, &$form_state )
 		}
 		if ($new_status <> '')
 		{
-			$cmd = "/usr/bin/php status-trigger.php $lc_id '$new_status'";
-			//echo "$cmd";
-			exec($cmd);			
+			// $cmd = "/usr/bin/php status-trigger.php $lc_id '$new_status'";
+			// echo "$cmd";
+			// exec($cmd);
+      update_status_external($lc_id, $new_status);
 		}
 	}
 
