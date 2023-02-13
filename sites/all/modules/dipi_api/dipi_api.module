@@ -2373,8 +2373,9 @@ function _process_lc_application( $appid, $data)
     }
     if ($new_status <> '')
     {
-        $cmd = "/usr/bin/php status-trigger.php $appid '$new_status'";
-        exec($cmd);        
+        // $cmd = "/usr/bin/php status-trigger.php $appid '$new_status'";
+        // exec($cmd);
+        update_status_external($appid, $new_status);
     }
 
     return array('success' => True);
