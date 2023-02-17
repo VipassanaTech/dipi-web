@@ -424,7 +424,10 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
 			 '#weight' => 29, '#maxlength' => 100,
-			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 1, 
+			'#default_value' => isset($edit_data['al_recommending'])?$edit_data['al_recommending']:'', '#required' => 1,
+      '#attributes' => array(
+        'placeholder' => t('Start typing AT Name for suggestions, then select the AT.'),
+      ),
 				'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
@@ -434,12 +437,21 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$form[$group]['al_area_at'] = array('#title' => 'Area Teacher?', '#type' => 'textfield', 
 			 '#weight' => 30, '#maxlength' => 100, 
 			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0, 
+      '#attributes' => array(
+        'placeholder' => t('Start typing AT Name for suggestions, then select the AT.'),
+      ),
 				'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
       	)),
 
 		);	
+
+    if ($add)
+    {
+      $form[$group]['al_recommending']['#default_value'] = '';
+      $form[$group]['al_area_at']['#default_value'] = '';
+    }
 
 	}
 
