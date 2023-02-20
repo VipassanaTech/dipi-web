@@ -73,7 +73,8 @@ function dh_manage_day_zero()
 					$row = db_query("select * from dh_applicant left join dh_applicant_extra on a_id=ae_applicant 
 						left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_lc on a_id=al_applicant 
 						where a_id='".$_REQUEST['ref']."'")->fetchAssoc();	
-					$row['ref'] = 1;				
+					$row['ref'] = 1;
+          $row['ref_id'] = $_REQUEST['ref'];
 				}
 			}
 

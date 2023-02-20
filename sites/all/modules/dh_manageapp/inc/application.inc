@@ -12,7 +12,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	if (count($edit_data) == 0)
 		$add = 1;
 	if ( isset($edit_data['ref']) && ($edit_data['ref'] == 1))
+  {
 		$add = 1;
+    $ref_id = $edit_data['ref_id'];
+    // drupal_set_message($ref_id);
+  }
 	if ($add)
 	{
 		$centre_id = arg(2);
@@ -196,6 +200,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_lang_discourse_level'])?$edit_data['a_lang_discourse_level']:'', '#required' => 0, );
 
 
+  $group = 'Photo';
+  $form[$group] = array('#type' => 'fieldset', '#title' => 'Photo',  '#collapsible' => true, '#collapsed' => false);
 	$photo = '';
 	if (isset($edit_data['a_photo']))
 	{
@@ -208,14 +214,21 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		if ($add)
 		{
 			$form['a_photo'] = array('#type' => 'hidden', '#value' => $edit_data['a_photo']);	
+      if ($ref_id)
+      {
+        $photo = '<div class="right"><img width="220px" src="'.file_create_url("show-photo/".$ref_id).'"/></div>';
+      }
 		}
 	}
+
+  $form[$group]['upload_photo'] = array('#title' => 'add/change photo', '#type' => 'file',
+    '#default_value' => '' , '#required' => 0, '#suffix' => $photo,);
 
 	$group = 'Additional Information';
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Additional Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['ae_desc_physical'] = array('#title' => 'Physical Health', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_physical'])?$edit_data['ae_desc_physical']:'', '#rows' => 3,  '#weight' => 50, '#required' => 0,
-		'#suffix' => $photo);
+		);
 	$form[$group]['ae_desc_mental'] = array('#title' => 'Mental Health', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_mental'])?$edit_data['ae_desc_mental']:'', '#rows' => 3,  '#weight' => 51, 
 		'#required' => 0);
@@ -721,6 +734,16 @@ function dh_ma_applicant_form_validate($form, &$form_state)
         form_set_error('ac_teacher_code', t('Incorrect AT code.	Please choose AT name from the drop down list'));
     }
 
+  // drupal_set_message("<pre>".print_r($form_state['input'], true)."</pre>");
+  // drupal_set_message("upload_photo:  {$form_state['input']['upload_photo']}");
+
+  $validators = array('file_validate_extensions' => array('png jpg jpeg'));
+  $file = file_save_upload('upload_photo', $validators);
+  if (isset($file))
+  {
+    $form_state['storage']['file'] = $file;
+    // drupal_set_message("<pre>".print_r($file, true)."</pre>");
+  }
 }
 
 function dh_ma_applicant_form_submit($form, &$form_state)
@@ -1086,8 +1109,29 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	{
 		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);		
 	}
+
+  if ( isset($form_state['storage']) && isset($form_state['storage']['file']) )
+  {
+    $file = $form_state['storage']['file'];
+    $temp = pathinfo($file->filename);
+    $ext = $temp['extension'];
+    unset($form_state['storage']['file']);
+    $fname = $file->uri;
+
+    $out_photo_uri = "private://photo-id/".$centre_id."/".$course_id."/app-".$app_id.".".$ext;
+
+    $ret = s3_put_file(variable_get('s3_bucket_name', ''), drupal_realpath($fname), str_replace("private://", '', $out_photo_uri) );
+    if (!$ret['success'])
+      watchdog('S3ImagePut', $ret['message']);
+
+    db_update('dh_applicant')->fields(array('a_photo' => $out_photo_uri))->condition('a_id', $app_id)->execute();
+  }
+
+
 		//drupal_set_message("Applicant data updated!");
 	create_application_pdf($app_id);
+
+
 	//drupal_goto("zero-day");
 	//$return_url = $input['return'];
 	$return_url = "zero-day/$centre_id/$course_id";
