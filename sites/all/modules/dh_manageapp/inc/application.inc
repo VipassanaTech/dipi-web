@@ -656,10 +656,15 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			});
 		})(jQuery);
 	';
-	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
-	//drupal_add_js($js, 'inline');
-	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
-	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
+	// drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
+	// //drupal_add_js($js, 'inline');
+	// drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
+	// drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
+
+
+  $form['#attached']['css'][] = drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css';
+  $form['#attached']['js'][] = drupal_get_path('module', 'dh_manageapp').'/js/location-common.js';
+  $form['#attached']['js'][] = drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js';
 
 	return $form;
 }
