@@ -130,7 +130,7 @@ function dh_manage_at_schedule()
 		c_center=$centre_id
 		order by
 		c_start asc,
-		t_gender asc,
+		t_gender desc,
 		ct_status asc,
 		ct_type
 		asc";
