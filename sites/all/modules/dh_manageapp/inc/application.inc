@@ -742,7 +742,11 @@ function dh_ma_applicant_form_validate($form, &$form_state)
   // drupal_set_message("<pre>".print_r($form_state['input'], true)."</pre>");
   // drupal_set_message("upload_photo:  {$form_state['input']['upload_photo']}");
 
-  $validators = array('file_validate_extensions' => array('png jpg jpeg'));
+  $validators = array(
+    'file_validate_extensions' => array('png jpg jpeg'),
+    'file_validate_size' => array(1*1024*1024),
+  );
+
   $file = file_save_upload('upload_photo', $validators);
 
   if (isset($file))
