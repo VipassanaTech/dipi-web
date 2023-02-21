@@ -744,10 +744,15 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 
   $validators = array('file_validate_extensions' => array('png jpg jpeg'));
   $file = file_save_upload('upload_photo', $validators);
+
   if (isset($file))
   {
     $form_state['storage']['file'] = $file;
     // drupal_set_message("<pre>".print_r($file, true)."</pre>");
+  }
+  elseif(isset($form_state['storage']['file']))
+  {
+    unset($form_state['storage']['file']);
   }
 }
 
