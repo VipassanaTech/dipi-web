@@ -744,7 +744,7 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 
   $validators = array(
     'file_validate_extensions' => array('png jpg jpeg'),
-    'file_validate_size' => array(5*1024*1024),
+    'file_validate_size' => array(10*1024*1024),
   );
 
   $file = file_save_upload('upload_photo', $validators);
@@ -1128,7 +1128,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
   {
     $file = $form_state['storage']['file'];
     $image = image_load($file->uri);
-    image_scale($image, 320);
+    image_scale($image, 800);
     image_save($image);
 
     $temp = pathinfo($file->filename);
