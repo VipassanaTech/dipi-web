@@ -2090,7 +2090,7 @@ function _get_student_finalize()
         {
             $row = array();
             $row['Count'] = intval($r['TotalAttended']);
-            if ($row['CourseType'] == '1-DayOSC')
+            if ($r['CourseType'] == '1-DayOSC')
               $row['Count'] = 1;
         }
     } else 
