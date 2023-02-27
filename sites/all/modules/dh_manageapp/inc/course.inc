@@ -1321,25 +1321,45 @@ function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 			{
 				if ( isset($count_cur[$key]) && ( $count_cur[$key] >= $val ) && ( $val > 0) && ($full_done[$key] == False) )
 				{
-					$full_done[$key] = True;
-					//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$key] );
-					$fields = array();
-					$fields['l_user'] = 15;
-					$fields['l_center'] = $center_id;
-					$fields['l_msg'] = "Gender: $gender, Type: $key, ConfigCount: $val, Count $c_status: ".$count_cur[$key];
-					$fields['l_module'] = 'dh_course';
-					$fields['l_event'] = "AUTO-COURSE-STATUS";
-					$fields['l_identifier'] = $course_id;
-					db_insert('dh_log')->fields($fields)->execute();
+          $full_done[$key] = True;
+          $new_status = ($c_status == 'full'? 'Course Full':'Wait List');
+          $current_status ="";
 
-					$new_status = ($c_status == 'full'? 'Course Full':'Wait List');
-					if ($key == 'all')
-						$q = "update dh_course set c_status_o".strtolower($gender)." = '$new_status', c_status_n".strtolower($gender)." = '$new_status', 
-					  		c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
-					else					
-						$q = "update dh_course set c_status_".( ($key == 'Server'?'svr_':($key == 'Old'?'o':'n')) ).strtolower($gender)." = '$new_status', 
-					  		c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
-					db_query($q);
+          if ($key == 'all')
+            $q = "select c_status_o".strtolower($gender)." from dh_course where c_id=$course_id";
+          else
+            $q = "select c_status_".( ($key == 'Server'?'svr_':($key == 'Old'?'o':'n')) ).strtolower($gender)." from dh_course where c_id=$course_id";
+          $current_status = db_query($q)->fetchField();
+
+          $flag = true;
+
+          if ($current_status == 'Course Full')
+            $flag = false;
+
+          if ($current_status == 'Wait List' && $new_status == 'Wait List')
+            $flag = false;
+
+          if($flag)
+          {
+            //watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender, Type: $key, Count: $val, Count $c_status: ".$count_cur[$key] );
+            $fields = array();
+            $fields['l_user'] = 15;
+            $fields['l_center'] = $center_id;
+            $fields['l_msg'] = "Gender: $gender, Type: $key, ConfigCount: $val, Count $c_status: ".$count_cur[$key];
+            $fields['l_module'] = 'dh_course';
+            $fields['l_event'] = "AUTO-COURSE-STATUS";
+            $fields['l_identifier'] = $course_id;
+            db_insert('dh_log')->fields($fields)->execute();
+
+            if ($key == 'all')
+              $q = "update dh_course set c_status_o".strtolower($gender)." = '$new_status', c_status_n".strtolower($gender)." = '$new_status',
+                  c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+            else
+              $q = "update dh_course set c_status_".( ($key == 'Server'?'svr_':($key == 'Old'?'o':'n')) ).strtolower($gender)." = '$new_status',
+                  c_processed=0, c_updated='".date("Y-m-d H:i:s")."', c_updated_by='$SYSTEM_USER_ID' where c_id=$course_id";
+            db_query($q);
+          }
+
 				}
 			}
 		}
