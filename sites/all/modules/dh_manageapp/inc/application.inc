@@ -716,7 +716,7 @@ function _ajax_get_acco_options($section, $gender, $centre, $course)
 		}
 	}
 	$alloted = array();
-	$q = "select aa_acco from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course='$course' and a_gender='$gender' and aa_section='$section'";
+	$q = "select aa_acco from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course='$course' and a_gender='$gender' and aa_section='$section' and aa_acco<>'' and aa_acco is not null";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 		$alloted[] = $r['aa_acco'];
