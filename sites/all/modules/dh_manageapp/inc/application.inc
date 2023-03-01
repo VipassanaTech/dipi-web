@@ -536,7 +536,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form['course'] = array('#type' => 'hidden', '#value' => $course_id);
 	$form['centre'] = array('#type' => 'hidden', '#value' => $centre_id);
 	$form[$group]['aa_acco'] = array('#title' => 'Room', '#type' => 'select', 
-		'#options' => _ajax_get_acco_options($section_selected, $gender_selected, $centre_id, $course_id) ,'#multiple' => false, '#weight' => 50, 
+		'#options' => $room_info ? array_merge(_ajax_get_acco_options($section_selected, $gender_selected, $centre_id, $course_id), array($edit_data['aa_acco'])) : _ajax_get_acco_options($section_selected, $gender_selected, $centre_id, $course_id) ,'#multiple' => false, '#weight' => 50,
 		//'#default_value' => $add?'':$edit_data['aa_acco'], '#required' => 0,
 		'#default_value' => '', '#required' => 0, 
 		'#prefix' => '<div id="dropdown-acco-replace">' , '#suffix' => '</div>');
