@@ -64,7 +64,8 @@ function dh_atportal_address_book()
 	$attributes = array('id' => 'at-address-book');
 
 	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
-	$out .= theme('table', array('header' => $header, 'rows' => array(array('1','2','3','4','5','1','2','3')), 'attributes' => $attributes));
+	// $out .= theme('table', array('header' => $header, 'rows' => array(array('1','2','3','4','5','1','2','3')), 'attributes' => $attributes));
+  $out .= theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
 
 	$js = '
 		(function ($) {
@@ -72,9 +73,7 @@ function dh_atportal_address_book()
 			{
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
-			        "processing": true,
-			        "serverSide": true,
-			        "ajax": "/at-portal/address-book/ajax"					
+			        "ajax": "/at-portal/address-book/ajax"
 			    });			
 			}
 			$(document).ready(function(){
