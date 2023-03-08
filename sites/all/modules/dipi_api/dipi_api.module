@@ -508,6 +508,167 @@ function dipi_api_services_resources() {
 
 
 
+        'apply-at-seva-app' => array(
+              'help' => t("Apply AT Seva Application"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_apply_at_seva_app',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+                array(
+                  'name' => 'course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 3),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+                array(
+                  'name' => 'comments',
+                  'optional' => true,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Comments',
+                ),
+              ),
+          ),
+
+
+
+        'cancel-at-seva-app' => array(
+              'help' => t("Cancel AT Seva Application"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_cancel_at_seva_app',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+                array(
+                  'name' => '$course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 3),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+                array(
+                  'name' => 'comments',
+                  'optional' => true,
+                  'source' => 'data',
+                  'type' => 'string',
+                  'description' => 'Comments',
+                ),
+              ),
+          ),
+
+
+
+        'get-at-seva-app-status-and-activity' => array(
+              'help' => t("Get status and activity logs for AT Seva Application"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_get_at_seva_app_status_and_activity',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+                array(
+                  'name' => '$course',
+                  'optional' => FALSE,
+                  'source' => array('path' => 3),
+                  'type' => 'int',
+                  'description' => 'Course ID',
+                ),
+              ),
+          ),
+
+
+
+        'get-at-seva-completed-apps' => array(
+              'help' => t("Get Completed AT Seva Applications for AT code"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_get_at_seva_completed_apps',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+              ),
+          ),
+
+
+
+        'get-at-seva-current-apps' => array(
+              'help' => t("Get Current AT Seva Applications for AT code"),
+              'access arguments' => array('at portal access'),
+              'access arguments append' => FALSE,
+              'callback' => '_get_at_seva_current_apps',
+              'args' => array(
+                array(
+                  'name' => 'at_code',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'AT code',
+                ),
+                array(
+                  'name' => 'gender',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'AT Gender',
+                ),
+              ),
+          ),
+
+
+
+
         ),
      )
   );
@@ -3128,4 +3289,352 @@ function upload_whatsapp_pdf($dir, $file)
         $out["success"] = false;
         return $out;
     }
+}
+
+
+
+function _apply_at_seva_app($at_code, $gender, $course, $data=array('comments' => ''))
+{
+  $comments = isset($data['comments']) ? $data['comments'] : '';
+
+  if (!$at_code)
+    return array('Error' => 'No AT Code');
+
+  if (! in_array ( strtoupper( $gender ), array('M', 'F')) )
+    return array('Error' => 'No/Invalid Gender');
+
+  if (!$course)
+    return array( "Error" => 'No Course');
+
+
+  $q = "select c_start, c_cancelled, c_deleted from dh_course where c_id=:c_id";
+  $res = db_query($q, array(':c_id' => $course))->fetchAssoc();
+
+  if (!$res)
+    return array( "Error" => 'Invalid Course');
+
+  if ($res['c_cancelled'])
+    return array( "Error" => 'Course is Cancelled');
+
+  if ($res['c_deleted'])
+    return array( "Error" => 'Course is Deleted');
+
+  if (strtotime($res['c_start']) < strtotime(date('Y-m-d')))
+    return array( "Error" => 'Course is Started');
+
+
+  $q = "select t_id from dh_teacher where t_code = :at_code and t_gender = :gender limit 1";
+  $res = db_query($q, array(':at_code' => $at_code, ':gender' => $gender))->fetchAssoc();
+
+  if (!$res)
+    return array('Error' => 'Invalid AT');
+
+  $at_id = $res['t_id'];
+
+  $required = check_at_requirement($course, $gender);
+
+  if(!$required)
+    return array('Error' => 'AT requirement is fulfilled for the course');
+
+  $q = "select ct_id, ct_status from dh_course_teacher where ct_teacher=:ct_teacher and ct_course=:ct_course limit 1";
+  $res = db_query($q, array( ':ct_teacher' => $at_id, ':ct_course' => $course))->fetchAssoc();
+
+  if($res)
+  {
+    $app_status = $res['ct_status'];
+    $course_teacher_id = $res['ct_id'];
+
+    if ($app_status <> 'Cancelled')
+    {
+      return array('Error' => 'AT application is already applied for the course');
+    }
+    else
+    {
+      $fields = array();
+      $fields['ct_updated'] = date('Y-m-d H:i:s');
+      $fields['ct_updated_by'] = $user->uid;
+      $fields['ct_status'] = 'Received';
+
+      $updated = db_update('dh_course_teacher')
+        ->fields( $fields )
+        ->condition('ct_id', $course_teacher_id, '=')
+        ->execute();
+
+      if($updated)
+      {
+        log_course_teacher($course_teacher_id, "Status updated to {$fields['ct_status']}<br>Comments: $comments");
+        update_course_current_at_count( $course_teacher_id );
+        send_at_schedule_email($course_teacher_id);
+        send_at_schedule_email($course_teacher_id, 1);
+        return array('Success' => 'ReApplied AT Application successfully.');
+      }
+      else
+        return array('Error' => 'Some issue in Reapplying AT Application.');
+    }
+
+  }
+  else
+  {
+    $fields = array();
+
+    $fields['ct_course'] = $course;
+    $fields['ct_teacher'] = $at_id;
+    $fields['ct_status'] = 'Received';
+    $fields['ct_type'] = 'Conducting';
+    $fields['ct_group'] = 1;
+    $fields['ct_created'] = date('Y-m-d H:i:s');
+    $fields['ct_created_by'] = $user->uid;
+    $fields['ct_updated'] = date('Y-m-d H:i:s');
+    $fields['ct_updated_by'] = $user->uid;
+
+    $ct_id = db_insert('dh_course_teacher')->fields( $fields )->execute();
+
+    if($ct_id)
+    {
+      log_course_teacher($ct_id, 'Application Received<br>Comments: '.$comments);
+      send_at_schedule_email($ct_id);
+      send_at_schedule_email($ct_id, 1);
+      return array('Success' => 'Applied AT Application successfully.');
+    }
+    else
+      return array('Error' => 'Some issue in Reapplying AT Application.');
+  }
+
+}
+
+
+function _cancel_at_seva_app($at_code, $gender, $course, $data=array('comments' => ''))
+{
+
+  $comments = isset($data['comments']) ? $data['comments'] : '';
+
+  if (!$at_code)
+    return array('Error' => 'No AT Code');
+
+  if (! in_array ( strtoupper( $gender ), array('M', 'F')) )
+    return array('Error' => 'No/Invalid Gender');
+
+  if (!$course)
+    return array( "Error" => 'No Course');
+
+
+  $q = "select c_start, c_cancelled, c_deleted from dh_course where c_id=:c_id";
+  $res = db_query($q, array(':c_id' => $course))->fetchAssoc();
+
+  if (!$res)
+    return array( "Error" => 'Invalid Course');
+
+  if ($res['c_cancelled'])
+    return array( "Error" => 'Course is Cancelled');
+
+  if ($res['c_deleted'])
+    return array( "Error" => 'Course is Deleted');
+
+  if (strtotime($res['c_start']) < strtotime(date('Y-m-d')))
+    return array( "Error" => 'Course is Started');
+
+
+  $q = "select t_id from dh_teacher where t_code = :at_code and t_gender = :gender limit 1";
+  $res = db_query($q, array(':at_code' => $at_code, ':gender' => $gender))->fetchAssoc();
+
+  if (!$res)
+    return array('Error' => 'Invalid AT');
+
+  $at_id = $res['t_id'];
+
+  $q = "select ct_id, ct_status from dh_course_teacher where ct_teacher=:ct_teacher and ct_course=:ct_course limit 1";
+  $res = db_query($q, array( ':ct_teacher' => $at_id, ':ct_course' => $course))->fetchAssoc();
+
+  if($res)
+  {
+    $app_status = $res['ct_status'];
+    $course_teacher_id = $res['ct_id'];
+
+    if ($app_status == 'Cancelled')
+    {
+      return array('Error' => 'AT application is already cancelled for the course');
+    }
+    else
+    {
+      $fields = array();
+      $fields['ct_updated'] = date('Y-m-d H:i:s');
+      $fields['ct_updated_by'] = $user->uid;
+      $fields['ct_status'] = 'Cancelled';
+
+
+      $updated = db_update('dh_course_teacher')
+        ->fields( $fields )
+        ->condition('ct_id', $course_teacher_id, '=')
+        ->execute();
+
+      if($updated)
+      {
+        log_course_teacher($course_teacher_id, "Status updated to {$fields['ct_status']}<br>Comments: $comments");
+        update_course_current_at_count( $course_teacher_id );
+        send_at_schedule_email($course_teacher_id);
+        send_at_schedule_email($course_teacher_id, 1);
+        return array('Success' => 'Cancelled AT Application successfully.');
+      }
+      else
+        return array('Error' => 'Some issue in Cancelling AT Application.');
+    }
+
+  }
+  else
+    return array('Error' => 'No AT Application found for the course.');
+
+}
+
+
+function _get_at_seva_app_status_and_activity($at_code, $gender, $course)
+{
+
+  if (!$at_code)
+    return array('Error' => 'No AT Code');
+
+  if (! in_array ( strtoupper( $gender ), array('M', 'F')) )
+    return array('Error' => 'No/Invalid Gender');
+
+  if (!$course)
+    return array( "Error" => 'No Course');
+
+
+  $q = "select c_start, c_cancelled, c_deleted from dh_course where c_id=:c_id";
+  $res = db_query($q, array(':c_id' => $course))->fetchAssoc();
+
+  if (!$res)
+    return array( "Error" => 'Invalid Course');
+
+  if ($res['c_cancelled'])
+    return array( "Error" => 'Course is Cancelled');
+
+  if ($res['c_deleted'])
+    return array( "Error" => 'Course is Deleted');
+
+  if (strtotime($res['c_start']) < strtotime(date('Y-m-d')))
+    return array( "Error" => 'Course is Started');
+
+
+  $q = "select t_id from dh_teacher where t_code = :at_code and t_gender = :gender limit 1";
+  $res = db_query($q, array(':at_code' => $at_code, ':gender' => $gender))->fetchAssoc();
+
+  if (!$res)
+    return array('Error' => 'Invalid AT');
+
+  $at_id = $res['t_id'];
+
+  $q = "select ct_id, ct_status from dh_course_teacher where ct_teacher=:ct_teacher and ct_course=:ct_course limit 1";
+  $res = db_query($q, array( ':ct_teacher' => $at_id, ':ct_course' => $course))->fetchAssoc();
+
+  if($res)
+  {
+    $app_status = $res['ct_status'];
+    $course_teacher_id = $res['ct_id'];
+
+    $q = "select DATE_FORMAT(l_tstamp, '%r, %D %M %Y') as Timestamp, l_msg as Activity, name as User from dh_log left join users on dh_log.l_user=users.uid where l_module='Course-Teacher' and l_identifier=:l_identifier order by l_id desc";
+    $res = db_query($q, array(':l_identifier' => $course_teacher_id));
+
+    if($res)
+    {
+      $activity_log = array();
+
+      while($row = $res->fetchAssoc())
+      {
+        $activity_log[] = $row;
+      }
+
+      return array(
+        'Success' => 'Avtivity Logs are found for the AT Application.',
+        'AppStatus' => $app_status,
+        'Activity' => $activity_log,
+      );
+
+    }
+    else
+      return array(
+        'Success' => 'No Avtivity Logs found for the AT Application.',
+        'AppStatus' => $app_status,
+        'Activity' => $activity_log,
+      );
+  }
+  else
+    return array('Error' => 'No AT Application found for the course.');
+}
+
+
+function _get_at_seva_completed_apps($at_code, $gender)
+{
+  return _get_at_seva_apps($at_code, $gender, 'completed');
+}
+
+
+function _get_at_seva_current_apps($at_code, $gender)
+{
+  return _get_at_seva_apps($at_code, $gender, 'current');
+}
+
+function _get_at_seva_apps ($at_code, $gender, $type)
+{
+
+  if (!$at_code)
+    return array('Error' => 'No AT Code');
+
+  if (! in_array ( strtoupper( $gender ), array('M', 'F')) )
+    return array('Error' => 'No/Invalid Gender');
+  $q = "select t_id from dh_teacher where t_code = :at_code and t_gender = :gender limit 1";
+  $res = db_query($q, array(':at_code' => $at_code, ':gender' => $gender))->fetchAssoc();
+
+  if (!$res)
+    return array('Error' => 'Invalid AT');
+
+  $at_id = $res['t_id'];
+
+  $append = '';
+  $limit = 'limit 300';
+  if ($type == 'current')
+  {
+    $append = 'DATEDIFF(CURDATE(), co.c_start) <= 0 order by co.c_start asc';
+    $limit = '';
+  }
+  else
+    $append = 'DATEDIFF(CURDATE(), co.c_start) > 0  order by co.c_start desc';
+
+
+  $q = "
+    select
+    ct.ct_status as AtAppStatus,
+    co.c_id as CourseId,
+    co.c_name as CourseName,
+    co.c_start as CourseStart,
+    co.c_end as CourseEnd,
+    td.td_val1 as CourseType,
+    ce.c_name as CenterName,
+    ci.c_name as City,
+    st.s_name as State
+    form
+    dh_course_teacher ct
+    left join dh_course co on ct.ct_course=co.c_id
+    left join dh_center ce on co.c_center=ce.c_id
+    left join dh_country cy on ce.c_country=cy.c_code
+    left join dh_state st on (ce.c_state=st.s_code AND ce.c_country=st.s_country)
+    left join dh_city ci on ce.c_city=ci.c_id
+    left join dh_type_detail td on co.c_course_type=td.td_id
+    where
+    ct.ct_teacher = $at_id and
+    $append
+    $limit
+    ";
+
+  $res = db_query($q);
+  $rows = array();
+  while( $row = $res->fetchAssoc() )
+  {
+    $rows[] = $row;
+  }
+
+  return array(
+    'Success' => '',
+    'AtSevaApps' => $rows,
+  );
+
 }
