@@ -3614,7 +3614,7 @@ function _get_at_seva_apps ($at_code, $gender, $type)
     ce.c_name as CenterName,
     ci.c_name as City,
     st.s_name as State
-    form
+    from
     dh_course_teacher ct
     left join dh_course co on ct.ct_course=co.c_id
     left join dh_center ce on co.c_center=ce.c_id
