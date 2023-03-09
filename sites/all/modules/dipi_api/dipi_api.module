@@ -3339,6 +3339,8 @@ function _apply_at_seva_app($at_code, $gender, $course, $data=array('comments' =
   $q = "select ct_id, ct_status from dh_course_teacher where ct_teacher=:ct_teacher and ct_course=:ct_course limit 1";
   $res = db_query($q, array( ':ct_teacher' => $at_id, ':ct_course' => $course))->fetchAssoc();
 
+
+  global $user;
   if($res)
   {
     $app_status = $res['ct_status'];
@@ -3445,6 +3447,7 @@ function _cancel_at_seva_app($at_code, $gender, $course, $data=array('comments' 
   $q = "select ct_id, ct_status from dh_course_teacher where ct_teacher=:ct_teacher and ct_course=:ct_course limit 1";
   $res = db_query($q, array( ':ct_teacher' => $at_id, ':ct_course' => $course))->fetchAssoc();
 
+  global $user;
   if($res)
   {
     $app_status = $res['ct_status'];
