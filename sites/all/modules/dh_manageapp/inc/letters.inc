@@ -665,7 +665,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
 
 		//watchdog('MAILGUN', print_r($res, true));
-		$log = "Letter sent (Email) - ".$letter_name." ( Response: ".$res->getId()." )";
+		$log = "Letter sent (Email: $to) - ".$letter_name." ( Response: ".$res->getId()." )";
 		if ($comment <> '')
 			$log .= " ($comment)";
 		logit($centre,  'Letter', $id, $log );
