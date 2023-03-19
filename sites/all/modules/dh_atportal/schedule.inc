@@ -283,6 +283,7 @@ function at_course_list_form($form, &$form_state)
 			            }
 			        },
 					destroy: true,
+          "ordering": false,
 					"oLanguage": {"sEmptyTable": "No Courses found for Search Criteria."},
 					searching: false,
 					"columnDefs": [
