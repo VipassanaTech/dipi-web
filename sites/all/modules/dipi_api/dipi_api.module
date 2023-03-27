@@ -3301,6 +3301,8 @@ function upload_whatsapp_pdf($dir, $file)
 
 function _apply_at_seva_app($at_code, $gender, $course, $data=array('comments' => ''))
 {
+  log_app( "_apply_at_seva_app ATCode: $at_code, Gender: $gender, Course: $course, Comments: {$data['comments']}");
+
   $comments = isset($data['comments']) ? $data['comments'] : '';
 
   if (!$at_code)
@@ -3413,7 +3415,7 @@ function _apply_at_seva_app($at_code, $gender, $course, $data=array('comments' =
 
 function _cancel_at_seva_app($at_code, $gender, $course, $data=array('comments' => ''))
 {
-
+  log_app( "_cancel_at_seva_app ATCode: $at_code, Gender: $gender, Course: $course, Comments: {$data['comments']}");
   $comments = isset($data['comments']) ? $data['comments'] : '';
 
   if (!$at_code)
