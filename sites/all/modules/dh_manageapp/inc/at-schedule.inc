@@ -174,7 +174,15 @@ function dh_manage_at_schedule()
 				}
 				else
 				{
-					$temp[] = array('<a href="#" id="'.$data['teacher_id'].'" class="get-at-info" >'.$data['teacher'].'</a>', $data['type'].' '.$gender, '<b><i>'.$data['status'].'</i></b>');
+
+          if ($data['status'] == "Confirmed")
+            $at_app_status = '<span style="color:green;">'.$data['status'].'</span>';
+          elseif ($data['status'] == "Cancelled")
+            $at_app_status = '<span style="color:red;">'.$data['status'].'</span>';
+          else
+            $at_app_status = $data['status'];
+
+					$temp[] = array('<a href="#" id="'.$data['teacher_id'].'" class="get-at-info" >'.$data['teacher'].'</a>', $data['type'].' '.$gender, $at_app_status);
 					$row['teachers_uformtd'] .= "{$data['teacher']} - {$data['type']} {$gender} ({$data['status']})\n";
 				}
 				
