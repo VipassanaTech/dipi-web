@@ -886,6 +886,10 @@ function mailgun_webhook3()
 		{
 			log_course_teacher($post_data['user-variables']['at-app-id'], $desc);
 		}
+		else
+		{
+			watchdog('WEBHOOK3-NO-ID', print_r($post_data, true) );
+		}
 	}
 	else
 	{
