@@ -846,53 +846,50 @@ function mailgun_webhook3()
 	//$post_data = $_POST;
 	//watchdog('WEBHOOK', print_r($post_data, true) );
 	//watchdog('WEBHOOK', print_r($_POST,true) );
-	if ($_SERVER['REQUEST_METHOD'] == 'POST') 
+	if(isset($post_data['signature']['timestamp']) && isset($post_data['signature']['token']) && isset($post_data['signature']['signature']) && hash_hmac('sha256', $post_data['signature']['timestamp'] . $post_data['signature']['token'], $key) === $post_data['signature']['signature'])
 	{
-		if(isset($post_data['signature']['timestamp']) && isset($post_data['signature']['token']) && isset($post_data['signature']['signature']) && hash_hmac('sha256', $post_data['signature']['timestamp'] . $post_data['signature']['token'], $key) === $post_data['signature']['signature'])
+		switch($post_data['event-data']['event'])
 		{
-			switch($post_data['event-data']['event'])
-			{
-				case 'delivered':
-					watchdog('WEBHOOK', "Test Mode: ".$post_data['user-variables']['test-mode'].", App id is ".$post_data['user-variables']['app-id']);
+			case 'delivered':
+				watchdog('WEBHOOK', "Test Mode: ".$post_data['user-variables']['test-mode'].", App id is ".$post_data['user-variables']['app-id']);
+				break;
+			case 'complained':
+			case 'bounced':
+			case 'dropped':
+			case 'failed':
+			case 'rejected':
+			case 'failed':
+				if (!isset($post_data['user-variables']['app-id']))
 					break;
-				case 'complained':
-				case 'bounced':
-				case 'dropped':
-				case 'failed':
-				case 'rejected':
-				case 'failed':
-					if (!isset($post_data['user-variables']['app-id']))
-						break;
-					if ($post_data['user-variables']['test-mode'] == 1)
-						break;
-					$desc = '(3) '.strtoupper($post_data['event-data']['event'])." - ".$post_data['event-data']['recipient'];
-					if (isset($post_data['event-data']['delivery-status']['code'])) $desc .= " ".$post_data['event-data']['delivery-status']['code'];
-					if (isset($post_data['event-data']['reason'])) $desc .= " ".$post_data['event-data']['reason'];
-					if (isset($post_data['event-data']['delivery-status']['message'])) $desc .= " (".$post_data['event-data']['delivery-status']['message'].") ";
-					if (isset($post_data['event-data']['delivery-status']['description'])) $desc .= " ".$post_data['event-data']['delivery-status']['description'];
+				if ($post_data['user-variables']['test-mode'] == 1)
 					break;
+				$desc = '(3) '.strtoupper($post_data['event-data']['event'])." - ".$post_data['event-data']['recipient'];
+				if (isset($post_data['event-data']['delivery-status']['code'])) $desc .= " ".$post_data['event-data']['delivery-status']['code'];
+				if (isset($post_data['event-data']['reason'])) $desc .= " ".$post_data['event-data']['reason'];
+				if (isset($post_data['event-data']['delivery-status']['message'])) $desc .= " (".$post_data['event-data']['delivery-status']['message'].") ";
+				if (isset($post_data['event-data']['delivery-status']['description'])) $desc .= " ".$post_data['event-data']['delivery-status']['description'];
+				break;
 
-			}
-			if (isset($post_data['user-variables']['app-id']))
-			{
-				$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
-				$centre = $temp['a_center'];
-				$new_email = $temp['a_email'];
-				if ( $new_email == $post_data['event-data']['recipient'] )
-				{
-					db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['user-variables']['app-id']);
-					logit($centre,  'Letter', $post_data['user-variables']['app-id'], $desc);
-				}
-			}
-			elseif (isset($post_data['user-variables']['at-app-id']))
-			{
-				log_course_teacher($post_data['user-variables']['at-app-id'], $desc);
-			}
 		}
-		else
+		if (isset($post_data['user-variables']['app-id']))
 		{
-			watchdog('WEBHOOK3', print_r($post_data, true) );
+			$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
+			$centre = $temp['a_center'];
+			$new_email = $temp['a_email'];
+			if ( $new_email == $post_data['event-data']['recipient'] )
+			{
+				db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['user-variables']['app-id']);
+				logit($centre,  'Letter', $post_data['user-variables']['app-id'], $desc);
+			}
 		}
+		elseif (isset($post_data['user-variables']['at-app-id']))
+		{
+			log_course_teacher($post_data['user-variables']['at-app-id'], $desc);
+		}
+	}
+	else
+	{
+		watchdog('WEBHOOK3', print_r($post_data, true) );
 	}
 	header('X-PHP-Response-Code: 200', true, 200);	
 	print "ok 200";
