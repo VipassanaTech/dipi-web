@@ -859,7 +859,7 @@ function mailgun_webhook3()
 			case 'failed':
 			case 'rejected':
 			case 'failed':
-				if (!isset($post_data['user-variables']['app-id']))
+				if (  (!isset($post_data['event-data']['user-variables']['app-id']))  && (!isset($post_data['event-data']['user-variables']['at-app-id'])) )
 					break;
 				if ($post_data['user-variables']['test-mode'] == 1)
 					break;
@@ -871,20 +871,20 @@ function mailgun_webhook3()
 				break;
 
 		}
-		if (isset($post_data['user-variables']['app-id']))
+		if (isset($post_data['event-data']['user-variables']['app-id']))
 		{
-			$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
+			$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['event-data']['user-variables']['app-id'])->fetchAssoc();
 			$centre = $temp['a_center'];
 			$new_email = $temp['a_email'];
 			if ( $new_email == $post_data['event-data']['recipient'] )
 			{
-				db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['user-variables']['app-id']);
-				logit($centre,  'Letter', $post_data['user-variables']['app-id'], $desc);
+				db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['event-data']['user-variables']['app-id']);
+				logit($centre,  'Letter', $post_data['event-data']['user-variables']['app-id'], $desc);
 			}
 		}
-		elseif (isset($post_data['user-variables']['at-app-id']))
+		elseif (isset($post_data['event-data']['user-variables']['at-app-id']))
 		{
-			log_course_teacher($post_data['user-variables']['at-app-id'], $desc);
+			log_course_teacher($post_data['event-data']['user-variables']['at-app-id'], $desc);
 		}
 		else
 		{
