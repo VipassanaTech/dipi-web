@@ -486,6 +486,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access webhook'),
 	       'type' => MENU_CALLBACK);
 
+	$items['webhook3/mailgun'] = array( 'title' => t('Mailgun'),
+	       'page callback' => 'mailgun_webhook3',
+	       'access arguments' => array('access webhook'),
+	       'type' => MENU_CALLBACK);
+
 	$items['center-dashboard'] = array(
         'title' => t('Center Dashboard'),
         'page callback' => 'get_teahcer_dashboard',
