@@ -889,6 +889,10 @@ function mailgun_webhook3()
 				log_course_teacher($post_data['user-variables']['at-app-id'], $desc);
 			}
 		}
+		else
+		{
+			watchdog('WEBHOOK3', print_r($post_data, true) );
+		}
 	}
 	header('X-PHP-Response-Code: 200', true, 200);	
 	print "ok 200";
