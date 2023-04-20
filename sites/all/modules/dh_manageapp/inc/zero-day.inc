@@ -733,6 +733,7 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 	//drupal_add_css();
 	global $base_url;
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list.css");</style>';
+  $out .= '<button type="button" class="no-print remove-column">Click to remove Languages and Comments Columns</button>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -831,6 +832,22 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 		create_pdf_from_html($out, $pdf);
 	else
 	{
+    $out .= '
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script>
+    (function ($) {
+    $(document).ready(function(){
+
+     $(document).on("click", ".remove-column", function(){
+        $("table tr").find("td:eq(10),th:eq(10)").remove();
+        $("table tr").find("td:eq(10),th:eq(10)").remove();
+    });
+
+    });
+    })(jQuery);
+    </script>
+    ';
+
 		print $out;
 		exit;		
 	}

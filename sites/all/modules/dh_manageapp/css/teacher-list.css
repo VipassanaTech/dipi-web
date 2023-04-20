@@ -153,3 +153,12 @@ table.table-manager-list td {
 #footer {
 	page-break-after: always;
 }
+
+
+@media print
+{
+    .no-print, .no-print *
+    {
+        display: none !important;
+    }
+}
