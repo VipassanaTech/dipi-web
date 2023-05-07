@@ -2713,7 +2713,7 @@ function _attended_stats()
 
         $center_id = $result->fetchField();
 
-        $q = "select c_id, CONCAT(td_val1, ' - ', DATE_FORMAT(c_start, '%d-%b-%Y')) as Course from dh_course left join dh_type_detail on dh_course.c_course_type=dh_type_detail.td_id where c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
+        $q = "select c_id, CONCAT(td_val1, ' - ', DATE_FORMAT(c_start, '%d-%b-%Y')) as Course from dh_course left join dh_type_detail on dh_course.c_course_type=dh_type_detail.td_id where c_cancelled = 0 and c_deleted = 0 and c_start=CURDATE() and c_center=".$center_id." order by c_created asc limit 1";
         $result = db_query($q);
 
         if ($result->rowCount()==0)
