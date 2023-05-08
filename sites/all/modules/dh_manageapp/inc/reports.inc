@@ -251,3 +251,91 @@ function dh_center_course_report_form_submit($form, &$form_state)
 	unlink($fname);
 	exit();
 }
+
+
+
+
+function finalize_csv()
+{
+  $filename = "MarkedAttended";
+  $append = " and MarkedA <> 0";
+  if(arg(0) == "finalize-not-marked-attended")
+  {
+    $append = " and MarkedA = 0";
+    $filename = "NotMarkedAttended";
+  }
+
+
+  $q = "select
+      Course,
+      MarkedA,
+      TotalApplications
+      from
+      (
+        select
+        co.c_name as Course,
+        count(case when a.a_attended=1 then a.a_id end) AS MarkedA,
+        count(a.a_id) AS TotalApplications,
+        co.c_finalized as Finalized,
+        c.c_phone as Contact,
+        c.c_email as Email
+        from
+        dh_applicant a
+        left join dh_course co on a.a_course=co.c_id
+        left join dh_center c on co.c_center=c.c_id
+        where
+        co.c_cancelled=0 and
+        co.c_deleted=0 and
+        co.c_end<curdate() and
+        a.a_center<>286 and
+        co.c_course_type=6 and
+        co.c_name is not null
+        group by
+        a.a_course
+        order by
+        co.c_center ASC, co.c_start ASC
+      ) q
+      where
+      Finalized = 0 ";
+
+  $q .= $append;
+
+
+  $result = db_query($q);
+
+  if (!$result)
+  {
+    drupal_set_message("no record found.");
+    exit();
+  }
+
+  $fname = tempnam(sys_get_temp_dir(), $filename);
+  $fp = fopen($fname, "w");
+  $header_done = false;
+
+  while($row = $result->fetchAssoc())
+  {
+    if(!$header_done)
+    {
+      $header = array_keys($row);
+      fputcsv($fp, $header);
+    }
+    fputcsv($fp, $row);
+  }
+  fclose($fp);
+
+  header("Content-Type: text/csv");
+  header('Content-disposition:attachment; filename="'.$filename.'.csv"');
+  header('Cache-Control: max-age=0');
+  // If you're serving to IE 9, then the following may be needed
+  //header('Cache-Control: max-age=1');
+
+  // If you're serving to IE over SSL, then the following may be needed
+  header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+  header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); // always modified
+  header ('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+  header ('Pragma: public'); // HTTP/1.0
+  readfile($fname);
+  unlink($fname);
+  exit();
+}

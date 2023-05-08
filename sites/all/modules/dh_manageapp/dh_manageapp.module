@@ -75,6 +75,8 @@ function dh_manageapp_permission()
 	$perms['view sms report'] = array('title' => t('View SMS report'));
 	$perms['view course report'] = array('title' => t('View Course report'));
 	$perms['access webhook'] = array('title' => t('Allow Webhook'));
+  $perms['view finalize report'] = array('title' => t('View Finalize Report'));
+
 	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
     $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
@@ -558,6 +560,16 @@ function dh_manageapp_menu()
 	       'page callback' => 'whatsapp_hook',
 	       'access arguments' => array('access webhook'),
 	       'type' => MENU_CALLBACK);
+
+  $items['finalize-not-marked-attended'] = array('title' => t('Finalize not Marked Attended Report'),
+         'page callback' => 'finalize_csv',
+         'access arguments' => array('view finalize report'),
+         'type' => MENU_CALLBACK);
+
+  $items['finalize-marked-attended'] = array('title' => t('Finalize Marked Attended Report'),
+         'page callback' => 'finalize_csv',
+         'access arguments' => array('view finalize report'),
+         'type' => MENU_CALLBACK);
 
 
 	return $items;
