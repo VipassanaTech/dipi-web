@@ -1,10 +1,22 @@
 <?php
 
+
 if (isset($_REQUEST) && ( isset($_REQUEST['REMOTE_IP']) ))
 {
    echo "I wont run from the web\n";
    exit(1);
 }
+
+
+$lock_file = "cron-auto-confirm.lock";
+$f = fopen($lock_file, 'w') or die ("Cannot create/open lock file $lock_file, exiting!\n");
+
+if (!flock($f, LOCK_EX | LOCK_NB))
+{
+  die ("not able to lock $lock_file, exiting!\n");
+}
+
+
 
 define('DRUPAL_ROOT', getcwd());
 
