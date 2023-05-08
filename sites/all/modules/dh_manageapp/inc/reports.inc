@@ -319,6 +319,7 @@ function finalize_csv()
     {
       $header = array_keys($row);
       fputcsv($fp, $header);
+      $header_done = true;
     }
     fputcsv($fp, $row);
   }
