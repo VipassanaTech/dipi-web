@@ -109,12 +109,11 @@ input.throbbing {
 }
 
 
-.summary-block {
-	float: left;
-}
-
 @media only screen and (min-width: 768px) {
-	.summary-block { width: 49%; }
+  .summary-block {
+    width: 49%;
+    float: left;
+  }
 }
 
 .summary-block .table-responsive {
