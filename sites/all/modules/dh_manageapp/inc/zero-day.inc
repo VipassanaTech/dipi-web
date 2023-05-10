@@ -33,6 +33,10 @@ function dh_manage_day_zero()
 				dh_auto_allocate_seats(arg(1), $course);
 			return dh_generate_seating_plan(arg(1), $course);
 		break;		
+		case 'seating2':
+			zeroize_new_course_data(arg(1), arg(2));
+			
+		break;
 		case 'day0-list':
 			return dh_zero_day_list(arg(1), arg(2));
 		break;		

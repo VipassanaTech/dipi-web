@@ -15,6 +15,9 @@ include_once(dirname(__FILE__)."/inc/referral.inc");
 include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
+include_once dirname(__FILE__) . "/inc/seating.inc";
+
+
 
 function dh_manageapp_help($path, $arg)
 {
@@ -335,6 +338,11 @@ function dh_manageapp_menu()
 	       'type' => MENU_CALLBACK);
 
 	$items['seating/%centre_id/%course_id'] = array( 'title' => t('Teacher List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['seating2/%centre_id/%course_id'] = array( 'title' => t('Seating Plan'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
