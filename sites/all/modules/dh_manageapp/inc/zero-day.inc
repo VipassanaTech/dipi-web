@@ -35,7 +35,7 @@ function dh_manage_day_zero()
 		break;		
 		case 'seating2':
 			zeroize_new_course_data(arg(1), arg(2));
-			return dh_generate_seating_plan2(arg(1), $course);
+			return dh_generate_seating_plan2(arg(1), arg(2));
 		break;
 		case 'day0-list':
 			return dh_zero_day_list(arg(1), arg(2));
