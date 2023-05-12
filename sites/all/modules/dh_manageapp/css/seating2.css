@@ -1,0 +1,179 @@
+div,td, li {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	line-height: 1.42857143;
+	color: #333;
+}
+
+ul {
+    list-style-type: none;
+    padding-inline-start: 0px;
+    float: left;
+}
+
+.main-div {
+	margin-right: 15px;
+}
+.chowky-div {
+	margin-right: 15px;
+}
+
+
+.ui-state-default {
+	font-size: 14px;
+	text-align: center;
+	vertical-align: middle;
+	width: 140px;
+	font-weight: bold;
+	position:relative;
+}
+
+.seat {
+	border: 1px solid #000000;	
+	height: 130px;
+	padding-top: 7px;
+}
+
+.seating-plan {
+	float: left;
+}
+
+.seating-plan .disabled {
+	border: 0;
+}
+
+
+.sortable-m .ui-state-default, .bg-table-m .ui-state-default {
+	float: right;
+}
+
+.sortable-f .ui-state-default, .bg-table-f .ui-state-default {
+	float: left;
+}
+
+.bg-table-m .ui-state-default, .bg-table-f .ui-state-default {
+	border: 1px solid #000000;
+}
+
+
+.seat-no {
+	font-size: 16px;
+}
+
+.teacher-seat {
+	margin-top: 10px;
+	width: 1000px;
+	text-align: center;
+	font-weight: bold;
+	font-size: 18px;
+}
+
+.main-div,.chowky-div {
+	display: inline-block;
+}
+
+.footer {
+	page-break-after: always;
+}
+  
+.s-seat-no {
+	width: 45px;
+	float: left;
+}
+
+.disabled .s-seat-no {
+	color: #ffffff;
+}
+
+.s-acco {
+	float: right;
+	width: 80px;
+	text-align: right;
+	padding-right: 7px;	
+}
+
+
+.s-name {
+    height: 60px;
+    text-align: center;
+    padding-top: 10px;
+    clear: both;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;    
+}
+
+.s-old-student {
+	width: 74px;
+	float: left;
+	text-align: left;
+	margin-left: 5px;
+	font-size: 12px;	
+}
+
+.s-age {
+	width: 55px;
+	float: right;
+	padding-right: 2px;
+	font-size: 12px;
+}
+
+.s-backrest {
+	clear: both;
+	height: 3px;
+}
+
+.s-backrest-yes {
+	background-color: #000000;
+}
+
+.bg-table-m .s-backrest-yes, .bg-table-f .s-backrest-yes {
+	background-color: #ffffff;
+}
+
+.s-teacher {
+	background-color: #c6c6c6;
+}
+
+
+.bg-table-m .s-teacher, .bg-table-f .s-teacher {
+	background-color: #ffffff;
+}
+/*
+.seat-background, .background-seat-no {
+	position:absolute;
+	z-index: -1000 !important;	
+}
+*/
+
+.bg-table-m, .bg-table-f {
+	position:absolute;
+	z-index: -1000 !important;
+}
+
+
+.bg-table-m .cwch, .bg-table-f .cwch {
+	margin-left: 40px;
+}
+
+
+@media print
+{    
+    .no-print, .no-print *
+    {
+        display: none !important;
+    }
+}
+
+.drag-img img
+{
+	width:  20px;
+	position:absolute;
+	z-index: 2000 !important;
+	top: 0;
+	left: 0;
+}
+
+.helptext
+{
+	background-color: LightBlue;
+}
