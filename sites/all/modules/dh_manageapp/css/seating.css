@@ -29,6 +29,9 @@ ul {
 	position:relative;
 }
 
+.seating-plan .disabled {
+	border: 0;
+}
 
 
 .sortable-m .ui-state-default, .bg-table-m .ui-state-default {
