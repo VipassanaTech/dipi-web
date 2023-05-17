@@ -111,6 +111,9 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		$form[$group]['c_vri'] = array('#title' => 'Enable VRI Schedule', '#type' => 'radios', '#weight' => 1,
 			'#options' => array(1 => 'Yes', 0 => 'No'), 
 			'#default_value' => $add?'1':$edit_data['c_vri'], '#required' => 1,  );
+
+    if (!$add)
+      drupal_set_message("Center Subdomain: ".$edit_data['c_subdomain']);
 	}
 	if ($add)
 	{	$form[$group]['c_subdomain'] = array('#title' => 'Dhamma.org Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 2,
