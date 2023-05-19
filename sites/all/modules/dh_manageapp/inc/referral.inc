@@ -6,6 +6,8 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');  	
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
     drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
+    drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
     if(arg(0) == 'center-referral')
 		$center_id = arg(1);
@@ -19,6 +21,8 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
  	
 
 	$add = 0;
+  if(arg(2) == 'add')
+    $add = 1;
  
 
 	$group = 'Personal Information';
@@ -431,16 +435,37 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#suffix' => '',
 	);
   
+  if($center_id)
+  {
     $form[$group]['r_listed_by'] = array(
-    	'#title' => 'Referred By',
-    	'#type' => 'textarea',  
-		'#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'',
-		'#rows' => 3,
-		'#weight' => 25,
-		'#required' => 1, 
-		'#suffix' => '',
-		'#maxlength' => 200,
-	);
+      '#title' => 'Referred By',
+      '#type' => 'textarea',
+      '#default_value' => isset($edit_data['r_listed_by'])?$edit_data['r_listed_by']:'',
+      '#rows' => 3,
+      '#weight' => 25,
+      '#required' => 1,
+      '#suffix' => '',
+      '#maxlength' => 200,
+    );
+  }
+  else
+  {
+    $at_required = 1;
+    if(!$add && !isset($edit_data['r_teacher']) )
+      $at_required = 0;
+
+    $options_t = db_query("select t_id as 'at-id', CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'area' from dh_teacher where t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
+    $options_t[''] = 'Select Referring AT';
+    $form[$group]['r_teacher'] = array(
+      '#type' => 'select',
+      '#options' => $options_t,
+      '#title' => 'Referring AT',
+      '#default_value' => isset($edit_data['r_teacher'])?$edit_data['r_teacher']:'',
+      '#weight' => 25.5,
+      '#required' => $at_required,
+    );
+  }
+
 
   	$group = 'Course Info';
 	$form[$group] = array(
@@ -569,10 +594,12 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 				autocomplete_state("#edit-s-state", "#edit-s-country");
 				autocomplete_city("#edit-s-city", "#edit-s-country", "#edit-s-state");
 
-			  	$("#edit-s-zip").focusout(function(){ 
-			  		do_pincode($(this).val(), "#edit-s-country", "#edit-s-state", "#edit-s-city" ); 
-			  
-		  		});
+		  	$("#edit-s-zip").focusout(function(){
+		  		do_pincode($(this).val(), "#edit-s-country", "#edit-s-state", "#edit-s-city" );
+	  		});
+
+        $("#edit-r-teacher").select2();
+
 			});
 		})(jQuery);
 	';
@@ -908,7 +935,21 @@ function dh_referral_results()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
-	$q = "select r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted from dh_student a left join dh_student_course sc on (a.s_id=sc_student) left join dh_student_course_input sci on (a.s_id=sci_student) left join dh_referral r on (a.s_id=r_student) left join dh_country co on (s_country=co.c_code) left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code) left join dh_city ci on (s_city=ci.c_id) where  (a.s_id=r_student) and (r_deleted = 0) and r_center={$center_id} group by a.s_id order by r.r_created";
+	$q = "select r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+    concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
+    from dh_student a
+    left join dh_student_course sc on (a.s_id=sc_student)
+    left join dh_student_course_input sci on (a.s_id=sci_student)
+    left join dh_referral r on (a.s_id=r_student)
+    left join dh_teacher t on (r.r_teacher=t.t_id)
+    left join dh_country co on (s_country=co.c_code)
+    left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code)
+    left join dh_city ci on (s_city=ci.c_id)
+    where  (a.s_id=r_student) and
+    (r_deleted = 0) and
+    r_center={$center_id}
+    group by a.s_id
+    order by r.r_created";
 
 	//c.c_name as 'last_course'
 	//drupal_set_message($q);
@@ -926,6 +967,7 @@ function dh_referral_results()
 		$rs['sid'] = $r['s_id'];
 		$rs['ref_id'] = $r['r_id'];
 
+
 		if (user_access('manage referral list') && !$center_id)
 		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/edit/'.$rs['ref_id']);
 		elseif (user_access('manage center referral list') && $center_id)
@@ -940,7 +982,20 @@ function dh_referral_results()
 		else
 			$rs['del'] = "No access"; 
 
-		$rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
+    if($center_id)
+    {
+      $rs['ref_by_title'] = "Center Referral By:";
+      $rs['ref_by'] = $r['r_listed_by'];
+    }
+    else
+    {
+      $rs['ref_by_title'] = "Referring Teacher:";
+      $rs['ref_by'] = "";
+      if($r['teacher_id'])
+        $rs['ref_by'] = '<a href="#" id="'.$r['teacher_id'].'" class="get-at-info" >'.$r['teacher'].'</a>';
+    }
+
+    $rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
 		//if ($r['City'] == '')
 		//	$r['City'] = $r['s_city_str'];
 		$rs['location'] = $r['Country'].', '.$r['State'].', '.$r['City'];
@@ -984,7 +1039,6 @@ function dh_referral_results()
 		$rs['ref_10dseva'] = $r['r_listed_10d_seva']?"Yes":"No";
 		$rs['ref_lcseva'] = $r['r_listed_lc_seva']?"Yes":"No";
 		$rs['ref_longseva'] = $r['r_listed_longseva']?"Yes":"No";
-		$rs['ref_by'] = $r['r_listed_by'];
 		$rs['ref_reason'] = $r['r_reason'];
 		$rs['ref_start'] = $r['r_start'];
 		$rs['ref_end'] = $r['r_end'];
@@ -1088,7 +1142,7 @@ function dh_referral_results()
 		            "<tr>"+
 		                "<td><label>Reason/Remarks:</label></td>"+
 		                "<td>"+d.ref_reason+"</td>"+
-		                "<td><label>Referral By:</label></td>"+
+		                "<td><label>"+d.ref_by_title+"</label></td>"+
 		                "<td>"+d.ref_by+"</td>"+			            	
 		            "</tr>"+
 		            "<tr>"+
@@ -1235,8 +1289,32 @@ function dh_referral_results()
 	                
 				$("#table-applicants tbody").on("click", ".ref-del", function() {
 					return confirm("Are you sure you want to delete record?");
-						
 				});
+
+        $("body").on("click", ".get-at-info", function() {
+          teacher_id = $(this).attr("id");
+          $.getJSON( "/at-schedule/get-at-info/"+teacher_id )
+            .done(function( json ) {
+              if (json.status == "OK")
+              {
+                $.alert(
+                  "<b><u>"+json.at_name+" ( "+json.at_year+" )</b></u><br><br>"+
+                  "<b>Status:</b> "+json.at_status+"<br>"+
+                  "<b>Mobile:</b> "+json.at_phone+"<br>"+
+                  "<b>Email:</b> "+json.at_email+"<br>"+
+                  "<b>Address:</b> "+json.at_address+"<br>"
+                );
+              }
+              else
+                $.alert("Not able to get AT Info")
+            })
+            .fail(function( jqxhr, textStatus, error ) {
+            var err = textStatus + ", " + error;
+            $.alert("Not able to get AT Info "+err);
+            });
+          return false;
+        });
+
 			});
 		})(jQuery);
 
