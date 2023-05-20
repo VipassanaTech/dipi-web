@@ -113,6 +113,27 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
+  $items['at-portal/my-referral'] = array( 'title' => t('My Referrals'),
+      'page callback' => 'my_referral',
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
+  $items['at-portal/referral/update-date/%atrefid'] = array('title' => t('Update AT Referral Date'),
+         'page callback' => 'at_referral_update_date',
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
+    $items['at-portal/referral/delete/%atrefid'] = array('title' => t('Delete AT Referral'),
+         'page callback' => 'at_referral_delete',
+         'page arguments' => array(3),
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
+    $items['at-portal/referral/add-commnet/%atrefid'] = array('title' => t('Add Referral Comment'),
+         'page callback' => 'at_referral_add_comment',
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
     return $items;
 }
 
@@ -217,6 +238,26 @@ function atappid_load ( $id )
 
 	return false;
 	
+}
+
+function atrefid_load ( $id )
+{
+  if (!is_numeric($id))
+    return false;
+
+  global $user;
+
+  $at_id = db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$user->name' limit 1")->fetchField();
+
+  if(!$at_id)
+    return false;
+
+  $count = db_query("select count(*) from dh_referral where r_id=$id and r_teacher=$at_id")->fetchField();
+
+  if($count > 0)
+    return $id;
+
+  return false;
 }
 
 function dh_atportal_form_alter(&$form, &$form_state, $form_id) 
@@ -329,6 +370,7 @@ function dh_atportal_dashboard()
 		'Apply for Serving a Course' => 'at-portal/course-list',
 		'Courses Allotted to me/Applied by me' => 'at-portal/applied-courses-list',
 		'Referral List' => 'referral',
+    'My Referral List' => 'at-portal/my-referral',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1><ul>';
@@ -838,3 +880,291 @@ function show_lc_application_pdf( $app_id )
 }
 
 
+function my_referral()
+{
+  global $user;
+
+  $at_id = db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$user->name' limit 1")->fetchField();
+
+  if (!$at_id)
+  {
+    drupal_set_message("This option is only available for AT", "error");
+    drupal_goto("at-portal");
+  }
+
+  drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+  drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+  drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+  drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+  drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+  drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
+
+  $out = '<h2>'.l("Back to AT-Portal", "/at-portal").'</h2>';
+
+
+  $q = "select r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+    concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
+    from dh_student a
+    left join dh_student_course sc on (a.s_id=sc_student)
+    left join dh_student_course_input sci on (a.s_id=sci_student)
+    left join dh_referral r on (a.s_id=r_student)
+    left join dh_teacher t on (r.r_teacher=t.t_id)
+    left join dh_country co on (s_country=co.c_code)
+    left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code)
+    left join dh_city ci on (s_city=ci.c_id)
+    where  (a.s_id=r_student) and
+    (r_deleted = 0) and
+    r_center=0 and
+    r_teacher = $at_id
+    group by a.s_id
+    order by r.r_created";
+
+  $result = db_query($q);
+  $rows = array();
+  while( $r = $result->fetchAssoc() )
+  {
+    unset($rs);
+
+    $rs['sid'] = $r['s_id'];
+    $rs['ref_id'] = $r['r_id'];
+    $rs['name'] = $r['Full Name'];
+
+    $rs['del'] = l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array("attributes" => array("class" => array("ref-del")))) ;
+
+
+    $rs['ref_by_title'] = "not required";
+    $rs['ref_by'] = "not required";
+
+
+    $rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
+    //if ($r['City'] == '')
+    //  $r['City'] = $r['s_city_str'];
+    $rs['location'] = $r['Country'].', '.$r['State'].', '.$r['City'];
+    $rs['city'] = $r['City'];
+    $rs['state'] = $r['State'];
+    $rs['country'] = $r['Country'];
+    $rs['pin'] = $r['s_zip'];
+    $rs['age'] = $r['Age'];
+    $rs['address'] = $r['s_address'];//." - ".$r['s_zip'];
+    $rs['contact'] = '<label>H:&nbsp;</label>'.$r['s_phone_home']." <label>M:&nbsp;</label>".$r['s_phone_mobile']." <label>O:&nbsp;</label>".$r['s_phone_office']." <label>Email:&nbsp;</label>".$r['s_email'];
+    $rs['contact_home'] = $r['s_phone_home'];
+    $rs['contact_mobile'] = $r['s_phone_mobile'];
+    $rs['contact_office'] = $r['s_phone_office'];
+    $rs['contact_email'] = $r['s_email'];
+    $rs['aadhar'] = $r['s_aadhar'];
+    $rs['pancard'] = $r['s_pancard'];
+    $rs['passport'] = $r['s_passport'];
+    $rs['voter_id'] = $r['s_voter_id'];
+
+    $rs['course_teen'] = $r['sci_teen']?$r['sci_teen']:"0";
+    $rs['course_10d'] = $r['sci_10d']?$r['sci_10d']:"0";
+    $rs['course_stp'] = $r['sci_stp']?$r['sci_stp']:"0";
+    $rs['course_spl'] = $r['sci_spl']?$r['sci_spl']:"0";
+    $rs['course_20d'] = $r['sci_20d']?$r['sci_20d']:"0";
+    $rs['course_30d'] = $r['sci_30d']?$r['sci_30d']:"0";
+    $rs['course_45d'] = $r['sci_45d']?$r['sci_45d']:"0";
+    $rs['course_60d'] = $r['sci_60d']?$r['sci_60d']:"0";
+    $rs['course_tsc'] = $r['sci_tsc']?$r['sci_tsc']:"0";
+    $rs['course_seva'] = $r['sci_service']?$r['sci_service']:"0";
+
+    $rs['first_course'] = $rs['last_course'] = '';
+
+    $rs['ref_10d'] = $r['r_listed_10d']?"Yes":"No";
+    $rs['ref_stp'] = $r['r_listed_stp']?"Yes":"No";
+    $rs['ref_spl'] = $r['r_listed_spl']?"Yes":"No";
+    $rs['ref_20d'] = $r['r_listed_20d']?"Yes":"No";
+    $rs['ref_30d'] = $r['r_listed_30d']?"Yes":"No";
+    $rs['ref_45d'] = $r['r_listed_45d']?"Yes":"No";
+    $rs['ref_60d'] = $r['r_listed_60d']?"Yes":"No";
+    $rs['ref_tsc'] = $r['r_listed_tsc']?"Yes":"No";
+    $rs['ref_10dseva'] = $r['r_listed_10d_seva']?"Yes":"No";
+    $rs['ref_lcseva'] = $r['r_listed_lc_seva']?"Yes":"No";
+    $rs['ref_longseva'] = $r['r_listed_longseva']?"Yes":"No";
+    $rs['ref_reason'] = $r['r_reason'];
+    $rs['ref_start'] = $r['r_start'];
+    $rs['ref_end'] = $r['r_end'];
+
+    $rs['Education'] = $r['s_education'];
+    $rs['Company'] = $r['s_company'];
+    $rs['Dept'] = $r['s_department'];
+    $rs['Occ'] = $r['s_occupation'];
+    if ($r['s_occupation'] == '')
+      $rs['Occ'] = $r['s_occupation_past'];
+    $rs['Designation'] = $r['s_designation'];
+    $rs['othertechnique'] = $r['sc_desc_other_technique']?$r['sc_desc_other_technique']:"";
+    $rs['physical'] = $r['sc_desc_physical']?$r['sc_desc_physical']:"";
+    $rs['mental'] = $r['sc_desc_mental']?$r['sc_desc_mental']:"";
+    $rs['medication'] = $r['sc_desc_medication']?$r['sc_desc_medication']:"";
+    $rs['addiction'] = $r['sc_addiction_current']?$r['sc_addiction_current']:"";
+    $rs['photo'] = '';
+    if ( $r['s_photo'] <> '')
+      $rs['photo'] = file_create_url($r['s_photo']);
+    //$rows[] = array_values($rs);
+
+    $rows[] = $rs;
+  }
+
+  $header = array();
+  $attributes = array('id' => 'table-applicants');
+  $out .= theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
+  $data = json_encode($rows);
+
+
+  $button_access = '';
+  if (user_access('export data'))
+    if ( !($iPad || $iPhone || $iPod) )
+      $button_access = '
+        $.extend( true, {}, buttonCommon, {
+                extend: "excelHtml5",
+                title: "Student Data"
+        } )
+      ';
+
+  $js = '
+    function format ( d ) {
+      var pregnant = "", photo = "";
+      if ( d.photo )
+      {
+        photo = "<td colspan=2><img width=\"150\" src=\""+d.photo+"\" /></td>";
+      }
+        return "<div class=\"slider\">"+
+            "<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" style=\"padding-left:50px;\">"+
+                "<tr>"+
+                    "<td><label>Gender:</label></td>"+
+                    "<td>"+d.gender+"</td>"+
+                    "<td><label>Age:</label></td>"+
+                    "<td>"+d.age+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Address:</label></td>"+
+                    "<td colspan=\"3\">"+d.address+", "+d.location+"</td>"+
+                 "</tr>"+
+                 "<tr>"+
+                    "<td><label>Contact:</label></td>"+
+                    "<td colspan=\"3\">"+d.contact+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Pancard:</label></td>"+
+                    "<td colspan=\"3\">"+d.pancard+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Aadhar:</label></td>"+
+                    "<td colspan=\"3\">"+d.aadhar+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>National ID:</label></td>"+
+                    "<td colspan=\"3\">"+d.voter_id+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Passport:</label></td>"+
+                    "<td colspan=\"3\">"+d.passport+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Occupation/Edu:</label></td>"+
+                    "<td>"+d.Occ+"/"+d.Education +"</td>"+
+                    "<td><label>Company:</label></td>"+
+                    "<td>"+d.Company+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                  "<td><label>Designation:</label></td>"+
+                    "<td>"+d.Designation+"</td>"+
+                    "<td><label>Department:</label></td>"+
+                    "<td>"+d.Dept+"</td>"+photo+
+                "</tr>"+
+                "<tr>"+
+                  "<td><label>Referral listed for:</label></td>"+
+                    "<td><table><tr><td>10d</td><td>STP</td><td>SPL</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>TSC</td><td>10-Day Seva</td><td>LC Seva</td><td>Long Term Seva</td></tr>"+
+                    "<tr><td>"+d.ref_10d+"</td><td>"+d.ref_stp+"</td><td>"+d.ref_spl+"</td><td>"+d.ref_20d+"</td><td>"+d.ref_30d+"</td><td>"+d.ref_45d+"</td><td>"+d.ref_60d+"</td><td>"+d.ref_tsc+"</td><td>"+d.ref_10dseva+"</td><td>"+d.ref_lcseva+"</td><td>"+d.ref_longseva+"</td></tr></table></td>"+
+                "</tr>"+
+                "<tr>"+
+                    "<td><label>Reason/Remarks:</label></td>"+
+                    "<td>"+d.ref_reason+"</td>"+
+                "</tr>"+
+                "<tr>"+
+                  "<td><label>Course Information:</label></td>"+
+                    "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
+                    "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
+                "</tr>"+
+                "<tr>"+
+            "</table>"+
+        "</div>";
+    }
+
+    (function ($) {
+      $(document).ready(function(){
+
+        var dataset = '.$data.';
+
+        var table = $("#table-applicants").DataTable({
+          data: dataset,
+              columns: [
+                  {
+                      "class":          "details-control",
+                      "orderable":      false,
+                      "data":           null,
+                      "title":      "Detail",
+                      "defaultContent": ""
+                  },
+                  { data: "name", "title" : "Applicant Name" },
+                { data: "ref_start", "title" : "Start Date" },
+                { data: "ref_end", "title" : "End Date" },
+                { data: "del", "title" : "Delete" },
+                ],
+        });
+
+          // Add event listener for opening and closing details
+          $("#table-applicants tbody").on("click", "td.details-control", function () {
+              var tr = $(this).closest("tr");
+              var row = table.row( tr );
+
+              if ( row.child.isShown() ) {
+                  // This row is already open - close it
+                  $("div.slider", row.child()).slideUp( function () {
+                      row.child.hide();
+                      tr.removeClass("shown");
+                  });
+              }
+              else {
+                  // Open this row
+                  row.child( format(row.data()), "no-padding" ).show();
+                  tr.addClass("shown");
+
+                  $("div.slider", row.child()).slideDown();
+              }
+          });
+
+
+        $("#table-applicants tbody").on("click", ".ref-del", function() {
+          return confirm("Are you sure you want to delete Referral?");
+        });
+
+
+
+      });
+    })(jQuery);
+
+  ';
+  drupal_add_js($js, 'inline');
+  return $out;
+
+}
+
+
+
+function at_referral_delete( $id )
+{
+  global $user;
+
+  $fields['r_updated_by'] = $user->uid;
+  $fields['r_updated'] = date('Y-m-d H:i:s');
+  $fields['r_deleted'] = 1;
+
+  db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
+
+  db_query("update dh_applicant set a_referral=0 where a_referral=$id");
+
+  drupal_set_message("Referral delete successfully.");
+
+  drupal_goto ('at-portal/my-referral');
+}
