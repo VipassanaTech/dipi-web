@@ -270,9 +270,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['o_n'] .= '<br>'.$rs['gender'];
 		$rs['courseid'] = $r['a_course'];
 
-		$course_type = db_query("SELECT td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchField();
+		$course_type = db_query("SELECT td_key, td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchAssoc();
 
-		if ($course_type == 'LC')
+		if ($course_type['td_val3'] == 'LC')
 			$rs['allowtransfer'] = 0;
 
 		$rs['centreid'] = $r['a_center'];
@@ -393,19 +393,85 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['referral'] = $r['a_referral']?1:0;
 		if ($r['a_referral'])
 		{
-			$q = "select r.*, r_listed_by as 'ListedBy' from dh_referral r where r_id=".$r['a_referral'];
+			$q = "select
+        concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher,
+        t_id as teacher_id,
+        r.*
+        from dh_referral r left join dh_teacher t on r.r_teacher=t.t_id where r_id=".$r['a_referral'];
+
 			$r_ref = db_query($q)->fetchAssoc();
 
-			$rs['ref_reason'] = $r_ref['r_reason'];
-			$rs['ref_start'] = $r_ref['r_start'];
-			$rs['ref_end'] = $r_ref['r_end'];
-			$rs['ref_listed_by'] = $r_ref['ListedBy'];
-			$listed_for = "";
-			$temp = array('10d', 'stp', 'spl', '20d', '30d', '45d', '60d', 'tsc', '10d_seva', 'lc_seva', 'longseva');
-			foreach( $temp as $a )
-				if ($r_ref['r_listed_'.$a])
-					$listed_for .= strtoupper($a)." | ";
-			$rs['ref_listed_for'] = $listed_for;
+      $show_referral = 0;
+
+      $course_level = array(
+        "10-Day" => 1,
+        "10-DayExecutive" => 1,
+        "Satipatthana" => 2,
+        "10-DaySpecial" => 3,
+        "TSC" => 4,
+        "20-DayOSC" => 5,
+        "30-DayOSC" => 6,
+        "45-DayOSC" => 7,
+        "60-DayOSC" => 8,
+      );
+
+      if (!array_key_exists($course_type['td_key'], $course_level))
+        $course_level[$course_type['td_key']] = 0;
+
+      if( $r_ref["r_listed_10d"] )
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_10d_seva"] && strtolower($rs['type']) == "sevak" )
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_stp"] &&  $course_level[$course_type['td_key']] >= 2)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_spl"] &&  $course_level[$course_type['td_key']] >= 3)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_tsc"] &&  $course_level[$course_type['td_key']] >= 4)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_20d"] &&  $course_level[$course_type['td_key']] >= 5)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_30d"] &&  $course_level[$course_type['td_key']] >= 6)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_45d"] &&  $course_level[$course_type['td_key']] >= 7)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_60d"] &&  $course_level[$course_type['td_key']] >= 8)
+        $show_referral = 1;
+      elseif( $r_ref["r_listed_lc_seva"] && strtolower($rs['type']) == "sevak" &&  $course_level[$course_type['td_key']] >= 3)
+        $show_referral = 1;
+
+      if( date_create() <= date_create($r_ref['r_end']) && $show_referral)
+      {
+        $rs['ref_reason'] = $r_ref['r_reason'];
+        $rs['ref_start'] = $r_ref['r_start'];
+        $rs['ref_end'] = $r_ref['r_end'];
+
+        if($r_ref['center'])
+        {
+           $rs['ref_listed_by'] = $r_ref['r_listed_by'];
+           $rs['ref_listed_title'] = "Center RefListed by:";
+        }
+        else
+        {
+          $rs['ref_listed_title'] = "Referring AT:";
+          $rs['ref_listed_by'] = "";
+
+          if($r_ref['teacher_id'])
+            $rs['ref_listed_by'] = '<a href="#" id="'.$r_ref['teacher_id'].'" class="get-at-info" >'.$r_ref['teacher'].'</a>';
+        }
+
+        $listed_for = "";
+        $temp = array('10d', 'stp', 'spl', '20d', '30d', '45d', '60d', 'tsc', '10d_seva', 'lc_seva', 'longseva');
+        foreach( $temp as $a )
+          if ($r_ref['r_listed_'.$a])
+            $listed_for .= strtoupper($a)." | ";
+        $rs['ref_listed_for'] = $listed_for;
+      }
+      else
+      {
+        $rs['referral'] = 0;
+      }
+
+
 			
 		}
 
@@ -532,7 +598,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			}
 			if ( parseInt(d.referral) > 0  )
 			{
-				referral = "<tr><td class=\"referral\"><label>RefListed by:</label></td><td class=\"referral\">"+d.ref_listed_by+"</td>"+
+				referral = "<tr><td class=\"referral\"><label>"+d.ref_listed_title+"</label></td><td class=\"referral\">"+d.ref_listed_by+"</td>"+
 					"<td class=\"referral\"><label>From:</label></td><td class=\"referral\">"+d.ref_start+"</td>"+
 					"<td class=\"referral\"><label>To:</label></td><td class=\"referral\">"+d.ref_end+"</td></tr>"+
 					"<tr><td class=\"referral\"><label>Reason:</label></td><td class=\"referral\">"+d.ref_reason+"</td>"+
@@ -1148,6 +1214,33 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					});
 
 				});
+
+
+
+        $("body").on("click", ".get-at-info", function() {
+          teacher_id = $(this).attr("id");
+          $.getJSON( "/at-schedule/get-at-info/"+teacher_id )
+            .done(function( json ) {
+              if (json.status == "OK")
+              {
+                $.alert(
+                  "<b><u>"+json.at_name+" ( "+json.at_year+" )</b></u><br><br>"+
+                  "<b>Status:</b> "+json.at_status+"<br>"+
+                  "<b>Mobile:</b> "+json.at_phone+"<br>"+
+                  "<b>Email:</b> "+json.at_email+"<br>"+
+                  "<b>Address:</b> "+json.at_address+"<br>"
+                );
+              }
+              else
+                $.alert("Not able to get AT Info")
+            })
+            .fail(function( jqxhr, textStatus, error ) {
+            var err = textStatus + ", " + error;
+            $.alert("Not able to get AT Info "+err);
+            });
+          return false;
+        });
+
 
 			});
 

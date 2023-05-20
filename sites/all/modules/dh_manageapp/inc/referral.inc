@@ -415,11 +415,11 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#date_format' => 'Y-m-d',
 		'#required' => 1,
 		'#datepicker_options' => array(
-    		'maxDate' => "+50Y", 
+    		'maxDate' => "+2Y",
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
     		'#required' => 1,
     	),
-    	'#date_year_range' => '0:+50',
+    	'#date_year_range' => '0:+2',
     	'#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'),
 		'#suffix' => '',
