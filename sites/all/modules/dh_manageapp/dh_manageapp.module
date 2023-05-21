@@ -433,6 +433,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
 
+    $items['referral/get-activity/%'] = array( 'title' => t('Get Referral Activity'),
+         'page callback' => 'get_referral_activity',
+         'page arguments' => array(2),
+         'access arguments' => array('view referral list'),
+         'type' => MENU_CALLBACK);
+
     $items['center-referral/%centre_id'] = array('title' => t('Center Referral List'),
 	       'page callback' => 'dh_referral_results',
 	       'access arguments' => array('view center referral list'),

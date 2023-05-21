@@ -1149,8 +1149,10 @@ function dh_referral_results()
 			            "<td><label>Course Information:</label></td>"+
 		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
 		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
-		            "</tr>"+		       
- 		            "<tr>"+
+		            "</tr>"+
+                "<tr>"+
+                "<td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading Activity Log...</div></td>"+
+                "</tr>"+
 		        "</table>"+
 		    "</div>";
 		}
@@ -1282,7 +1284,8 @@ function dh_referral_results()
 			            row.child( format(row.data()), "no-padding" ).show();
 			            tr.addClass("shown");
 			 
-			            $("div.slider", row.child()).slideDown();		            	
+			            $("div.slider", row.child()).slideDown();
+                  $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
 			        }
 			    });
 
@@ -1341,4 +1344,38 @@ function referral_delete( $id )
 		drupal_goto ('center-referral/'.arg(1));
 	else
 		drupal_goto ('referral/'.arg(1));
+}
+
+
+function get_referral_activity($ref_id)
+{
+
+  $q = "select DATE_FORMAT(rl_tstamp, '%r, %D %M %Y'), rl_event, rl_msg, name from dh_referral_log left join users on dh_referral_log.rl_user=users.uid where rl_referral=:rl_referral order by rl_id desc";
+  $res = db_query($q, array(':rl_referral' => $ref_id));
+
+  $data = array();
+
+  while($row = $res->fetchAssoc())
+  {
+    $data[] = $row;
+  }
+
+  $headers = array('Timestamp', 'Activity', 'Message', 'User');
+  $out = '<h4>Referral Activity Log</h4>';
+  if (!empty($data))
+    $out .= theme('table', array('header' => $headers, 'rows' => $data)) ;
+  print $out;
+  exit;
+
+}
+
+function add_referral_activity($ref_id, $ref_event, $ref_msg)
+{
+  global $user;
+
+  $f['rl_referral'] = $ref_id;
+  $f['rl_event'] = $ref_event;
+  $f['rl_msg'] = $ref_msg;
+  $f['rl_user'] = $user->uid;
+  db_insert('dh_referral_log')->fields($f)->execute();
 }

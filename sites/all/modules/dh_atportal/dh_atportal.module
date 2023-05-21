@@ -118,19 +118,15 @@ function dh_atportal_menu()
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
 
-  $items['at-portal/referral/update-date/%atrefid'] = array('title' => t('Update AT Referral Date'),
-         'page callback' => 'at_referral_update_date',
+  $items['at-portal/referral/update/%atrefid'] = array('title' => t('Update AT Referral Date'),
+         'page callback' => 'at_referral_update',
+         'page arguments' => array(3),
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
 
     $items['at-portal/referral/delete/%atrefid'] = array('title' => t('Delete AT Referral'),
          'page callback' => 'at_referral_delete',
          'page arguments' => array(3),
-         'access arguments' => array('access at portal'),
-         'type' => MENU_CALLBACK);
-
-    $items['at-portal/referral/add-commnet/%atrefid'] = array('title' => t('Add Referral Comment'),
-         'page callback' => 'at_referral_add_comment',
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
 
@@ -931,6 +927,7 @@ function my_referral()
     $rs['name'] = $r['Full Name'];
 
     $rs['del'] = l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array("attributes" => array("class" => array("ref-del")))) ;
+    $rs['update'] = '<a href="#" class="ref-upd">Update</a>' ;
 
 
     $rs['ref_by_title'] = "not required";
@@ -1087,6 +1084,8 @@ function my_referral()
                     "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
                 "</tr>"+
                 "<tr>"+
+                "<td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading Activity Log...</div></td>"+
+                "</tr>"+
             "</table>"+
         "</div>";
     }
@@ -1109,6 +1108,7 @@ function my_referral()
                   { data: "name", "title" : "Applicant Name" },
                 { data: "ref_start", "title" : "Start Date" },
                 { data: "ref_end", "title" : "End Date" },
+                { data: "update", "title" : "update" },
                 { data: "del", "title" : "Delete" },
                 ],
         });
@@ -1131,8 +1131,74 @@ function my_referral()
                   tr.addClass("shown");
 
                   $("div.slider", row.child()).slideDown();
+                  $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
               }
           });
+
+
+          $("#table-applicants tbody").on("click", ".ref-upd", function() {
+          var tr = $(this).closest("tr");
+          var row = table.row( tr );
+
+
+
+          console.log(row.data().ref_end);
+
+           $.confirm({
+              title: "Update Referral",
+              content: "" +
+                "<form action=\"\" class=\"formName\">" +
+                "<div class=\"form-group\">" +
+                "<label style=\"display:block;\">Referral End-date</label>" +
+                "<input type=\"date\" id=\"select-date\" value=\""+row.data().ref_end+"\" required>" +
+                "<br/><br/><label style=\"display:block;\">Add Referral Comment</label>"+
+                "<textarea name=\"comment\" id=\"txt-comment\"></textarea>"+
+                "</div>" +
+                "</form>",
+              buttons: {
+                  Ok: {
+                      text: "Ok",
+                      btnClass: "btn-blue",
+                      action: function () {
+
+                        ref_end_date = this.$content.find("#select-date").val();
+                        ref_comment = this.$content.find("#txt-comment").val();
+
+                    $.getJSON( "/at-portal/referral/update/"+row.data().ref_id, { ref_end_date: ref_end_date, ref_comment: ref_comment } )
+                    .done(function( json ) {
+                      if (json.status == "OK")
+                      {
+                        row_data = row.data();
+                        row_data.ref_end = ref_end_date;
+                        row.data(row_data);
+                        alert(json.msg)
+                      }
+                      else
+                        alert("Update failed!\n"+json.msg)
+                    })
+                    .fail(function( jqxhr, textStatus, error ) {
+                      var err = textStatus + ", " + error;
+                      alert("Error updating "+err);
+                  });
+
+                      }
+                  },
+                  Cancel: function () {
+                      //close
+                  },
+              },
+              onContentReady: function () {
+                  // bind to events
+                  var jc = this;
+                  this.$content.find("form").on("submit", function (e) {
+                      // if the user submits the form by pressing enter in the field.
+                      e.preventDefault();
+                      jc.$$formSubmit.trigger("click"); // reference the button and click it
+                  });
+              }
+          });
+
+        });
 
 
         $("#table-applicants tbody").on("click", ".ref-del", function() {
@@ -1167,4 +1233,40 @@ function at_referral_delete( $id )
   drupal_set_message("Referral delete successfully.");
 
   drupal_goto ('at-portal/my-referral');
+}
+
+
+function at_referral_update($ref_id)
+{
+
+  $out = array();
+  $out['status'] = 'OK';
+  $out['msg'] ="";
+
+  $end_date = date_create($_REQUEST['ref_end_date']);
+  $ref_comment = $_REQUEST['ref_comment'];
+
+  if ( !$end_date )
+  {
+    $out['status'] = 'Failed';
+    $out['msg'] ="End date is not a valid date.";
+    drupal_json_output($out);
+    exit;
+  }
+
+  if ( $end_date > date_create('+2 years') )
+  {
+    $out['status'] = 'Failed';
+    $out['msg'] ="End date cannot be more then 2 years from current date.";
+    drupal_json_output($out);
+    exit;
+  }
+
+  db_update('dh_referral')->fields(array('r_end' => $end_date->format('Y-m-d')))->condition('r_id', $ref_id)->execute();
+  add_referral_activity($ref_id, "Comment", $ref_comment);
+
+  $out['msg'] ="Referral End-date/Commnet updated successfully.";
+
+  drupal_json_output($out);
+  exit;
 }
