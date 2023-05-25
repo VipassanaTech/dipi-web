@@ -1761,7 +1761,6 @@ function generate_cell_list($centre, $course)
 	{
 		$batch_size[$g] = count($cell_alloc['Old'][$g]); 
 		$batch = 0; $count = 0;
-		$c = 0;
 		$keys = array_keys($cell_alloc['Old'][$g]);
 		foreach($data[$g]['old'] as $r)
 		{
@@ -1772,12 +1771,11 @@ function generate_cell_list($centre, $course)
 			if ($r['aa_cell_fixed'])
 			{
 				$cells[$batch][$g][$r['aa_cell']] = $r['Full Name']." - ".$r['a_old'];
-				$c++; $count++;
 				continue;
 			}
 			$cells[$batch][$g][$cell_alloc['Old'][$g][$keys[$count]]] = $r['Full Name']." - ".$r['a_old'];
 			db_update('dh_applicant_attended')->fields(array('aa_cell_group' => $batch, 'aa_cell' => $cell_alloc['Old'][$g][$keys[$count]]))->condition('aa_id', $r['aa_id'])->execute();
-			$c++; $count++;
+			$count++;
 		}
 		if ( isset($_REQUEST['d']) && ($_REQUEST['d'] == 1) )
 		{
