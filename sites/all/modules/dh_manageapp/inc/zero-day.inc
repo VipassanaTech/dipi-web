@@ -1693,8 +1693,8 @@ function generate_cell_list($centre, $course)
 
 	foreach( $gender as $g )
 	{
-		$cell_alloc['Old'][$g] = $reserved['Reserved-old'][$g];
-		$cell_alloc['New'][$g] = $reserved['Reserved-new'][$g];
+		//$cell_alloc['Old'][$g] = $reserved['Reserved-old'][$g];
+		//$cell_alloc['New'][$g] = $reserved['Reserved-new'][$g];
 		if ( count($cell_alloc['Cells'][$g] ) > 0 )
 		{
 			/* Cells are given, so we fill up from old to new, no reservation for old/new separately */
