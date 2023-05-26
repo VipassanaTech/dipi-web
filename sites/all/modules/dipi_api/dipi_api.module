@@ -2792,12 +2792,11 @@ function _check_cred($data)
 
         $tmp = explode('|||', $cred);
 
-        watchdog("atapp cred", $tmp);
-
         if(count($tmp) != 2)
         {
             $ret['Success'] = false;
             $ret['Message'] = "Credentials string is not as per the pattern.";
+	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret; 
         }
 
@@ -2811,6 +2810,7 @@ function _check_cred($data)
         {
             $ret['Success'] = false;
             $ret['Message'] = "Credentials don't match.";
+	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret; 
         }
 
@@ -2823,6 +2823,7 @@ function _check_cred($data)
         {
             $ret['Success'] = false;
             $ret['Message'] = "Credentials don't match.";
+	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret;
         }
 
@@ -2832,12 +2833,14 @@ function _check_cred($data)
         {
             $ret['Success'] = true;
             $ret['Message'] = "Crednetials match";
+	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret;
         }
         else
         {
             $ret['Success'] = false;
             $ret['Message'] = "Credentials don't match.";
+	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret;
         }
     }
