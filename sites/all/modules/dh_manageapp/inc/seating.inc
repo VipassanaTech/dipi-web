@@ -6,8 +6,10 @@ function dh_generate_seating_plan2($centre, $course, $pdf = '')
 	if (!is_array($course))
 		$course = array($course);
 
-	$out = '<html><head><script src="https://code.jquery.com/jquery-3.6.0.js"></script>
-  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+	$out = '<html><head>
+  <script src="https://unpkg.com/sortablejs-make/Sortable.min.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery-sortablejs@latest/jquery-sortable.js"></script>
   <script>
   (function ($) { 
 
@@ -27,11 +29,31 @@ function dh_generate_seating_plan2($centre, $course, $pdf = '')
   	 	assign_seat("m-R8C3", {"acco": "B-101", "name": "Vinod Kharat", "os": "(O) s:10 L:2", "age": 30, "backrest": true});
   	 	assign_seat("m-R8C4", {"acco": "B-102", "name": "Anand Sri", "os": "(O) s:10 L:2", "age": 30, "backrest": false});
 
-  	 	$( "ul" ).sortable({
-  	 		items: "li:not(.ui-state-disabled)",
-      		connectWith: "ul"
-    	});
-    	$("ul").disableSelection();
+  	 	//var el = document.getElementById("sortable-m");
+  	 	$("#sortable-m").sortable({group: "list", animation: 200, ghostClass: "ghost", "filter": ".ui-state-disabled", 
+  	 		onStart: function() {
+			        $(".ui-state-disabled", this).each(function(){
+			            var $this = $(this);
+			            $this.data("pos", $this.index());
+			        });
+  	 			},
+  	 		onChange: function() {
+  	 			
+		        $sortable = $(this);
+		        $statics = $(".ui-state-disabled", this).detach();
+		        $helper = $("<div class=\"ui-state-default\"></div>").prependTo(this);
+		        $statics.each(function(){
+		            var $this = $(this);
+		            var target = $this.data("pos");
+		            
+		            $this.insertAfter($("div", $sortable).eq(target));
+		        });
+		        $helper.remove();
+		        
+  	 		}
+  	 	});
+
+    	$("#sortable-m").disableSelection();
   	 });
 
   })(jQuery);
@@ -115,7 +137,7 @@ function get_seating_layout($ini, $prefix)
 		$col_end = $max_seats_per_row;
 	}
 	$suffix = "m";
-	$out = '<div class="seating-plan" style="width: '.$width.'px"><ul class="sortable-'.$suffix.' ui-sortable">';
+	$out = '<div class="seating-plan"><div id="sortable-'.$prefix.'" class="sortable-'.$suffix.' ui-sortable list-group" style="width: '.$width.'px">';
 	$seat_classes = array( 's-acco', 's-name', 's-old-student', 's-age', 's-backrest');
 	/* Calculate grid layout */
 	for ($r=($max_rows - 1); $r >= 0; $r--) 
@@ -144,17 +166,17 @@ function get_seating_layout($ini, $prefix)
 				$class_disabled = "ui-state-disabled";
 			}
 			$seat_no = 'R'.$row_no.'C'.(abs($c)+1);
-			$out .= '<li class="ui-state-default '.$class_disabled.'"><div class="seat '.$class.'" seat-no="'.$prefix.'-'.$seat_no.'" >';
+			$out .= '<div class="ui-state-default '.$class_disabled.'"><div class="seat '.$class.'" seat-no="'.$prefix.'-'.$seat_no.'" >';
 			$out .= '<div class="s-seat-no">'.$seat_no.'</div>';
 			foreach ($seat_classes as $value) 
 			{
 				$out .= '<div class="'.$value.'"></div>';
 			}
-			$out .= '</div></li>';
+			$out .= '</div></div>';
 			//<div class="s-seat-no">R'.$row_no.'C'.(abs($c)+1).'</div></div></li>';
 		}
 	}
 
-	$out .= '</ul></div>';
+	$out .= '</div></div>';
 	return array('max rows' => $max_seats_per_row, 'out' => $out );
 }

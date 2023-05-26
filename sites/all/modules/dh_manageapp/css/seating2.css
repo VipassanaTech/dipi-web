@@ -1,22 +1,8 @@
-div,td, li {
+div {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 	line-height: 1.42857143;
 	color: #333;
 }
-
-ul {
-    list-style-type: none;
-    padding-inline-start: 0px;
-    float: left;
-}
-
-.main-div {
-	margin-right: 15px;
-}
-.chowky-div {
-	margin-right: 15px;
-}
-
 
 .ui-state-default {
 	font-size: 14px;
@@ -25,6 +11,11 @@ ul {
 	width: 140px;
 	font-weight: bold;
 	position:relative;
+	display: inline-block;
+}
+
+.handle {
+	cursor: grab;
 }
 
 .seat {
@@ -38,22 +29,13 @@ ul {
 }
 
 .seating-plan .disabled {
-	border: 0;
+	background-color: #ccccc;
 }
 
 
-.sortable-m .ui-state-default, .bg-table-m .ui-state-default {
-	float: right;
+.ui-sortable {
+	display: inline-block;
 }
-
-.sortable-f .ui-state-default, .bg-table-f .ui-state-default {
-	float: left;
-}
-
-.bg-table-m .ui-state-default, .bg-table-f .ui-state-default {
-	border: 1px solid #000000;
-}
-
 
 .seat-no {
 	font-size: 16px;
@@ -65,10 +47,6 @@ ul {
 	text-align: center;
 	font-weight: bold;
 	font-size: 18px;
-}
-
-.main-div,.chowky-div {
-	display: inline-block;
 }
 
 .footer {
@@ -126,7 +104,7 @@ ul {
 	background-color: #000000;
 }
 
-.bg-table-m .s-backrest-yes, .bg-table-f .s-backrest-yes {
+.s-backrest-yes {
 	background-color: #ffffff;
 }
 
@@ -135,26 +113,9 @@ ul {
 }
 
 
-.bg-table-m .s-teacher, .bg-table-f .s-teacher {
+.s-teacher {
 	background-color: #ffffff;
 }
-/*
-.seat-background, .background-seat-no {
-	position:absolute;
-	z-index: -1000 !important;	
-}
-*/
-
-.bg-table-m, .bg-table-f {
-	position:absolute;
-	z-index: -1000 !important;
-}
-
-
-.bg-table-m .cwch, .bg-table-f .cwch {
-	margin-left: 40px;
-}
-
 
 @media print
 {    
