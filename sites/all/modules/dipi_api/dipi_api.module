@@ -2792,6 +2792,8 @@ function _check_cred($data)
 
         $tmp = explode('|||', $cred);
 
+        watchdog("atapp cred", $tmp);
+
         if(count($tmp) != 2)
         {
             $ret['Success'] = false;
