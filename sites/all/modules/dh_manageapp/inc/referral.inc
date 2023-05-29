@@ -1339,6 +1339,7 @@ function referral_delete( $id )
 	db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
 
 	db_query("update dh_applicant set a_referral=0 where a_referral=$id");
+  add_referral_activity($id, "Deleted", "Referral Deleted");
 	
 	if (arg(0) == 'center-referral')
 		drupal_goto ('center-referral/'.arg(1));

@@ -2107,7 +2107,8 @@ function _get_student_finalize()
     $c_course = arg(1);
 
     $q = "SELECT count(a_attended) as TotalAttended,
-      td.td_key as CourseType
+      td.td_key as CourseType,
+      c_list_only as ListOnly
       from dh_applicant a
       left join dh_course c on a.a_course=c.c_id
       left join dh_type_detail td on c.c_course_type=td.td_id
@@ -2121,7 +2122,7 @@ function _get_student_finalize()
         {
             $row = array();
             $row['Count'] = intval($r['TotalAttended']);
-            if ($r['CourseType'] == '1-DayOSC')
+            if ($r['CourseType'] == '1-DayOSC' || $r['ListOnly'])
               $row['Count'] = 1;
         }
     } else 
