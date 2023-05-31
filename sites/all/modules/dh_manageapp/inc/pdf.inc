@@ -596,7 +596,7 @@ function map_application_fields_lc($row)
 	$fields['60Day'] = $row['ac_60d'];
 	$fields['TSC'] = $row['ac_tsc'];
 	$fields['Dhamma Service'] = $row['ac_service'];
-	$fields['Other courses served'] = $row['al_served_other'];
+	$fields['Other courses served'] = $row['ae_seva_details']." ".$row['al_served_other'];
 
 	if (isset($row['al_10day_after_last_lc']) && !is_null($row['al_10day_after_last_lc']))
 	{
