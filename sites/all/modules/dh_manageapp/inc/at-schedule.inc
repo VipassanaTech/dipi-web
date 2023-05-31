@@ -1112,6 +1112,9 @@ function dh_assign_teacher_form($form, &$form_state)
 {
 	$form['ct_teacher'] = array( '#title' => 'Teacher',  '#type' => 'textfield', 
 		'#weight' => 1, '#size' => 50, '#required' => 1, 
+    '#attributes' => array(
+        'placeholder' => t('Start typing AT Name for suggestions, then select the AT.'),
+      ),
  		'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
@@ -1200,6 +1203,9 @@ function dh_assign_trainee_teacher_form($form, &$form_state)
 {
 	$form['ct_trainee_teacher'] = array( '#title' => 'Trainee Teacher',  '#type' => 'textfield', 
 		'#weight' => 1, '#size' => 50, '#required' => 1, 
+    '#attributes' => array(
+        'placeholder' => t('Start typing Trainee Teacher Name for suggestions, then select the name.'),
+      ),
  		'#attached' => array(
       		'library' => array(
         		array('system', 'ui.autocomplete'),
