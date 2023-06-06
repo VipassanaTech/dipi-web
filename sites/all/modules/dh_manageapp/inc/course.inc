@@ -336,7 +336,7 @@ function dh_manage_courses()
 						<th>Status Male (N/O)</th>
 						<th>Status Female (N/O)</th>
 						<th>Comments</th>
-						<th>Description</th>
+						<th>Description<br>(Course Type)</th>
 						<th>Finalized?</th>
 					</tr>
 				</thead>
