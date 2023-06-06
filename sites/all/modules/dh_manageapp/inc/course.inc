@@ -120,7 +120,7 @@ function dh_manage_courses()
 				        { name: "dh_course.c_list_only", label: "List Only", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_date_change", label: "Date Change", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_comments", label: "Comments", type: "textarea" },
-				        { name: "dh_course.c_description", label: "Description", type: "textarea" },
+				        { name: "dh_course.c_description", label: "Description", type: "textarea", fieldInfo: "If Description field is set, it will be displayed instead of default course-type (overrides course-type).<br>Please do not use it as comment." },
 				        { name: "dh_course.c_at_m_count", label: "Male Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 						{ name: "dh_course.c_at_f_count", label: "Female Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 				        { name: "dh_course.c_combined_seat_course", label: "Combine Seating with Course", type: "select2", def: "0" },
