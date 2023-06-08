@@ -885,6 +885,10 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			if ( $app['a_status'] <> 'Left' )
 			{
 				$app['a_status'] =  $status_ce['STATUS-CONFIRMED'];
+
+        if($old_status == $status_ce['STATUS-EXPECTED'])
+          $app['a_status'] =  $old_status;
+
 				$conf_no = $res['a_conf_no'];
 				if ( strlen($new) == 2 )
 				{
