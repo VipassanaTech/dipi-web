@@ -15,7 +15,7 @@
     border: 1px solid;
     border-color: gray;
     border-style: solid;
-    margin: 0 15px 25px 0;
+    margin: 25px 15px 0 0;
     width: 197px;
     height: 110px;	
     text-align: center;
@@ -24,6 +24,7 @@
 
 .header-day0 {
 	width: 650px;
+  clear: both;
 }
 
 
@@ -68,4 +69,11 @@
 
 .footer {
 	page-break-after: always;
+}
+
+
+@media print {
+  .table-student-chit {
+    break-inside: avoid;
+  }
 }

@@ -2057,7 +2057,7 @@ function dh_student_chit($centre, $course)
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, a_f_name, a_l_name";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, a_f_name, a_l_name";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -2118,7 +2118,7 @@ function dh_student_chit($centre, $course)
 			elseif ($r['aa_backrest'])
 				$seat_type = 'Backrest';
 	
-			$out .= '<div class="table-student-chit">'.$seat_type.': '.$r['SeatNo'].'<br>'.$r['a_l_name'].'<br>'.$r['a_f_name'].'<br>Cell: '.$r['aa_cell'].'<br>Room No.:'.$r['AccoNo'].'</div>';
+			$out .= '<div class="table-student-chit">'.$seat_type.': '.$r['aa_seat'].'<br>'.$r['a_l_name'].'<br>'.$r['a_f_name'].'<br>Cell: '.$r['aa_cell'].'<br>Room No.:'.$r['AccoNo'].'</div>';
 			$count++;
 		}
 		$out .= '</div>';		
