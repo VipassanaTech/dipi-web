@@ -37,6 +37,9 @@ function dh_manage_day_zero()
 			zeroize_new_course_data(arg(1), arg(2));
 			return dh_generate_seating_plan2(arg(1), arg(2));
 		break;
+    case 'seating-update':
+      dh_update_seating(arg(1), arg(2));
+    break;
 		case 'day0-list':
 			return dh_zero_day_list(arg(1), arg(2));
 		break;		
@@ -759,7 +762,7 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 and a_type='Student' order by a_gender, aa_group, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 and a_type='Student' order by a_gender, aa_group, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -767,7 +770,7 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 		$data[strtoupper($r['a_gender'])][$r['a_old']?'old':'new'][$r['aa_group']][] = $r;
 	}
 
-	$header = array('SrNo', 'Student', 'RoomNo', 'Age', 'City', 'LongCourses', '10Day', 'CellNo', 'Occupation', 'Education', 'Languages', 'Comments');
+	$header = array('SrNo', 'Student', 'RoomNo', 'Age', 'City', 'LongCourses', '10Day', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
 	$attributes = array('class' => array('table-teacher-list') );
 	$title = '<div class="header-teacher"><div align="center" class="title"><b>Teacher List</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
@@ -796,6 +799,7 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 					$row[] = $r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
 					$row[] = $r['ac_teen']+$r['ac_10d']+$r['ac_stp'];
 					$row[] = $r['aa_cell'];
+          $row[] = $r['aa_seat'];
 					$row[] = $r['a_occupation'];
 					$row[] = $r['a_education'];
 					$row[] = $r['a_langs'];
@@ -843,8 +847,8 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
     $(document).ready(function(){
 
      $(document).on("click", ".remove-column", function(){
-        $("table tr").find("td:eq(10),th:eq(10)").remove();
-        $("table tr").find("td:eq(10),th:eq(10)").remove();
+        $("table tr").find("td:eq(11),th:eq(11)").remove();
+        $("table tr").find("td:eq(11),th:eq(11)").remove();
     });
 
     });
@@ -892,7 +896,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by aa_group, a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_seat_row, aa_seat_col, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_seat, aa_seat_row, aa_seat_col, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -900,7 +904,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		$data[strtoupper($r['a_gender'])][] = $r;
 	}
 
-	$header = array('SrNo', 'Student', 'Age', 'Room', 'EmergencyName', 'EmergencyNum',  'Cell',  'Group', 'Set', 'Seat' );
+	$header = array('SrNo', 'Student', 'Age', 'Room', 'EmergencyName', 'EmergencyNum',  'Cell', 'Seat', 'Group', 'Set' );
 	$attributes = array('class' => array('table-manager-list') );
 	$title = '<div class="header-manager"><div align="center" class="title"><b>Manager List</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
@@ -931,13 +935,9 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 				$row[] = $r['a_emergency_name'].' ('.$r['a_emergency_relation'].')';
 				$row[] = $r['a_emergency_num'];
 				$row[] = $r['aa_cell'];
+        $row[] = $r['aa_seat'];
 				$row[] = $group;
 				$row[] = '['.$teacher_m[$g][$r['aa_group']]['t_code'].']';
-				$extra = '';
-				if ($r['aa_chowky']) $extra .= '(CW)';
-				if ($r['aa_chair']) $extra .= '(CH)';
-				if ($r['aa_backrest']) $extra .= '(BR)';
-				$row[] = 'R'.($r['aa_seat_row']+1).",C".($r['aa_seat_col']+1).$extra;
 				$rows[] = $row;
 				$total++;
 			}
@@ -1050,6 +1050,64 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		}
 	});
 
+
+  $(".store-seat-changes").click( function(){
+    //console.log("inside click event");
+    $(this).off("click");
+    $(this).html("Processing... updated seating plan will be loaded soon.").css({
+    });
+    update_array = [];
+    current_path = window.location.pathname;
+    update_path = current_path.replace("seating", "seating-update");
+    $(".ui-sortable li .s-app-id").each(function(){
+      closest_ul = $(this).closest("ul");
+      student_name = $(this).siblings(".s-name ").html();
+      application_id = $(this).attr("data-s-app-id");
+      col_per_row = $(this).attr("data-cols");
+      if(application_id)
+      {
+        no_of_li = closest_ul.children("li").length;
+        current_li = $(this).closest("li").index()+1;
+        current_position = no_of_li - current_li + 1;
+        student_row = Math.ceil(current_position / col_per_row) - 1;
+        student_column = (current_position % col_per_row) - 1;
+        if(student_column == -1)
+          student_column = col_per_row - 1 ;
+
+        // console.log("app_id: "+$(this).attr("data-s-app-id"));
+        // console.log("student_name: " + student_name);
+        // console.log("col per row: " + col_per_row);
+        // console.log("no_of_li: " + no_of_li);
+        // console.log("current_li: " + current_li);
+        // console.log("current_position: " + current_position);
+        //console.log("current_path: " + current_path);
+        //console.log("update_path: " + update_path);
+        //console.log("name: "+student_name+" id: "+application_id+" row: "+student_row+" column: "+student_column);
+
+        update_array.push([application_id, student_row, student_column]);
+      }
+    });
+
+    $.getJSON( update_path, { u: JSON.stringify(update_array) } )
+        .done(function( json ) {
+          if (json.status == "OK")
+          {
+            setTimeout(function() {
+              window.location = current_path;
+            }, 5000);
+          }
+          else
+          {
+            alert("Update failed!\n"+json.msg);
+          }
+          })
+          .fail(function() {
+            alert("Update failed fail!");
+          });
+
+      $(".store-seat-changes").on("click");
+  });
+
 	$(".sortable-m .drag-img").hide();
 	$(".sortable-f .drag-img").hide();
 
@@ -1096,11 +1154,13 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
 		<p>3- Create empty rows for a grid by clicking "Add Empty Row" button if needed.</p>
-		<p>4- Print by clicking "Print Seating Plan" button or CTL-P.</p>
-		<p>5- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+    <p>4- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
+		<p>5- Print by clicking "Print Seating Plan" button or CTL-P.</p>
+		<p>6- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
-		<button class="no-print" onclick="window.print()">Print Seating Plan</button>';
+		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
+    <button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
 	if ( is_array($course) )
 	{
 		$course_name = '';
@@ -1368,14 +1428,23 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array())
 
 function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 {
-	if (count($seats) <= 0)
+	if (count((array)$seats) <= 0)
 		return '';
 
-	$counter = 0;
+  // var_dump($seats);
+  // var_dump(max(array_keys($seats)));
 
-	foreach ($seats as $a)
-		foreach ($a as $b)
-			$counter++;
+  for($i=0; $i <= max(array_keys($seats)); $i++)
+  {
+    if(!isset($seats[$i]))
+      $seats[$i] = '';
+  }
+
+  $counter = count($seats) * $cushion_cols;
+
+	// foreach ($seats as $a)
+	// 	foreach ($a as $b)
+	// 		$counter++;
 
 	if ($direction == LEFT_TO_RIGHT) $append = '-m'; else $append = '-f';
 
@@ -1394,25 +1463,40 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 			//if ($direction == LEFT_TO_RIGHT)
 				//$col2 = $col;
 			//else
-				$col2 = ($cushion_cols - $col -1);
+			$col2 = ($cushion_cols - $col -1);
+
+      $s_no = $counter;
+      $counter--;
+      if ($alpha) {
+        $s_no = sprintf("%c%d", (65+$col2), ($row+1));
+      }
+      $aa_seat = $s_no;
+      $s_no = '<span class="seatnumber">'.$s_no.'</span>';
+
+      $seat_no = '<div class="seat-no">'.$s_no.'</div>';
+
 			if ( isset($seats[$row][$col2]) )
 			{
 				$r = $seats[$row][$col2];
+
+        if ($r['aa_chowky'])
+          $aa_seat = 'CW-'.$aa_seat;
+        if ($r['aa_chair'])
+          $aa_seat = 'CH-'.$aa_seat;
+
+        $q = "update dh_applicant_attended aa left join dh_applicant a on a.a_id = aa.aa_applicant set aa_seat=:aa_seat where a_id=:a_id";
+        db_query($q, array(":aa_seat" => $aa_seat, ":a_id" => $r['a_id']));
 				if ($r['a_old']) $t = '(O)'; else $t ='';
 				$teacher = "";	
 				//$s_no = $r['counter'];
-				$s_no = $counter;
-				$counter--;
-				if ($alpha) {
-					$s_no = sprintf("%c%d", (65+$col2), ($row+1));	
-				}
-				$s_no = '<span class="seatnumber">'.$s_no.'</span>';
-				if ($r['aa_chowky'])
-					$s_no = '<span class="cwch">CW-</span>'.$s_no;
-				if ($r['aa_chair'])
-					$s_no = '<span class="cwch">CH-</span>'.$s_no;
 
-				$seat_no = '<div class="seat-no">'.$s_no.'</div>';
+      if ($r['aa_chowky'])
+        $s_no = '<span class="cwch">CW-</span>'.$s_no;
+      if ($r['aa_chair'])
+        $s_no = '<span class="cwch">CH-</span>'.$s_no;
+
+      $seat_no = '<div class="seat-no">'.$s_no.'</div>';
+
 				$br = '';
 				if ($r['aa_backrest'] || $r['aa_chowky']) $br = 's-backrest-yes';
 				$age_info = ' ('.$r['Age'].')'; 
@@ -1425,7 +1509,8 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 	  			    if( $r['ac_teacher'] )
 				  	   $teacher = "s-teacher";
 				}
-				$info = '<div class="s-seat-no">'.$seat_no.'</div>'.
+				$info = '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
+            '<div class="s-seat-no">'.$seat_no.'</div>'.
 						'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].'</div>'.
 						'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
 						'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.						
@@ -1434,6 +1519,11 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 
 				$out .= $info;
 			}
+      else
+      {
+        $out .= '<div class="s-app-id" data-s-app-id=""></div>'.
+          '<div class="s-seat-no">'.$seat_no.'</div>';
+      }
 			$out .= '</td>';
 		}			
 		$out .= '</tr>';	
@@ -1448,6 +1538,37 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 
 	return $ret;
 }
+
+
+
+function dh_update_seating($centre, $course)
+{
+  $updates = $_REQUEST['u'];
+  $updates = json_decode($updates);
+  // watchdog("sitting-update", print_r($updates, true));
+
+  foreach($updates as $update)
+  {
+    $q ="update dh_applicant_attended aa left join dh_applicant a on a.a_id= aa.aa_applicant set aa_seat_row=:aa_seat_row, aa_seat_col=:aa_seat_col where a.a_id=:a_id and a_center=:a_center and a_course=:a_course";
+    db_query($q,
+      array(
+        ":aa_seat_row" => $update[1],
+        ":aa_seat_col" => $update[2],
+        ":a_id" => $update[0],
+        ":a_center" => $centre,
+        ":a_course" => $course,
+      )
+    );
+  }
+
+    //$out['status'] = 'Failed';
+    $out['status'] = 'OK';
+    //$out['msg'] ="Invalid Group";
+    drupal_json_output($out);
+    exit;
+}
+
+
 
 function dh_zero_day_list($centre, $course, $pdf = '')
 {
