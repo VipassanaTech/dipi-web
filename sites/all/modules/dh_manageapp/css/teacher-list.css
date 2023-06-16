@@ -34,17 +34,19 @@ table.table-manager-list {
 }
 
 table.table-teacher-list tr th:nth-child(1) { width: 35px; }
-table.table-teacher-list tr th:nth-child(2) { width: 200px; }
-table.table-teacher-list tr th:nth-child(3) { width: 70px; }
+table.table-teacher-list tr th:nth-child(2) { width: 170px; }
+table.table-teacher-list tr th:nth-child(3) { width: 50px; }
 table.table-teacher-list tr th:nth-child(4) { width: 30px; }
 table.table-teacher-list tr th:nth-child(5) { width: 70px; }
 table.table-teacher-list tr th:nth-child(6) { width: 40px; }
 table.table-teacher-list tr th:nth-child(7) { width: 40px; }
 table.table-teacher-list tr th:nth-child(8) { width: 40px; }
-table.table-teacher-list tr th:nth-child(9) { width: 120px; }
-table.table-teacher-list tr th:nth-child(10) { width: 125px; }
-table.table-teacher-list tr th:nth-child(11) { width: 70px; }
-table.table-teacher-list tr th:nth-child(12) { width: 200px; }
+table.table-teacher-list tr th:nth-child(9) { width: 50px; }
+table.table-teacher-list tr th:nth-child(10) { width: 120px; }
+table.table-teacher-list tr th:nth-child(11) { width: 125px; }
+table.table-teacher-list tr th:nth-child(12) { width: 70px; }
+table.table-teacher-list tr th:nth-child(13) { width: 300px; }
+
 
 table.table-teacher-list th {
 	font-weight: bold;
