@@ -675,7 +675,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
-			                	var tmp = table.rows().data();
+			                	var tmp = table.rows({search:"applied"}).data();
 			                	var a;
 			                	if ( column == 0 )
 			                	{
