@@ -504,7 +504,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$attended = 0;	
 	if (!$add)
 	{
-		if (isset($edit_data['aa_acco']) && ($edit_data['aa_acco'] <> '') )
+		// if (isset($edit_data['aa_acco']) && ($edit_data['aa_acco'] <> '') )
+    if ($edit_data['a_attended'] == 1)
 			$attended = 1;		
 	}
 	$gender_selected = isset($form_state['values']['a_gender']) ? $form_state['values']['a_gender'] : 'M';
