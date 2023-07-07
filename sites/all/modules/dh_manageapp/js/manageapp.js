@@ -47,6 +47,14 @@
 			$("#attending-fields :input").prop("disabled", true);				
 	}
 
+  function check_left()
+  {
+    if($("input[name=aa_left]:checked").val() == "1")
+      $("#left-fields :input").prop("disabled", false);
+    else
+      $("#left-fields :input").prop("disabled", true);
+  }
+
 	function check_acco()
 	{
 		//alert("Acco - "+$("input[name=acco_old]").val());
@@ -84,6 +92,7 @@
 		$(document).ajaxComplete(function () {
 			//alert("This works");
   			check_attending();
+        check_left();
 		  	check_oldstudent();
 		  	check_acco();
 		  	check_relationship();
@@ -110,6 +119,10 @@
 		$(document).on("change", "input[type=radio][name=attending]", function(){
 			check_attending();
 		});
+
+    $(document).on("change", "input[type=radio][name=aa_left]", function(){
+      check_left();
+    });
 
 		$(document).on("change", "input[type=radio][name=a_old]", function(){
 			check_oldstudent();
