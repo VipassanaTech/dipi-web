@@ -571,10 +571,11 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'1':$edit_data['aa_group'] , '#weight' => 97, '#required' => 0 , '#suffix' => '</div>');
 
 	$group = "Course Left";
-	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Left',  '#collapsible' => true, '#collapsed' => true);
+	$form[$group] = array('#type' => 'fieldset', '#title' => 'Course Left',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['aa_left'] = array('#title' => 'Course Left', '#type' => 'radios', 
 		'#options' => array('0' => 'No', "1" => 'Yes')  , 
-		'#default_value' => $add?'0':$edit_data['aa_left'], '#weight' => 98, '#required' => 0);
+		'#default_value' => isset($edit_data['aa_left'])?$edit_data['aa_left']:'0', '#weight' => 98, '#required' => 0,
+    '#suffix' => '<div id="left-fields">');
 	$form[$group]['aa_left_on'] = array('#title' => 'Left on Date/Time', '#type' => 'date_popup', '#size' => 20, '#weight' => 99, 
 		'#default_value' => $add?'':$edit_data['aa_left_on'], '#required' => 0, 
 		'#date_format' => 'Y-m-d H:i', '#datepicker_options' => array(
@@ -583,7 +584,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
     	),'#date_year_range' => '-1:0', '#date_label_position' => 'above',
 	);
 	$form[$group]['aa_left_comment'] = array('#title' => 'Left Comments', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['aa_left_comment'], '#rows' => 3,  '#weight' => 100, '#required' => 0);
+		'#default_value' => $add?'':$edit_data['aa_left_comment'], '#rows' => 3,  '#weight' => 100, '#required' => 0, '#suffix' => '</div>');
 
 
 	if ($add)
