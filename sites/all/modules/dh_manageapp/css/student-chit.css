@@ -76,4 +76,15 @@
   .table-student-chit {
     break-inside: avoid;
   }
+
+  .no-print, .no-print *
+  {
+      display: none !important;
+  }
+}
+
+
+.name {
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
