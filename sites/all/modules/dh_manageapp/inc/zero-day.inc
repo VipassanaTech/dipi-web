@@ -2083,6 +2083,8 @@ function dh_student_chit($centre, $course)
 	$title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$out .= $title;
+  $out .= '<button type="button" class="no-print remove-seat">Click to remove Seats</button>';
+  $out .= '<button type="button" class="no-print remove-cell">Click to remove Cells</button>';
 	foreach( $gender as $g )
 	{
 		$count = 1;
@@ -2124,12 +2126,30 @@ function dh_student_chit($centre, $course)
 			elseif ($r['aa_backrest'])
 				$seat_type = 'Backrest';
 	
-			$out .= '<div class="table-student-chit">'.$seat_type.': '.$r['aa_seat'].'<br>'.$r['a_l_name'].'<br>'.$r['a_f_name'].'<br>Cell: '.$r['aa_cell'].'<br>Room No.:'.$r['AccoNo'].'</div>';
+			$out .= '<div class="table-student-chit"><div class="seat">'.$seat_type.': '.$r['aa_seat'].'</div><div class="name">'.$r['a_f_name'].'<br>'.$r['a_l_name'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="room">Room No.:'.$r['AccoNo'].'</div></div>';
 			$count++;
 		}
 		$out .= '</div>';		
 	}
 	$out .= '</body></html>';
+  $out .= '
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script>
+    (function ($) {
+    $(document).ready(function(){
+
+      $(document).on("click", ".remove-seat", function(){
+          $(".seat").remove();
+      });
+
+      $(document).on("click", ".remove-cell", function(){
+          $(".cell").remove();
+      });
+
+    });
+    })(jQuery);
+    </script>
+    ';
 	print $out;
 	exit;
 }
