@@ -1501,7 +1501,7 @@ function at_meet_apply()
     exit;
   }
 
-  $applied = db_query("select a_id  FROM dh_applicant a left join dh_applicant_course ac on a.a_id=ac.ac_applicant where ac_teacher_code='".$ac_teacher_code."'")->fetchField();
+  $applied = db_query("select a_id  FROM dh_applicant a left join dh_applicant_course ac on a.a_id=ac.ac_applicant where ac_teacher_code=:ac_teacher_code and a_course=:a_course and a_center=:a_center", array(":ac_teacher_code"=>$ac_teacher_code, ":a_course"=>$course, ":a_center"=>$center))->fetchField();
 
   if($applied)
   {
