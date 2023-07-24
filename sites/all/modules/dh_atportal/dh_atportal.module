@@ -1518,6 +1518,7 @@ function at_meet_apply()
   $app['a_attended'] = 0;
 
   $app['a_f_name'] = $at_details['t_f_name'];
+  $app['a_m_name'] = "";
   $app['a_l_name'] = $at_details['t_l_name'];
   $app['a_address'] = $at_details['t_address'];
   $app['a_country'] = $at_details['t_country'];
