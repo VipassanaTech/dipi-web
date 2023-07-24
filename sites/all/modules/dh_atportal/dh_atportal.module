@@ -130,6 +130,16 @@ function dh_atportal_menu()
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
 
+    $items['at-portal/at-meet'] = array('title' => t('AT-Meet'),
+         'page callback' => 'at_meet',
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
+    $items['at-portal/at-meet/%/%'] = array('title' => t('Apply AT-Meet'),
+         'page callback' => 'at_meet_apply',
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
     return $items;
 }
 
@@ -367,6 +377,7 @@ function dh_atportal_dashboard()
 		'Courses Allotted to me/Applied by me' => 'at-portal/applied-courses-list',
 		'Referral List' => 'referral',
     'My Referral List' => 'at-portal/my-referral',
+    'Apply for AT-Meeting' => 'at-portal/at-meet',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1><ul>';
@@ -1267,6 +1278,283 @@ function at_referral_update($ref_id)
 
   $out['msg'] ="Referral End-date/Commnet updated successfully.";
 
+  drupal_json_output($out);
+  exit;
+}
+
+
+function at_meet()
+{
+
+  global $user;
+
+  $at_id = db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$user->name' limit 1")->fetchField();
+
+  if (!$at_id)
+  {
+    drupal_set_message("This option is only available for AT", "error");
+    drupal_goto("at-portal");
+  }
+
+
+  $q = "select co.c_id as 'course_id', c.c_id as 'center_id', co.c_name as 'course_name', co.c_start as 'course_start', co.c_end as 'course_end'  FROM dh_course co left join dh_center c on co.c_center=c.c_id where co.c_course_type=70 and co.c_start >= curdate() and co.c_list_only=1 and c.c_at_meet=1 and co.c_deleted=0 and co.c_cancelled=0 order by co.c_start asc";
+
+  $res = db_query($q);
+  $rows = array();
+  while($r = $res->fetchAssoc())
+  {
+    $r['apply-link'] = "<button class=\"apply-for-at-meet\" type=\"button\">Apply</button>";
+    $rows[]=$r;
+  }
+
+  $out = theme('table', array('rows' => array(), 'attributes' => array('id' => 'at-meet')));
+
+  $data = json_encode($rows);
+
+
+
+  $js = '
+    (function ($) {
+      function do_datatable( tid, data )
+      {
+        var table = $(tid).DataTable({
+          dom: "lfr<\"clear\">tip",
+          data: data,
+          responsive: {
+                  details: {
+                      display: $.fn.dataTable.Responsive.display.childRowImmediate,
+                      type: "none",
+                      target: ""
+                  }
+              },
+          destroy: true,
+          "ordering": false,
+          "oLanguage": {"sEmptyTable": "No AT Meeting found."},
+          searching: false,
+          "columnDefs": [
+                      {
+                          "targets": [ 0 ],
+                          "searchable": false
+                      }
+              ],
+              columns: [
+                  { data: "apply-link", "title" : "Action" },
+                  { data: "course_name", "title" : "AT Meeting/Workshop" },
+                  { data: "course_start", "title" : "Start Date" },
+                  { data: "course_end", "title" : "End Date" },
+              ],
+          });
+
+
+
+
+        $("#at-meet tbody").on("click", ".apply-for-at-meet", function() {
+
+          var tr = $(this).closest("tr");
+          var row = table.row( tr );
+          course_id = row.data().course_id;
+          center_id = row.data().center_id;
+
+           $.confirm({
+              title: "Apply for "+row.data().course_name,
+              content:  "<form action=\"\" class=\"formName\">" +
+                "<div class=\"form-group\">" +
+                "<label>Specific Requirement/Need/Request(e.g chair, chowky or any other)</label>"+
+                "<textarea name=\"comment\" id=\"txt-comment\" rows=\"4\"></textarea>"+
+                "<label>Emergency Contact Person Name</label>"+
+                "<input type=\"text\" name=\"emergency-person\" id=\"emergency-person\" required>"+
+                "<label>Emergency Contact Person Number</label>"+
+                "<input type=\"text\" name=\"emergency-number\" id=\"emergency-number\" required>"+
+                "<label>Date and time of arrival at the centre</label>"+
+                "<input type=\"text\" name=\"arrival\" id=\"arrival\" required>"+
+                "<label>Date when you will be leaving the centre</label>"+
+                "<input type=\"text\" name=\"leaving\" id=\"leaving\" required>"+
+                "</div>" +
+                "</form>",
+              buttons: {
+                  Ok: {
+                      text: "Ok",
+                      btnClass: "btn-blue",
+                      action: function () {
+
+
+                          comment = this.$content.find("#txt-comment").val();
+                          emergency_person = this.$content.find("#emergency-person").val();
+                          if(!emergency_person){
+                              $.alert("Please enter Emergency Contact Person Name");
+                              return false;
+                          }
+                          emergency_number= this.$content.find("#emergency-number").val();
+                          if(!emergency_number){
+                              $.alert("Please enter Emergency Contact Person Number");
+                              return false;
+                          }
+                          arrival= this.$content.find("#arrival").val();
+                          if(!arrival){
+                              $.alert("Please enter Arrival Date and Time");
+                              return false;
+                          }
+                          leaving= this.$content.find("#leaving").val();
+                          if(!leaving){
+                              $.alert("Please enter Leaving Date");
+                              return false;
+                          }
+
+
+                          $.getJSON( "/at-portal/at-meet/"+center_id+"/"+course_id, { emergency_person: emergency_person, comment: comment, emergency_number: emergency_number, arrival: arrival, leaving: leaving } )
+                    .done(function( json ) {
+                      if (json.status == "OK")
+                      {
+                        alert(json.msg)
+                      }
+                      else
+                        alert("Not able to apply for AT Meeting/Workshop<br>"+json.msg)
+                    })
+                    .fail(function( jqxhr, textStatus, error ) {
+                      var err = textStatus + ", " + error;
+                      alert("Error in applying for AT Meeting/Workshop "+err);
+                  });
+
+
+                      }
+                  },
+                  Cancel: function () {
+                      //close
+                  },
+              },
+              onContentReady: function () {
+                  // bind to events
+                  var jc = this;
+                  this.$content.find("form").on("submit", function (e) {
+                      // if the user submits the form by pressing enter in the field.
+                      e.preventDefault();
+                      jc.$$formSubmit.trigger("click"); // reference the button and click it
+                  });
+              }
+          });
+
+
+
+
+        });
+
+
+
+
+      }
+      $(document).ready(function(){
+        var dataset = '.$data.';
+        do_datatable("#at-meet", dataset);
+      });
+    })(jQuery);
+  ';
+
+  drupal_add_js($js, 'inline');
+
+  drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+  drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+  drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+  drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+
+  return $out;
+}
+
+
+function at_meet_apply()
+{
+  $out = array();
+  $out['status'] = 'OK';
+  $out['msg'] ="";
+
+  global $user;
+
+  $at_details = db_query("select * from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$user->name' limit 1")->fetchAssoc();
+
+  if (!$at_details)
+  {
+    $out['status'] = 'Failed';
+    $out['msg'] ="Only AT can apply for AT-Meetings";
+    drupal_json_output($out);
+    exit;
+  }
+
+  $ac_teacher_code=strtoupper(str_replace('.', '-', $user->name));
+
+
+  $center = arg(2);
+  $course = arg(3);
+  $emergency_person = $_REQUEST['emergency_person'];
+  $emergency_number = $_REQUEST['emergency_number'];
+  $comment = "Arrival Info: ".$_REQUEST['arrival']."\n".
+      "Leaving Info: ".$_REQUEST['leaving']."\n".$_REQUEST['comment'];
+
+
+
+  $q = "select co.c_id  FROM dh_course co left join dh_center c on co.c_center=c.c_id where co.c_course_type=70 and co.c_start >= curdate() and co.c_list_only=1 and c.c_at_meet=1 and co.c_deleted=0 and co.c_cancelled=0 and c.c_id=:center and co.c_id=:course order by co.c_start asc";
+
+  $ret = db_query($q, array(":center" => $center, ":course" => $course))->fetchField();
+  if(!$ret)
+  {
+    $out['status'] = 'Failed';
+    $out['msg'] ="Invalid AT-Meeting";
+    drupal_json_output($out);
+    exit;
+  }
+
+
+  $app = array();
+  $app_ac = array();
+
+  $app['a_course'] = $course;
+  $app['a_center'] = $center;
+  $app['a_old'] = 1;
+  $app['a_type'] = "Student";
+  $app['a_status'] =  '';
+  $app['a_source'] = 'AT-Portal';
+  $app['a_created_by'] = $user->uid;
+  $app['a_created'] = date('Y-m-d H:i:s');
+  $app['a_updated_by'] = $user->uid;
+  $app['a_updated'] = date('Y-m-d H:i:s');
+  $app['a_attended'] = 0;
+
+  $app['a_f_name'] = $at_details['t_f_name'];
+  $app['a_m_name'] = "";
+  $app['a_l_name'] = $at_details['t_l_name'];
+  $app['a_address'] = $at_details['t_address'];
+  $app['a_country'] = $at_details['t_country'];
+  $app['a_phone_mobile'] = $at_details['t_mob_phone'];
+  $app['a_phone_mobile'] = $at_details['t_mob_phone'];
+  $app['a_email'] = $at_details['t_email'];
+  $app['a_gender'] = $at_details['t_gender'];
+  $app['a_dob'] = $at_details['t_dob'];
+  $app['a_extra'] = $comment;
+  $app['a_emergency_name'] = $emergency_person;
+  $app['a_emergency_num'] = $emergency_number;
+
+  if($at_details['t_full_t'])
+    $at_type = "T";
+  elseif($at_details['t_sat'])
+    $at_type = "SAT";
+  else
+    $at_type = "AT";
+
+  $app_ac['ac_teacher'] = 1;
+  $app_ac['ac_teacher_code'] = $ac_teacher_code;
+  $app_ac['ac_practice_details'] = $at_type;
+  $app_ac['ac_10d'] = 1;
+
+  $app_id = db_insert('dh_applicant')->fields($app)->execute();
+  dh_send_letter('applicant', $app_id, $app['a_status'] );
+
+  $app_ac['ac_applicant'] = $app_id;
+  $app_ac['ac_updated_by'] = $app_ac['ac_created_by'] = $user->uid;
+  $app_ac['ac_updated'] = $app_ac['ac_created'] = date('Y-m-d H:i:s');
+  db_insert('dh_applicant_course')->fields($app_ac)->execute();
+
+  $cmd = "/usr/bin/php status-trigger.php $app_id 'Received'";
+  exec($cmd);
+
+  $out['msg'] = "Application submitted successfully";
   drupal_json_output($out);
   exit;
 }
