@@ -15,8 +15,11 @@ function dh_manage_day_zero()
 			return dh_zero_main();
 		break;
 		case 'teacher-list':
+      $seating = 0;
+      if (isset($_REQUEST['seating']) && ($_REQUEST['seating'] == 1))
+        $seating = 1;
 			zeroize_new_course_data(arg(1), arg(2));
-			dh_generate_teacher_list(arg(1), arg(2));
+			dh_generate_teacher_list(arg(1), arg(2), $seating);
 		break;
 		case 'manager-list':			
 			zeroize_new_course_data(arg(1), arg(2));
@@ -59,7 +62,10 @@ function dh_manage_day_zero()
 			return dh_valuable_list(arg(1), arg(2));
 		break;		
 		case 'student-chit':
-			return dh_student_chit(arg(1), arg(2));
+      $seating = 0;
+      if (isset($_REQUEST['seating']) && ($_REQUEST['seating'] == 1))
+        $seating = 1;
+			return dh_student_chit(arg(1), arg(2), $seating);
 		break;
 		case 'app':
 			$row = array();
@@ -735,12 +741,14 @@ function dh_manageapp_attended( $centre, $course_id )
 	return $out;
 }
 
-function dh_generate_teacher_list($centre, $course, $pdf = '')
+function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
 	//drupal_add_css();
 	global $base_url;
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list.css");</style>';
   $out .= '<button type="button" class="no-print remove-column">Click to remove Languages and Comments Columns</button>';
+  $teacher_list_as_seating = $base_url."/teacher-list/$centre/$course?seating=1";
+  $out .= ' <a class="no-print" href="'.$teacher_list_as_seating.'/">Click to Generate Teacher list in order of sitting plan.</a>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -760,9 +768,14 @@ function dh_generate_teacher_list($centre, $course, $pdf = '')
 	if( !isset($teacher['F']))
 		$teacher['F'][1] = $teacher['M'][1];
 
+  $orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
+  if($seating)
+    $orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -2055,7 +2068,7 @@ function dh_valuable_list($centre, $course)
 }
 
 
-function dh_student_chit($centre, $course)
+function dh_student_chit($centre, $course, $seating)
 {
 	global $base_url;
 	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
@@ -2063,7 +2076,12 @@ function dh_student_chit($centre, $course)
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, a_f_name, a_l_name";
+
+  $orderby = " order by a_gender, a_f_name, a_l_name ";
+  if($seating)
+    $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -2083,8 +2101,10 @@ function dh_student_chit($centre, $course)
 	$title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$out .= $title;
+  $student_chit_as_seating = $base_url."/student-chit/$centre/$course?seating=1";
   $out .= '<button type="button" class="no-print remove-seat">Click to remove Seats</button>';
-  $out .= '<button type="button" class="no-print remove-cell">Click to remove Cells</button>';
+  $out .= ' <button type="button" class="no-print remove-cell">Click to remove Cells</button>';
+  $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Student Chit in order of sitting plan.</a>';
 	foreach( $gender as $g )
 	{
 		$count = 1;
