@@ -129,7 +129,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#size' => '20', 
 		'#weight' => 14, 
 		'#default_value' => isset($edit_data['s_phone_mobile'])?$edit_data['s_phone_mobile']:'',
-		'#required' => 1,
+		'#required' => 0,
 		'#maxlength' => 15,
 	);
 
@@ -139,7 +139,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#size' => '20',
 		'#weight' => 15, 
 		'#default_value' => isset($edit_data['s_email'])?$edit_data['s_email']:'',
-		'#required' => 1,
+		'#required' => 0,
 		'#maxlength' => 50,
 	);
 
@@ -200,7 +200,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['s_address'])?$edit_data['s_address']:'',
 		'#rows' => 3, 
 		'#weight' => 20,
-		'#required' => 1, 
+		'#required' => 0,
 		'#suffix' => '',
 		'#maxlength' => 200,
 	); 
@@ -220,7 +220,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#size' => '20',
 		'#weight' => 26, 
 		'#default_value' => isset($edit_data['s_country'])?$edit_data['s_country']:'',
-		'#required' => 1,
+		'#required' => 0,
 		'#maxlength' => 5,
 	);
 
@@ -237,7 +237,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#size' => '20',
 		'#weight' => 27, 
 		'#default_value' => isset($edit_data['s_state'])?$edit_data['s_state']:'',
-		'#required' => 1,
+		'#required' => 0,
 		'#maxlength' => 5,
 	);
 
