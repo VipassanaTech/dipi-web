@@ -935,7 +935,7 @@ function dh_referral_results()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
-	$q = "select r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+	$q = "select r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
     concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
     from dh_student a
     left join dh_student_course sc on (a.s_id=sc_student)
@@ -975,8 +975,13 @@ function dh_referral_results()
 		else
 		  $rs['name'] = $r['Full Name'];
 
+    $readonly = "";
+    if($r['r_readonly'])
+      $readonly = " checked=checked ";
+
+
 		if (user_access('delete referral list') && !$center_id)
-			$rs['del'] = l("Delete", "referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))) ;
+			$rs['del'] = l("Delete", "referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))).' <label for="'.$rs['ref_id'].'">r-only</label> <input type="checkbox" class="referral-readonly" id="'.$rs['ref_id'].'" value="'.$rs['ref_id'].'" '.$readonly.'>' ;
 		elseif (user_access('delete center referral list') && $center_id)
 			$rs['del'] = l("Delete", "center-referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))) ;
 		else
@@ -1294,6 +1299,103 @@ function dh_referral_results()
 					return confirm("Are you sure you want to delete record?");
 				});
 
+        $("#table-applicants tbody").on("change", ".referral-readonly", function() {
+          ref_id = $(this).attr("id");
+          check_box = $(this);
+
+          if($(this).is(":checked")) {
+
+           $.confirm({
+              title: "Add Readonly Flag to Referral.",
+              buttons: {
+                  Ok: {
+                      text: "Ok",
+                      btnClass: "btn-blue",
+                      action: function () {
+                          $.getJSON( "/referral/read-only/"+ref_id, { readonly: "1" } )
+                    .done(function( json ) {
+                      if (json.status == "OK")
+                      {
+                        alert(json.msg)
+                      }
+                      else
+                        alert("Update failed!\n"+json.msg)
+                    })
+                    .fail(function( jqxhr, textStatus, error ) {
+                      var err = textStatus + ", " + error;
+                      alert("Error updating "+err);
+                  });
+
+
+                      }
+                  },
+                  Cancel: function () {
+                      check_box.attr("checked", false);
+                  },
+              },
+              onContentReady: function () {
+                  // bind to events
+                  var jc = this;
+                  this.$content.find("form").on("submit", function (e) {
+                      // if the user submits the form by pressing enter in the field.
+                      e.preventDefault();
+                      jc.$$formSubmit.trigger("click"); // reference the button and click it
+                  });
+              }
+          });
+
+
+          }
+          else {
+
+           $.confirm({
+              title: "Remove Readonly Flag from Referral.",
+              buttons: {
+                  Ok: {
+                      text: "Ok",
+                      btnClass: "btn-blue",
+                      action: function () {
+                          $.getJSON( "/referral/read-only/"+ref_id, { readonly: "0" } )
+                    .done(function( json ) {
+                      if (json.status == "OK")
+                      {
+                        alert(json.msg)
+                      }
+                      else
+                        alert("Update failed!\n"+json.msg)
+                    })
+                    .fail(function( jqxhr, textStatus, error ) {
+                      var err = textStatus + ", " + error;
+                      alert("Error updating "+err);
+                  });
+
+
+                      }
+                  },
+                  Cancel: function () {
+                      check_box.attr("checked", true);
+                  },
+              },
+              onContentReady: function () {
+                  // bind to events
+                  var jc = this;
+                  this.$content.find("form").on("submit", function (e) {
+                      // if the user submits the form by pressing enter in the field.
+                      e.preventDefault();
+                      jc.$$formSubmit.trigger("click"); // reference the button and click it
+                  });
+              }
+          });
+
+
+          }
+
+
+
+
+
+        });
+
         $("body").on("click", ".get-at-info", function() {
           teacher_id = $(this).attr("id");
           $.getJSON( "/at-schedule/get-at-info/"+teacher_id )
@@ -1336,15 +1438,64 @@ function referral_delete( $id )
 	$fields['r_updated'] = date('Y-m-d H:i:s');
 	$fields['r_deleted'] = 1;
 
-	db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
+  $readonly = db_query("select r_readonly from dh_referral where r_id=:r_id", array(":r_id"=>$id))->fetchField();
 
-	db_query("update dh_applicant set a_referral=0 where a_referral=$id");
-  add_referral_activity($id, "Deleted", "Referral Deleted");
+  if($readonly)
+  {
+    drupal_set_message("Deletion failed, referral is flagged readonly.", 'error');
+  }
+  else
+  {
+    db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
+    db_query("update dh_applicant set a_referral=0 where a_referral=$id");
+    add_referral_activity($id, "Deleted", "Referral Deleted");
+    drupal_set_message("Referral deleted successfully.");
+  }
+
+
 	
 	if (arg(0) == 'center-referral')
 		drupal_goto ('center-referral/'.arg(1));
 	else
 		drupal_goto ('referral/'.arg(1));
+}
+
+
+function referral_readonly($id)
+{
+  global $user;
+
+  $out = array();
+  $out['status'] = 'OK';
+  $out['msg'] ="";
+
+  $fields['r_updated_by'] = $user->uid;
+  $fields['r_updated'] = date('Y-m-d H:i:s');
+  $fields['r_readonly'] = $_REQUEST['readonly'];
+
+  if($id > 0 && $fields['r_readonly'] == "1")
+  {
+    db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
+    $out['msg'] ="Added readonly flag to referral.";
+    drupal_json_output($out);
+    exit;
+  }
+  elseif($id > 0 && $fields['r_readonly'] == "0")
+  {
+    db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
+    $out['msg'] ="Removed readonly flag from referral.";
+    drupal_json_output($out);
+    exit;
+  }
+  else
+  {
+    $out['status'] = 'Failed';
+    $out['msg'] ="Invalid Params.";
+    drupal_json_output($out);
+    exit;
+  }
+
+
 }
 
 

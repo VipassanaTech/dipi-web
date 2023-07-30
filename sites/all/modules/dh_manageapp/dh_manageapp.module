@@ -433,6 +433,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('delete referral list'),
 	       'type' => MENU_CALLBACK);
 
+    $items['referral/read-only/%ref_id'] = array('title' => t('Referral Readonly'),
+         'page callback' => 'referral_readonly',
+         'page arguments' => array(2),
+         'access arguments' => array('delete referral list'),
+         'type' => MENU_CALLBACK);
+
     $items['referral'] = array('title' => t('Referral List'),
 	       'page callback' => 'dh_referral_results',
 	       'access arguments' => array('view referral list'),
