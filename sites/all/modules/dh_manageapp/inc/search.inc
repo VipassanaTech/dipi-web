@@ -642,10 +642,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            "&nbsp;"+d.note+"</td>"+
 	 				    "<td><label>Other Info:</label>"+
 	 				    "<br>"+d.extra+"</td>"+
-	 				    "<td><label>Willing to Serve:</label>"+
+	 				    "<td><label>Willing-to-Serve:</label>"+
 	 				    "<br>"+d.willingtoserve+"</td>"+ 
-			            "<td><label>Langs:</label>"+
-			            "<br>"+d.lang +"</td>" + "<td>" + pregnant + "</td>" +      		                
+			            "<td><label>Discourse-Lang:</label>"+
+			            "<br>"+d.lang_discourse +"</td>" + "<td>" + pregnant + "</td>" +
  		            "</tr>"+
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
