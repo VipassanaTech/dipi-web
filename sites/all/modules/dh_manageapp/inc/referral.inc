@@ -639,8 +639,10 @@ function dh_referral_form_submit($form, &$form_state)
 			$app_s[$key] = $value;
 	}
 	
-	if ($app['s_dob'] == '')
+	if ($app['s_dob']['[date]'] == '')
 		$app['s_dob'] = NULL;
+  if ($app_r['r_teacher'] == '')
+    $app_r['r_teacher'] = NULL;
 	if ($app_r['r_listed_10d'] == '')
 		$app_r['r_listed_10d'] = '0';
 	if ($app_r['r_listed_stp'] == '')
