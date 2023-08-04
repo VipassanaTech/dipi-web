@@ -93,15 +93,6 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#suffix' => '',
 	);
 
-	$form[$group]['age'] = array(
-		'#title' => 'Age',
-		'#type' => 'textfield',
-		'#size' => '5',
-		'#weight' => 11, 
-		'#default_value' => '',
-		'#required' => 0,
-		'#maxlength' => 10, 
-	);
 
 	$form[$group]['s_phone_home'] = array(
 		'#title' => 'Phone (Home)',
