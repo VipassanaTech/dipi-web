@@ -1125,7 +1125,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			db_insert('dh_applicant_attended')->fields($app_aa)->execute();				
 		}			
 	}
-	else
+	elseif(!$app_aa['aa_left'])
 	{
 		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);		
 	}
