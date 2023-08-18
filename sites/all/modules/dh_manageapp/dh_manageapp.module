@@ -2020,6 +2020,8 @@ function dh_app_update_attended()
 	}
 	lock_release("dh_app_update_attended");
 
+  create_application_pdf($app_id);
+
 	$out['msg'] = 'Ok';
 	$out['status'] = true; 
 	$out['applicant'] = dh_manageapp_list( $centre_id, $course_id );
