@@ -35,7 +35,7 @@ function at_course_list_form($form, &$form_state)
 	);
 	
 
-	$center = db_query("select concat('ce-', c_id), c_name from dh_center")->fetchAllKeyed();
+	$center = db_query("select concat('ce-', c_id), c_name from dh_center where c_mute=0")->fetchAllKeyed();
 	$country = db_query("select concat('cy-', cy.c_id), cy.c_name from dh_center c left join dh_country cy on (c.c_country=cy.c_code)")->fetchAllKeyed();
 	$state = db_query("select concat('st-', st.s_id), st.s_name from dh_center c left join dh_state st on (c.c_state=st.s_code AND c.c_country=st.s_country) ")->fetchAllKeyed();
 	$city = db_query("select concat('ci-', ci.c_id), ci.c_name from dh_center c left join dh_city ci on (c.c_city=ci.c_id)")->fetchAllKeyed();
@@ -132,7 +132,7 @@ function at_course_list_form($form, &$form_state)
 	$q->addField('co', 'c_at_f_conf', 'female_at_conf');
 	$q->addField('ci', 'c_name', 'city');
 	$q->addField('st', 's_name', 'state');
-	$q->condition('ce.c_id', array('286', '302'), 'NOT IN');
+	$q->condition('ce.c_mute', '0', '=');
 
 
 	
