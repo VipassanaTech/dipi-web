@@ -1215,6 +1215,7 @@ function update_course_current_at_count( $course_id )
 
 function check_at_requirement($course_id, $at_gender)
 {
+  update_course_current_at_count($course_id);
 	$q = "select c_at_m_count, c_at_m_conf, c_at_f_count, c_at_f_conf from dh_course where c_id='$course_id'";
 	$row = db_query($q)->fetchAssoc();
 
