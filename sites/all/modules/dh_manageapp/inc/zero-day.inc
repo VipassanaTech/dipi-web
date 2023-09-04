@@ -67,6 +67,12 @@ function dh_manage_day_zero()
         $seating = 1;
 			return dh_student_chit(arg(1), arg(2), $seating);
 		break;
+    case 'checking-slip':
+      $seating = 0;
+      if (isset($_REQUEST['seating']) && ($_REQUEST['seating'] == 1))
+        $seating = 1;
+      return dh_checking_slip(arg(1), arg(2), $seating);
+    break;
 		case 'app':
 			$row = array();
 			$ajax = '';
@@ -2173,6 +2179,115 @@ function dh_student_chit($centre, $course, $seating)
 	print $out;
 	exit;
 }
+
+
+function dh_checking_slip($centre, $course, $seating)
+{
+  global $base_url;
+  $alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
+  $BLOCKS_PER_PAGE = variable_get('checking_slip_per_page', '6');
+  $gender = array('M', 'F');
+  $data['M'][0] = array(); $data['F'][0] = array();
+  $course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
+
+  $orderby = " order by a_gender, a_f_name, a_l_name ";
+  if($seating)
+    $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+
+  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+  //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
+  $result = db_query($q);
+  while($r = $result->fetchAssoc())
+  {
+    $data[strtoupper($r['a_gender'])][] = $r;
+  }
+  $max_cols = array('M' => array(), 'F' => array());
+  $q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, aa_seat_row";
+  $result = db_query($q);
+  while($r = $result->fetchAssoc())
+  {
+    $max_cols[strtoupper($r['a_gender'])][$r['aa_seat_row']]  = $r['c'];
+  }
+  $out = '<html><head>';
+  $out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/checking-slip.css");</style>';
+  $out .= '</head><body>';
+  $title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
+      '<div align="center" class="title-head">'.$course_name.'</div></div>';
+  $out .= $title;
+  $student_chit_as_seating = $base_url."/checking-slip/$centre/$course?seating=1";
+  $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Checking Slip in order of sitting plan.</a>';
+  foreach( $gender as $g )
+  {
+    $count = 1;
+    if ($g == 'F')
+      $out .= '<div class="footer"></div><br>'.$title;
+    $out .= '<div class="main-div">';
+    foreach($data[$g] as $r)
+    {
+      if ($count > $BLOCKS_PER_PAGE)
+      {
+        $count = 1 ;
+        $out .= '<div class="footer"></div><br>';
+      }
+      $seat_type = 'Seat';
+      if ( !isset($r['a_f_name']) )
+        continue;
+      if ($alpha)
+        $r['SeatNo'] = chr($r['aa_seat_col']+65).($r['aa_seat_row']+1);
+      else
+      {
+        $offset = 0;
+        if ($r['aa_seat_row'])
+        {
+          for ($j=0; $j<$r['aa_seat_row']; $j++)
+            $offset += $max_cols[$g][$j];
+        }
+        $offset += $r['aa_seat_col'] + 1;
+        $r['SeatNo'] = $offset;
+      }
+      if ($r['aa_chowky'])
+        $r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
+      if ($r['aa_chair'])
+        $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
+
+      if ($r['aa_chowky'])
+        $seat_type = 'Chowky';
+      elseif ($r['aa_chair'])
+        $seat_type = 'Chair';
+      elseif ($r['aa_backrest'])
+        $seat_type = 'Backrest';
+
+      $out .= '<div class="table-student-chit"><div class="name">'.$r['a_f_name'].' '.$r['a_l_name'].' ('.$seat_type.': '.$r['aa_seat'].')'.'</div><div class="room">Room No.:'.$r['AccoNo'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="linebreak"><hr></div>
+        <div class="message-english">Kindly meet the teacher TODAY at ___________ AM/PM at Interview-Room / Teacher\'s-Room / Dhamma-Hall ___________ . Please bring this note with you. Be Happy.</div>
+        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर __________   बजे उनके निवास / मुलाकात कक्ष / धम्मा हॉल __________ में जायें | यह परची अपने साथ में लायें | मंगल हो | </div>
+        </div>';
+      $count++;
+    }
+    $out .= '</div>';
+  }
+  $out .= '</body></html>';
+  $out .= '
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script>
+    (function ($) {
+    $(document).ready(function(){
+
+      $(document).on("click", ".remove-seat", function(){
+          $(".seat").remove();
+      });
+
+      $(document).on("click", ".remove-cell", function(){
+          $(".cell").remove();
+      });
+
+    });
+    })(jQuery);
+    </script>
+    ';
+  print $out;
+  exit;
+}
+
 
 function course_archive_lists($centre, $course)
 {
