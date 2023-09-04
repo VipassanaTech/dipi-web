@@ -1,0 +1,127 @@
+.main-div {
+  margin-top: 20px;
+  width: 800px;
+}
+
+
+.table-student-chit {
+  float: left;
+    font-weight: normal;
+    font-size: 11pt;
+    color: black;
+    font-style: normal;
+    font-family: Verdana, Arial;
+    text-decoration: none;
+    border: 1px solid;
+    border-color: gray;
+    border-style: solid;
+    margin: 25px 15px 0 0;
+    width: 360px;
+    height: 280px;
+    text-align: center;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.name {
+  font-weight: bold;
+}
+
+.room {
+  float: left;
+  padding-left: 20px;
+}
+
+.cell {
+  float: right;
+  padding-right: 20px;
+}
+
+.linebreak {
+  clear: both;
+  margin-top: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.message-english {
+  font-size: medium;
+  text-align: left;
+  padding-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.message-hindi {
+  font-size: medium;
+  text-align: left;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.header-day0 {
+  width: 650px;
+  clear: both;
+}
+
+
+.title {
+  font-weight: bold;
+  font-size: 11pt;
+  text-transform: capitalize;
+  color: black;
+  font-style: normal;
+  font-family: Verdana, Arial;
+  text-decoration: underline;
+  margin-bottom: 5px;
+}
+
+.title-head {
+  font-weight: bold;
+  font-size: 8pt;
+  text-transform: capitalize;
+  color: black;
+  font-style: normal;
+  font-family: Verdana, Arial;
+  font-variant: normal;
+  text-decoration: none;
+}
+
+.title-info {
+  text-align: center;
+  width: 650px;
+  font-weight: bold;
+  font-size: 8pt;
+  text-transform: capitalize;
+  color: black;
+  font-style: normal;
+  font-family: Verdana, Arial;
+  font-variant: normal;
+  text-decoration: underline;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+
+
+.footer {
+  page-break-after: always;
+}
+
+
+@media print {
+  .table-student-chit {
+    break-inside: avoid;
+  }
+
+  .no-print, .no-print *
+  {
+      display: none !important;
+  }
+}
+
+
+.name {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
