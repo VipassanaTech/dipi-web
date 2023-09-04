@@ -362,6 +362,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+  $items['checking-slip/%centre_id/%course_id'] = array( 'title' => t('Student Chit'),
+         'page callback' => 'dh_manage_day_zero',
+         'access arguments' => array('access zero day'),
+         'type' => MENU_CALLBACK);
+
 	$items['report-day11/%centre_id/%course_id'] = array( 'title' => t('Day 11 Report'),
 	       'page callback' => 'course_day11_report',
 	       'access arguments' => array('access zero day'),
