@@ -3,6 +3,9 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 
+require_once 'vendor/autoload.php';
+use Mailgun\Mailgun;
+
 include_once(dirname(__FILE__)."/inc/centre.inc");
 include_once(dirname(__FILE__)."/inc/pdf.inc");
 include_once(dirname(__FILE__)."/inc/letters.inc");
