@@ -2359,6 +2359,8 @@ function whatsapp_consumer($vhost, $queue )
 
 // eg for $add_options
 //   array(
+//     'cc' => $cc,
+//     'bcc' => $bcc,
 //     'v:at-app-id' => $at_app_id,
 //     'attachment' => array(
 //       array('filePath' => $a, 'filename' => basename($a)),
@@ -2366,15 +2368,10 @@ function whatsapp_consumer($vhost, $queue )
 //     ),
 //   )
 
-function send_email_generic( $to, $from_email, $from_name, $bcc, $subject, $body, $add_options = array() )
+function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add_options = array() )
 {
   try
   {
-    $to = trim($to);
-    $from_email = trim($from_email);
-    $from_name = trim($from_name);
-    $bcc = trim($bcc);
-
     $from = $from_name.'<'.$from_email.'>';
     $mg = Mailgun::create(variable_get('mailgun_key', ''));
 
@@ -2390,9 +2387,6 @@ function send_email_generic( $to, $from_email, $from_name, $bcc, $subject, $body
       'html'    => $body,
       'v:test-mode' => $test_mode,
     );
-
-    if ($bcc)
-      $options['bcc'] = $bcc;
 
     if ( count($add_options) > 0)
     {
