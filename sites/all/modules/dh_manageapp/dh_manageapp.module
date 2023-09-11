@@ -2354,3 +2354,57 @@ function whatsapp_consumer($vhost, $queue )
 }
 
 
+// eg for $add_options
+//   array(
+//     'v:at-app-id' => $at_app_id,
+//     'attachment' => array(
+//       array('filePath' => $a, 'filename' => basename($a)),
+//       array('filePath' => $b, 'filename' => basename($b)),
+//     ),
+//   )
+
+function send_email_generic( $to, $from_email, $from_name, $bcc, $subject, $body, $add_options = array() )
+{
+  try
+  {
+    $to = trim($to);
+    $from_email = trim($from_email);
+    $from_name = trim($from_name);
+    $bcc = trim($bcc);
+
+    $from = $from_name.'<'.$from_email.'>';
+    $mg = Mailgun::create(variable_get('mailgun_key', ''));
+
+    $test_mode = variable_get('mode_test', '0');
+
+    if ( $test_mode )
+      $to = variable_get('mode_test_emails', '');
+
+    $options = array(
+      'from'    => $from,
+      'to'      => $to,
+      'subject' => $subject,
+      'html'    => $body,
+      'v:test-mode' => $test_mode,
+    );
+
+    if ($bcc)
+      $options['bcc'] = $bcc;
+
+    if ( count($add_options) > 0)
+    {
+      $options = array_merge($options, $add_options);
+    }
+
+    $res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+    $mid = $res->getId();
+    watchdog('SendEmailGeneric', "Email sent to ".$to." (".$mid.")");
+    return array('success' => True, 'msg' => $mid);
+  }
+  catch(Throwable $e)
+  {
+    watchdog('SendEmailGenericError', "Error sending Email to ".$to." (".$e->getMessage().")");
+    return array('success' => False, 'msg' => $e->getMessage());
+  }
+
+}
