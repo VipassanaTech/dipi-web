@@ -735,120 +735,7 @@ function dh_referral_form_submit($form, &$form_state)
 	/*update dh_applicant with a_referral for new/edit referral*/
 
 	if ($ref_id)
-	{
-		$conditon = "";
-		$conditon_clear ="";
-
-		if ($app_r['r_center'])
-		{
-			$conditon = " a.a_center='{$app_r['r_center']}' and ";
-			$conditon_clear = " a_center='{$app_r['r_center']}' and ";
-		}
-
-		db_query("update dh_applicant set a_referral=0 where $conditon_clear a_referral=$ref_id");
-
-		$q = "update dh_applicant a
-			left join dh_course co on a.a_course=co.c_id
-			set a.a_referral = :a_referral
-			where
-			$conditon
-			co.c_start>curdate() and
-			a.a_f_name = :a_f_name and
-			a.a_l_name = :a_l_name and
-			(
-				a.a_email = :a_email or
-				a.a_phone_mobile = :a_phone_mobile
-			)
-		";
-
-		$q_array = array (
-			':a_referral' => $ref_id,
-			':a_f_name' => $app['s_f_name'],
-			':a_l_name' => $app['s_l_name'],
-			':a_email' => $app['s_email'],
-			':a_phone_mobile' => $app['s_phone_mobile'],
-		);
-
-		db_query($q, $q_array);
-
-		if ($app['s_pancard'])
-		{
-			$q = "update dh_applicant a
-				left join dh_course co on a.a_course=co.c_id
-				set a.a_referral = :a_referral
-				where
-				$conditon
-				co.c_start>curdate() and
-				a.a_pancard = :a_pancard
-			";
-
-			$q_array = array (
-				':a_referral' => $ref_id,
-				':a_pancard' => $app['s_pancard'],
-			);
-
-			db_query($q, $q_array);
-		}
-
-    if ($app['s_aadhar'])
-    {
-      $q = "update dh_applicant a
-        left join dh_course co on a.a_course=co.c_id
-        set a.a_referral = :a_referral
-        where
-        $conditon
-        co.c_start>curdate() and
-        a.a_aadhar = :a_aadhar
-      ";
-
-      $q_array = array (
-        ':a_referral' => $ref_id,
-        ':a_aadhar' => $app['s_aadhar'],
-      );
-
-      db_query($q, $q_array);
-    }
-
-    if ($app['s_voter_id'])
-    {
-      $q = "update dh_applicant a
-        left join dh_course co on a.a_course=co.c_id
-        set a.a_referral = :a_referral
-        where
-        $conditon
-        co.c_start>curdate() and
-        a.a_voter_id = :a_voter_id
-      ";
-
-      $q_array = array (
-        ':a_referral' => $ref_id,
-        ':a_voter_id' => $app['s_voter_id'],
-      );
-
-      db_query($q, $q_array);
-    }
-
-    if ($app['s_passport'])
-    {
-          $q = "update dh_applicant a
-        left join dh_course co on a.a_course=co.c_id
-        set a.a_referral = :a_referral
-        where
-        $conditon
-        co.c_start>curdate() and
-        a.a_passport = :a_passport
-      ";
-
-      $q_array = array (
-        ':a_referral' => $ref_id,
-        ':a_passport' => $app['s_passport'],
-      );
-
-      db_query($q, $q_array);
-    }
-
-
-	}
+    update_referral_flag($ref_id);
 
 	drupal_set_message(t("Details updated successfully"), 'status');
 
@@ -858,6 +745,140 @@ function dh_referral_form_submit($form, &$form_state)
 		drupal_goto ('referral/'.arg(1));
 }
 
+
+function update_referral_flag($ref_id)
+{
+  $q = "select
+      r_center,
+      r_deleted,
+      s_f_name,
+      s_l_name,
+      s_email,
+      s_phone_mobile,
+      s_pancard,
+      s_aadhar,
+      s_voter_id,
+      s_passport
+      from dh_referral r
+      left join dh_student s on s.s_id = r.r_student
+      where r_id=$ref_id";
+
+  $ref = db_query($q)->fetchAssoc();
+
+  $conditon = "";
+  $conditon_clear ="";
+
+  if ($ref['r_center'])
+  {
+    $conditon = " a.a_center='{$ref['r_center']}' and ";
+    $conditon_clear = " a_center='{$ref['r_center']}' and ";
+  }
+
+  db_query("update dh_applicant set a_referral=0 where $conditon_clear a_referral=$ref_id");
+
+  if ($ref["r_deleted"])
+    return;
+
+  $q = "update dh_applicant a
+    left join dh_course co on a.a_course=co.c_id
+    set a.a_referral = :a_referral
+    where
+    $conditon
+    co.c_start>curdate() and
+    a.a_f_name = :a_f_name and
+    a.a_l_name = :a_l_name and
+    (
+      (a.a_email = :a_email and a.a_email <> '') or
+      (a.a_phone_mobile = :a_phone_mobile and a.a_phone_mobile <> '')
+    )
+  ";
+
+  $q_array = array (
+    ':a_referral' => $ref_id,
+    ':a_f_name' => $ref['s_f_name'],
+    ':a_l_name' => $ref['s_l_name'],
+    ':a_email' => $ref['s_email'],
+    ':a_phone_mobile' => $ref['s_phone_mobile'],
+  );
+
+  db_query($q, $q_array);
+
+  if ($ref['s_pancard'])
+  {
+    $q = "update dh_applicant a
+      left join dh_course co on a.a_course=co.c_id
+      set a.a_referral = :a_referral
+      where
+      $conditon
+      co.c_start>curdate() and
+      a.a_pancard = :a_pancard and a.a_pancard <> ''
+    ";
+
+    $q_array = array (
+      ':a_referral' => $ref_id,
+      ':a_pancard' => $ref['s_pancard'],
+    );
+
+    db_query($q, $q_array);
+  }
+
+  if ($ref['s_aadhar'])
+  {
+    $q = "update dh_applicant a
+      left join dh_course co on a.a_course=co.c_id
+      set a.a_referral = :a_referral
+      where
+      $conditon
+      co.c_start>curdate() and
+      a.a_aadhar = :a_aadhar and a.a_aadhar <> ''
+    ";
+
+    $q_array = array (
+      ':a_referral' => $ref_id,
+      ':a_aadhar' => $ref['s_aadhar'],
+    );
+
+    db_query($q, $q_array);
+  }
+
+  if ($ref['s_voter_id'])
+  {
+    $q = "update dh_applicant a
+      left join dh_course co on a.a_course=co.c_id
+      set a.a_referral = :a_referral
+      where
+      $conditon
+      co.c_start>curdate() and
+      a.a_voter_id = :a_voter_id and a.a_voter_id <> ''
+    ";
+
+    $q_array = array (
+      ':a_referral' => $ref_id,
+      ':a_voter_id' => $ref['s_voter_id'],
+    );
+
+    db_query($q, $q_array);
+  }
+
+  if ($ref['s_passport'])
+  {
+        $q = "update dh_applicant a
+      left join dh_course co on a.a_course=co.c_id
+      set a.a_referral = :a_referral
+      where
+      $conditon
+      co.c_start>curdate() and
+      a.a_passport = :a_passport and a.a_passport <> ''
+    ";
+
+    $q_array = array (
+      ':a_referral' => $ref_id,
+      ':a_passport' => $ref['s_passport'],
+    );
+
+    db_query($q, $q_array);
+  }
+}
 
 function dh_addedit_referral()
 {

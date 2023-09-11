@@ -1265,7 +1265,7 @@ function set_referral( $app_id )
 				where
 				r_deleted = 0 and
 				r_center in (0, '{$res['a_center']}') and
-				$doc_type = :doc_id
+				$doc_type = :doc_id and $doc_type <> ''
 				limit 1
 			";
 
@@ -1284,7 +1284,7 @@ function set_referral( $app_id )
 				r_center in (0, {$res['a_center']}) and
 				s_f_name = :s_f_name and
 				s_l_name = :s_l_name and
-				( s_email = :s_email or s_phone_mobile = :s_phone_mobile )
+				( (s_email = :s_email and s_email <> '') or (s_phone_mobile = :s_phone_mobile and s_phone_mobile <> '') )
 				limit 1
 			";
 
