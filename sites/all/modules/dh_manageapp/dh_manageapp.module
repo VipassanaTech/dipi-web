@@ -2391,6 +2391,14 @@ function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add
     if ( count($add_options) > 0)
     {
       $options = array_merge($options, $add_options);
+      if ( $test_mode )
+      {
+        if( $options['cc'] )
+          $options['cc'] = variable_get('mode_test_emails', '');
+
+        if( $options['bcc'] )
+          $options['bcc'] = variable_get('mode_test_emails', '');
+      }
     }
 
     $res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );

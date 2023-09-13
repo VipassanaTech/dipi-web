@@ -1539,9 +1539,16 @@ function add_referral_activity($ref_id, $ref_event, $ref_msg)
 {
   global $user;
 
+  $uid = $user->uid;
+  if(!$uid)
+  {
+    $system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
+    $uid = $system_uids['COURSE-SYSTEM-UID'];
+  }
+
   $f['rl_referral'] = $ref_id;
   $f['rl_event'] = $ref_event;
   $f['rl_msg'] = $ref_msg;
-  $f['rl_user'] = $user->uid;
+  $f['rl_user'] = $uid;
   db_insert('dh_referral_log')->fields($f)->execute();
 }
