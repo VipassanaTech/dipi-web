@@ -2394,10 +2394,10 @@ function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add
       if ( $test_mode )
       {
         if( $options['cc'] )
-          $options['cc'] = variable_get('mode_test_emails', '');
+          unset($options['cc']);
 
         if( $options['bcc'] )
-          $options['bcc'] = variable_get('mode_test_emails', '');
+          unset($options['bcc']);
       }
     }
 
