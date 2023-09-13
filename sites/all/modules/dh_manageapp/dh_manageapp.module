@@ -3,6 +3,9 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 
+require_once 'vendor/autoload.php';
+use Mailgun\Mailgun;
+
 include_once(dirname(__FILE__)."/inc/centre.inc");
 include_once(dirname(__FILE__)."/inc/pdf.inc");
 include_once(dirname(__FILE__)."/inc/letters.inc");
@@ -2354,3 +2357,59 @@ function whatsapp_consumer($vhost, $queue )
 }
 
 
+// eg for $add_options
+//   array(
+//     'cc' => $cc,
+//     'bcc' => $bcc,
+//     'v:at-app-id' => $at_app_id,
+//     'attachment' => array(
+//       array('filePath' => $a, 'filename' => basename($a)),
+//       array('filePath' => $b, 'filename' => basename($b)),
+//     ),
+//   )
+
+function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add_options = array() )
+{
+  try
+  {
+    $from = $from_name.'<'.$from_email.'>';
+    $mg = Mailgun::create(variable_get('mailgun_key', ''));
+
+    $test_mode = variable_get('mode_test', '0');
+
+    if ( $test_mode )
+      $to = variable_get('mode_test_emails', '');
+
+    $options = array(
+      'from'    => $from,
+      'to'      => $to,
+      'subject' => $subject,
+      'html'    => $body,
+      'v:test-mode' => $test_mode,
+    );
+
+    if ( count($add_options) > 0)
+    {
+      $options = array_merge($options, $add_options);
+      if ( $test_mode )
+      {
+        if( $options['cc'] )
+          $options['cc'] = variable_get('mode_test_emails', '');
+
+        if( $options['bcc'] )
+          $options['bcc'] = variable_get('mode_test_emails', '');
+      }
+    }
+
+    $res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+    $mid = $res->getId();
+    watchdog('SendEmailGeneric', "Email sent to ".$to." (".$mid.")");
+    return array('success' => True, 'msg' => $mid);
+  }
+  catch(Throwable $e)
+  {
+    watchdog('SendEmailGenericError', "Error sending Email to ".$to." (".$e->getMessage().")");
+    return array('success' => False, 'msg' => $e->getMessage());
+  }
+
+}
