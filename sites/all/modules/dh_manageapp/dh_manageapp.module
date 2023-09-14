@@ -923,6 +923,12 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group]['mq_user'] = array('#title' => 'MQ User', '#type' => 'textfield', '#size' => 30, '#maxlength' => 30, '#default_value' => variable_get('mq_user', ''));
  	$form[$group]['mq_passwd'] = array('#title' => 'MQ Password', '#type' => 'textfield', '#size' => 30, '#maxlength' => 60, '#default_value' => variable_get('mq_passwd', ''));
 
+
+  $group = 'Referral Cron Settings';
+  $form[$group] = array('#type' => 'fieldset','#title' => 'Referral Cron Settings' , '#collapsible' => true, '#collapsed' => true);
+  $form[$group]['referral_from_email'] = array('#title' => 'From Email', '#type' => 'textfield', '#size' => 50, '#maxlength' => 50, '#default_value' => variable_get('referral_from_email', ''));
+  $form[$group]['referral_cc_email'] = array('#title' => 'CC Email', '#type' => 'textfield', '#size' => 50, '#maxlength' => 50, '#default_value' => variable_get('referral_cc_email', ''));
+
    return system_settings_form($form);
 }
 
