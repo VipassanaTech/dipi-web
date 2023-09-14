@@ -40,6 +40,9 @@ drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 $referral_from_email = variable_get('referral_from_email', '');
 $referral_cc_email = variable_get('referral_cc_email', '');
 
+if(!$referral_from_email)
+  exit("Varialble referral_from_email is not set, Exiting.\n");
+
 delete_expired_referral($referral_from_email, $referral_cc_email);
 send_referral_notification($referral_from_email, $referral_cc_email);
 
