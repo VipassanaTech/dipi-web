@@ -37,11 +37,14 @@ drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
 // send_email_generic( $to, $from_email, $from_name, $subject, $body, $add_options = array() )
 
-delete_expired_referral();
-send_referral_notification();
+$referral_from_email = variable_get('referral_from_email', '');
+$referral_cc_email = variable_get('referral_cc_email', '');
+
+delete_expired_referral($referral_from_email, $referral_cc_email);
+send_referral_notification($referral_from_email, $referral_cc_email);
 
 
-function delete_expired_referral()
+function delete_expired_referral($referral_from_email, $referral_cc_email)
 {
   $system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
   $uid = $system_uids['COURSE-SYSTEM-UID'];
@@ -79,17 +82,23 @@ function delete_expired_referral()
       - Dipi Automation.
       ";
 
-    $sent = send_email_generic( $r['t_email'], 'dipi@vridhamma.org', 'Dipi Automation', 'Referral Deletion Notification', $body, array('cc' => 'sureshvarma@gmail.com'));
+    $add_options = array();
+    if($referral_cc_email)
+      $add_options['cc'] = $referral_cc_email;
+
+    $sent = send_email_generic( $r['t_email'], $referral_from_email, 'Dipi Automation', 'Referral Deletion Notification', $body, $add_options);
 
     if($sent['success'])
       add_referral_activity($r['r_id'], "Deleted-Email", "Deletion email notification sent to ".$r['r_to']." (".$sent['msg'].")");
     else
       add_referral_activity($r['r_id'], "Deleted-Email", "Not able to send deletion email notification to ".$r['r_to']);
+
+    echo "Deleted Referral of {$r['s_f_name']} {$r['s_l_name']}\n";
   }
 }
 
 
-function send_referral_notification()
+function send_referral_notification($referral_from_email, $referral_cc_email)
 {
   $q = "update dh_referral
     set
@@ -124,7 +133,7 @@ function send_referral_notification()
     $deletion_date = date( "jS F Y", strtotime("+100 day"));
     $body = "
       Dear {$r['t_f_name']} {$r['t_l_name']},<br><br>
-      Referral entry for {$r['s_f_name']} {$r['s_l_name']} will get deleted automatically by system on $deletion_date (ie. after 100 days of this notification), as referral period is about to end for the same.<br><br>
+      Referral entry for {$r['s_f_name']} {$r['s_l_name']} will get deleted automatically by system on $deletion_date (ie. 100 days after this notification), as referral period is about to end for the same.<br><br>
       If you decide to extend the referral period, it is recommended that you take a compassionate view towards this student by not blocking the basic courses like 10 Day and Satipatthān (STP) to allow this student to mediate and overcome his/her defilements.<br><br>
       We also recommend that you personally monitor the progress of this student and decide upon his/her referral status at an appropriate time.<br><br>
       Nevertheless, if you still feel strongly otherwise, you may login to Dipi AT-Portal to modify your referral instructions or extend the referral period.<br><br><br>
@@ -132,11 +141,17 @@ function send_referral_notification()
       - DIPI Automation.
       ";
 
-    $sent = send_email_generic( $r['t_email'], 'dipi@vridhamma.org', 'Dipi Automation', 'Referral about to expire, action needed', $body, array('cc' => 'sureshvarma@gmail.com'));
+    $add_options = array();
+    if($referral_cc_email)
+      $add_options['cc'] = $referral_cc_email;
+
+    $sent = send_email_generic( $r['t_email'], $referral_from_email, 'Dipi Automation', 'Referral about to expire, action needed', $body, $add_options);
 
     if($sent['success'])
       add_referral_activity($r['r_id'], "Notification-Email", "Notification email sent to ".$r['r_to']." (".$sent['msg'].")");
     else
       add_referral_activity($r['r_id'], "Notification-Email", "Not able to send notification email to ".$r['r_to']);
+
+    echo "Sent Referral Notification for {$r['s_f_name']} {$r['s_l_name']}\n";
   }
 }
