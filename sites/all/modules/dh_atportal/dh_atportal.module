@@ -1273,8 +1273,10 @@ function at_referral_update($ref_id)
     exit;
   }
 
+  $old_end_date = db_query("select r_end from dh_referral where r_id=$ref_id")->fetchField();
   db_update('dh_referral')->fields(array('r_end' => $end_date->format('Y-m-d')))->condition('r_id', $ref_id)->execute();
   add_referral_activity($ref_id, "Comment", $ref_comment);
+  add_referral_activity($ref_id, "End-Date", "End-Date updated from $old_end_date to".$end_date->format('Y-m-d'));
 
   $out['msg'] ="Referral End-date/Commnet updated successfully.";
 
