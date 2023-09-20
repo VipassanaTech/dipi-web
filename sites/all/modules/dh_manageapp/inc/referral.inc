@@ -714,7 +714,17 @@ function dh_referral_form_submit($form, &$form_state)
 
 		db_update('dh_student')->fields($app)->condition('s_id', $student_id )->execute();
 
-		db_update('dh_student_course_input')->fields($app_s)->condition('sci_student', $student_id )->execute();
+    $sci_id = db_query("select sci_id from dh_student_course_input where sci_student=$student_id")->fetchField();
+
+    if($sci_id)
+    {
+      db_update('dh_student_course_input')->fields($app_s)->condition('sci_student', $student_id )->execute();
+    }
+    else
+    {
+      $app_s['sci_student'] = $student_id;
+      db_insert('dh_student_course_input')->fields($app_s)->execute();
+    }
 
 		db_update('dh_referral')->fields($app_r)->condition('r_id', $ref_id )->execute();
 	}
