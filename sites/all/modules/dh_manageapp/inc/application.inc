@@ -233,8 +233,12 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['ae_desc_mental'])?$edit_data['ae_desc_mental']:'', '#rows' => 3,  '#weight' => 51, 
 		'#required' => 0);
 
-	$form[$group]['ae_desc_addiction_current'] = array('#title' => 'Addiction Details', '#type' => 'textarea',  
-		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52, 
+  $form[$group]['ae_desc_addiction_past'] = array('#title' => 'Past Addiction Details', '#type' => 'textarea',
+    '#default_value' => isset($edit_data['ae_desc_addiction_past'])?$edit_data['ae_desc_addiction_past']:'', '#rows' => 3,  '#weight' => 52,
+    '#required' => 0);
+
+	$form[$group]['ae_desc_addiction_current'] = array('#title' => 'Current Addiction Details', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52.1,
 		'#required' => 0);
 	$t = '';
 	if (isset($edit_data['ae_desc_other_technique']))
@@ -794,6 +798,8 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		$app['a_problem_physical'] = 1;
 	if ( trim($input['ae_desc_mental']) <> '' )
 		$app['a_problem_mental'] = 1;
+  if ( trim($input['ae_desc_addiction_past']) <> '' )
+    $app['a_addiction_past'] = 1;
 	if ( trim($input['ae_desc_addiction_current']) <> '' )
 		$app['a_addiction_current'] = 1;
 	if ( trim($input['ae_desc_other_technique']) <> '' )
