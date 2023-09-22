@@ -1630,7 +1630,7 @@ function _api_sms_keyword_status($phone)
             $r['a_status'] = 'Confirmed';
 
         $type = "Sit";
-        if ($r['a_status'] == "Sevak")
+        if ($r['a_type'] == "Sevak")
           $type = "Serve";
 
         $out .= $r['c_name']."\n".$r['name']." - ".$r['a_status'];

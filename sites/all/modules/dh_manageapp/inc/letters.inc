@@ -691,7 +691,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) )
 		{
       $a_type = "Sit";
-      if ($row['a_status'] == "Sevak")
+      if ($row['a_type'] == "Sevak")
         $a_type = "Serve";
 
 			if ($conf_no <> '')
