@@ -588,7 +588,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
     	),'#date_year_range' => '-1:0', '#date_label_position' => 'above',
 	);
 	$form[$group]['aa_left_comment'] = array('#title' => 'Left Comments', '#type' => 'textarea',  
-		'#default_value' => $add?'':$edit_data['aa_left_comment'], '#rows' => 3,  '#weight' => 100, '#required' => 0, '#suffix' => '</div>');
+		'#default_value' => $add?'':$edit_data['aa_left_comment'], '#rows' => 3,  '#weight' => 100, '#required' => 0,'#maxlength' => 150, '#suffix' => '</div>');
 
 
 	if ($add)
