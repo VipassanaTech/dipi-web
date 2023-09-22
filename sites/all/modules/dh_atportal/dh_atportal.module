@@ -1533,8 +1533,7 @@ function at_meet_apply()
   $app['a_l_name'] = $at_details['t_l_name'];
   $app['a_address'] = $at_details['t_address'];
   $app['a_country'] = $at_details['t_country'];
-  $app['a_phone_mobile'] = $at_details['t_mob_phone'];
-  $app['a_phone_mobile'] = $at_details['t_mob_phone'];
+  $app['a_phone_mobile'] = substr($at_details['t_mob_phone'],0,18);
   $app['a_email'] = $at_details['t_email'];
   $app['a_gender'] = $at_details['t_gender'];
   $app['a_dob'] = $at_details['t_dob'];
