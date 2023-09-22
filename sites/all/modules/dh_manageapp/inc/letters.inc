@@ -690,8 +690,14 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		//$response = file_get_contents($sms_url);
 		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) )
 		{
+      $a_type = "Sit";
+      if ($row['a_status'] == "Sevak")
+        $a_type = "Serve";
+
 			if ($conf_no <> '')
-            	$event .= " (".$conf_no.")";
+        $event .= " (".$conf_no.", ".$a_type.")";
+      else
+        $event .= " (".$a_type.")";
 
 			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
 			
