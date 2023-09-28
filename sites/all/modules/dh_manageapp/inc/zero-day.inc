@@ -756,7 +756,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
   $teacher_list_as_seating = $base_url."/teacher-list/$centre/$course?seating=1";
   $out .= ' <a class="no-print" href="'.$teacher_list_as_seating.'/">Click to Generate Teacher list in order of sitting plan.</a>';
 
-	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
+	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed' and ct_type <> 'Training'";
 	$t_hand = db_query($q);
 	while($t_r = $t_hand->fetchAssoc())
 	{
