@@ -41,7 +41,12 @@ function dh_manage_day_zero()
 			return dh_generate_seating_plan2(arg(1), arg(2));
 		break;
     case 'seating-update':
-      dh_update_seating(arg(1), arg(2));
+      $other_course = db_query("select c_combined_seat_course from dh_course where c_id=".arg(2))->fetchField();
+      if ($other_course > 0 )
+        $course = array(arg(2), $other_course);
+      else
+        $course = arg(2);
+      dh_update_seating(arg(1), $course);
     break;
 		case 'day0-list':
 			return dh_zero_day_list(arg(1), arg(2));
@@ -1572,9 +1577,12 @@ function dh_update_seating($centre, $course)
   $updates = json_decode($updates);
   // watchdog("sitting-update", print_r($updates, true));
 
+  if (!is_array($course))
+    $course = array($course);
+
   foreach($updates as $update)
   {
-    $q ="update dh_applicant_attended aa left join dh_applicant a on a.a_id= aa.aa_applicant set aa_seat_row=:aa_seat_row, aa_seat_col=:aa_seat_col where a.a_id=:a_id and a_center=:a_center and a_course=:a_course";
+    $q ="update dh_applicant_attended aa left join dh_applicant a on a.a_id= aa.aa_applicant set aa_seat_row=:aa_seat_row, aa_seat_col=:aa_seat_col where a.a_id=:a_id and a_center=:a_center and a_course in (:a_course)";
     db_query($q,
       array(
         ":aa_seat_row" => $update[1],
