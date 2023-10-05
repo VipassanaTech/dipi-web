@@ -141,6 +141,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			ac_60d,
 			ac_tsc,
 			ac_teacher,
+      ac_teacher_code,
 			ac_service,
 			aa_left_comment,
 			aa_section,
@@ -292,7 +293,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		if ($rs['type'] == 'sevak')
 			$rs['name'] .= ' (Sevak)';
 		if ($r['ac_teacher'] == 1)
-			$rs['name'] .= ' (AT)';
+    {
+      if($r['ac_teacher_code'])
+        $rs['name'] .= ' (AT, '.stristr($r['ac_teacher_code'], '-', true).')';
+      else
+        $rs['name'] .= ' (AT)';
+    }
 		if ( in_array($r['ConfNo'], array('NF', 'OF', 'NF0', 'OF0')) )
 			$r['ConfNo'] = '';
 		$temp = explode(" / ", $r['c_name']); unset($temp[0]);
