@@ -628,19 +628,19 @@ function dh_zero_main()
 
 function dh_manageapp_attended( $centre, $course_id )
 {
-	$q = "select count(a_id) as 'c', a_gender, a_old from dh_applicant where a_course='$course_id' and a_status in ('Confirmed', 'Expected') group by a_gender, a_old";
+	$q = "select count(a_id) as 'c', a_gender, a_old, a_type from dh_applicant where a_course='3440' and a_status in ('Confirmed', 'Expected') group by a_gender, a_old, a_type";
 	$res = db_query($q);
 	$conf = array();
 	while($r = $res->fetchAssoc())
 	{
-		$conf[$r['a_old']?'old':'new'][$r['a_gender']] = $r['c'];
+		$conf[$r['a_old']?'old':'new'][$r['a_gender']][$r['a_type']] = $r['c'];
 	}
 
 	//$q = "select a_id, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and aa_acco IS NOT NULL order by a_f_name, a_m_name, a_l_name";
 	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$rows = array();
-	$totals['new']['F'] = $totals['old']['F'] = $totals['new']['M'] = $totals['old']['M'] = 0; 
+	$totals['new']['F']['Student'] = $totals['new']['F']['Sevak'] = $totals['old']['F']['Student'] = $totals['old']['F']['Sevak'] = $totals['new']['M']['Student'] = $totals['new']['M']['Sevak'] = $totals['old']['M']['Student'] = $totals['old']['M']['Sevak'] = 0;
 	$special['new']['F']['chowky'] = $special['old']['F']['chowky'] = $special['new']['M']['chowky'] = $special['old']['M']['chowky'] = 0;
 	$special['new']['F']['chair'] = $special['old']['F']['chair'] = $special['new']['M']['chair'] = $special['old']['M']['chair'] = 0;
 	$special['new']['F']['backrest'] = $special['old']['F']['backrest'] = $special['new']['M']['backrest'] = $special['old']['M']['backrest'] = 0;
@@ -675,7 +675,7 @@ function dh_manageapp_attended( $centre, $course_id )
 		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment'];		
 		$rows[] = array_values($rs);
 
-		$totals[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] += 1;
+		$totals[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] += 1;
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['chowky'] += $r['aa_chowky'];
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['chair'] += $r['aa_chair'];
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['backrest'] += $r['aa_backrest'];
@@ -687,21 +687,64 @@ function dh_manageapp_attended( $centre, $course_id )
 	$attributes = array('id' => 'table-attending');
 
 	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id).' | '.l("Manager List", "manager-list/".$centre."/".$course_id).' | '.l("Seating Plan", "seating/".$centre."/".$course_id).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1))).')  ) </h3>';
-	if (!isset($totals['new']['M'])) $totals['new']['M'] = 0;
-	if (!isset($totals['new']['F'])) $totals['new']['F'] = 0;
-	$all_total = $totals['new']['M']+$totals['old']['M']+$totals['new']['F']+$totals['old']['F'];
-	$header_totals = array('', 'Old', 'New', 'Total');
-	$rows_totals[] = array( 'Attended Male', $totals['old']['M'], $totals['new']['M'],'<b>'.($totals['new']['M']+$totals['old']['M']).'<b>');
-	$rows_totals[] = array( 'Attended Female',$totals['old']['F'] , $totals['new']['F'],'<b>'.($totals['new']['F']+$totals['old']['F']).'</b>');
-	$rows_totals[] = array( '<b>Total</b>','' , '', "<b>$all_total</b>" );
+	if (!isset($totals['new']['M']['Student'])) $totals['new']['M']['Student'] = 0;
+  if (!isset($totals['new']['M']['Sevak'])) $totals['new']['M']['Sevak'] = 0;
+  if (!isset($totals['new']['F']['Student'])) $totals['new']['F']['Student'] = 0;
+  if (!isset($totals['new']['F']['Sevak'])) $totals['new']['F']['Sevak'] = 0;
+	$all_total = $totals['new']['M']['Student']+$totals['new']['M']['Sevak']+$totals['old']['M']['Student']+$totals['old']['M']['Sevak']+$totals['new']['F']['Student']+$totals['new']['F']['Sevak']+$totals['old']['F']['Student']+$totals['old']['F']['Sevak'];
+	$rows_totals[] = array(
+    'Attended Male',
+    $totals['old']['M']['Student'],
+    $totals['new']['M']['Student'],
+    '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']).'<b>',
+    ($totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']),
+    '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']).'<b>',
+  );
+	$rows_totals[] = array(
+    'Attended Male',
+    $totals['old']['F']['Student'],
+    $totals['new']['F']['Student'],
+    '<b>'.($totals['new']['F']['Student']+$totals['old']['F']['Student']).'<b>',
+    ($totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']),
+    '<b>'.($totals['new']['F']['Student']+$totals['old']['F']['Student']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']).'<b>',
+  );
+	$rows_totals[] = array(
+    '<b>Total</b>',
+    ($totals['old']['M']['Student']+$totals['old']['F']['Student']),
+    ($totals['new']['M']['Student']+$totals['new']['F']['Student']),
+    '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['F']['Student']+$totals['old']['F']['Student']).'<b>',
+    ($totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']),
+    "<b>$all_conf_total</b>" );
 
-	$header_totals = array('', 'Old', 'New', 'Total');
-	if (!isset($conf['new']['M'])) $conf['new']['M'] = 0;
-	if (!isset($conf['new']['F'])) $conf['new']['F'] = 0;
-	$all_conf_total = $conf['new']['M']+$conf['old']['M']+$conf['new']['F']+$conf['old']['F'];
-	$rows_conf[] = array( 'Confirmed Male', $conf['old']['M'], $conf['new']['M'],'<b>'.($conf['new']['M']+$conf['old']['M']).'<b>');
-	$rows_conf[] = array( 'Confirmed Female',$conf['old']['F'] , $conf['new']['F'],'<b>'.($conf['new']['F']+$conf['old']['F']).'</b>');
-	$rows_conf[] = array( '<b>Total</b>','' , '', "<b>$all_conf_total</b>" );
+	$header_totals = array('', 'St-Old', 'St-New', 'Student-Total', 'Server', 'Total');
+	if (!isset($conf['new']['M']['Student'])) $conf['new']['M']['Student'] = 0;
+  if (!isset($conf['new']['M']['Sevak'])) $conf['new']['M']['Sevak'] = 0;
+	if (!isset($conf['new']['F']['Student'])) $conf['new']['F']['Student'] = 0;
+  if (!isset($conf['new']['F']['Sevak'])) $conf['new']['F']['Sevak'] = 0;
+	$all_conf_total = $conf['new']['M']['Student']+$conf['new']['M']['Sevak']+$conf['old']['M']['Student']+$conf['old']['M']['Sevak']+$conf['new']['F']['Student']+$conf['new']['F']['Sevak']+$conf['old']['F']['Student']+$conf['old']['F']['Sevak'];
+	$rows_conf[] = array(
+    'Confirmed Male',
+    $conf['old']['M']['Student'],
+    $conf['new']['M']['Student'],
+    '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']).'<b>',
+    ($conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']),
+    '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']+$conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']).'<b>',
+  );
+	$rows_conf[] = array(
+    'Confirmed Male',
+    $conf['old']['F']['Student'],
+    $conf['new']['F']['Student'],
+    '<b>'.($conf['new']['F']['Student']+$conf['old']['F']['Student']).'<b>',
+    ($conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']),
+    '<b>'.($conf['new']['F']['Student']+$conf['old']['F']['Student']+$conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']).'<b>',
+  );
+	$rows_conf[] = array(
+    '<b>Total</b>',
+    ($conf['old']['M']['Student']+$conf['old']['F']['Student']),
+    ($conf['new']['M']['Student']+$conf['new']['F']['Student']),
+    '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']+$conf['new']['F']['Student']+$conf['old']['F']['Student']).'<b>',
+    ($conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']+$conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']),
+    "<b>$all_conf_total</b>" );
 
 
 	$header_special = array('', 'Chowky', 'Chair', 'Backrest');
