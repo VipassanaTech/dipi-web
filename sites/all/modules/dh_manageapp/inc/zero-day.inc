@@ -628,7 +628,7 @@ function dh_zero_main()
 
 function dh_manageapp_attended( $centre, $course_id )
 {
-	$q = "select count(a_id) as 'c', a_gender, a_old, a_type from dh_applicant where a_course='3440' and a_status in ('Confirmed', 'Expected') group by a_gender, a_old, a_type";
+	$q = "select count(a_id) as 'c', a_gender, a_old, a_type from dh_applicant where a_course='".$course_id."' and a_status in ('Confirmed', 'Expected') group by a_gender, a_old, a_type";
 	$res = db_query($q);
 	$conf = array();
 	while($r = $res->fetchAssoc())
@@ -714,7 +714,7 @@ function dh_manageapp_attended( $centre, $course_id )
     ($totals['new']['M']['Student']+$totals['new']['F']['Student']),
     '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['F']['Student']+$totals['old']['F']['Student']).'<b>',
     ($totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']),
-    "<b>$all_conf_total</b>" );
+    "<b>$all_total</b>" );
 
 	$header_totals = array('', 'St-Old', 'St-New', 'Student-Total', 'Server', 'Total');
 	if (!isset($conf['new']['M']['Student'])) $conf['new']['M']['Student'] = 0;
