@@ -698,15 +698,15 @@ function dh_manageapp_attended( $centre, $course_id )
     $totals['new']['M']['Student'],
     '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']).'<b>',
     ($totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']),
-    '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']).'<b>',
+    // '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']).'<b>',
   );
 	$rows_totals[] = array(
-    'Attended Male',
+    'Attended Female',
     $totals['old']['F']['Student'],
     $totals['new']['F']['Student'],
     '<b>'.($totals['new']['F']['Student']+$totals['old']['F']['Student']).'<b>',
     ($totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']),
-    '<b>'.($totals['new']['F']['Student']+$totals['old']['F']['Student']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']).'<b>',
+    // '<b>'.($totals['new']['F']['Student']+$totals['old']['F']['Student']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']).'<b>',
   );
 	$rows_totals[] = array(
     '<b>Total</b>',
@@ -714,9 +714,10 @@ function dh_manageapp_attended( $centre, $course_id )
     ($totals['new']['M']['Student']+$totals['new']['F']['Student']),
     '<b>'.($totals['new']['M']['Student']+$totals['old']['M']['Student']+$totals['new']['F']['Student']+$totals['old']['F']['Student']).'<b>',
     ($totals['new']['M']['Sevak']+$totals['old']['M']['Sevak']+$totals['new']['F']['Sevak']+$totals['old']['F']['Sevak']),
-    "<b>$all_total</b>" );
+    // "<b>$all_total</b>",
+  );
 
-	$header_totals = array('', 'St-Old', 'St-New', 'Student-Total', 'Server', 'Total');
+	$header_totals = array('', 'Old', 'New', 'Total', 'Server');
 	if (!isset($conf['new']['M']['Student'])) $conf['new']['M']['Student'] = 0;
   if (!isset($conf['new']['M']['Sevak'])) $conf['new']['M']['Sevak'] = 0;
 	if (!isset($conf['new']['F']['Student'])) $conf['new']['F']['Student'] = 0;
@@ -728,15 +729,15 @@ function dh_manageapp_attended( $centre, $course_id )
     $conf['new']['M']['Student'],
     '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']).'<b>',
     ($conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']),
-    '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']+$conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']).'<b>',
+    // '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']+$conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']).'<b>',
   );
 	$rows_conf[] = array(
-    'Confirmed Male',
+    'Confirmed Female',
     $conf['old']['F']['Student'],
     $conf['new']['F']['Student'],
     '<b>'.($conf['new']['F']['Student']+$conf['old']['F']['Student']).'<b>',
     ($conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']),
-    '<b>'.($conf['new']['F']['Student']+$conf['old']['F']['Student']+$conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']).'<b>',
+    // '<b>'.($conf['new']['F']['Student']+$conf['old']['F']['Student']+$conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']).'<b>',
   );
 	$rows_conf[] = array(
     '<b>Total</b>',
@@ -744,7 +745,8 @@ function dh_manageapp_attended( $centre, $course_id )
     ($conf['new']['M']['Student']+$conf['new']['F']['Student']),
     '<b>'.($conf['new']['M']['Student']+$conf['old']['M']['Student']+$conf['new']['F']['Student']+$conf['old']['F']['Student']).'<b>',
     ($conf['new']['M']['Sevak']+$conf['old']['M']['Sevak']+$conf['new']['F']['Sevak']+$conf['old']['F']['Sevak']),
-    "<b>$all_conf_total</b>" );
+    // "<b>$all_conf_total</b>",
+  );
 
 
 	$header_special = array('', 'Chowky', 'Chair', 'Backrest');
