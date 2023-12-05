@@ -3098,6 +3098,14 @@ function handle_whatsapp_msg($sender, $data)
     $temp = explode(" ", $data);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $data));
+    $today = date('Y-m-d');
+    $q = "select count(sl_id) from dh_sms_log where sl_from = '$sender' and sl_tstamp >= '$today'";
+    $msg_count = db_query($q)->fetchField();
+    if ($msg_count > 100)
+    {
+        watchdog('dipi_api', 'Sender '.$sender.' blocked due to too many messages');
+        return array("Result" => "Too Many Messages"); 
+    }
     /*if ((strlen($keyword) > 20) || (!is_string($keyword)) )
         return array("Result" => "Bad Keyword $keyword");
 
@@ -3108,7 +3116,7 @@ function handle_whatsapp_msg($sender, $data)
     {
         $response = "Unknown Keyword $keyword, try HELP";
         $result = send_whatsapp_360($sender, "", $response, "text");
-        //_sms_log($sender, $keyword, $data, $response);
+        _sms_log($sender, $keyword, "No data", $response);
         return array("Result" => "Bad Keyword $keyword"); //['status']
     }
 
@@ -3117,7 +3125,7 @@ function handle_whatsapp_msg($sender, $data)
     {
         $response = "Invalid Data, try HELP";
         $result = send_whatsapp_360($sender, "", $response, "text");
-        //_sms_log($sender, $keyword, $content, $response);
+        _sms_log($sender, $keyword, "No data", $response);
         return array("Result" => "Bad Content $keyword"); //['status']        
     }
 
