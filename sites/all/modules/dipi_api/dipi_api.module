@@ -1635,9 +1635,12 @@ function _api_sms_keyword_status($phone)
 
         $out .= $r['c_name']."\n".$r['name']." - ".$r['a_status'];
         if ($r['a_conf_no'] <> '')
-          $out .= " (".$r['a_conf_no'].", ".$type.")";
-        else
-          $out .= " (".$type.")";
+        {
+          // $out .= " (".$r['a_conf_no'].", ".$type.")";
+          $out .= " (".$r['a_conf_no'].")";
+        }
+        // else
+        //   $out .= " (".$type.")";
 
         $out .= "\n";
     }

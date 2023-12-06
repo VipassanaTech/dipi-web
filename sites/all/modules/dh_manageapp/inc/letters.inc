@@ -695,9 +695,14 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
         $a_type = "Serve";
 
 			if ($conf_no <> '')
-        $event .= " (".$conf_no.", ".$a_type.")";
-      else
-        $event .= " (".$a_type.")";
+      {
+        // $event .= " (".$conf_no.", ".$a_type.")";
+        $event .= " (".$conf_no.")";
+      }
+      // else
+      // {
+      //   $event .= " (".$a_type.")";
+      // }
 
 			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
 			
