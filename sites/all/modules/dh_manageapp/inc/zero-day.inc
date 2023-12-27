@@ -2316,8 +2316,8 @@ function dh_checking_slip($centre, $course, $seating)
         $seat_type = 'Backrest';
 
       $out .= '<div class="table-student-chit"><div class="name">'.$r['a_f_name'].' '.$r['a_l_name'].' ('.$seat_type.': '.$r['aa_seat'].')'.'</div><div class="room">Room No.:'.$r['AccoNo'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="linebreak"><hr></div>
-        <div class="message-english">Kindly meet the teacher TODAY at ___________ AM/PM at Interview-Room / Teacher\'s-Room / Dhamma-Hall ___________ . Please bring this note with you. Be Happy.</div>
-        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर __________   बजे उनके निवास / मुलाकात कक्ष / धम्मा हॉल __________ में जायें | यह परची अपने साथ में लायें | मंगल हो | </div>
+        <div class="message-english">Kindly meet the teacher TODAY at ___________ AM/PM at Interview-Room / Teacher\'s-Room / Mini-Hall / Dhamma-Hall ___________ . Please bring this note with you. Be Happy.</div>
+        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर __________   बजे उनके निवास / मुलाकात कक्ष / मिनी हॉल / धम्मा हॉल __________ में जायें | यह परची अपने साथ में लायें | मंगल हो | </div>
         </div>';
       $count++;
     }

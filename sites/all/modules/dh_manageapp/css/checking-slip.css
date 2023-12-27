@@ -7,7 +7,7 @@
 .table-student-chit {
   float: left;
     font-weight: normal;
-    font-size: 11pt;
+    font-size: 16px;
     color: black;
     font-style: normal;
     font-family: Arial;
@@ -45,7 +45,7 @@
 }
 
 .message-english {
-  font-size: medium;
+  font-size: 16px;
   text-align: left;
   padding-bottom: 10px;
   letter-spacing: 2px;
@@ -54,7 +54,7 @@
 .message-hindi {
   font-size: medium;
   text-align: left;
-  padding-top: 10px;
+  padding-top: 16px;
   padding-bottom: 10px;
   letter-spacing: 2px;
 }
