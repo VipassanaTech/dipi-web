@@ -2274,6 +2274,13 @@ function dh_checking_slip($centre, $course, $seating)
   $out .= $title;
   $student_chit_as_seating = $base_url."/checking-slip/$centre/$course?seating=1";
   $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Checking Slip in order of sitting plan.</a>';
+  $out .= '<div class="no-print">
+            <label for="eng-place-txt">English-Text:</label>
+            <input type="text" id="eng-place-txt" name="eng-place-txt">
+            <label for="hin-place-txt">Hindi-Text:</label>
+            <input type="text" id="hin-place-txt" name="hin-place-txt">
+            <button type="button" class="replace-text">Replace empty location with provided text</button>
+          </div>';
   foreach( $gender as $g )
   {
     $count = 1;
@@ -2316,8 +2323,8 @@ function dh_checking_slip($centre, $course, $seating)
         $seat_type = 'Backrest';
 
       $out .= '<div class="table-student-chit"><div class="name">'.$r['a_f_name'].' '.$r['a_l_name'].' ('.$seat_type.': '.$r['aa_seat'].')'.'</div><div class="room">Room No.:'.$r['AccoNo'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="linebreak"><hr></div>
-        <div class="message-english">Kindly meet the teacher TODAY at ___________ AM/PM at Interview-Room / Teacher\'s-Room / Mini-Hall / Dhamma-Hall ___________ . Please bring this note with you. Be Happy.</div>
-        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर __________   बजे उनके निवास / मुलाकात कक्ष / मिनी हॉल / धम्मा हॉल __________ में जायें | यह परची अपने साथ में लायें | मंगल हो | </div>
+        <div class="message-english">Kindly meet the teacher TODAY at _______ AM/PM at Teacher\'sRoom / InterviewRoom / DhammaHall / MiniHall / <span class="eng-place">_____________ </span>, bring this note with you. Be Happy.</div>
+        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर _______ बजे आचार्यनिवास / मुलाकातकक्ष / धम्माहॉल / मिनीहॉल / <span class="hin-place">_____________</span> में जायें, यह परची अपने साथ में लायें | मंगल हो | </div>
         </div>';
       $count++;
     }
@@ -2336,6 +2343,11 @@ function dh_checking_slip($centre, $course, $seating)
 
       $(document).on("click", ".remove-cell", function(){
           $(".cell").remove();
+      });
+
+      $(document).on("click", ".replace-text", function(){
+          $(".eng-place").html($("#eng-place-txt").val());
+          $(".hin-place").html($("#hin-place-txt").val());
       });
 
     });
