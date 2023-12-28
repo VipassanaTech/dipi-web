@@ -2322,7 +2322,7 @@ function dh_checking_slip($centre, $course, $seating)
       elseif ($r['aa_backrest'])
         $seat_type = 'Backrest';
 
-      $out .= '<div class="table-student-chit"><div class="name">'.$r['a_f_name'].' '.$r['a_l_name'].' ('.$seat_type.': '.$r['aa_seat'].')'.'</div><div class="room">Room No.:'.$r['AccoNo'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="linebreak"><hr></div>
+      $out .= '<div class="table-student-chit"><div class="name">'.mb_substr($r['a_f_name'].' '.$r['a_l_name'], 0, 25).' ('.$seat_type.': '.$r['aa_seat'].')'.'</div><div class="room">Room No.:'.$r['AccoNo'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="linebreak"><hr></div>
         <div class="message-english">Kindly meet the teacher TODAY at _______ AM/PM at Teacher\'sRoom / InterviewRoom / DhammaHall / MiniHall / <span class="eng-place">_____________ </span>, bring this note with you. Be Happy.</div>
         <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर _______ बजे आचार्यनिवास / मुलाकातकक्ष / धम्माहॉल / मिनीहॉल / <span class="hin-place">_____________</span> में जायें, यह परची अपने साथ में लायें | मंगल हो | </div>
         </div>';
