@@ -1126,6 +1126,11 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		}
 		else
 		{
+      $chowky_chair = ($app_aa['aa_chowky'] || $app_aa['aa_chair'])?" and (aa_chowky=1 or aa_chair=1) ":" and aa_chowky=0 and aa_chair=0 ";
+      $max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='{$app['a_gender']}'  and a_type='Student' $chowky_chair")->fetchField();
+      $app_aa['aa_seat_row'] = $max_row + 1;
+      $app_aa['aa_seat_col'] = 0;
+
 			$app_aa['aa_applicant'] = $app_id;
 			$app_aa['aa_created_by'] = $user->uid;
 			db_insert('dh_applicant_attended')->fields($app_aa)->execute();				
