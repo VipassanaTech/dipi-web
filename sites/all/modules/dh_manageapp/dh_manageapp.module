@@ -2011,17 +2011,16 @@ function dh_app_update_attended()
 
 	$attended_id = db_query("select aa_id from dh_applicant_attended where aa_applicant=$app_id")->fetchField();
 
-  $chowky_chair = ($fields['aa_chowky'] || $fields['aa_chair'])?" and (aa_chowky=1 or aa_chair=1) ":"";
-  $max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' $chowky_chair")->fetchField();
-  $fields['aa_seat_row'] = $max_row + 1;
-  $fields['aa_seat_col'] = 0;
-
 	if ( $attended_id > 0)
 	{
 		db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', $app_id)->execute();
 	}
 	else
 	{
+    $chowky_chair = ($fields['aa_chowky'] || $fields['aa_chair'])?" and (aa_chowky=1 or aa_chair=1) ":"";
+    $max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' $chowky_chair")->fetchField();
+    $fields['aa_seat_row'] = $max_row + 1;
+    $fields['aa_seat_col'] = 0;
 		$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
 		_update_status( $app_id, $system_statuses['STATUS-CONFIRMED'] );
 		
