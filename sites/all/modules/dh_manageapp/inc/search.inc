@@ -1341,7 +1341,7 @@ function dh_manageapp_search_form($form, &$form_state)
 		if ( isset($storage['city']) && ( $storage['city'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['city']);
-			$where .=  " and (a_city or a_city_str) in ('".trim(implode("', '",$temp))."'".")";
+			$where .=  " and (ci.c_name in ('".trim(implode("', '",$temp))."'".") or a_city_str in ('".trim(implode("', '",$temp))."'".")) ";
 		}
 		if ( isset($storage['occupation']) && ( $storage['occupation'] <> '') )
 		{
