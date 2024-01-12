@@ -677,7 +677,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language"]; 
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction"];
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -804,6 +804,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			                	{
 			                		return tmp[ row ].lang_discourse; 
 			                	}
+                        else if ( column == 30 )
+                        {
+                          return tmp[ row ].addiction;
+                        }
+
 			                	
 		
 			                	return data;
@@ -889,6 +894,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
+                { data: null, "title": "" },
 		            ],
 		            "fnRowCallback": function (nrow, data, display_index) {
 		            	if (parseInt(data.referral) > 0 )
