@@ -3035,7 +3035,10 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
     $httpcode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
     if ($httpcode >= 300)
-      watchdog('dipi_api', 'Whatsapp '.$to.' return code - '.$httpcode);
+    {
+      $r_array = (array) json_decode($response);
+      watchdog('dipi_api', 'Whatsapp '.$to.' return code - '.$httpcode."\n Response: ". print_r($r_array, true));
+    }
 
 
     curl_close($curl);
