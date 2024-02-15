@@ -845,13 +845,14 @@ Thanks,
 		if ( $test_mode )
 			$to = variable_get('mode_test_emails', '');
 		$options = array(
-		  'from'    => 'DIPI Automation <noreply@vipassana.co>',
+		  'from'    => 'DIPI Automation <noreply@vridhamma.org>',
 		  'to'      => $to,  //info@dhamma.net.in
 		  'subject' => 'DIPI Course Finalization Reminder',
 		  'text'    => str_replace('[course-name]', $r['c_name'], $body) ,
 		  'v:test-mode' => $test_mode
 		);
-		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+    $mailgun_domain = get_mailgun_domain("noreply@vridhamma.org");
+		$res = $mg->messages()->send($mailgun_domain, $options );
 
 	}
 }
@@ -872,13 +873,14 @@ Thanks,
 	if ( $test_mode )
 		$to = variable_get('mode_test_emails', '');
 	$options = array(
-	  'from'    => 'DIPI Automation <noreply@vipassana.co>',
+	  'from'    => 'DIPI Automation <noreply@vridhamma.org>',
 	  'to'      => 'vri_admin@vridhamma.org',
 	  'subject' => 'DIPI Monthly Center Report',
 	  'text'    => $body,
 	  'v:test-mode' => $test_mode
 	);
-	$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+  $mailgun_domain = get_mailgun_domain("noreply@vridhamma.org");
+	$res = $mg->messages()->send($mailgun_domain, $options );
 }
 
 function finalize_course( $course_id )

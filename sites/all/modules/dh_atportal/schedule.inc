@@ -1315,8 +1315,8 @@ function send_at_schedule_email($at_app_id, $send_to_center=0)
 	  'v:test-mode' => $test_mode
 	);
 
-
-	$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+  $mailgun_domain = get_mailgun_domain($from);
+	$res = $mg->messages()->send($mailgun_domain, $options );
 	$log = "<b>{$row['ct_status']}</b>, Email Notification sent to - ".$to." ( Response: ".$res->getId()." )";
 	log_course_teacher($at_app_id, $log);
 }

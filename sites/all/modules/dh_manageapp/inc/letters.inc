@@ -662,7 +662,10 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			foreach( $attachment as $a )
 				$options['attachment'][] = array('filePath' => $a);
 		}
-		$res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+
+    $mailgun_domain = get_mailgun_domain($from);
+
+		$res = $mg->messages()->send($mailgun_domain, $options );
 
 		//watchdog('MAILGUN', print_r($res, true));
 		$log = "Letter sent (Email: $to) - ".$letter_name." ( Response: ".$res->getId()." )";
@@ -910,3 +913,26 @@ function mailgun_webhook3()
 	print "ok 200";
 }
 
+
+function get_mailgun_domain($from)
+{
+    $mailgun_dhamma_domain = "";
+    $mailgun_vridhamma_domain = "";
+    $mailgun_domains = explode(',', variable_get('mailgun_primary_domain', ''));
+
+    foreach($mailgun_domains as $d)
+    {
+        if(str_contains($d, '.dhamma.org'))
+                $mailgun_dhamma_domain = trim($d);
+        else
+                $mailgun_vridhamma_domain = trim($d);
+    }
+
+    $mailgun_domain = $mailgun_vridhamma_domain;
+
+    if (str_contains($from, '.dhamma.org'))
+      if ($mailgun_dhamma_domain)
+        $mailgun_domain = $mailgun_dhamma_domain;
+
+    return $mailgun_domain;
+}

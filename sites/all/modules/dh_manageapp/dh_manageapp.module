@@ -2406,7 +2406,8 @@ function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add
       }
     }
 
-    $res = $mg->messages()->send(variable_get('mailgun_primary_domain', ''), $options );
+    $mailgun_domain = get_mailgun_domain($from);
+    $res = $mg->messages()->send($mailgun_domain, $options );
     $mid = $res->getId();
     watchdog('SendEmailGeneric', "Email sent to ".$to." (".$mid.")");
     return array('success' => True, 'msg' => $mid);
