@@ -921,12 +921,12 @@ function get_mailgun_domain($from)
     $mailgun_domains = array_map('trim', explode(',', variable_get('mailgun_primary_domain', '')));
 
     $mailgun_domain = $mailgun_domains[0];
-    $from_top_domain = implode('.', array_slice(explode('.', $from), -2, 2));
+    $from_top_domain = implode('.', array_slice(explode('.', explode('@', $from)[1]), -2, 2));
 
     foreach($mailgun_domains as $d)
     {
         $mailgun_top_domain = implode('.', array_slice(explode('.', $d), -2, 2));
-        if($from_top_domain == $mailgun_top_domain)
+        if(strtolower($from_top_domain) == strtolower($mailgun_top_domain))
           $mailgun_domain = $d;
     }
 
