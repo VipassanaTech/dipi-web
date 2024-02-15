@@ -918,21 +918,17 @@ function get_mailgun_domain($from)
 {
     $mailgun_dhamma_domain = "";
     $mailgun_vridhamma_domain = "";
-    $mailgun_domains = explode(',', variable_get('mailgun_primary_domain', ''));
+    $mailgun_domains = array_map('trim', explode(',', variable_get('mailgun_primary_domain', '')));
+
+    $mailgun_domain = $mailgun_domains[0];
+    $from_top_domain = implode('.', array_slice(explode('.', $from), -2, 2));
 
     foreach($mailgun_domains as $d)
     {
-        if(str_contains($d, '.dhamma.org'))
-                $mailgun_dhamma_domain = trim($d);
-        else
-                $mailgun_vridhamma_domain = trim($d);
+        $mailgun_top_domain = implode('.', array_slice(explode('.', $d), -2, 2));
+        if($from_top_domain == $mailgun_top_domain)
+          $mailgun_domain = $d;
     }
-
-    $mailgun_domain = $mailgun_vridhamma_domain;
-
-    if (str_contains($from, '.dhamma.org'))
-      if ($mailgun_dhamma_domain)
-        $mailgun_domain = $mailgun_dhamma_domain;
 
     return $mailgun_domain;
 }
