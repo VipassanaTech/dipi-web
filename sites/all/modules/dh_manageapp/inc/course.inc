@@ -851,7 +851,7 @@ Thanks,
 		  'text'    => str_replace('[course-name]', $r['c_name'], $body) ,
 		  'v:test-mode' => $test_mode
 		);
-    $mailgun_domain = get_mailgun_domain("noreply@vridhamma.org");
+    $mailgun_domain = get_mailgun_domain("DIPI Automation <noreply@vridhamma.org>");
 		$res = $mg->messages()->send($mailgun_domain, $options );
 
 	}
@@ -879,7 +879,7 @@ Thanks,
 	  'text'    => $body,
 	  'v:test-mode' => $test_mode
 	);
-  $mailgun_domain = get_mailgun_domain("noreply@vridhamma.org");
+  $mailgun_domain = get_mailgun_domain("DIPI Automation <noreply@vridhamma.org>");
 	$res = $mg->messages()->send($mailgun_domain, $options );
 }
 

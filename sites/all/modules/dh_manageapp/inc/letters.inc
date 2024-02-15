@@ -921,7 +921,7 @@ function get_mailgun_domain($from)
     $mailgun_domains = array_map('trim', explode(',', variable_get('mailgun_primary_domain', '')));
 
     $mailgun_domain = $mailgun_domains[0];
-    $from_top_domain = implode('.', array_slice(explode('.', explode('@', $from)[1]), -2, 2));
+    $from_top_domain = implode('.', array_slice(explode('.', imap_rfc822_parse_adrlist($from, "")[0]->host), -2, 2));
 
     foreach($mailgun_domains as $d)
     {
