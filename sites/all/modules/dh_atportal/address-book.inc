@@ -72,7 +72,7 @@ function dh_atportal_address_book()
 			function do_datatable( tid )
 			{
 				var table = $(tid).DataTable({
-					dom: "lBfr<\"clear\">tip",
+					dom: "lfr<\"clear\">tip",
 			        "ajax": "/at-portal/address-book/ajax"
 			    });			
 			}
