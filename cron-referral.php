@@ -1,7 +1,7 @@
 <?php
 
 
-if (isset($_REQUEST) && ( isset($_REQUEST['REMOTE_IP']) ))
+if (isset($_SERVER) && ( isset($_SERVER['REMOTE_ADDR']) ))
 {
    echo "I wont run from the web\n";
    exit(1);
