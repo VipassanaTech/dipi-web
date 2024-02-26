@@ -2300,14 +2300,14 @@ function whatsapp_hook()
 }
 
 
-function push_to_queue( $vhost, $queue, $msg )
+function push_to_queue( $vhost, $queue, $msg, $ttl = 180000 )
 {
 	try 
 	{
 		$connection = new AMQPStreamConnection(variable_get('mq_host', ''), (int)variable_get('mq_port', ''), variable_get('mq_user'), variable_get('mq_passwd'), $vhost);
 		$channel = $connection->channel();
 
-		$channel->queue_declare($queue, false, true, false, false, false, array('x-message-ttl' => ['I', 180000 ]) );
+		$channel->queue_declare($queue, false, true, false, false, false, array('x-message-ttl' => ['I', $ttl ]) );
 		$channel->exchange_declare($queue, AMQPExchangeType::DIRECT, false, true, false);
 
 		$channel->queue_bind($queue, $queue);
