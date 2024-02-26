@@ -2419,3 +2419,40 @@ function send_email_generic( $to, $from_email, $from_name, $subject, $body, $add
   }
 
 }
+
+function dipi_mail_consumer_callback($msg)
+{
+	try {
+	    $data = json_decode($msg->body);
+	    $ret = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id);
+	    $ret = True;
+	    if ( $ret )
+	    {
+	        $msg->ack();
+	    }
+		
+	} catch (\Throwable $e) {
+		watchdog('RabbitMQ', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+	}
+
+};
+
+
+function dipi_mail_consumer($vhost, $queue )
+{
+	$connection = new AMQPStreamConnection(variable_get('mq_host', ''), (int)variable_get('mq_port', ''), variable_get('mq_user'), variable_get('mq_passwd'), $vhost);
+	$channel = $connection->channel();
+
+	$channel->queue_declare($queue, false, true, false, false, false, array('x-message-ttl' => ['I', 86400000 ]) );
+	$channel->exchange_declare($queue, AMQPExchangeType::DIRECT, false, true, false);
+
+	$channel->queue_bind($queue, $queue);
+
+	$channel->basic_consume($queue, '', false, false, false, false, 'dipi_mail_consumer_callback');
+
+	$channel->consume();
+
+   $count = 0;
+}
+
+
