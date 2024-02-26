@@ -33,7 +33,7 @@ while ($row = $result->fetchAssoc())
    {
       echo "Pushing ".$row2['a_id']."\n";
       $data = array('applicant_id' => $row2['a_id'], 'letter_id' => $row['bm_letter']);
-      push_to_queue( 'Dipi', 'mail', json_encode( $data ));
+      push_to_queue( 'Dipi', 'mail', json_encode( $data ), 86400000);
    }
    $q = "update dh_bulk_mail set bm_processed=1 where bm_id=".$row['bm_id'];
    db_query($q);
