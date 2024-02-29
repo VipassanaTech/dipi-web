@@ -42,6 +42,7 @@ function dh_manage_centre()
 		'Center Referral List' => 'center-referral/'.arg(1),
 		'SMS Report' => 'centre/'.arg(1).'/sms-report' ,
 		'Course Report' => 'centre/'.arg(1).'/course-report',
+    'Bulk Mail Schedule' => 'centre/'.arg(1).'/bulk-mail-schedule',
 	);
 	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )

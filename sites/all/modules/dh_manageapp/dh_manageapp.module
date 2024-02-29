@@ -19,6 +19,7 @@ include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
 include_once dirname(__FILE__) . "/inc/seating.inc";
+include_once dirname(__FILE__) . "/inc/bulk-mail.inc";
 
 
 
@@ -241,6 +242,11 @@ function dh_manageapp_menu()
 	       'page callback' => 'dh_center_sms_report',
 	       'access arguments' => array('view sms report'),
 	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/bulk-mail-schedule'] = array('title' => t('Bulk Mail Schedule'),
+         'page callback' => 'dh_center_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
 
 	$items['sms-count/%course_id'] = array( 'title' => 'SMS Report',
 	       'page callback' => '_get_sms_count',

@@ -1305,7 +1305,7 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
 			$where .= " and a_phone_mobile like '".trim($storage['mobile'])."%'";
-		if ( count($storage['status']) > 0 )
+		if ( $storage['status'] && count($storage['status']) > 0 )
 		{
 			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 1) )
 				$where .= " and a_attended = '1'";
@@ -1342,7 +1342,10 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_email LIKE '".$storage['email']."%'";
 
 		if ( isset($storage['pin']) && ($storage['pin'] <> '') )
-			$where .=  " and a_zip in (".$storage['pin'].")";
+    {
+      $temp = explode("\r\n", $storage['pin']);
+			$where .=  " and a_zip in ('".trim(implode("', '",$temp))."')";
+    }
 
 		if ( isset($storage['city']) && ( $storage['city'] <> '') )
 		{
@@ -1374,6 +1377,22 @@ function dh_manageapp_search_form($form, &$form_state)
 			$where .= " and a_willing_to_serve=1";
 		if ( isset($storage['is_pregnant']) && ($storage['is_pregnant']) )
 			$where .= " and ae_pregnant=1";
+    if ( isset($storage['least_10_day']) && ($storage['least_10_day']) )
+      $where .= " and ac.ac_10d >= {$storage['least_10_day']} ";
+    if ( isset($storage['least_stp']) && ($storage['least_stp']) )
+      $where .= " and ac.ac_stp >= {$storage['least_stp']} ";
+    if ( isset($storage['least_spl']) && ($storage['least_spl']) )
+      $where .= " and ac.ac_spl >= {$storage['least_spl']} ";
+    if ( isset($storage['least_20_day']) && ($storage['least_20_day']) )
+      $where .= " and ac.ac_20d >= {$storage['least_20_day']} ";
+    if ( isset($storage['least_30_day']) && ($storage['least_30_day']) )
+      $where .= " and ac.ac_30d >= {$storage['least_30_day']} ";
+    if ( isset($storage['least_45_day']) && ($storage['least_45_day']) )
+      $where .= " and ac.ac_45d >= {$storage['least_45_day']} ";
+    if ( isset($storage['least_60_day']) && ($storage['least_60_day']) )
+      $where .= " and ac.ac_60d >= {$storage['least_60_day']} ";
+    if ( isset($storage['least_service']) && ($storage['least_service']) )
+      $where .= " and ac.ac_service >= {$storage['least_service']} ";
 
 
 		$out = '<h2>'.l("Back to Search", "search-app/".$centre_id).'</h2>';
@@ -1385,7 +1404,16 @@ function dh_manageapp_search_form($form, &$form_state)
 			$db_type = 'applicant';
 		else
 			$db_type = 'student';
-		$out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
+
+$out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
+    if($storage['bulk-mail'])
+    {
+        $schedule_date = "{$storage['bulk-mail-schedule']['year']}-{$storage['bulk-mail-schedule']['month']}-{$storage['bulk-mail-schedule']['day']}";
+        dh_bulk_mail_schedule($storage['bulk_mail_name'], $where, $storage['letters'], $schedule_date, $storage);
+        drupal_set_message("Scheduled Bulk Email.", 'status');
+    }
+    // else
+    //   $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
 
 		$form['out'] = array('#markup' => $out, '#weight' => 100 );
 		return $form;
@@ -1447,13 +1475,6 @@ function dh_manageapp_search_form($form, &$form_state)
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => '', '#weight' => 9);
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
 		$form['state'] = array('#title' => 'State', '#type' => 'textfield','#weight' => 10);
-		
-		if ($centre_id <> '') {
-			$q = "select l_id, l_name, l_event from dh_letter where l_center = $centre_id order by l_event";
-			$letters = db_query($q)->fetchAllKeyed();
-			$letters[''] = 'Choose';
-			$form['letters'] = array('#title' => 'Letters', '#type' => 'select', '#options' => $letters, '#weight' => 11);	
-		}
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#weight' => 11);
 		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#options' => $modes, '#weight' => 12 );
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 13);
@@ -1477,18 +1498,32 @@ function dh_manageapp_search_form($form, &$form_state)
 			'#theme_wrappers' => array('date_popup'), '#suffix' => '');
 		*/
 		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
-		$form['mail'] = array('#type' => 'button', '#value' => 'Mass Mail', '#weight' => 101);
 
-		if (user_access('mass mail'))
+		if (user_access('mass mail') && $centre_id <> '')
 		{		
-		$group = 'Advanced';
-		$form['#attributes'] = array('class' => array('container-inline'));
-		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true, '#weight' => 101);
-			$form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
+  		$group = 'Advanced';
+  		$form['#attributes'] = array('class' => array('container-inline'));
+  		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
+      $form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
 			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2, '#description' => 'Enter values in separate lines');
 			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
 			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
 			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
+      $form[$group]['least_10_day'] = array('#title' => 'Least number of 10 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200' ), '#size' => '15', '#weight' => 5.1, );
+      $form[$group]['least_stp'] = array('#title' => 'Least number of STP', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.2, );
+      $form[$group]['least_spl'] = array('#title' => 'Least number of SPL', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.3, );
+      $form[$group]['least_20_day'] = array('#title' => 'Least number of 20 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.4, );
+      $form[$group]['least_30_day'] = array('#title' => 'Least number of 30 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.5, );
+      $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.6, );
+      $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.7, );
+      $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.8, );
+      $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch');
+        $q = "select l_id, l_name from dh_letter where l_center = $centre_id and l_event='custom'";
+        $letters = db_query($q)->fetchAllKeyed();
+        $letters[''] = 'Choose';
+        $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#options' => $letters, '#weight' => 6);
+      $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date', '#default_value' => '',  '#weight' => 7);
+      $form[$group]['bulk-mail'] = array('#title' => '&nbsp;bulk-Mail to Search Result?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 8);
 		}
 
 		$js = '
@@ -1511,7 +1546,7 @@ function dh_manageapp_search_form_validate($form, &$form_state)
 	$values = $form_state['values'];
 	if (arg(1) <> '')
 		$values['centre'] = arg(1);
-  	if ($values['centre'] == '') 
+  	if ($values['centre'] == '')
   	{
     	form_set_error('centre', 'Centre must be selected');
   	}
@@ -1524,8 +1559,17 @@ function dh_manageapp_search_form_validate($form, &$form_state)
   	if ( $values['email'] <> '' ) $count++;
   	if ( $values['mobile'] <> '' ) $count++;
   	if ( $values['phone_home'] <> '' ) $count++;
-  	if ( $count == 0 )
+  	if ( $count == 0 && !$values['bulk-mail'])
   		form_set_error('course', 'Please select a Course or Name or Conf No or Email');
+
+    if($values['bulk-mail'])
+    {
+      if(!$values['letters'])
+        form_set_error('letters', 'Letter must be selected in case of bulk-mail');
+
+      if(!$values['bulk_mail_name'])
+        form_set_error('bulk_mail_name', 'Bulk Mail Batch Name is must.');
+    }
 }
 
 function dh_manageapp_search_form_submit($form, &$form_state)
@@ -1550,3 +1594,4 @@ function dh_search_lc ($type)
 	$form['out'] = array('#markup' => $out, '#weight' => 100 );
 	return $form;
 }
+
