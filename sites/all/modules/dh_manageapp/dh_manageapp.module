@@ -2479,6 +2479,5 @@ function whatsapp_hook_bulk()
 	{
 		file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
 	}
-	echo "OK";
 	exit(0);
 }
