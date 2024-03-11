@@ -611,6 +611,11 @@ function dh_manageapp_menu()
          'type' => MENU_CALLBACK);
 
 
+	$items['wa-hook-bulk'] = array( 'title' => t('Whatsapp Bulk Hook'),
+	       'page callback' => 'whatsapp_hook_bulk',
+	       'access arguments' => array('access webhook'),
+	       'type' => MENU_CALLBACK);
+
 	return $items;
 }
 
@@ -2462,3 +2467,18 @@ function dipi_mail_consumer($vhost, $queue )
 }
 
 
+function whatsapp_hook_bulk()
+{
+	$LOG = "/var/log/whatsapp-bulk.log";
+	$data = $_REQUEST;
+	if ( empty($data) )
+	   $data = json_decode( file_get_contents( 'php://input' ), true );
+
+
+	if (! empty($data))
+	{
+		file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
+	}
+	echo "OK";
+	exit(0);
+}
