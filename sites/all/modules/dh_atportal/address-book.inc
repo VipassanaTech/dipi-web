@@ -130,10 +130,15 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$country_codes['0'] = 'Choose';
 	$form[$group]['t_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
-	/**
+
 	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
-		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 20 );
-	**/		
+		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 20,
+    '#attached' => array(
+          'library' => array(
+            array('system', 'ui.autocomplete'),
+        )),
+     );
+
 	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
 		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 20 );
 	
@@ -184,7 +189,17 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$action = 'Update';
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
 
+    $js ='
+    (function ($) {
+      $(document).ready(function(){
+        autocomplete_state("#edit-t-state", "#edit-t-country");
+      });
+    })(jQuery);
+  ';
+  drupal_add_js($js, 'inline');
+
 	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
+  $form['#attached']['js'][] = drupal_get_path('module', 'dh_manageapp').'/js/location-common.js';
 
 	return $form;		
 }
