@@ -21,9 +21,18 @@ function dh_bulk_mail_schedule($bulk_mail_name, $where, $letter, $schedule_date,
   $q_count = "select count(*) from ($q) a";
   $count = db_query($q_count)->fetchField();
 
+  unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], );
+  foreach ($criteria as $key => $value) {
+    if($criteria[$key])
+      $temp[] = array($key, $value);
+  }
+
+
+  $criteria = theme('table', array('header' => array('Field', 'Value'), 'rows' => $temp));
+  // var_dump($criteria);
 
   $schedule_date = date('Y-m-d H:i:s', strtotime($schedule_date));
-  db_query("insert into dh_bulk_mail (bm_name, bm_count, bm_query, bm_letter, bm_schedule_date, bm_user) values (:name, :count, :query, :letter, :date, :user)", array(":name"=>$bulk_mail_name, ":count"=>$count, ":query"=>$q, ":letter"=>$letter, ":date"=>$schedule_date, ":user"=>$user->uid, ));
+  db_query("insert into dh_bulk_mail (bm_name, bm_count, bm_query, bm_criteria, bm_letter, bm_schedule_date, bm_user) values (:name, :count, :query, :criteria, :letter, :date, :user)", array(":name"=>$bulk_mail_name, ":count"=>$count, ":query"=>$q, ":criteria" => $criteria, ":letter"=>$letter, ":date"=>$schedule_date, ":user"=>$user->uid, ));
 }
 
 
@@ -50,6 +59,7 @@ function dh_center_bulk_mail_schedule()
     $temp['letter'] = $r['l_name'];
     $temp['schedule'] = date('Y-m-d', strtotime($r['bm_schedule_date']));;
     $temp['user'] = $r['name'];
+    $temp['criteria'] = $r['bm_criteria'];
 
     $rows[] = $temp;
     unset($temp);
@@ -81,6 +91,7 @@ function dh_center_bulk_mail_schedule()
                   { data: "letter", "title" : "Letter" },
                   { data: "schedule", "title" : "Schedule-Data" },
                   { data: "user", "title" : "User" },
+                  { data: "criteria", "title" : "Criteria" },
               ],
           });
           }
