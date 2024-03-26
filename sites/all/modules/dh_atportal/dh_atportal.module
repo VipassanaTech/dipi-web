@@ -435,7 +435,23 @@ function dh_atportal_get_centers_assigned()
 function dh_atportal_get_ats_assigned()
 {
 	global $user;
-	$q = "select CONCAT(t.t_f_name, ' ', t.t_l_name) as teacher FROM dh_lc_admin la left join dh_teacher t on (t.t_id=la.la_teacher or t.t_city=la.la_city or t.t_state=la.la_state or t.t_country=la.la_country or t.t_region=la.la_region) where la.la_deleted<>1 and t.t_status='Active' and la.la_user='".$user->uid."'";
+	$q = "select
+    CONCAT(t.t_f_name, ' ', t.t_l_name) as teacher
+    FROM dh_lc_admin la
+    left join dh_state s on la.la_state=s.s_id
+    left join dh_teacher t on
+    (
+      t.t_id=la.la_teacher or
+      t.t_city=la.la_city or
+      (t.t_state=s.s_code and t.t_country=s.s_country) or
+      t.t_country=la.la_country or
+      t.t_region=la.la_region
+    )
+    where
+    la.la_deleted<>1 and
+    t.t_status='Active' and
+    la.la_user='".$user->uid."'";
+
 	$result = db_query($q);
 
 	$at_access = array();
