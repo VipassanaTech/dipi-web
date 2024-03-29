@@ -263,6 +263,7 @@ function dh_manage_at_schedule()
           customize: function (doc) {
            doc.content[1].table.widths =
              Array(doc.content[1].table.body[0].length + 1).join("*").split("");
+            doc.content[1].table.dontBreakRows = true;
           },
         },
 
