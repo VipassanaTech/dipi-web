@@ -195,7 +195,10 @@ function dh_manage_at_schedule()
           if(!$at_status)
             $at_status = $data['status'];
           elseif($at_status <> $data['status'])
-            $row['teachers_uformtd'] .= "---------\n";
+          {
+            $row['teachers_uformtd'] .= "\n";
+            $at_status = $data['status'];
+          }
 
 					$row['teachers_uformtd'] .= "{$data['teacher']} - {$data['type']} {$gender} ({$data['status']})\n";
 				}
