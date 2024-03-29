@@ -21,6 +21,9 @@ function dh_manage_at_schedule()
 	if ( !($iPad || $iPhone || $iPod) )
 	{
 		drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.print.min.js");
+    drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.js");
+    drupal_add_js( libraries_get_path("editor").  "/DataTables/pdfmake-0.1.32/pdfmake.min.js");
+    drupal_add_js( libraries_get_path("editor").  "/DataTables/pdfmake-0.1.32/vfs_fonts.js");
 	}
 	
 
@@ -152,7 +155,9 @@ function dh_manage_at_schedule()
 
 		$row['course_name'] = l($t[1], "assign-teacher/$centre_id/".$t[0]);
 		$row['at_required'] = "M: {$t[3]}&nbsp;&nbsp;|&nbsp;&nbsp;F: {$t[4]}";
-		$row['course_name_uformtd'] = $t[1];
+    $course_name_uformtd_array = explode("/", $t[1]);
+		$row['course_name_uformtd'] = $course_name_uformtd_array[0]."/".$course_name_uformtd_array[1]."     ".
+      "\n".$course_name_uformtd_array[2]."/".$course_name_uformtd_array[3];
 		$row['at_required_uformtd'] = "M: {$t[3]}  |  F: {$t[4]}";
 		
 		$temp = array();
@@ -244,10 +249,13 @@ function dh_manage_at_schedule()
 	if (user_access('export data'))
 		if ( !($iPad || $iPhone || $iPod) )
 			$button_access = '                        
-				$.extend( true, {}, buttonCommon, {
-      			    extend: "excelHtml5",
-	            	title: "AT-Scheduling"
-				} )
+        { extend: "excelHtml5", exportOptions: buttonCommon },
+        { extend: "pdfHtml5", exportOptions: buttonCommon, pageSize: "A4",
+          customize: function (doc) {
+           doc.content[1].table.widths =
+             Array(doc.content[1].table.body[0].length + 1).join("*").split("");
+          }
+        },
 			';
 
 
@@ -391,7 +399,6 @@ function dh_manage_at_schedule()
 			function do_datatable_upcoming( tid, data )
 			{
 				var buttonCommon = {
-			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
 			            		var h = ["Course-Name", "AT Needed", "Teachers", ]; 
@@ -416,7 +423,6 @@ function dh_manage_at_schedule()
 			                	return data;
 			                }
 			            }
-			        }
 			    };
 
 				var table = $(tid).DataTable({
@@ -441,7 +447,6 @@ function dh_manage_at_schedule()
 			function do_datatable_completed( tid, data )
 			{
 				var buttonCommon = {
-			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
 			            		var h = ["Course-Name", "Teachers", ]; 
@@ -462,7 +467,6 @@ function dh_manage_at_schedule()
 			                	return data;
 			                }
 			            }
-			        }
 			    };
 
 				var table = $(tid).DataTable({
