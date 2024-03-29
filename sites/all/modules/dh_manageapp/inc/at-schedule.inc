@@ -5,6 +5,7 @@ function dh_manage_at_schedule()
 {
 	global $user;
 	$centre_id = arg(1);
+  $center_name = db_query("select c_name from dh_center where c_id=$centre_id")->fetchField();
 	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
@@ -156,8 +157,7 @@ function dh_manage_at_schedule()
 		$row['course_name'] = l($t[1], "assign-teacher/$centre_id/".$t[0]);
 		$row['at_required'] = "M: {$t[3]}&nbsp;&nbsp;|&nbsp;&nbsp;F: {$t[4]}";
     $course_name_uformtd_array = explode("/", $t[1]);
-		$row['course_name_uformtd'] = $course_name_uformtd_array[0]."/".$course_name_uformtd_array[1]."     ".
-      "\n".$course_name_uformtd_array[2]."/".$course_name_uformtd_array[3];
+		$row['course_name_uformtd'] = $course_name_uformtd_array[1]."/".$course_name_uformtd_array[3]."/".$course_name_uformtd_array[2];
 		$row['at_required_uformtd'] = "M: {$t[3]}  |  F: {$t[4]}";
 		
 		$temp = array();
@@ -249,13 +249,14 @@ function dh_manage_at_schedule()
 	if (user_access('export data'))
 		if ( !($iPad || $iPhone || $iPod) )
 			$button_access = '                        
-        { extend: "excelHtml5", exportOptions: buttonCommon },
-        { extend: "pdfHtml5", exportOptions: buttonCommon, pageSize: "A4",
+        { extend: "excelHtml5", exportOptions: buttonCommon, title: "AT Schedule : '.$center_name.'" },
+        { extend: "pdfHtml5", exportOptions: buttonCommon, pageSize: "A4", title: "AT Schedule : '.$center_name.'",
           customize: function (doc) {
            doc.content[1].table.widths =
              Array(doc.content[1].table.body[0].length + 1).join("*").split("");
-          }
+          },
         },
+
 			';
 
 
@@ -399,9 +400,10 @@ function dh_manage_at_schedule()
 			function do_datatable_upcoming( tid, data )
 			{
 				var buttonCommon = {
+                  columns: [0,1],
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Course-Name", "AT Needed", "Teachers", ]; 
+			            		var h = ["Course-Name", "Teachers", ];
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -409,15 +411,11 @@ function dh_manage_at_schedule()
 			                	var a;
 			                	if ( column == 0 )
 			                	{
-			                		return tmp[ row ].course_name_uformtd; 
+			                		return tmp[ row ].course_name_uformtd;
 			                	}
 			                	else if ( column == 1 )
 			                	{
-			                		return tmp[ row ].at_required_uformtd; 
-			                	}
-			                	else if ( column == 2 )
-			                	{
-			                		return tmp[ row ].teachers_uformtd; 
+			                		return "AT Needed: "+tmp[ row ].at_required_uformtd+"\n"+tmp[ row ].teachers_uformtd;
 			                	}
 		
 			                	return data;
@@ -447,6 +445,7 @@ function dh_manage_at_schedule()
 			function do_datatable_completed( tid, data )
 			{
 				var buttonCommon = {
+                  columns: [0,1],
 			            format: {
 			            	header: function( data, column, node ) {
 			            		var h = ["Course-Name", "Teachers", ]; 
@@ -457,11 +456,11 @@ function dh_manage_at_schedule()
 			                	var a;
 			                	if ( column == 0 )
 			                	{
-			                		return tmp[ row ].course_name_uformtd; 
+			                		return tmp[ row ].course_name_uformtd;
 			                	}
 			                	else if ( column == 1 )
 			                	{
-			                		return tmp[ row ].teachers_uformtd; 
+			                		return tmp[ row ].teachers_uformtd;
 			                	}
 		
 			                	return data;
