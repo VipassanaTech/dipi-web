@@ -134,8 +134,8 @@ function dh_manage_at_schedule()
 		c_center=$centre_id
 		order by
 		c_start asc,
+    ct_status desc,
 		t_gender desc,
-		ct_status asc,
 		ct_type
 		asc";
 
@@ -191,6 +191,12 @@ function dh_manage_at_schedule()
             $at_app_status = $data['status'];
 
 					$temp[] = array('<a href="#" id="'.$data['teacher_id'].'" class="get-at-info" >'.$at_name.'</a>', $data['type'].' '.$gender, $at_app_status);
+
+          if(!$at_status)
+            $at_status = $data['status'];
+          elseif($at_status <> $data['status'])
+            $row['teachers_uformtd'] .= "---------\n";
+
 					$row['teachers_uformtd'] .= "{$data['teacher']} - {$data['type']} {$gender} ({$data['status']})\n";
 				}
 				
