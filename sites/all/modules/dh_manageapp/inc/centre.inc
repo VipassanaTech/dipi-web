@@ -109,9 +109,12 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['c_name'] = array('#title' => 'Centre Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
 		'#default_value' => $add?'':$edit_data['c_name'], '#required' => 1, '#suffix' => $identifier.$qr_code_img  );
 	if(user_has_role(3)){
-		$form[$group]['c_vri'] = array('#title' => 'Enable VRI Schedule', '#type' => 'radios', '#weight' => 1,
+		$form[$group]['c_vri'] = array('#title' => 'Enable VRI Schedule', '#type' => 'radios', '#weight' => 1.1,
 			'#options' => array(1 => 'Yes', 0 => 'No'), 
 			'#default_value' => $add?'1':$edit_data['c_vri'], '#required' => 1,  );
+    $form[$group]['c_type'] = array('#title' => 'Location-Type', '#type' => 'radios', '#weight' => 1.2,
+      '#options' => array("center" => 'Center', 'noncenter' => 'NonCenter'),
+      '#default_value' => $add?'center':$edit_data['c_type'], '#required' => 1,  );
 
     if (!$add)
       drupal_set_message("Center Subdomain: ".$edit_data['c_subdomain']);
