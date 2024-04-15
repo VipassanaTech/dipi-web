@@ -677,7 +677,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction"];
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction", "Other Info"];
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -808,6 +808,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                         {
                           return tmp[ row ].addiction;
                         }
+                        else if ( column == 31 )
+                        {
+                          return tmp[ row ].extra;
+                        }
 
 			                	
 		
@@ -825,7 +829,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
 					                "visible": false,
 					                "searchable": false
 					            },
@@ -894,6 +898,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
+                { data: null, "title": "" },
                 { data: null, "title": "" },
 		            ],
 		            "fnRowCallback": function (nrow, data, display_index) {
