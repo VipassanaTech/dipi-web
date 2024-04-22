@@ -378,6 +378,10 @@ function dh_atportal_dashboard()
 		'Referral List' => 'referral',
     'My Referral List' => 'at-portal/my-referral',
     'Apply for AT-Meeting' => 'at-portal/at-meet',
+    'Create CAT Vote' => 'node/add/poll',
+    'CAT Voting' => 'cat-voting',
+    'Create Request for Comments' => 'node/add/request-for-comments',
+    'Request for Comments' => 'request-for-comments',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1><ul>';

@@ -10,6 +10,7 @@ settings[bootstrap_cdn] = 3.3.4
 
 stylesheets[all][] = common.less
 stylesheets[all][] = style.less
+stylesheets[all][] = css/comment.css
 
 scripts[] = tweme.js
 
