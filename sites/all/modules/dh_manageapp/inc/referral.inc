@@ -2,6 +2,7 @@
 
 function dh_referral_form($form, &$form_state, $edit_data = array()) 
 {	
+  global $user;
   	drupal_add_library('system', 'ui.autocomplete');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');  	
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/manageapp.js');
@@ -13,9 +14,19 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		$center_id = arg(1);
 	else
 		$center_id = 0;
+
+  $at_referral = false;
+  $at_id = 0;
+  if(arg(0) == 'at-portal')
+  {
+    $at_referral = true;
+    $at_id = $at_name = db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
+  }
  	
 	if ($center_id)
 		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Center Referral List", "center-referral/".arg(1)).'</h3>');
+  elseif($at_referral)
+    $form['b'] = array('#markup' => '<h2>Add Referral</h2>');
  	else
  		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Referral List", "referral/".arg(1)).'</h3>');
  	
@@ -439,6 +450,13 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
       '#maxlength' => 200,
     );
   }
+  elseif($at_id)
+  {
+    $form[$group]['r_teacher'] = array(
+      '#type' => 'hidden',
+      '#value' => $at_id,
+    );
+  }
   else
   {
     $at_required = 1;
@@ -754,6 +772,8 @@ function dh_referral_form_submit($form, &$form_state)
 
 	if (arg(0) == 'center-referral')
 		drupal_goto ('center-referral/'.arg(1));
+  elseif (arg(0) == 'at-portal')
+    drupal_goto ('at-portal');
 	else
 		drupal_goto ('referral/'.arg(1));
 }

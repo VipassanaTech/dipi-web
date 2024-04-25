@@ -375,6 +375,7 @@ function dh_atportal_dashboard()
 		'AT Address Book' => 'at-portal/address-book',
 		'Apply for Serving a Course' => 'at-portal/course-list',
 		'Courses Allotted to me/Applied by me' => 'at-portal/applied-courses-list',
+    'Add Referral' => 'at-portal/referral/add',
 		'Referral List' => 'referral',
     'My Referral List' => 'at-portal/my-referral',
     'Apply for AT-Meeting' => 'at-portal/at-meet',

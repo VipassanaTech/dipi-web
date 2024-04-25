@@ -73,6 +73,7 @@ function dh_manageapp_permission()
 	$perms['mass mail'] = array('title' => t('Send mass mails'));
 	$perms['at scheduling'] = array('title' => t('AT Scheduling'));
 	$perms['view referral list'] = array('title' => t('View referral list'));
+  $perms['add referral list'] = array('title' => t('add referral list'));
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
 	$perms['delete referral list'] = array('title' => t('Delete referral list'));
 	$perms['view center referral list'] = array('title' => t('View center referral list'));
@@ -457,6 +458,11 @@ function dh_manageapp_menu()
 	       'page callback' => 'dh_referral_results',
 	       'access arguments' => array('view referral list'),
 	       'type' => MENU_CALLBACK);
+
+    $items['at-portal/referral/add'] = array('title' => t('Referral List'),
+         'page callback' => 'dh_addedit_referral',
+         'access arguments' => array('add referral list'),
+         'type' => MENU_CALLBACK);
 
     $items['referral/get-activity/%'] = array( 'title' => t('Get Referral Activity'),
          'page callback' => 'get_referral_activity',
