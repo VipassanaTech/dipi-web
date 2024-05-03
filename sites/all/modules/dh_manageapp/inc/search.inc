@@ -1569,7 +1569,6 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
       $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#default_value' => $update_bm?$edit_data['letters']:'', '#options' => $letters, '#weight' => 6);
       $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date_popup', '#default_value' => $update_bm?$edit_data['bulk-mail-schedule']:'',
         '#date_format' => 'Y-m-d',
-    '#required' => 1,
     '#datepicker_options' => array(
         'dateFormat' => date_popup_format_to_popup('Y-m-d'),
       ),
