@@ -1268,12 +1268,19 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	return $out;
 }
 
-function dh_manageapp_search_form($form, &$form_state)
+function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 {
 	global $user;
 	$centre_id = '';
 	if (arg(1) <> '')
 		$centre_id = arg(1);
+
+  if (arg(0) == "bulk-mail")
+  {
+    $update_bm = 1;
+    $bm_id = arg(2);
+  }
+
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statuses = db_query($q)->fetchAllKeyed();
@@ -1413,9 +1420,19 @@ function dh_manageapp_search_form($form, &$form_state)
 $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
     if($storage['bulk-mail'])
     {
-        $schedule_date = "{$storage['bulk-mail-schedule']['year']}-{$storage['bulk-mail-schedule']['month']}-{$storage['bulk-mail-schedule']['day']}";
-        dh_bulk_mail_schedule($storage['bulk_mail_name'], $where, $storage['letters'], $schedule_date, $storage);
-        drupal_set_message("Scheduled Bulk Email.", 'status');
+        // $schedule_date = "{$storage['bulk-mail-schedule']['year']}-{$storage['bulk-mail-schedule']['month']}-{$storage['bulk-mail-schedule']['day']}";
+        $schedule_date = $storage['bulk-mail-schedule']['date'];
+        if($storage['bm_id'])
+        {
+          dh_create_edit_bulk_mail_schedule($storage['bulk_mail_name'], $where, $storage['letters'], $schedule_date, $storage, $storage['bm_id']);
+          drupal_set_message("Scheduled Bulk Email Updated.", 'status');
+        }
+        else
+        {
+          dh_create_edit_bulk_mail_schedule($storage['bulk_mail_name'], $where, $storage['letters'], $schedule_date, $storage);
+          drupal_set_message("Scheduled Bulk Email.", 'status');
+        }
+
     }
     // else
     //   $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
@@ -1469,26 +1486,26 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
 		if ($breadcrumb <> '')
 			$form['a'] = array('#markup' => '<h3>'.$breadcrumb.'</h3>');
 		$form['#attributes'] = array('class' => array('container-inline')); 
-		$form['course'] = array('#title' => 'Course', '#type' => 'select', '#options' => $courses, '#weight' => 1);
+		$form['course'] = array('#title' => 'Course', '#type' => 'select','#default_value' => $update_bm?$edit_data['course']:'', '#options' => $courses, '#weight' => 1);
 		/*$form['db_type'] = array('#title' => 'DB Type', '#type' => 'radios', '#options' => array('s' => 'Student', 'a' => 'Applicant' ), '#default_value' => 'a',  '#weight' => 2);*/
-		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#weight' => 3);
-		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#weight' => 4 );
-		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#size' => 15, '#weight' => 5 );
-		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#options' => $statuses, '#multiple' => True,'#default_value' => '', '#weight' => 6);
-		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => 'Both',  '#weight' => 7);
-		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => '',  '#weight' => 8);
-		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => '', '#weight' => 9);
+		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['f_name']:'', '#weight' => 3);
+		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['l_name']:'', '#weight' => 4 );
+		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['conf_no']:'', '#size' => 15, '#weight' => 5 );
+		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#default_value' => $update_bm?$edit_data['status']:'', '#options' => $statuses, '#multiple' => True, '#weight' => 6);
+		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => $update_bm?$edit_data['type']:'Both',  '#weight' => 7);
+		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => $update_bm?$edit_data['gender']:'',  '#weight' => 8);
+		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => $update_bm?$edit_data['country']:'', '#weight' => 9);
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
-		$form['state'] = array('#title' => 'State', '#type' => 'textfield','#weight' => 10);
-		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#weight' => 11);
-		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#options' => $modes, '#weight' => 12 );
-		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 13);
-		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 14);
-		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 15);
-		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 16);
-		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 17);
-		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield',  '#weight' => 18);
-		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#weight' => 19);
+		$form['state'] = array('#title' => 'State', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['state']:'','#weight' => 10);
+		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['email']:'', '#weight' => 11);
+		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#default_value' => $update_bm?$edit_data['mode']:'', '#options' => $modes, '#weight' => 12 );
+		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['alist']:'0',  '#weight' => 13);
+		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_at']:'0',  '#weight' => 14);
+		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_foreign']:'0',  '#weight' => 15);
+		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_willing_to_serve']:'0',  '#weight' => 16);
+		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_pregnant']:'0',  '#weight' => 17);
+		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['mobile']:'',  '#weight' => 18);
+		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['phone_home']:'', '#weight' => 19);
 		/*$form['date_from'] = array('#title' => 'Received From', '#type' => 'date_popup', '#size' => '15', '#weight' => 6, 
 			'#default_value' => '', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
 	    		'maxDate' => 0, '#required' => 1, 
@@ -1508,28 +1525,59 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
 		{		
   		$group = 'Advanced';
   		$form['#attributes'] = array('class' => array('container-inline'));
-  		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 101);
-      $form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
-			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#size' => '15', '#weight' => 2, '#description' => 'Enter values in separate lines');
-			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
-			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
-			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
-      $form[$group]['least_10_day'] = array('#title' => 'Least number of 10 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200' ), '#size' => '15', '#weight' => 5.1, );
-      $form[$group]['least_stp'] = array('#title' => 'Least number of STP', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.2, );
-      $form[$group]['least_spl'] = array('#title' => 'Least number of SPL', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.3, );
-      $form[$group]['least_20_day'] = array('#title' => 'Least number of 20 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.4, );
-      $form[$group]['least_30_day'] = array('#title' => 'Least number of 30 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.5, );
-      $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.6, );
-      $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.7, );
-      $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.8, );
-      $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch');
-        $q = "select l_id, l_name from dh_letter where l_center = $centre_id and l_event='custom'";
-        $letters = db_query($q)->fetchAllKeyed();
-        $letters[''] = 'Choose';
-        $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#options' => $letters, '#weight' => 6);
-      $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date', '#default_value' => '',  '#weight' => 7);
-      $form[$group]['bulk-mail'] = array('#title' => '&nbsp;bulk-Mail to Search Result?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 8);
+  		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 98);
+      $form[$group]['pin'] = array('#title' => 'Pin Code', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['pin']:'', '#size' => '15', '#weight' => 1, '#description' => 'Enter values in separate lines');
+			$form[$group]['city'] = array('#title' => 'City', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['city']:'', '#size' => '15', '#weight' => 2, '#description' => 'Enter values in separate lines');
+			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['occupation']:'', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
+			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['designation']:'', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
+			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['company']:'', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
+      $form[$group]['least_10_day'] = array('#title' => 'Least number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200' ), '#size' => '15', '#weight' => 5.1, );
+      $form[$group]['least_stp'] = array('#title' => 'Least number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.2, );
+      $form[$group]['least_spl'] = array('#title' => 'Least number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.3, );
+      $form[$group]['least_20_day'] = array('#title' => 'Least number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.4, );
+      $form[$group]['least_30_day'] = array('#title' => 'Least number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.5, );
+      $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.6, );
+      $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.7, );
+      $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.8, );
 		}
+
+    if (user_access('mass mail') && $centre_id <> '')
+    {
+      $group = 'Bulk-Mail';
+      $form['#attributes'] = array('class' => array('container-inline'));
+      $form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 99);
+      if($update_bm)
+      {
+        $form['bulk-mail'] = array(
+          '#type' => 'hidden',
+          '#value' => 1,
+        );
+        $form['bm_id'] = array(
+          '#type' => 'hidden',
+          '#value' => $bm_id,
+        );
+      }
+      else
+      {
+        $form[$group]['bulk-mail'] = array('#title' => '&nbsp;Bulk-Mail to Search Result?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 1);
+      }
+
+      $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['bulk_mail_name']:'', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch');
+      $q = "select l_id, l_name from dh_letter where l_center = $centre_id and l_event='custom'";
+      $letters = db_query($q)->fetchAllKeyed();
+      $letters[''] = 'Choose';
+      $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#default_value' => $update_bm?$edit_data['letters']:'', '#options' => $letters, '#weight' => 6);
+      $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date_popup', '#default_value' => $update_bm?$edit_data['bulk-mail-schedule']:'',
+        '#date_format' => 'Y-m-d',
+    '#required' => 1,
+    '#datepicker_options' => array(
+        'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+      ),
+      '#date_label_position' => 'above',
+    '#theme_wrappers' => array('date_popup'),
+    '#suffix' => '',
+        '#weight' => 7);
+    }
 
 		$js = '
 			(function ($) {

@@ -245,7 +245,27 @@ function dh_manageapp_menu()
 	       'type' => MENU_CALLBACK);
 
     $items['centre/%centre_id/bulk-mail-schedule'] = array('title' => t('Bulk Mail Schedule'),
-         'page callback' => 'dh_center_bulk_mail_schedule',
+         'page callback' => 'dh_show_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
+    $items['bulk-mail/%centre_id/%bulk_mail_id/delete'] = array('title' => t('Bulk Mail Schedule'),
+         'page callback' => 'dh_delete_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
+    $items['bulk-mail/%centre_id/%bulk_mail_id/edit'] = array('title' => t('Bulk Mail Schedule'),
+           'page callback' => 'dh_edit_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
+    $items['bulk-mail/%centre_id/%bulk_mail_id/mute'] = array('title' => t('Bulk Mail Schedule'),
+         'page callback' => 'dh_mute_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
+    $items['bulk-mail/%centre_id/%bulk_mail_id/unmute'] = array('title' => t('Bulk Mail Schedule'),
+         'page callback' => 'dh_unmute_bulk_mail_schedule',
          'access arguments' => array('mass mail'),
          'type' => MENU_CALLBACK);
 
@@ -737,6 +757,19 @@ function clarification_id_load( $id )
 		return false;
 
 	return $id;
+}
+
+function bulk_mail_id_load( $id )
+{
+  if (!is_numeric($id))
+    return false;
+
+  $inactive = db_query("select bm_id from dh_bulk_mail where bm_id=$id and (bm_processed in (1, 2) or bm_deleted=1)")->fetchField();
+
+  if($inactive)
+    return false;
+
+  return $id;
 }
 
 
