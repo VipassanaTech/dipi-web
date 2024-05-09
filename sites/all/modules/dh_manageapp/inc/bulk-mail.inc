@@ -282,56 +282,64 @@ function dh_show_log_bulk_mail_schedule()
   drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
   drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 
-  drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
-  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
-  drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
-  drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
-
-
-  $res = db_query("select bml_applicant, bml_name, bml_email, bml_phone_mobile, bml_created from dh_bulk_mail_log where bml_bulk_mail=$bm_id and bml_center=$centre_id");
-  $rows = array();
-  while( $r = $res->fetchAssoc() )
-  {
-    $temp['name'] = l($r['bml_name'], "show-application/{$r['bml_applicant']}");
-    $temp['email'] = $r['bml_email'];
-    $temp['phone_mobile'] = $r['bml_phone_mobile'];
-    $temp['created'] = $r['bml_created'];
-
-    $rows[] = $temp;
-    unset($temp);
-  }
-  $rows = json_encode($rows);
   $out = '<h3>'.l("Back to Bulk-Mail-Schedule", "centre/".arg(1)."/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/".arg(1)).'</h3>';
-  $out .= theme('table', array('rows' => array(), 'attributes' => array('id' => 'bulk-mail-log')));
+  $header = array("Applicant", "Email", "Phone-Mobile", "Created");
+  $out .= theme('table', array('header' => $header, 'rows' => array(array()), 'attributes' => array('id' => 'bulk-mail-log')));
 
   $js = '
-  (function ($) {
-      function do_datatable( tid, data )
+    (function ($) {
+      function do_datatable( tid )
       {
         var table = $(tid).DataTable({
           dom: "lfr<\"clear\">tip",
-          data: data,
-          "ordering": false,
-          destroy: true,
-          "oLanguage": {"sEmptyTable": "No Bulk-Mail Logs."},
-          searching: false,
-              columns: [
-                  { data: "name", "title" : "Applicant" },
-                  { data: "email", "title" : "Email" },
-                  { data: "phone_mobile", "title" : "Phone-Mobile" },
-                  { data: "created", "title" : "Created" },
-              ],
+              "ajax": "/bulk-mail/'.$centre_id.'/'.$bm_id.'/get-log"
           });
-          }
-
-
-        $(document).ready(function(){
-        var dataset = '.$rows.';
-        do_datatable("#bulk-mail-log", dataset);
+      }
+      $(document).ready(function(){
+        do_datatable("#bulk-mail-log");
       });
     })(jQuery);
   ';
   drupal_add_js($js, 'inline');
 
   return $out;
+}
+
+
+function dh_get_log_bulk_mail_schedule()
+{
+  require( drupal_get_path( 'module', 'dh_atportal').'/ssp.class.php' );
+
+  global $databases;
+  $bm_id = arg(2);
+  $centre_id = arg(1);
+
+  // DB table to use
+  $table = 'dh_bulk_mail_log';
+
+  // Table's primary key
+  $primaryKey = 'bml_id';
+
+  $name = function($d, $row) { return l($d, "show-application/{$row['bml_applicant']}"); };
+  $columns = array(
+      array( 'db' => 'bml_name', 'dt' => 0, 'formatter' => $name),
+      array( 'db' => 'bml_email',     'dt' => 1 ),
+      array( 'db' => 'bml_phone_mobile', 'dt' => 2 ),
+      array( 'db' => 'bml_created',  'dt' => 3 ),
+  );
+
+
+  $whereAll = null;
+  $whereResult = null;
+  $whereAll = "bml_bulk_mail=$bm_id and bml_center=$centre_id";
+  // SQL server connection information
+  $sql_details = array(
+      'user' => $databases['default']['default']['username'],
+      'pass' => $databases['default']['default']['password'],
+      'db'   => $databases['default']['default']['database'],
+      'host' => $databases['default']['default']['host']
+  );
+
+  drupal_json_output( SSP::complex( $_GET, $sql_details, $table, $primaryKey, $columns, $whereResult, $whereAll ) );
+  exit;
 }

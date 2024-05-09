@@ -264,6 +264,11 @@ function dh_manageapp_menu()
          'access arguments' => array('mass mail'),
          'type' => MENU_CALLBACK);
 
+    $items['bulk-mail/%centre_id/%bulk_mail_id/get-log'] = array('title' => t('Bulk Mail Schedule'),
+           'page callback' => 'dh_get_log_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
     $items['bulk-mail/%centre_id/%bulk_mail_id/mute'] = array('title' => t('Bulk Mail Schedule'),
          'page callback' => 'dh_mute_bulk_mail_schedule',
          'access arguments' => array('mass mail'),
