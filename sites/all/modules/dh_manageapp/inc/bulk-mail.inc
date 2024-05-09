@@ -80,8 +80,14 @@ function dh_show_bulk_mail_schedule()
   $rows = array();
   while( $r = $res->fetchAssoc() )
   {
-    $temp['id'] = $r['bm_id'];
-    $temp['name'] = $r['bm_name'];
+    if($r['bm_processed'] == 1)
+    {
+      $temp['name'] = l($r['bm_name'], "bulk-mail/$centre_id/{$r['bm_id']}/show-log");
+    }
+    else
+    {
+      $temp['name'] = $r['bm_name'];
+    }
     $temp['count'] = $r['bm_count'];
     $temp['letter'] = $r['l_name'];
     $temp['schedule'] = date('Y-m-d', strtotime($r['bm_schedule_date']));;
@@ -96,12 +102,12 @@ function dh_show_bulk_mail_schedule()
 
     if($r['bm_processed'] == 2)
     {
-      $temp['action'] = "";
+      $temp['action'] = "No Action";
       $temp['status'] = "In Progress";
     }
     elseif($r['bm_processed'] == 1)
     {
-      $temp['action'] = "";
+      $temp['action'] = "No Action";
       $temp['status'] = "Completed";
     }
     elseif($r['bm_processed'] == 3)
@@ -120,7 +126,8 @@ function dh_show_bulk_mail_schedule()
     unset($temp);
   }
   $rows = json_encode($rows);
-  $out = theme('table', array('rows' => array(), 'attributes' => array('id' => 'bulk-mail-schedule')));
+  $out = '<h3>'.l("Back to Dashboard", "centre/".arg(1)).'</h3>';
+  $out .= theme('table', array('rows' => array(), 'attributes' => array('id' => 'bulk-mail-schedule')));
 
   $js = '
   (function ($) {
@@ -140,7 +147,6 @@ function dh_show_bulk_mail_schedule()
                       }
               ],
               columns: [
-                  { data: "id", "title" : "ID" },
                   { data: "name", "title" : "Batch-Name" },
                   { data: "status", "title" : "Status" },
                   { data: "count", "title" : "Batch-Count" },
@@ -185,8 +191,18 @@ function dh_delete_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  db_query("update dh_bulk_mail set bm_deleted=1 where bm_id=$bm_id and bm_center=$centre_id");
-  drupal_set_message("Deleted Bulk-Mail-$bm_id", "status");
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+
+  if($invalid)
+  {
+    drupal_set_message("Can't take action on deleted/completed/in-progress bulk-email.", "error");
+  }
+  else
+  {
+    db_query("update dh_bulk_mail set bm_deleted=1 where bm_id=$bm_id and bm_center=$centre_id");
+    drupal_set_message("Deleted Bulk-Mail-$bm_id", "status");
+  }
+
   drupal_goto("centre/$centre_id/bulk-mail-schedule");
 }
 
@@ -196,8 +212,18 @@ function dh_mute_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  db_query("update dh_bulk_mail set bm_processed=3 where bm_id=$bm_id and bm_center=$centre_id");
-  drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+
+  if($invalid)
+  {
+    drupal_set_message("Can't take action on deleted/completed/in-progress bulk-email.", "error");
+  }
+  else
+  {
+    db_query("update dh_bulk_mail set bm_processed=3 where bm_id=$bm_id and bm_center=$centre_id");
+    drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
+  }
+
   drupal_goto("centre/$centre_id/bulk-mail-schedule");
 }
 
@@ -206,8 +232,18 @@ function dh_unmute_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  db_query("update dh_bulk_mail set bm_processed=0 where bm_id=$bm_id and bm_center=$centre_id");
-  drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+
+  if($invalid)
+  {
+    drupal_set_message("Can't take action on deleted/completed/in-progress bulk-email.", "error");
+  }
+  else
+  {
+    db_query("update dh_bulk_mail set bm_processed=0 where bm_id=$bm_id and bm_center=$centre_id");
+    drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
+  }
+
   drupal_goto("centre/$centre_id/bulk-mail-schedule");
 }
 
@@ -217,12 +253,85 @@ function dh_edit_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  $res = db_query("select bm_criteria, bm_name, bm_letter, date(bm_schedule_date) as schedule_date from dh_bulk_mail where bm_id=".$bm_id)->fetchAssoc();
-  $criteria = (array)json_decode($res['bm_criteria']);
-  $criteria['bulk_mail_name'] = $res['bm_name'];
-  $criteria['letters'] = $res['bm_letter'];
-  $criteria['bulk-mail-schedule'] = $res['schedule_date'];
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
 
-  $out = drupal_get_form('dh_manageapp_search_form', $criteria);
+  if($invalid)
+  {
+    drupal_set_message("Can't take action on deleted/completed/in-progress bulk-email.", "error");
+    drupal_goto("centre/$centre_id/bulk-mail-schedule");
+  }
+  else
+  {
+    $res = db_query("select bm_criteria, bm_name, bm_letter, date(bm_schedule_date) as schedule_date from dh_bulk_mail where bm_id=$bm_id and bm_center=$centre_id")->fetchAssoc();
+    $criteria = (array)json_decode($res['bm_criteria']);
+    $criteria['bulk_mail_name'] = $res['bm_name'];
+    $criteria['letters'] = $res['bm_letter'];
+    $criteria['bulk-mail-schedule'] = $res['schedule_date'];
+
+    $out = drupal_get_form('dh_manageapp_search_form', $criteria);
+    return $out;
+  }
+}
+
+
+function dh_show_log_bulk_mail_schedule()
+{
+  $bm_id = arg(2);
+  $centre_id = arg(1);
+
+  drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+  drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
+  drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+  drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+  drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+
+
+  $res = db_query("select bml_applicant, bml_name, bml_email, bml_phone_mobile, bml_created from dh_bulk_mail_log where bml_bulk_mail=$bm_id and bml_center=$centre_id");
+  $rows = array();
+  while( $r = $res->fetchAssoc() )
+  {
+    $temp['name'] = l($r['bml_name'], "show-application/{$r['bml_applicant']}");
+    $temp['email'] = $r['bml_email'];
+    $temp['phone_mobile'] = $r['bml_phone_mobile'];
+    $temp['created'] = $r['bml_created'];
+
+    $rows[] = $temp;
+    unset($temp);
+  }
+  $rows = json_encode($rows);
+  $out = '<h3>'.l("Back to Bulk-Mail-Schedule", "centre/".arg(1)."/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/".arg(1)).'</h3>';
+  $out .= theme('table', array('rows' => array(), 'attributes' => array('id' => 'bulk-mail-log')));
+
+  $js = '
+  (function ($) {
+      function do_datatable( tid, data )
+      {
+        var table = $(tid).DataTable({
+          dom: "lfr<\"clear\">tip",
+          data: data,
+          "ordering": false,
+          destroy: true,
+          "oLanguage": {"sEmptyTable": "No Bulk-Mail Logs."},
+          searching: false,
+              columns: [
+                  { data: "name", "title" : "Applicant" },
+                  { data: "email", "title" : "Email" },
+                  { data: "phone_mobile", "title" : "Phone-Mobile" },
+                  { data: "created", "title" : "Created" },
+              ],
+          });
+          }
+
+
+        $(document).ready(function(){
+        var dataset = '.$rows.';
+        do_datatable("#bulk-mail-log", dataset);
+      });
+    })(jQuery);
+  ';
+  drupal_add_js($js, 'inline');
+
   return $out;
 }

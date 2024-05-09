@@ -1432,6 +1432,7 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
           dh_create_edit_bulk_mail_schedule($storage['bulk_mail_name'], $where, $storage['letters'], $schedule_date, $storage);
           drupal_set_message("Scheduled Bulk Email.", 'status');
         }
+        drupal_goto("centre/$centre_id/bulk-mail-schedule");
 
     }
     // else

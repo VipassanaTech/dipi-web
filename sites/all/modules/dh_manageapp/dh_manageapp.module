@@ -259,6 +259,11 @@ function dh_manageapp_menu()
          'access arguments' => array('mass mail'),
          'type' => MENU_CALLBACK);
 
+    $items['bulk-mail/%centre_id/%bulk_mail_id/show-log'] = array('title' => t('Bulk Mail Schedule'),
+           'page callback' => 'dh_show_log_bulk_mail_schedule',
+         'access arguments' => array('mass mail'),
+         'type' => MENU_CALLBACK);
+
     $items['bulk-mail/%centre_id/%bulk_mail_id/mute'] = array('title' => t('Bulk Mail Schedule'),
          'page callback' => 'dh_mute_bulk_mail_schedule',
          'access arguments' => array('mass mail'),
@@ -764,12 +769,12 @@ function bulk_mail_id_load( $id )
   if (!is_numeric($id))
     return false;
 
-  $inactive = db_query("select bm_id from dh_bulk_mail where bm_id=$id and (bm_processed in (1, 2) or bm_deleted=1)")->fetchField();
+  $bm_id = db_query("select bm_id from dh_bulk_mail where bm_id=$id")->fetchField();
 
-  if($inactive)
-    return false;
+  if($bm_id)
+    return $id;
 
-  return $id;
+  return false;
 }
 
 
@@ -2475,11 +2480,12 @@ function dipi_mail_consumer_callback($msg)
 	try {
 	    $data = json_decode($msg->body);
 	    $ret = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id);
-      $app = db_query("select concat(ifnull(a_f_name, ''), ' ', ifnull(a_l_name, '')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
+      $app = db_query("select concat(ifnull(a_f_name, ''), ' ', ifnull(a_l_name, '')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
 
       $mail_log['bml_bulk_mail'] = $data->bulk_mail_id;
       $mail_log['bml_applicant'] = $data->applicant_id;
       $mail_log['bml_name'] = $app['name'];
+      $mail_log['bml_center'] = $app['a_center'];
       $mail_log['bml_email'] = $app['a_email'];
       $mail_log['bml_phone_mobile'] = $app['phone'];
 
