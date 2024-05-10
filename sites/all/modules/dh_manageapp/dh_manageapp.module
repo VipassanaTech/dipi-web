@@ -2484,17 +2484,26 @@ function dipi_mail_consumer_callback($msg)
 {
 	try {
 	    $data = json_decode($msg->body);
-	    $ret = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id);
-      $app = db_query("select concat(ifnull(a_f_name, ''), ' ', ifnull(a_l_name, '')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
+      if($data->completed)
+      {
+        $q = "update dh_bulk_mail set bm_processed=1 where bm_id=:bm_id";
+        db_query($q, array(':bm_id' => $data->bulk_mail_id));
+      }
+      else
+      {
+        $ret = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id);
+        $app = db_query("select concat(ifnull(a_f_name, ''), ' ', ifnull(a_l_name, '')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
 
-      $mail_log['bml_bulk_mail'] = $data->bulk_mail_id;
-      $mail_log['bml_applicant'] = $data->applicant_id;
-      $mail_log['bml_name'] = $app['name'];
-      $mail_log['bml_center'] = $app['a_center'];
-      $mail_log['bml_email'] = $app['a_email'];
-      $mail_log['bml_phone_mobile'] = $app['phone'];
+        $mail_log['bml_bulk_mail'] = $data->bulk_mail_id;
+        $mail_log['bml_applicant'] = $data->applicant_id;
+        $mail_log['bml_name'] = $app['name'];
+        $mail_log['bml_center'] = $app['a_center'];
+        $mail_log['bml_email'] = $app['a_email'];
+        $mail_log['bml_phone_mobile'] = $app['phone'];
 
-      db_insert('dh_bulk_mail_log')->fields($mail_log)->execute();
+        db_insert('dh_bulk_mail_log')->fields($mail_log)->execute();
+      }
+
 
 	    $ret = True;
 	    if ( $ret )

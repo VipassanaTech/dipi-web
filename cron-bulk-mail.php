@@ -34,10 +34,9 @@ while ($row = $result->fetchAssoc())
    while ($row2 = $result2->fetchAssoc()) 
    {
       echo "Pushing ".$row2['id']."\n";
-      $data = array('bulk_mail_id' => $row['bm_id'], 'applicant_id' => $row2['id'], 'letter_id' => $row['bm_letter']);
+      $data = array('bulk_mail_id' => $row['bm_id'], 'applicant_id' => $row2['id'], 'letter_id' => $row['bm_letter'], 'completed' => 0);
       push_to_queue( 'Dipi', 'mail', json_encode( $data ), 86400000);
    }
-   $q = "update dh_bulk_mail set bm_processed=1 where bm_id=".$row['bm_id'];
-   db_query($q);
-
+   $data = array('bulk_mail_id' => $row['bm_id'], 'completed' => 1);
+    push_to_queue( 'Dipi', 'mail', json_encode( $data ), 86400000);
 }
