@@ -151,7 +151,7 @@ function dh_show_bulk_mail_schedule()
                   { data: "status", "title" : "Status" },
                   { data: "count", "title" : "Batch-Count" },
                   { data: "letter", "title" : "Letter" },
-                  { data: "schedule", "title" : "Schedule-Data" },
+                  { data: "schedule", "title" : "Schedule-Date" },
                   { data: "created_by", "title" : "Created" },
                   { data: "updated_by", "title" : "Updated" },
                   { data: "criteria", "title" : "Criteria" },
