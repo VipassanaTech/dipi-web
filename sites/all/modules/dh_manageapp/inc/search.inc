@@ -1417,10 +1417,8 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		else
 			$db_type = 'student';
 
-$out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
     if($storage['bulk-mail'])
     {
-        // $schedule_date = "{$storage['bulk-mail-schedule']['year']}-{$storage['bulk-mail-schedule']['month']}-{$storage['bulk-mail-schedule']['day']}";
         $schedule_date = $storage['bulk-mail-schedule']['date'];
         if($storage['bm_id'])
         {
@@ -1433,10 +1431,10 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
           drupal_set_message("Scheduled Bulk Email.", 'status');
         }
         drupal_goto("centre/$centre_id/bulk-mail-schedule");
-
     }
-    // else
-    //   $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
+
+    $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
+
 
 		$form['out'] = array('#markup' => $out, '#weight' => 100 );
 		return $form;
@@ -1570,6 +1568,8 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
       $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#default_value' => $update_bm?$edit_data['letters']:'', '#options' => $letters, '#weight' => 6);
       $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date_popup', '#default_value' => $update_bm?$edit_data['bulk-mail-schedule']:'',
         '#date_format' => 'Y-m-d',
+        '#default_value' => date('Y-m-d'),
+        '#date_year_range' => '+0:+1',
     '#datepicker_options' => array(
         'dateFormat' => date_popup_format_to_popup('Y-m-d'),
       ),
@@ -1648,3 +1648,13 @@ function dh_search_lc ($type)
 	return $form;
 }
 
+
+function dh_manageapp_search_show_app()
+{
+  $center_id = arg(1);
+  $bulk_mail_id = arg(2);
+  $app_id = arg(3);
+  $where = " a_id='$app_id' and a_center='$center_id' ";
+  $out = '<h3>'.l("Back to Bulk-Mail-Log", "bulk-mail/$center_id/$bulk_mail_id/show-log").' | '.l("Back to Bulk-Mail-Schedule", "centre/$center_id/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/$center_id").'</h3>';
+  return dh_manageapp_search_results( 'applicant', $where, $center_id );
+}

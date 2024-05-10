@@ -183,6 +183,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_LOCAL_TASK);
 
+  $items['search-app/%centre_id/%bulk_mail_id/%app_id'] = array( 'title' => t('Search'),
+         'page callback' => 'dh_manageapp_search_show_app',
+         'access arguments' => array('access manageapp'),
+         'type' => MENU_LOCAL_TASK);
+
 
 	$items['search-course/%centre_id/%course_id'] = array( 'title' => t('Search'),
 	       'page callback' => '_search_course',

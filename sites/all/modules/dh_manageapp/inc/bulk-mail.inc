@@ -283,7 +283,7 @@ function dh_show_log_bulk_mail_schedule()
   drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 
   $out = '<h3>'.l("Back to Bulk-Mail-Schedule", "centre/".arg(1)."/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/".arg(1)).'</h3>';
-  $header = array("Applicant", "Email", "Phone-Mobile", "Created");
+  $header = array("Applicant", "Email", "Phone-Mobile", "Created", "Applicant-ID", "Center", "Bulk-Mail-ID");
   $out .= theme('table', array('header' => $header, 'rows' => array(array()), 'attributes' => array('id' => 'bulk-mail-log')));
 
   $js = '
@@ -292,8 +292,9 @@ function dh_show_log_bulk_mail_schedule()
       {
         var table = $(tid).DataTable({
           dom: "lfr<\"clear\">tip",
-              "ajax": "/bulk-mail/'.$centre_id.'/'.$bm_id.'/get-log"
-          });
+          "ajax": "/bulk-mail/'.$centre_id.'/'.$bm_id.'/get-log",
+          "columnDefs": [{ "targets": 4, "visible": false }, { "targets": 5, "visible": false }, { "targets": 6, "visible": false }]
+        });
       }
       $(document).ready(function(){
         do_datatable("#bulk-mail-log");
@@ -319,13 +320,15 @@ function dh_get_log_bulk_mail_schedule()
 
   // Table's primary key
   $primaryKey = 'bml_id';
-
-  $name = function($d, $row) { return l($d, "show-application/{$row['bml_applicant']}"); };
+  $name = function($d, $row) { return l($d, "search-app/{$row['bml_center']}/{$row['bml_bulk_mail']}/{$row['bml_applicant']}"); };
   $columns = array(
       array( 'db' => 'bml_name', 'dt' => 0, 'formatter' => $name),
       array( 'db' => 'bml_email',     'dt' => 1 ),
       array( 'db' => 'bml_phone_mobile', 'dt' => 2 ),
       array( 'db' => 'bml_created',  'dt' => 3 ),
+      array( 'db' => 'bml_applicant',  'dt' => 4 ),
+      array( 'db' => 'bml_center',  'dt' => 5 ),
+      array( 'db' => 'bml_bulk_mail',  'dt' => 6 ),
   );
 
 
