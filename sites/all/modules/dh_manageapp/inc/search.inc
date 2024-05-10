@@ -1656,5 +1656,6 @@ function dh_manageapp_search_show_app()
   $app_id = arg(3);
   $where = " a_id='$app_id' and a_center='$center_id' ";
   $out = '<h3>'.l("Back to Bulk-Mail-Log", "bulk-mail/$center_id/$bulk_mail_id/show-log").' | '.l("Back to Bulk-Mail-Schedule", "centre/$center_id/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/$center_id").'</h3>';
-  return dh_manageapp_search_results( 'applicant', $where, $center_id );
+  $out .= dh_manageapp_search_results( 'applicant', $where, $center_id );
+  return $out;
 }
