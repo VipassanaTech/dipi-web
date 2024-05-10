@@ -1522,7 +1522,7 @@ $out .= dh_manageapp_search_results( $db_type, $where, $centre_id );
 		*/
 		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
 
-		if (user_access('mass mail') && $centre_id <> '')
+		if ($centre_id <> '')
 		{		
   		$group = 'Advanced';
   		$form['#attributes'] = array('class' => array('container-inline'));
