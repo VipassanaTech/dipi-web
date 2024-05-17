@@ -1,4 +1,4 @@
-<?php
+  <?php
 
 include_once(dirname(__FILE__)."/address-book.inc");
 include_once(dirname(__FILE__)."/schedule.inc");
@@ -87,27 +87,27 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-	$items['at-portal/course-list'] = array( 'title' => t('AT Show Courses List'),
+	$items['at-portal/course-list'] = array( 'title' => t('Courses List for AT-Seva'),
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('at_course_list_form'),
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
 
-	$items['at-portal/course-apply/%'] = array( 'title' => t('Apply AT Application'),	
+	$items['at-portal/course-apply/%'] = array( 'title' => t('Apply AT-Seva Application'),
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('apply_at_application_form', 2),
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
 
-	$items['at-portal/applied-courses-list'] = array( 'title' => t('AT Show Applied Courses List'),
+	$items['at-portal/applied-courses-list'] = array( 'title' => t('Show Applied AT-Seva List'),
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('at_applied_courses_list_form'),
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-	$items['at-portal/show-course-application/%atappid'] = array( 'title' => t('AT Show Application'),
+	$items['at-portal/show-course-application/%atappid'] = array( 'title' => t('Show AT-Seva Application'),
 	       'page callback' => 'drupal_get_form',
 			'page arguments' => array('show_at_application_form', 2),
 	       'access arguments' => array('access at portal'),
@@ -139,6 +139,17 @@ function dh_atportal_menu()
          'page callback' => 'at_meet_apply',
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
+
+    $items['at-portal/course-sit-list'] = array( 'title' => t('Courses List for Sitting/Serving'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('at_course_sit_list_form'),
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
+    $items['at-portal/course-sit-apply/%/%'] = array( 'title' => t('Apply for Sitting/Serving'),
+        'page callback' => 'at_course_sit_apply',
+        'access arguments' => array('access at portal'),
+        'type' => MENU_CALLBACK);
 
     return $items;
 }
@@ -373,8 +384,9 @@ function dh_atportal_dashboard()
 		'All Reviews' => 'lc-review/all',
 		'My Profile' => 'at-portal/address-book/edit/me',
 		'AT Address Book' => 'at-portal/address-book',
-		'Apply for Serving a Course' => 'at-portal/course-list',
-		'Courses Allotted to me/Applied by me' => 'at-portal/applied-courses-list',
+		'Apply for AT-Seva in a Course' => 'at-portal/course-list',
+		'Courses Allotted-to-me / Applied-by-me for AT-Seva' => 'at-portal/applied-courses-list',
+    // 'Apply to Sit/Serve in a Course' => 'at-portal/course-sit-list',
     'Add Referral' => 'at-portal/referral/add',
 		'Referral List' => 'referral',
     'My Referral List' => 'at-portal/my-referral',
@@ -1585,6 +1597,698 @@ function at_meet_apply()
   $cmd = "/usr/bin/php status-trigger.php $app_id 'Received'";
   exec($cmd);
 
+  $out['msg'] = "Application submitted successfully";
+  drupal_json_output($out);
+  exit;
+}
+
+
+function at_course_sit_list_form($form, &$form_state)
+{
+
+  global $user;
+  $at_code = $user->name;
+
+  $q = "select t_id, t_gender from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
+  $row = db_query($q)->fetchAssoc();
+
+  $at_id = $row['t_id'];
+  $at_gender = $row['t_gender'];
+
+  if (!$at_id)
+  {
+    drupal_set_message("Only AT can apply for courses.", "error");
+    drupal_goto("at-portal");
+  }
+
+  $ac_teacher_code=strtoupper(str_replace('.', '-', $user->name));
+
+  drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+  drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
+  drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+  drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+  drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+
+
+  $form['at-portal'] = array(
+      '#markup' => '<h2>'.l("Back to AT-Portal", "/at-portal").'</h2>',
+  );
+
+
+  $center = db_query("select concat('ce-', c_id), c_name from dh_center where c_mute=0")->fetchAllKeyed();
+  $country = db_query("select concat('cy-', cy.c_id), cy.c_name from dh_center c left join dh_country cy on (c.c_country=cy.c_code)")->fetchAllKeyed();
+  $state = db_query("select concat('st-', st.s_id), st.s_name from dh_center c left join dh_state st on (c.c_state=st.s_code AND c.c_country=st.s_country) ")->fetchAllKeyed();
+  $city = db_query("select concat('ci-', ci.c_id), ci.c_name from dh_center c left join dh_city ci on (c.c_city=ci.c_id)")->fetchAllKeyed();
+
+  $loc_options = array (
+    "Center" => $center,
+    "Country" => $country,
+    "State" => $state,
+    "City" => $city,
+  );
+
+
+  $course_type = db_query("select td_key, td_val1 from `dh_type_detail` where td_type='course-type'")->fetchAllKeyed();
+
+
+  $form['from_date'] = array(
+    '#type' => 'date_popup',
+    '#default_value' => date('Y-m-d'),
+    '#title' => t('From Date'),
+    '#size' => 12,
+    '#weight' => 5,
+    '#date_format' => 'Y-m-d',
+    '#date_year_range' => '+0:+4',
+    '#date_label_position' => 'above',
+    '#required' => 1,
+    '#theme_wrappers' => array('date_popup'),
+    '#datepicker_options' => array(
+      'minDate' => 0,
+      '#required' => 1,
+      'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+    ),
+    '#attributes' => array(
+        'class' => array('from-date-class',),
+    ),
+  );
+
+  $form['to_date'] = array(
+    '#type' => 'date_popup',
+    '#default_value' => date('Y-m-d', strtotime('+1 year')),
+    '#title' => t('To Date'),
+    '#size' => 12,
+    '#weight' => 10,
+    '#date_format' => 'Y-m-d',
+    '#date_year_range' => '+0:+4',
+    '#date_label_position' => 'above',
+    '#required' => 1,
+    '#theme_wrappers' => array('date_popup'),
+    '#datepicker_options' => array(
+      'minDate' => 0,
+      '#required' => 1,
+      'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+    ),
+    '#attributes' => array(
+        'class' => array('to-date-class',),
+    ),
+  );
+
+  $form['location'] = array(
+    '#title' => 'Centre / Country / Location / Place',
+    '#type' => 'select',
+    '#options' => $loc_options,
+    '#weight' => 15,
+    '#multiple' => "multiple",
+    '#attributes' => array(
+        'id' => 'edit-location',
+    ),
+  );
+
+  $form['course-type'] = array('#title' => 'Course Type', '#type' => 'select', '#options' => $course_type, '#weight' => 20, '#multiple' => "multiple");
+
+  $form['sub'] = array(
+    '#type' => 'submit',
+    '#value' => 'Search',
+    '#weight' => 25,
+    '#prefix' => '<br>',
+    '#suffix' => '<br><br><br>',
+  );
+
+  $q = db_select('dh_course', 'co');
+  $q->leftjoin('dh_center', 'ce', 'co.c_center=ce.c_id');
+  $q->leftjoin('dh_country', 'cy', 'ce.c_country=cy.c_code');
+  $q->leftjoin('dh_state', 'st', '(ce.c_state=st.s_code AND ce.c_country=st.s_country)');
+  $q->leftjoin('dh_city', 'ci', 'ce.c_city=ci.c_id');
+  $q->leftjoin('dh_type_detail', 'td', 'co.c_course_type=td.td_id');
+  $q->addField('ce', 'c_id', 'center_id');
+  $q->addField('ce', 'c_name', 'center_name');
+  $q->addField('ce', 'c_subdomain', 'center_sub');
+  $q->addField('td', 'td_val1', 'course_type');
+  $q->addField('co', 'c_id', 'course_id');
+  $q->addField('co', 'c_name', 'course_name');
+  $q->addField('co', 'c_start', 'start_date');
+  $q->addField('co', 'c_end', 'end_date');
+  $q->addField('co', 'c_status_om', 'status_om');
+  $q->addField('co', 'c_status_of', 'status_of');
+  $q->addField('co', 'c_status_nm', 'status_nm');
+  $q->addField('co', 'c_status_nf', 'status_nf');
+  $q->addField('co', 'c_status_svr_m', 'status_svr_m');
+  $q->addField('co', 'c_status_svr_f', 'status_svr_f');
+  $q->addField('co', 'c_enrol_date', 'enrol_date');
+  $q->addField('co', 'c_list_only', 'list_only');
+  $q->addField('co', 'c_status', 'status');
+  $q->addField('co', 'c_cancelled', 'cancelled');
+  $q->addField('ci', 'c_name', 'city');
+  $q->addField('st', 's_name', 'state');
+  $q->condition('ce.c_mute', '0', '=');
+
+
+
+
+  if (isset($form_state['user_input']) && $form_state['user_input'])
+  {
+    watchdog("testing2","<pre>".print_r($form_state['user_input'],true)."</pre>");
+
+    $values = $form_state['user_input'];
+    $location = array('center' => array(),
+      'country' => array(),
+      'state' => array(),
+      'city' => array()
+    );
+
+    if($values['from_date']['date'])
+    {
+      $q->condition('co.c_start', $values['from_date']['date'], '>=');
+    }
+
+    if($values['to_date']['date'])
+    {
+      $q->condition('co.c_start', $values['to_date']['date'], '<=');
+    }
+
+
+    $location['center']=array();
+    $location['country']=array();
+    $location['state']=array();
+    $location['city']=array();
+
+    if (is_array($values['location']))
+    {
+      // $form['location']['#default_value'] = $values['location'];
+      foreach ($values['location'] as $loc)
+      {
+        if ( substr($loc,0,3) == 'ce-')
+          $location['center'][] = str_replace('ce-', '', $loc);
+        if ( substr($loc,0,3) == 'cy-')
+          $location['country'][] = str_replace('cy-', '', $loc);
+        if ( substr($loc,0,3) == 'st-')
+          $location['state'][] = str_replace('st-', '', $loc);
+        if ( substr($loc,0,3) == 'ci-')
+          $location['city'][] = str_replace('ci-', '', $loc);
+      }
+    }
+
+
+    if (count($location['center'])>0 || count($location['country'])>0 || count($location['state'])>0 || count($location['city'])>0)
+    {
+      $or = db_or();
+
+      if (count($location['center'])>0)
+        $or->condition('ce.c_id', $location['center'], 'in');
+
+      if (count($location['country'])>0)
+        $or->condition('cy.c_id', $location['country'], 'in');
+
+      if (count($location['state'])>0)
+        $or->condition('st.s_id', $location['state'], 'in');
+
+      if (count($location['city'])>0)
+        $or->condition('ci.c_id', $location['city'], 'in');
+
+      $q->condition($or);
+    }
+
+
+    if (is_array($values['course-type']))
+    {
+      $form['course-type']['#default_value'] = $values['course-type'];
+      $q->condition('td.td_key', $values['course-type'], 'in');
+    }
+
+  }
+
+  $q->condition('co.c_start', date('Y-m-d'), '>=');
+  $q->condition('co.c_deleted', 0, '=');
+
+  $q->orderBy("co.c_start", "asc");
+
+  // drupal_set_message($q->__toString());
+  // drupal_set_message(print_r($q->arguments(), true));
+  $res = $q->execute();
+
+
+  $today = date('Y-m-d');
+  $css_mappings = array('Closed' => 'status-red', 'Course Full' => 'status-red', 'Filling Up' => 'status-yellow', 'FULL' => 'status-red','Long Wait List' => 'status-yellow', 'Open' => 'status-green', 'Short Wait List' => 'status-yellow', 'Wait List' => 'status-yellow');
+
+  $rows = array();
+  foreach ($res as $row) {
+
+    $row = (array) $row;
+    $row['course_status'] = "";
+    if ($row['cancelled'])
+    {
+      $row = array_merge(array("apply-link"=>""), $row);
+      $row['course_status'] = '<div class="status status-red">'.$row['status'].'</div>';
+    }
+    elseif (in_array($row['status'], array('Closed', 'Course Full', 'FULL')))
+    {
+      $row = array_merge(array("apply-link"=>""), $row);
+      $row['course_status'] = '<div class="status status-red">Cancelled</div>';
+    }
+    elseif( $today <= $row['start_date'] && $today >= $row['enrol_date'] )
+    {
+      $row = array_merge(array("apply-link"=>"<button class=\"apply-at-sit-serve\" type=\"button\">Apply</button>"), $row);
+      $s = array();
+      $s['Old Male'] = $row['status_om'];
+      $s['Old Female'] = $row['status_of'];
+      $s['New Male'] = $row['status_nm'];
+      $s['New Female'] = $row['status_nf'];
+      $s['Server Male'] = $row['status_svr_m'];
+      $s['Server Female'] = $row['status_svr_f'];
+      $s['status'] = $row['status'];
+
+      $uniq_status = array();
+      foreach( $s as $k => $v )
+      {
+         $uniq_status[$v] = $v;
+      }
+
+      if ( (count($uniq_status) == 1) && (array_keys($uniq_status)[0] == 'Open') )
+        $row['course_status'] = '<div class="status status-green">Open</div>';
+      else
+      {
+        $course_type = $row['course_type'];
+        foreach( $s as $k => $v )
+        {
+          if ($k <> 'status')
+          {
+            if (!in_array($course_type, array('10 Day Course', '10 Day Executive Course', 'Teenager Course', 'Children Course')) && in_array($k, array('New Male', 'New Female')))
+            $row['course_status'] .= '<div class="status status-na">'.$k.' - N/A</div>';
+          else
+            $row['course_status'] .= '<div class="status '.$css_mappings[$v].'">'.$k.' - '.$s[$k].'</div>';
+          }
+        }
+      }
+    }
+    else
+    {
+      $enrol_date = date('M j', strtotime($row['enrol_date']));
+      $row['course_status'] = '<div class="status status-red">Applications accepted starting '.$enrol_date.'</div>';
+      $row = array_merge(array("apply-link"=>""), $row);
+    }
+
+
+
+    $applied = db_query("select a_id  FROM dh_applicant a left join dh_applicant_course ac on a.a_id=ac.ac_applicant where ac_teacher_code=:ac_teacher_code and a_course=:a_course and a_center=:a_center", array(":ac_teacher_code"=>$ac_teacher_code, ":a_course"=>$row['course_id'], ":a_center"=>$row['center_id']))->fetchField();
+
+    if ($applied)
+      $row['apply-link'] = "Applied";
+
+    $row['start_date'] = date('d M y', strtotime($row['start_date']));
+    $row['end_date'] = date('d M y', strtotime($row['end_date']));
+
+    $rows[] = $row;
+  }
+
+
+    $out = theme('table', array('rows' => array(), 'attributes' => array('id' => 'at-course-list')));
+
+    $form['a'] = array('#markup' => $out, '#weight' => 101,);
+    $data = json_encode($rows);
+
+
+
+  $js = '
+    (function ($) {
+      function do_datatable( tid, data )
+      {
+        var table = $(tid).DataTable({
+          dom: "lfr<\"clear\">tip",
+          data: data,
+          responsive: {
+                  details: {
+                      display: $.fn.dataTable.Responsive.display.childRowImmediate,
+                      type: "none",
+                      target: ""
+                  }
+              },
+          destroy: true,
+          "ordering": false,
+          "oLanguage": {"sEmptyTable": "No Courses found for Search Criteria."},
+          searching: false,
+          "columnDefs": [
+                      {
+                          "targets": [ 0 ],
+                          "searchable": false
+                      }
+              ],
+              columns: [
+                  { data: "apply-link", "title" : "Action" },
+                  { data: "center_name", "title" : "Center" },
+                  { data: "city", "title" : "City" },
+                  { data: "state", "title" : "State" },
+                  { data: "course_type", "title" : "Course Type" },
+                  { data: "start_date", "title" : "Start Date" },
+                { data: "end_date", "title" : "End Date"},
+                { data: "course_status", "title" : "Course AT Status"},
+              ],
+          });
+
+
+
+
+           $("#at-course-list tbody").on("click", ".apply-at-sit-serve", function() {
+
+          var tr = $(this).closest("tr");
+          var row = table.row( tr );
+          course_id = row.data().course_id;
+          center_id = row.data().center_id;
+
+           $.confirm({
+              title: "Apply for "+row.data().course_name,
+              content:  "<form action=\"\" class=\"formName\">" +
+                "<div class=\"form-group\">" +
+                "<label>Application Type</label><br>"+
+                "<input type=\"radio\" name=\"app-type\" id=\"sitting\" value=\"Student\" checked=\"app-type\"><label for=\"sitting\">Attend the course</label><br>"+
+                "<input type=\"radio\" name=\"app-type\" id=\"serving\" value=\"Sevak\"><label for=\"serving\">Serve the course</label><br>"+
+                "<label>Specific Requirement/Need/Request(e.g chair, chowky or any other)</label>"+
+                "<textarea name=\"comment\" id=\"txt-comment\" rows=\"4\"></textarea>"+
+                "<label>Emergency Contact Person Name</label>"+
+                "<input type=\"text\" name=\"emergency-person\" id=\"emergency-person\" required>"+
+                "<label>Emergency Contact Person Number</label>"+
+                "<input type=\"text\" name=\"emergency-number\" id=\"emergency-number\" required>"+
+                "<label>Date and time of arrival at the centre</label>"+
+                "<input type=\"text\" name=\"arrival\" id=\"arrival\" required>"+
+                "<label>Date when you will be leaving the centre</label>"+
+                "<input type=\"text\" name=\"leaving\" id=\"leaving\" required>"+
+                "</div>" +
+                "</form>",
+              buttons: {
+                  Ok: {
+                      text: "Ok",
+                      btnClass: "btn-blue",
+                      action: function () {
+
+
+                          comment = this.$content.find("#txt-comment").val();
+                          app_type = this.$content.find(\'input[name="app-type"]:checked\').val();
+                          emergency_person = this.$content.find("#emergency-person").val();
+                          if(!emergency_person){
+                              $.alert("Please enter Emergency Contact Person Name");
+                              return false;
+                          }
+                          emergency_number= this.$content.find("#emergency-number").val();
+                          if(!emergency_number){
+                              $.alert("Please enter Emergency Contact Person Number");
+                              return false;
+                          }
+                          if(!(/^[0-9+][0-9]*/.test(emergency_number))){
+                              $.alert("Invalid contact number, only numbers and + allowed");
+                              return false;
+                          }
+                          arrival= this.$content.find("#arrival").val();
+                          if(!arrival){
+                              $.alert("Please enter Arrival Date and Time");
+                              return false;
+                          }
+                          leaving= this.$content.find("#leaving").val();
+                          if(!leaving){
+                              $.alert("Please enter Leaving Date");
+                              return false;
+                          }
+
+
+                          $.getJSON( "/at-portal/course-sit-apply/"+center_id+"/"+course_id, { emergency_person: emergency_person, comment: comment, emergency_number: emergency_number, arrival: arrival, leaving: leaving, app_type: app_type } )
+                    .done(function( json ) {
+                      if (json.status == "OK")
+                      {
+                        alert(json.msg);
+                        location.reload(true);
+                      }
+                      else
+                        alert("Not able to apply for course\n"+json.msg)
+                    })
+                    .fail(function( jqxhr, textStatus, error ) {
+                      var err = textStatus + ", " + error;
+                      alert("Error in applying for course "+err);
+                  });
+
+
+                      }
+                  },
+                  Cancel: function () {
+                      //close
+                  },
+              },
+              onContentReady: function () {
+                  // bind to events
+                  var jc = this;
+                  this.$content.find("form").on("submit", function (e) {
+                      // if the user submits the form by pressing enter in the field.
+                      e.preventDefault();
+                      jc.$$formSubmit.trigger("click"); // reference the button and click it
+                  });
+              }
+          });
+
+
+
+
+        });
+
+
+
+
+
+
+
+
+
+      }
+      $(document).ready(function(){
+        $("#edit-location").select2();
+        $("#edit-course-type").select2();
+
+        var dataset = '.$data.';
+        do_datatable("#at-course-list", dataset);
+
+        $(".from-date-class").parent().parent().parent().parent().attr("id", "from-date-id-div");
+        $(".to-date-class").parent().parent().parent().parent().attr("id", "to-date-id-div");
+        $("#edit-location").parent().attr("id", "edit-location-div");
+      });
+    })(jQuery);
+  ';
+
+  drupal_add_js($js, 'inline');
+
+  $form['#attached']['css'][] = array(
+    'data' => '#edit-from-date, #edit-to-date { float: none;}
+          .container-inline-date {margin-bottom: 10px;}
+          .apply-at-sit-serve {
+            background-color: #F5ECCE;
+            border: 1px solid black;
+            border-radius: 2px;
+            color: #000;
+            padding: 5px 25px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-family: "Helvetica Neue","Helvetica","Arial",sans-serif;
+              font-size: 15px;
+              -webkit-font-smoothing: antialiased;
+              font-weight: 600;
+          }
+          #at-course-list td:nth-child(1) { width: 9%; text-align: left }
+          #at-course-list td:nth-child(2) { width: 16%; text-align: left }
+          #at-course-list td:nth-child(3) { width: 9%; text-align: left }
+          #at-course-list td:nth-child(4) { width: 14%; text-align: left }
+          #at-course-list td:nth-child(5) { width: 14%; text-align: left }
+          #at-course-list td:nth-child(6) { width: 9%; text-align: left }
+          #at-course-list td:nth-child(7) { width: 9%; text-align: left }
+          #at-course-list td:nth-child(8) { width: 20%; text-align: left }
+          #from-date-id-div { float: left; margin-right: 40px}
+          #to-date-id-div { float: left; clear: none;  }
+          #edit-location-div { clear: both; }
+          .status-red { color: red; }
+          .status-yellow { color: yellow; }
+          .status-green { color: green; }
+          .status-na { color: red; }
+          ',
+    'type' => 'inline',
+  );
+
+  return $form;
+}
+
+
+
+
+function at_course_sit_list_form_submit($form, &$form_state)
+{
+  $form_state['user_input'] = $form_state['input'];
+    $form_state['rebuild'] = TRUE;
+}
+
+
+function at_course_sit_apply()
+{
+  $out = array();
+  $out['status'] = 'Failed';
+  $out['msg'] ="";
+
+  global $user;
+
+  $at_details = db_query("select * from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$user->name' limit 1")->fetchAssoc();
+
+  if (!$at_details)
+  {
+    $out['msg'] ="This feature is only for ATs";
+    drupal_json_output($out);
+    exit;
+  }
+
+  $ac_teacher_code=strtoupper(str_replace('.', '-', $user->name));
+
+  $center = arg(2);
+  $course = arg(3);
+  $emergency_person = $_REQUEST['emergency_person'];
+  $emergency_number = $_REQUEST['emergency_number'];
+  $comment = "Arrival Info: ".$_REQUEST['arrival']."\n".
+      "Leaving Info: ".$_REQUEST['leaving']."\n".$_REQUEST['comment'];
+  $app_type = $_REQUEST['app_type'];
+
+  if(!in_array($app_type, array("Student", "Sevak")))
+  {
+    $out['msg'] ="Invalid application type";
+    drupal_json_output($out);
+    exit;
+  }
+
+  $q = "select c_deleted, c_cancelled, c_start, c_end, c_status_om, c_status_of, c_status_om, c_status_of, c_status_svr_m, c_status_svr_f, c_enrol_date, c_list_only, c_status, td_val3  FROM dh_course co left join dh_type_detail td on co.c_course_type=td.td_id where c_start >= curdate() and c_center=:center and c_id=:course order by c_start asc";
+
+  $ret = db_query($q, array(":center" => $center, ":course" => $course))->fetchAssoc();
+  if(!$ret)
+  {
+    $out['msg'] ="Invalid Course";
+    drupal_json_output($out);
+    exit;
+  }
+
+  $is_lc = $ret['td_val3']=='LC'?1:0;
+
+  $applied = db_query("select a_id  FROM dh_applicant a left join dh_applicant_course ac on a.a_id=ac.ac_applicant where ac_teacher_code=:ac_teacher_code and a_course=:a_course and a_center=:a_center", array(":ac_teacher_code"=>$ac_teacher_code, ":a_course"=>$course, ":a_center"=>$center))->fetchField();
+
+  $DISALLOWED_STATUS = array('Course Full', 'FULL', 'Closed');
+  $today = date('Y-m-d');
+  if($applied)
+  {
+    $out['msg'] = "Already applied for the course.";
+  }
+  elseif($today > $ret['c_start'])
+  {
+    $out['msg'] = "Course started.";
+  }
+  elseif($ret['c_deleted'])
+  {
+    $out['msg'] = "Course deleted.";
+  }
+  elseif($ret['c_cancelled'])
+  {
+    $out['msg'] = "Course cancelled.";
+  }
+  elseif (in_array($ret['c_status'], $DISALLOWED_STATUS))
+  {
+    $out['msg'] = "Course {$ret['c_status']}.";
+  }
+  elseif($ret['c_list_only'])
+  {
+    $out['msg'] = "Course is not accepting applications.";
+  }
+  elseif( $today <= $ret['c_start'] && $today >= $ret['c_enrol_date'] )
+  {
+    if( $app_type == "Student")
+    {
+      if($at_details['t_gender'] == 'M' && in_array($ret["c_status_om"], $DISALLOWED_STATUS))
+        $out['msg'] = "Course is closed for old male students.";
+      if($at_details['t_gender'] == 'F' && in_array($ret["c_status_of"], $DISALLOWED_STATUS))
+        $out['msg'] = "Course is closed for old female students.";
+    }
+    if( $app_type == "Sevak")
+    {
+      if($at_details['t_gender'] == 'M' && in_array($ret["c_status_svr_m"], $DISALLOWED_STATUS))
+        $out['msg'] = "Course is closed for old male servers.";
+      if($at_details['t_gender'] == 'F' && in_array($ret["c_status_svr_f"], $DISALLOWED_STATUS))
+        $out['msg'] = "Course is closed for old female servers.";
+    }
+  }
+  else
+  {
+    $out['msg'] = "Course is not yet open for enrolment.";
+  }
+
+  if($out['msg'])
+  {
+    drupal_json_output($out);
+    exit;
+  }
+
+  $app = array();
+  $app_ac = array();
+
+  $app['a_course'] = $course;
+  $app['a_center'] = $center;
+  $app['a_old'] = 1;
+  $app['a_type'] = $app_type;
+  $app['a_status'] =  '';
+  $app['a_source'] = 'AT-Portal';
+  $app['a_created_by'] = $user->uid;
+  $app['a_created'] = date('Y-m-d H:i:s');
+  $app['a_updated_by'] = $user->uid;
+  $app['a_updated'] = date('Y-m-d H:i:s');
+  $app['a_attended'] = 0;
+
+  $app['a_f_name'] = $at_details['t_f_name'];
+  $app['a_m_name'] = "";
+  $app['a_l_name'] = $at_details['t_l_name'];
+  $app['a_address'] = $at_details['t_address'];
+  $app['a_country'] = $at_details['t_country'];
+  $app['a_state'] = $at_details['t_state'];
+  $app['a_phone_mobile'] = substr($at_details['t_mob_phone'],0,18);
+  $app['a_email'] = $at_details['t_email'];
+  $app['a_gender'] = $at_details['t_gender'];
+  $app['a_dob'] = $at_details['t_dob'];
+  $app['a_extra'] = $comment;
+  $app['a_emergency_name'] = $emergency_person;
+  $app['a_emergency_num'] = $emergency_number;
+
+  if($at_details['t_full_t'])
+    $at_type = "T";
+  elseif($at_details['t_sat'])
+    $at_type = "SAT";
+  else
+    $at_type = "AT";
+
+  $app_ac['ac_teacher'] = 1;
+  $app_ac['ac_teacher_code'] = $ac_teacher_code;
+  $app_ac['ac_practice_details'] = $at_type;
+  $app_ac['ac_10d'] = 1;
+
+  $app_id = db_insert('dh_applicant')->fields($app)->execute();
+  dh_send_letter('applicant', $app_id, $app['a_status'] );
+
+  $app_ac['ac_applicant'] = $app_id;
+  $app_ac['ac_updated_by'] = $app_ac['ac_created_by'] = $user->uid;
+  $app_ac['ac_updated'] = $app_ac['ac_created'] = date('Y-m-d H:i:s');
+  db_insert('dh_applicant_course')->fields($app_ac)->execute();
+
+  if($is_lc)
+  {
+    $app_lc['al_applicant'] = $app_id;
+    $app_lc['al_recommending'] = "{$app['a_f_name']} {$app['a_l_name']}";
+    $app_lc['al_area_at'] = "None";
+    $app_lc['al_recommending_approved'] = "Approved";
+    $app_lc['al_area_at_approved'] = "Approved";
+
+    db_insert('dh_applicant_lc')->fields($app_lc)->execute();
+  }
+
+
+  $cmd = "/usr/bin/php status-trigger.php $app_id 'Received'";
+  exec($cmd);
+
+  $out['status'] = 'OK';
   $out['msg'] = "Application submitted successfully";
   drupal_json_output($out);
   exit;
