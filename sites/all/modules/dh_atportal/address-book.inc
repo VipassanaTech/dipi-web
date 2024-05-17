@@ -100,19 +100,42 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline'));
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
-	$form[$group]['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1.1, 
-		'#default_value' => isset($edit_data['t_f_name'])?$edit_data['t_f_name']:'', '#required' => 1, '#maxlength' => 50  );	
-	$form[$group]['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2, 
-		'#default_value' => isset($edit_data['t_l_name'])?$edit_data['t_l_name']:'', '#required' => 1, '#maxlength' => 50);
-	$form[$group]['t_gender'] = array('#title' => 'Gender', '#type' => 'radios', '#options' => array("M" => 'Male', 'F' => 'Female')  , 
-		'#default_value' => isset($edit_data['t_gender'])?$edit_data['t_gender']:'M', '#weight' => 3, '#required' => 1 , 
-		/*'#ajax' => array(
-		      // most notably 'mousedown', 'blur', and 'submit'.
-		      // 'event' => 'change',
-		      'callback' => 'ajax_section_dropdown_callback',
-		      'wrapper' => 'dropdown-section-replace',
-		    ),*/
-		);
+  if (user_access('add assistant teacher'))
+  {
+      $form[$group]['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1.1,
+    '#default_value' => isset($edit_data['t_f_name'])?$edit_data['t_f_name']:'', '#required' => 1, '#maxlength' => 50  );
+    $form[$group]['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2,
+      '#default_value' => isset($edit_data['t_l_name'])?$edit_data['t_l_name']:'', '#required' => 1, '#maxlength' => 50);
+    $form[$group]['t_gender'] = array('#title' => 'Gender', '#type' => 'radios', '#options' => array("M" => 'Male', 'F' => 'Female')  ,
+      '#default_value' => isset($edit_data['t_gender'])?$edit_data['t_gender']:'M', '#weight' => 3, '#required' => 1 ,
+      /*'#ajax' => array(
+            // most notably 'mousedown', 'blur', and 'submit'.
+            // 'event' => 'change',
+            'callback' => 'ajax_section_dropdown_callback',
+            'wrapper' => 'dropdown-section-replace',
+          ),*/
+      );
+  }
+  else
+  {
+    $at_code_year = "";
+    if($edit_data['t_status'] == 'Active' && $edit_data['t_full_t'])
+      $at_code_year = "FullT-{$edit_data['t_year_appointed']}";
+    elseif($edit_data['t_status'] == 'Active' && $edit_data['t_sat'])
+      $at_code_year = "SAT-{$edit_data['t_year_appointed']}";
+    if($edit_data['t_status'] == 'Active')
+      $at_code_year = "AT-{$edit_data['t_year_appointed']}";
+
+    $form[$group]['at_info'] = array(
+      '#markup' => "
+        <p><strong>Name: </strong>{$edit_data['t_f_name']} {$edit_data['t_l_name']} ({$at_code_year})</p>
+        <p><strong>Gender: </strong>{$edit_data['t_gender']}</p>
+        <p><strong>AT-Code: </strong>{$edit_data['t_code']}</p>
+        ",
+      '#weight' => 1,
+    );
+  }
+
 
 	$form[$group]['t_dob'] = array('#title' => 'Date of Birth', '#type' => 'date_popup', '#size' => '20', '#weight' => 4, 
 		'#default_value' => isset($edit_data['t_dob'])?$edit_data['t_dob']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
