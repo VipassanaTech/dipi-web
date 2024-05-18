@@ -1,4 +1,4 @@
-  <?php
+<?php
 
 include_once(dirname(__FILE__)."/address-book.inc");
 include_once(dirname(__FILE__)."/schedule.inc");
