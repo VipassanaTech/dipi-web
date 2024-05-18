@@ -1942,7 +1942,7 @@ function at_course_sit_list_form($form, &$form_state)
                   { data: "course_type", "title" : "Course Type" },
                   { data: "start_date", "title" : "Start Date" },
                 { data: "end_date", "title" : "End Date"},
-                { data: "course_status", "title" : "Course AT Status"},
+                { data: "course_status", "title" : "Course-Status"},
               ],
           });
 
@@ -2014,15 +2014,17 @@ function at_course_sit_list_form($form, &$form_state)
                     .done(function( json ) {
                       if (json.status == "OK")
                       {
-                        alert(json.msg);
-                        location.reload(true);
+                        if(!alert(json.msg));
+                        {
+                          location.reload(true);
+                        }
                       }
                       else
-                        alert("Not able to apply for course\n"+json.msg)
+                        $.alert("Not able to apply for course\n"+json.msg)
                     })
                     .fail(function( jqxhr, textStatus, error ) {
                       var err = textStatus + ", " + error;
-                      alert("Error in applying for course "+err);
+                      $.alert("Error in applying for course "+err);
                   });
 
 
