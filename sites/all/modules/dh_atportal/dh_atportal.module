@@ -2103,10 +2103,25 @@ function at_course_sit_list_form($form, &$form_state)
           #from-date-id-div { float: left; margin-right: 40px}
           #to-date-id-div { float: left; clear: none;  }
           #edit-location-div { clear: both; }
-          .status-red { color: red; }
-          .status-yellow { color: yellow; }
-          .status-green { color: green; }
-          .status-na { color: red; }
+          .status {
+            line-height: 18px;
+            display: block;
+            padding-left: 18px;
+            background: transparent left no-repeat;
+            background-size: 14px;
+            background-position-y: 2px;
+            padding-bottom: 5px; }
+          .status-red {
+            background-image: url(/sites/default/files/close-icon.svg); }
+
+          .status-green {
+            background-image: url(/sites/default/files/open-icon.svg); }
+
+          .status-yellow {
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAiCAYAAABIiGl0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA95JREFUeNrkV9tuG1UUXecyF18bN1XStKgqFSB4Q0L0F%2FgNfoRP4j8QFxVK4YHSCgkoEopIm9gzc86cC%2BvM2HECj%2BehD3Fky%2FGM9zpr7b3X3hYxRryNh8Rbeuj0sjG%2FxbZ7jmD%2FQcGzKEwgfIAKXVbwIOdwIiLKMzhEKLVAUd7DYv5YDMC1eQp%2F8QSh%2FxVl9BC8ue4dwZs8WsUSHoGgPayMkPo%2ByvpjYP54ZBxCQN%2F3cMbwvYNkAqTzqEKfhRsTIIn00Q7AKliowlPVrdRF9xMm51%2BhDL%2FwA8rr%2BdS8FBZZwMKcYcLinZTlcIz1xRHqKPc5Bi8mxtEZyNCSbTsAW1llAZf9vkacIB%2FvrxcXOgPX8KbekiXlDWwxHVHoi7wcm12VeTiSM75F0zSYXgJTCk2G0kuIKC6%2FZ63Nwq0SQyEGRQfp%2BV4ptWfc%2BEc49R9RjwJnHavauSEXy1ke8KuLiulK4gV0RLJiBS%2Fex90dcF3XWK1WKPwRJkyG5EklgcPmjyzgew8fwrOqUVm0ilLjALODg5H9zbRMbL6M69NvUKmXKCKTf36y7Yc2L3o4HQoXgQVWzbChuGL2Dqa3vxgt07GHUwULZUfgfutY0eQBCzfiE9iJgi5Gict%2Bz1i3a8j2FVvqKcES8HOMvrnJA%2B4ZS9UsVvq0W%2FIgEroQe2DP9hkYuw6KwNqqAdhGm%2BlcKY6AdQE2lDBSQfRXGCsqogytUv8FTROhzfALFRs%2Bs%2FYMw8spFB1RspeV0pejVl9OErZVMhrH0%2Bl0KNnDS503Ffs4xHFU1GvPuaywa189WuodVtwJmb%2FLm3gIV2HeC0zWZ1nArVzClUu03pLUCkaVNI7j64x3rAMHRCB171kEwWUBe%2BWHiZTmfXqm%2BDvGo3PFFxHNM2rze9pXgPWKFbnAul5lAc%2FFz2NrVhyvmuNfpX4%2B4pXPxA21zM3rr%2BPr0%2B9Qij8xpZnpzXvDtumLZ3msxIyuGGFpGh3jtVR6cXiC1eHno2XO%2FEs2%2BQ%2Bo8D2mybn8E%2BZD0UP%2Bzu5j5TTjSlpxPehb%2BQ%2BuOBcrLzlXZHPr5FxdMhONvnuT18eYMXjBmazoghKGa3N5zbnMC8y7b1GIH1GmfcwNSyGKzGUPdhwyadlZcNOid2G6%2Few%2FfZzob5%2Fp%2F8w%2BFimOGEnE3d9V50J4gGb9KcybW7gza1CXa67WLVzmQl%2BRYdp8nDlEE%2B%2FCyWPI%2BSf%2FZ5zcpW1bgp5z491gcWueBewMf0FYT0teE5hk%2BJNmxlrSO2A3f4R47KCXDyCKhua1geCufbZeZgEv77dMs6G8C47b20z2CuL4wxu67P0rwABwF%2FrkWgXgwAAAAABJRU5ErkJggg%3D%3D); }
+
+          .status-na {
+            background-image: url(/sites/default/files/na-icon.svg); }
           ',
     'type' => 'inline',
   );
