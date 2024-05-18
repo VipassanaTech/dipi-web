@@ -1840,12 +1840,12 @@ function at_course_sit_list_form($form, &$form_state)
     if ($row['cancelled'])
     {
       $row = array_merge(array("apply-link"=>""), $row);
-      $row['course_status'] = '<div class="status status-red">'.$row['status'].'</div>';
+      $row['course_status'] = '<div class="status status-red">Cancelled</div>';
     }
     elseif (in_array($row['status'], array('Closed', 'Course Full', 'FULL')))
     {
       $row = array_merge(array("apply-link"=>""), $row);
-      $row['course_status'] = '<div class="status status-red">Cancelled</div>';
+      $row['course_status'] = '<div class="status status-red">'.$row['status'].'</div>';
     }
     elseif( $today <= $row['start_date'] && $today >= $row['enrol_date'] )
     {
