@@ -1022,6 +1022,9 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		}
 	}
 
+  $trigger_letter_reco = False;
+  $trigger_letter_area = False;
+
 	if ( isset($app_al) )
 	{
 		if (!$app_al['al_relationship'])
@@ -1061,8 +1064,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		if ($app_al['al_at_year'] == '')
 			$app_al['al_at_year'] = null;
 
-		$trigger_letter_reco = False;
-		$trigger_letter_area = False;
+
 		if ($app_lc_id > 0)
 		{
 			$t_row = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_id=$app_lc_id")->fetchAssoc();
@@ -1078,10 +1080,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			db_insert('dh_applicant_lc')->fields($app_al)->execute();
 			$trigger_letter_reco = True;	
 		}
-		if ($trigger_letter_reco)
-			dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
-		if ($trigger_letter_area)
-			dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
+
 	}
 
 	if ($input['attending'])
@@ -1165,6 +1164,11 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 		//drupal_set_message("Applicant data updated!");
 	create_application_pdf($app_id);
+
+  if ($trigger_letter_reco)
+    dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
+  if ($trigger_letter_area)
+    dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
 
 
 	//drupal_goto("zero-day");
