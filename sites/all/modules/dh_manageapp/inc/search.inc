@@ -1295,6 +1295,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	$statuses[$system_statuses['STATUS-CANCELLED']] = $system_statuses['STATUS-CANCELLED'];
 	$statuses[$system_statuses['STATUS-CLARIFICATIONRESPONSE']] = $system_statuses['STATUS-CLARIFICATIONRESPONSE'];
 	$statuses[$system_statuses['STATUS-ATTENDED']] = $system_statuses['STATUS-ATTENDED'];
+  $statuses[$system_statuses['STATUS-EXPECTED']] = $system_statuses['STATUS-EXPECTED'];
 //	$statuses = db_query($q)->fetchAllKeyed();
 //	$statuses[''] = 'Choose';
 
