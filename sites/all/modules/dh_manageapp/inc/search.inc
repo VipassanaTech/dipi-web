@@ -1285,7 +1285,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statuses = db_query($q)->fetchAllKeyed();
 
-  $q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-LC-STATUS'";
+  $q = "select td_key, td_key from dh_type_detail where td_type='COURSE-LC-STATUS'";
   $system_lc_statuses = db_query($q)->fetchAllKeyed();
 
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
