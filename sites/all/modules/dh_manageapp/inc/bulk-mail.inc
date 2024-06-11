@@ -37,6 +37,11 @@ function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $sc
   $bm['bm_letter'] = $letter;
   $bm['bm_schedule_date'] = date('Y-m-d H:i:s', strtotime($schedule_date));
 
+
+  if(isset($criteria['status']))
+    $criteria['status'] = implode(", ", $criteria['status']);
+
+
   unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], );
   foreach ($criteria as $key => $value) {
     if(!$criteria[$key])

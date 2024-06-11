@@ -1285,6 +1285,9 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statuses = db_query($q)->fetchAllKeyed();
 
+  $q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-LC-STATUS'";
+  $system_lc_statuses = db_query($q)->fetchAllKeyed();
+
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS'";
 	$statuses = db_query($q)->fetchAllKeyed();
 //	$statuses[''] = '';
@@ -1296,6 +1299,10 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	$statuses[$system_statuses['STATUS-CLARIFICATIONRESPONSE']] = $system_statuses['STATUS-CLARIFICATIONRESPONSE'];
 	$statuses[$system_statuses['STATUS-ATTENDED']] = $system_statuses['STATUS-ATTENDED'];
   $statuses[$system_statuses['STATUS-EXPECTED']] = $system_statuses['STATUS-EXPECTED'];
+  $statuses[$system_statuses['STATUS-RECONFIRMATION']] = $system_statuses['STATUS-RECONFIRMATION'];
+  $statuses[$system_lc_statuses['A-ATReview']] = $system_lc_statuses['A-ATReview'];
+  $statuses[$system_lc_statuses['R-ATReview']] = $system_lc_statuses['R-ATReview'];
+  $statuses[$system_lc_statuses['R-ATTransfer']] = $system_lc_statuses['R-ATTransfer'];
 //	$statuses = db_query($q)->fetchAllKeyed();
 //	$statuses[''] = 'Choose';
 
@@ -1318,16 +1325,19 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
 			$where .= " and a_phone_mobile like '".trim($storage['mobile'])."%'";
-		if ( $storage['status'] && count($storage['status']) > 0 )
+
+		if ( isset($storage['status']) && count($storage['status']) > 0 )
 		{
-			if ( in_array( 'Attended',  $storage['status']) && (count($storage['status']) == 1) )
-				$where .= " and a_attended = '1'";
-			elseif ( in_array('Confirmed', $storage['status']) && (count($storage['status']) == 1) )
-				$where .= " and a_status in ('Confirmed', 'Expected', 'Reconfirmation')";
-			else
-				$where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
-				//"'" . implode ( "', '", $temp ) . "'";
+			if ( in_array( 'Attended',  $storage['status']) )
+      {
+        $where .= " and ( a_attended = '1' or  a_status in ( '".(implode("', '",$storage['status']))."' ) ) ";
+      }
+      else
+      {
+        $where .=  " and a_status in ('".(implode("', '",$storage['status']))."'".")";
+      }
 		}
+
 		if ($storage['type'] <> 'Both')
 			$where .= " and a_type = '".$storage['type']."'";
 
@@ -1491,7 +1501,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['f_name']:'', '#weight' => 3);
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['l_name']:'', '#weight' => 4 );
 		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['conf_no']:'', '#size' => 15, '#weight' => 5 );
-		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#default_value' => $update_bm?$edit_data['status']:'', '#options' => $statuses, '#multiple' => True, '#weight' => 6);
+		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#default_value' => $update_bm?$edit_data['status']:'', '#options' => $statuses, '#multiple' => "multiple", '#weight' => 6, '#attributes' => array('id' => 'edit-app-status'));
 		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => $update_bm?$edit_data['type']:'Both',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => $update_bm?$edit_data['gender']:'',  '#weight' => 8);
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => $update_bm?$edit_data['country']:'', '#weight' => 9);
@@ -1585,7 +1595,47 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 				$(document).ready(function(){
 					$("#edit-course").select2();
 					$("#edit-country").select2();
+          $("#edit-app-status").select2();
 					$("#edit-f-name").focus();
+
+          var old_status_values = [];
+          var status = $("#edit-app-status");
+          status.on("select2:select", function(event) {
+            console.log("inside status select");
+            var values = [];
+            // copy all option values from selected
+            $(event.currentTarget).find("option:selected").each(function(i, selected){
+              values[i] = $(selected).text();
+            });
+            // doing a diff of old_values gives the new values selected
+            var last = $(values).not(old_status_values).get();
+            // update old_values for future use
+            old_status_values = values;
+
+
+            if($.inArray("Confirmed", last) !== -1)
+            {
+              console.log("inside last confirm");
+              if($.inArray("Expected", values) == -1)
+              {
+                console.log("inside last confirm Expected");
+                values.push("Expected");
+              }
+              if($.inArray("ReConfirmation", values) == -1)
+              {
+                console.log("inside last confirm ReConfirmation");
+                values.push("ReConfirmation");
+              }
+              status.val(values).trigger("change");
+            }
+
+            // output values (all current values selected)
+            console.log("selected values: ", values);
+            // output last added value
+            console.log("last added: ", last);
+          });
+
+
 				});
 			})(jQuery);
 		';
