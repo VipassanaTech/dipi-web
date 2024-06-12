@@ -118,6 +118,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			a_monk,
 			a_uri,
 			a_photo,
+      a_friend_family_details,
 			TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age',
 			a_lang_1,
 			a_lang_2,
@@ -334,7 +335,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		else
 			$rs['lang_discourse'] = "";
 
-		$rs['note'] = $r['a_internal_note'];
+		$rs['friend_family'] = $r['a_friend_family_details'];
+    $rs['note'] = $r['a_internal_note'];
 		$rs['willingtoserve'] = $r['a_willing_to_serve']?"Yes":"No";
 		$rs['extra'] = $r['a_extra'];
 		$rs['monk'] = $r['a_monk'];
@@ -647,12 +649,16 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            "<td><label>Internal Note:</label>"+
 			            "&nbsp;"+d.note+"</td>"+
 	 				    "<td><label>Other Info:</label>"+
-	 				    "<br>"+d.extra+"</td>"+
+	 				    "&nbsp;"+d.extra+"</td>"+
 	 				    "<td><label>Willing-to-Serve:</label>"+
 	 				    "<br>"+d.willingtoserve+"</td>"+ 
 			            "<td><label>Discourse-Lang:</label>"+
 			            "<br>"+d.lang_discourse +"</td>" + "<td>" + pregnant + "</td>" +
  		            "</tr>"+
+                "<tr>"+
+                  "<td><label>Friend-Family:</label>"+
+                  "&nbsp;"+d.friend_family+"</td>"+
+                "</tr>"+
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
@@ -812,6 +818,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                         {
                           return tmp[ row ].extra;
                         }
+                        else if ( column == 32 )
+                        {
+                          return tmp[ row ].friend_family;
+                        }
 
 			                	
 		
@@ -829,7 +839,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
 					                "visible": false,
 					                "searchable": false
 					            },
@@ -898,6 +908,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
+                { data: null, "title": "" },
                 { data: null, "title": "" },
                 { data: null, "title": "" },
 		            ],

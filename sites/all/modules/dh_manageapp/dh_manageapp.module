@@ -1380,7 +1380,8 @@ function _search_student()
 		$rows[] = $row;
 	}
 	$header = array('Course', 'Type', 'Status', 'Attended', 'Address');
-	$out = theme('table', array('header' => $header, 'rows' => $rows));
+  $out = '<h4>Applicant Courses</h4>';
+	$out .= theme('table', array('header' => $header, 'rows' => $rows));
 	print $out;
 	exit;
 }
