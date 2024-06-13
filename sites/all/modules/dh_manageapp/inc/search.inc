@@ -683,7 +683,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction", "Other Info"];
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction", "Other Info", "Friend Family"];
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
