@@ -500,6 +500,8 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[CourseName]'] 	= $row['CourseName'];
 	$search['[StartDate]'] 		= date("jS F Y", strtotime($row['c_start']));
 	$search['[EndDate]'] 		= date("jS F Y", strtotime($row['c_end']));
+  $search['[StartDateNum]']    = date("d-m-Y", strtotime($row['c_start']));
+  $search['[EndDateNum]']    = date("d-m-Y", strtotime($row['c_end']));
 	$search['[CourseType]'] 	= $row['c_course_type_str']; //trim(str_replace('Course', '', 
 	$search['[CourseDescription]'] 	= trim($row['c_description']);
 	$search['[CentreName]'] 	= $row['a_center'];
