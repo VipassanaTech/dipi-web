@@ -2083,7 +2083,9 @@ function dh_valuable_list($centre, $course)
 	$BASE_COLUMN = 'A';
 	$BASE_ROW = 2;
 	$ROWS_PER_PAGE = 10;
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, aa_laundry, aa_valuable, aa_section, aa_acco from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, (aa_valuable * 1) asc";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, aa_laundry, aa_valuable, aa_section, aa_acco from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1
+    // and a_type='Student'
+    order by a_gender, (aa_valuable * 1) asc";
 	$res = db_query($q);
 
 	$template = drupal_get_path('module', 'dh_manageapp').'/templates/valuable-template.xls';
