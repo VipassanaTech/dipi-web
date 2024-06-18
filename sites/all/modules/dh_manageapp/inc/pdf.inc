@@ -36,16 +36,41 @@ function fdf_create($filename, $fields)
 
 }
 
+
+function xfdf_create($filename, $fields)
+{
+  // Creates an XFDF File from a 2 dimensional
+  // Array Format: "array ("key1" => "content1", "key2" => "content2");
+  $xfdf = "<?xml version='1.0' encoding='UTF-8'?>\n";
+  $xfdf .= "<xfdf xmlns='http://ns.adobe.com/xfdf/' xml:space='preserve'>\n";
+  $xfdf .= "<fields>\n";
+  // Loop -> Array to XFDF Data
+  foreach ($fields as $key => $val)
+  {
+    $val = str_replace("\r\n","\n",$val);
+    $val = str_replace("\r"  ,"\n",$val);
+    $xfdf .= "<field name='".addcslashes($key,"\n\r\t\\")."'>\n";
+    $xfdf .= "<value>".addcslashes($val,"\n\r\t\\")."</value>\n";
+    $xfdf .= "</field>\n";
+  };
+  // XFDF "Footer"
+  $xfdf .= "</fields>";
+  $xfdf .= "</xfdf>";
+  file_put_contents($filename, $xfdf);
+}
+
+
 function pdf_fill_form($fdf, $pdf, $out)
 {
 	if (is_array($fdf))
 	{
 		$fdf_file = tempnam(sys_get_temp_dir(), gethostname());
-		fdf_create($fdf_file, $fdf);
+		xfdf_create($fdf_file, $fdf);
 	}
 	else
 		$fdf_file = $fdf;
-	$cmd = "pdftk $pdf fill_form $fdf_file output $out flatten";
+  $fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMono.ttf';
+	$cmd = "pdftk $pdf fill_form $fdf_file output $out flatten replacement_font $fontfile";
 	//drupal_set_message($cmd);
 	exec($cmd);
 
