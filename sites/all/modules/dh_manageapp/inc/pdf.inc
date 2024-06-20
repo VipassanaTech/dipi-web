@@ -69,12 +69,18 @@ function pdf_fill_form($fdf, $pdf, $out)
 	}
 	else
 		$fdf_file = $fdf;
+
+  $tmp_out_file = tempnam(sys_get_temp_dir(), gethostname());
   $fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMono.ttf';
-	$cmd = "pdftk $pdf fill_form $fdf_file output $out flatten replacement_font $fontfile";
+	$cmd = "pdftk $pdf fill_form $fdf_file output $tmp_out_file flatten replacement_font $fontfile";
 	//drupal_set_message($cmd);
 	exec($cmd);
 
+  $cmd = "/usr/bin/ps2pdf $tmp_out_file $out";
+  exec($cmd);
+
 	unlink( $fdf_file );
+  unlink( $tmp_out_file );
 }
 
 function create_d11_report_pdf( $course_id )

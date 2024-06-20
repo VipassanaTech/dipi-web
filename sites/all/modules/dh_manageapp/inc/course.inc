@@ -1198,7 +1198,8 @@ function generate_course_pdf($course_id, $type = 'M')
 			//print_r($pdfs);
 			//chdir($dirname);
 			$out_pdf = tempnam("/var/dipi", "mega-").".pdf";
-			$cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile $out_pdf";
+			// $cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile $out_pdf";
+      $cmd = "pdftk ".implode(" " , $pdfs)." cat output $out_pdf";
 			//echo "$cmd\n";
 			watchdog('DIPI', 'generate_course_pdf cmd '.$cmd, array(), WATCHDOG_NOTICE, 'link');
 			exec($cmd);
