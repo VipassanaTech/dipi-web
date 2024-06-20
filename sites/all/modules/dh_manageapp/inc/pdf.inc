@@ -49,8 +49,8 @@ function xfdf_create($filename, $fields)
   {
     $val = str_replace("\r\n","\n",$val);
     $val = str_replace("\r"  ,"\n",$val);
-    $xfdf .= "<field name='".addcslashes($key,"\n\r\t\\")."'>\n";
-    $xfdf .= "<value>".addcslashes($val,"\n\r\t\\")."</value>\n";
+    $xfdf .= "<field name='".htmlentities($key)."'>\n";
+    $xfdf .= "<value>".htmlentities($val)."</value>\n";
     $xfdf .= "</field>\n";
   };
   // XFDF "Footer"
