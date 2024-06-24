@@ -249,7 +249,7 @@ function dh_manage_courses()
 	        							
 	           							var obj = responseString;
 	           							
-	           							var r = confirm("PLEASE MAKE SURE COURSE IS COMPLETE AND LEFT STUDENTS ARE UPDATED BEFORE FINALIZING.\nAre you sure you want to finalize this course?");
+	           							var r = confirm("PLEASE MAKE SURE COURSE IS COMPLETE, ATTENDED STUDENTS MARKED ATTENDED, LEFT STUDENTS MARKED LEFT AND CONDUCTING TEACHERS ASSIGNED TO COURSE BEFORE FINALIZING.\nAre you sure you want to finalize this course?");
 			                			if ( r == true)
 			                			{	
 			                				if(obj.Count > 0)
