@@ -39,6 +39,7 @@ while ($row = $result->fetchAssoc())
    {
       echo "Failed! ".$row['bm_id'].", CenterLimit $center_count crossed BMLimit $bm_limit\n";
       $q = "update dh_bulk_mail set bm_processed=4, bm_updated='$bm_updated', bm_updated_by='$bm_updated_by' where bm_id=".$row['bm_id'];
+      db_query($q);
    }
    else
    {
