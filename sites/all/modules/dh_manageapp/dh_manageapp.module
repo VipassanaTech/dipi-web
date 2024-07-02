@@ -2545,7 +2545,7 @@ function dipi_mail_consumer_callback($msg)
 	    }
 		
 	} catch (\Throwable $e) {
-		watchdog('RabbitMQ', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+		watchdog('RabbitMQ-Email', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
 	}
 
 };
@@ -2563,9 +2563,15 @@ function dipi_mail_consumer($vhost, $queue )
 
 	$channel->basic_consume($queue, '', false, false, false, false, 'dipi_mail_consumer_callback');
 
-	$channel->consume();
+  try
+  {
+	 $channel->consume();
+  }
+  catch (\Throwable $e)
+  {
+    watchdog('RabbitMQ-Email', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+  }
 
-   $count = 0;
 }
 
 
