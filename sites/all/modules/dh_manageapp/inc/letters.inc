@@ -580,7 +580,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 }
 
 
-function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0)
+function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0, $footer = '')
 {
 	global $user;
 
@@ -595,7 +595,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$course = $row['a_course'];
 	$letter_id = $ret['letter_id'];
 	$subject = $ret['subject'];
-	$body = $ret['body'];
+	$body = $ret['body']."<br>".$footer;
 	$sms_body = $ret['sms_body'];
 	$conf_no = $ret['conf_no'];
 	$attachment = array();

@@ -120,6 +120,12 @@ function dh_show_bulk_mail_schedule()
       $temp['action'] = l("Edit", "bulk-mail/$centre_id/".$r['bm_id']."/edit", array("attributes" => array("class" => array("bulk-mail-edit"))))."<br>".l("Delete", "bulk-mail/$centre_id/".$r['bm_id']."/delete", array("attributes" => array("class" => array("bulk-mail-del"))))."<br>".l("Unmute", "bulk-mail/$centre_id/".$r['bm_id']."/unmute", array("attributes" => array("class" => array("bulk-mail-um"))));
       $temp['status'] = "Mute";
     }
+    elseif($r['bm_processed'] == 4)
+    {
+      $bm_limit = variable_get('bulk_email_limit_per_month', 0);
+      $temp['action'] = "No Action";
+      $temp['status'] = "Failed!<br>Monthly<br>Limit of<br>$bm_limit<br>Emails<br> Crossed.";
+    }
     else
     {
       $temp['action'] = l("Edit", "bulk-mail/$centre_id/".$r['bm_id']."/edit", array("attributes" => array("class" => array("bulk-mail-edit"))))."<br>".l("Delete", "bulk-mail/$centre_id/".$r['bm_id']."/delete", array("attributes" => array("class" => array("bulk-mail-del"))))."<br>".l("Mute", "bulk-mail/$centre_id/".$r['bm_id']."/mute", array("attributes" => array("class" => array("bulk-mail-m"))));
@@ -196,7 +202,7 @@ function dh_delete_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2, 4) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
 
   if($invalid)
   {
@@ -204,7 +210,10 @@ function dh_delete_bulk_mail_schedule()
   }
   else
   {
-    db_query("update dh_bulk_mail set bm_deleted=1 where bm_id=$bm_id and bm_center=$centre_id");
+    global $user;
+    $bm_updated = date('Y-m-d H:i:s');
+    $bm_updated_by = $user->uid;
+    db_query("update dh_bulk_mail set bm_deleted=1, bm_updated='$bm_updated', bm_updated_by='$bm_updated_by' where bm_id=$bm_id and bm_center=$centre_id");
     drupal_set_message("Deleted Bulk-Mail-$bm_id", "status");
   }
 
@@ -217,7 +226,7 @@ function dh_mute_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2, 4) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
 
   if($invalid)
   {
@@ -225,7 +234,10 @@ function dh_mute_bulk_mail_schedule()
   }
   else
   {
-    db_query("update dh_bulk_mail set bm_processed=3 where bm_id=$bm_id and bm_center=$centre_id");
+    global $user;
+    $bm_updated = date('Y-m-d H:i:s');
+    $bm_updated_by = $user->uid;
+    db_query("update dh_bulk_mail set bm_processed=3, bm_updated='$bm_updated', bm_updated_by='$bm_updated_by' where bm_id=$bm_id and bm_center=$centre_id");
     drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
   }
 
@@ -237,7 +249,7 @@ function dh_unmute_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2, 4) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
 
   if($invalid)
   {
@@ -245,7 +257,10 @@ function dh_unmute_bulk_mail_schedule()
   }
   else
   {
-    db_query("update dh_bulk_mail set bm_processed=0 where bm_id=$bm_id and bm_center=$centre_id");
+    global $user;
+    $bm_updated = date('Y-m-d H:i:s');
+    $bm_updated_by = $user->uid;
+    db_query("update dh_bulk_mail set bm_processed=0, bm_updated='$bm_updated', bm_updated_by='$bm_updated_by' where bm_id=$bm_id and bm_center=$centre_id");
     drupal_set_message("Muted Bulk-Mail-$bm_id", "status");
   }
 
@@ -258,7 +273,7 @@ function dh_edit_bulk_mail_schedule()
   $bm_id = arg(2);
   $centre_id = arg(1);
 
-  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
+  $invalid = db_query("select bm_id from dh_bulk_mail where (bm_processed in (1, 2, 4) or bm_deleted=1) and bm_id=$bm_id")->fetchField();
 
   if($invalid)
   {
