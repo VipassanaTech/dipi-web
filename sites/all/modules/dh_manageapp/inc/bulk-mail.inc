@@ -313,7 +313,7 @@ function dh_show_log_bulk_mail_schedule()
         var table = $(tid).DataTable({
           dom: "lfr<\"clear\">tip",
           "ajax": "/bulk-mail/'.$centre_id.'/'.$bm_id.'/get-log",
-          "columnDefs": [{ "targets": 4, "visible": false }, { "targets": 5, "visible": false }, { "targets": 6, "visible": false }, { "targets": 7, "visible": false }]
+          "columnDefs": [{ "targets": 2, "visible": false }, { "targets": 4, "visible": false }, { "targets": 5, "visible": false }, { "targets": 6, "visible": false }, { "targets": 7, "visible": false }]
         });
       }
       $(document).ready(function(){
@@ -341,7 +341,7 @@ function dh_get_log_bulk_mail_schedule()
   // Table's primary key
   $primaryKey = 'bml_id';
   // $name = function($d, $row) { return l($d, "search-app/{$row['bml_center']}/{$row['bml_bulk_mail']}/{$row['bml_applicant']}"); };
-  $email_with_res = function($d, $row) { return $d." ( Response: {$row['bml_email_res_id']} )"; };
+  $email_with_res = function($d, $row) { return $d." {$row['bml_email_res_id']}"; };
   $columns = array(
       // array( 'db' => 'bml_name', 'dt' => 0, 'formatter' => $name),
     array( 'db' => 'bml_name', 'dt' => 0),
