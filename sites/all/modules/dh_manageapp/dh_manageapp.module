@@ -2521,13 +2521,14 @@ function dipi_mail_consumer_callback($msg)
             $authcode = bin2hex(openssl_encrypt($string_to_encrypt,"AES-128-ECB",$pass));
             $footer_url = variable_get('applicant_url', '').'/bm-unsubscribe/'.$authcode;
             $footer = "If you don't want to receive outreach emails, <b><a href='$footer_url'>Unsubscribe</a></b>";
-            $ret = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id, '', 0, $footer);
+            $ret_mail = dh_send_letter('applicant', $data->applicant_id, 'Custom', $data->letter_id, '', 0, $footer);
 
             $mail_log['bml_bulk_mail'] = $data->bulk_mail_id;
             $mail_log['bml_applicant'] = $data->applicant_id;
             $mail_log['bml_name'] = $app['name'];
             $mail_log['bml_center'] = $app['a_center'];
             $mail_log['bml_email'] = $app['a_email'];
+            $mail_log['bml_email_res_id'] = $ret_mail['email_res_id'];
             $mail_log['bml_phone_mobile'] = $app['phone'];
             db_insert('dh_bulk_mail_log')->fields($mail_log)->execute();
           }

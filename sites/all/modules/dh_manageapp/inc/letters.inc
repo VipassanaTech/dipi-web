@@ -582,6 +582,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 
 function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0, $footer = '')
 {
+  $ret_val = array();
 	global $user;
 
 	$orig_letter_id = $letter_id;
@@ -671,6 +672,8 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 
 		$res = $mg->messages()->send($mailgun_domain, $options );
 
+    $ret_val['email_res_id'] = $res->getId();
+
 		//watchdog('MAILGUN', print_r($res, true));
 		$log = "Letter sent (Email: $to) - ".$letter_name." ( Response: ".$res->getId()." )";
 		if ($comment <> '')
@@ -731,6 +734,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			
 		}
 	}
+  return $ret_val;
 }
 
 function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
