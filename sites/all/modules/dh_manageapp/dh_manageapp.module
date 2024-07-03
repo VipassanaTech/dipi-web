@@ -2545,7 +2545,12 @@ function dipi_mail_consumer_callback($msg)
 	    }
 		
 	} catch (\Throwable $e) {
-		watchdog('RabbitMQ-Email', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+		watchdog('RabbitMQ-Email-Callback', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+    $ret = True;
+    if ( $ret )
+    {
+        $msg->ack();
+    }
 	}
 
 };
