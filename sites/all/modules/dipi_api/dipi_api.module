@@ -44,6 +44,24 @@ function dipi_api_services_resources() {
               ),
             ),
 
+
+          'centre-course-templates-updated-last-n-hours' => array(
+                    'help' => t("Get Centre Course Templates"),
+                    'access arguments' => array('get all centres'),
+                'access arguments append' => FALSE,
+                    'callback' => '_api_centre_course_templates_get',
+              'args' => array(
+                array(
+                  'name' => 'lastupdated',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'int',
+                  'description' => 'Centre course templates updated in last n hours',
+                ),
+              ),
+            ),
+
+
         'courses-updated-last-n-hours' => array(
               'help' => t("Get Courses"),
               'access arguments' => array('get all courses'),
@@ -698,6 +716,22 @@ function _api_centres_get( $lastupdated )
     return $rows;
 }
 
+
+
+function _api_centre_course_templates_get( $lastupdated )
+{
+    if (!$lastupdated)
+      return array('Error' => 'Invalid hours');
+
+    $last = date("YmdHi", strtotime("-$lastupdated hours"));
+    $q = "select cct_id as 'CCTId', cct_center as 'CCTCenter', cct_course_type as 'CCTCourseType', cct_course_template as 'CCTCourseTemplate', cct_pdf_template as 'CCTPdfTemplate', cct_vri_form as 'CCTVRIForm' from dh_center_course_template  where date_format(cct_updated, '%Y%m%d%H%i') > $last";
+    $res = db_query($q);
+    $rows = array( 'Last Updated' => $last);
+    while( $row = $res->fetchAssoc() )
+      $rows[] = $row;
+
+    return $rows;
+}
 
 
 
