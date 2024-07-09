@@ -166,8 +166,16 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$form[$group]['document_type'] = array('#title' => 'Photo ID', '#type' => 'select', '#multiple' => false,  '#weight' => 41, 
 		'#default_value' => $default_doc_type, '#options' => $doc_types, '#required' => 0, );
-	$form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42, 
-		'#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
+  $form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42,
+    '#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
+  $form[$group]['ae_id_issued_by'] = array('#title' => 'ID Issued By', '#type' => 'textfield', '#size' => '20', '#weight' => 42.1,
+    '#default_value' => isset($edit_data['ae_id_issued_by'])?$edit_data['ae_id_issued_by']:'', '#required' => 0, '#maxlength' => 20 );
+    $form[$group]['ae_id_issued'] = array('#title' => 'ID Issued Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 42.3,
+    '#default_value' => isset($edit_data['ae_id_issued'])?$edit_data['ae_id_issued']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
+        'maxDate' => 0, '#required' => 1,
+        'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+      ), '#date_label_position' => 'above',
+    '#theme_wrappers' => array('date_popup'), '#suffix' => '');
 	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'textfield', '#size' => '25', '#weight' => 42.5, 
 		'#default_value' => isset($edit_data['ae_nationality'])?$edit_data['ae_nationality']:'', '#required' => 0, '#maxlength' => 60 );
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
