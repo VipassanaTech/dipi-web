@@ -2545,7 +2545,8 @@ function dipi_mail_consumer_callback($msg)
 	    }
 		
 	} catch (\Throwable $e) {
-		watchdog('RabbitMQ-Email-Callback', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
+		error_log(date('Y-m-d H:i:s')."  Exiting MQ Mail Consumer: ".$e->getMessage()."\n".$e->getTraceAsString()."\n", 3, "/var/log/mq-mail-consumer-error.log");
+    exit(1);
 	}
 
 };
@@ -2563,15 +2564,7 @@ function dipi_mail_consumer($vhost, $queue )
 
 	$channel->basic_consume($queue, '', false, false, false, false, 'dipi_mail_consumer_callback');
 
-  try
-  {
-	 $channel->consume();
-  }
-  catch (\Throwable $e)
-  {
-    watchdog('RabbitMQ-Email', 'dipi_mail_consumer: '.$e->getMessage()."\n".$e->getTraceAsString(), array(), WATCHDOG_NOTICE);
-  }
-
+	$channel->consume();
 }
 
 
