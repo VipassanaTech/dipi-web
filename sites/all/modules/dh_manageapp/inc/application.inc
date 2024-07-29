@@ -793,7 +793,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			$app_ac[$key] = $value;
 		}
 		if ( substr($key,0,3) == 'ae_')
-			$app_ae[$key] = $value;
+			$app_ae[$key] = trim($value);
 		if ( substr($key,0,3) == 'aa_')
 			$app_aa[$key] = $value;
 		if ( substr($key,0,3) == 'al_')
@@ -966,8 +966,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 
 	/* Insert or update applicant_extra */
-	if ( $app['a_medication'] || $app['a_problem_physical'] || $app['a_problem_mental'] || 
-		$app['a_addiction_current'] || $app['a_other_technique'] || trim($input['ae_pregnant_detail']) <> '' || trim($input['ae_ch_course_detail']) <> '' || trim($input['ae_ch_practice_detail']) <> '' || arg(2) == 'edit' )
+	if ( array_filter($app_ae) || $extra_id )
 	{
 
 		if ( trim($input['ae_ch_course_detail']) <> '' )
