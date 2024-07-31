@@ -432,6 +432,9 @@ function dh_atportal_make_pretty( $value )
 		case 'Rejected': 
 			$ret = '<font color="red"><b>'.$value.'</b></font>';
 			break;
+    case 'Cancelled':
+      $ret = '<font color="red"><b>'.$value.'</b></font>';
+      break;
 		case 'Transfer to Registrar': 
 			$ret = '<font color="orange"><b>'.$value.'</b></font>';
 			break;
@@ -551,7 +554,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	//$form['a'] = array('#markup' => 'Hi there, I am '.$at_name);
 	$q = "select CONCAT(a_f_name, ' ', a_l_name) as 'Student Name', a_email as 'Email', a_phone_mobile, a_gender as 'Gender', a_type as 'Sit/Serve', co.c_name as 'Country', s.s_name as 'State',  cr.c_name as 'CourseName', DATE_FORMAT(cr.c_start, '%d %b') as 'CourseStart', DATE_FORMAT(cr.c_end, '%d %b, %Y') as 'CourseEnd', td.td_val1 as 'CourseType', ce.c_name as 'Centre', al.al_recommending_approved, al.al_area_at_approved, DATEDIFF(CURDATE(), cr.c_start) as 'diff',
 		al.al_recommending, al.al_area_at,
-		a_uri, a_id
+		a_uri, a_id, a_status
 		from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where $where
 		  and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) <= $diff_days  order by a_created desc";
 	$result = db_query($q, $where_opts);
@@ -562,6 +565,14 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 		$rs = array();
 		//if ($r['diff'] <= 0)
 		$rs['detail_link'] = l('Details', "lc-review/app/".$r['a_id']);
+
+    if($r['a_status'] == "Cancelled")
+    {
+      $rs['detail_link'] = "";
+      $r['al_recommending_approved'] = "Cancelled";
+      $r['al_area_at_approved'] = "Cancelled";
+    }
+
 		if (user_access('approve applications on behalf of at') || user_access("approve applications"))
 		{
 			$rs['RStatus'] = $r['al_recommending']."<br>".dh_atportal_make_pretty($r['al_recommending_approved']);
