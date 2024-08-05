@@ -621,6 +621,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 			{
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip", 
+          "ordering": false,
 					data: data,
 					"columnDefs": [
 					            {
