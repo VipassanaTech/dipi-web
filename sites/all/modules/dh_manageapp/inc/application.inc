@@ -169,7 +169,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
   $form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42,
     '#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
   $form[$group]['ae_id_issued_by'] = array('#title' => 'ID Issued By', '#type' => 'textfield', '#size' => '20', '#weight' => 42.1,
-    '#default_value' => isset($edit_data['ae_id_issued_by'])?$edit_data['ae_id_issued_by']:'', '#required' => 0, '#maxlength' => 20 );
+    '#default_value' => isset($edit_data['ae_id_issued_by'])?$edit_data['ae_id_issued_by']:'', '#required' => 0, '#maxlength' => 100 );
     $form[$group]['ae_id_issued'] = array('#title' => 'ID Issued Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 42.3,
     '#default_value' => isset($edit_data['ae_id_issued'])?$edit_data['ae_id_issued']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
         'maxDate' => 0, '#required' => 0,
