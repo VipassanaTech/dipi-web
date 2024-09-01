@@ -632,6 +632,14 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
   return $form;
 }
 
+function dh_referral_form_validate($form, &$form_state)
+{
+  $date_after_2_years = new DateTime(date('Y-m-d', strtotime('+2 year')));
+  $end_date = new DateTime($form_state['input']['r_end']['date']);
+
+  if($end_date > $date_after_2_years)
+    form_set_error('r_end', t('Referral end date can not be greater then 2 years from now'));
+}
 
 function dh_referral_form_submit($form, &$form_state)
 {
