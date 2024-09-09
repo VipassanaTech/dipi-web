@@ -40,7 +40,7 @@ function dh_course_dashboard()
 	$finalized = $temp['c_finalized'];
 	$type = 'a';
 	//if ($finalized) $type = 's';
-	$out = "<h2>$course_name</h2>";
+	$out = "<h2>$course_name (".l("Edit", "manage-course/".arg(1), array('query' => array('c' => arg(2) ))).")</h2>";
 	$out .= "<h3>".l("Back to Dashboard", "centre/".arg(1))."</h3>";
 	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
@@ -94,6 +94,12 @@ function dh_manage_courses()
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.select2.js');
 
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+
+  $c = "";
+  if (isset($_REQUEST['c']) && ($_REQUEST['c'] > 0))
+  {
+    $c = 'setTimeout(function(){ if(document.getElementById("row_'.$_REQUEST['c'].'")){ table.search("'.$_REQUEST['c'].'").draw(); table.row("#row_'.$_REQUEST['c'].'").edit() } }, 300);';
+  }
 
 	$js = '
 		var editor;
@@ -276,7 +282,7 @@ function dh_manage_courses()
 		            "order": [[ 2, "asc" ]]
 
 				} );
-
+        '.$c.'
 			}
 
 			$(document).ready(function(){
