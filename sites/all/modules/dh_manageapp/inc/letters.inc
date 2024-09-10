@@ -609,8 +609,8 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$letter_name = $ret['letter_name'];
 	$delivery_type = DELIVERY_TYPE_BOTH;
 
-	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-CONFIRMED'")->fetchField();
-	if (  in_array($event, array($STATUS_CONFIRMED)) )
+	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key in ('STATUS-CONFIRMED', 'STATUS-EXPECTED')")->fetchCol();
+	if (  in_array($event, $STATUS_CONFIRMED) )
 	{
 		if ( $row['a_uri'] == '' )
 			$row['a_uri'] = create_application_pdf($row['a_id']);
