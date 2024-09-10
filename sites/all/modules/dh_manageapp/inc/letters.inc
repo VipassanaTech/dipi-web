@@ -20,6 +20,10 @@ function dh_manage_letters()
 			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
 			return drupal_get_form('dh_letters_form', $row);
 			break;
+    case 'copy':
+      $row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
+      return drupal_get_form('dh_letters_form', $row);
+      break;
 		case 'delete':
 			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Letter deleted successfully");
@@ -54,10 +58,11 @@ function dh_letters_listing()
 		$rs[] = $r['Course Type']?$r['Course Type']:"All";
 		$rs[] = $r['Subject'];
 		$rs[] = l("Edit", "letters/$centre_id/edit/".$r['l_id'] );
+		$rs[] = l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
 		$rs[] = l("Delete", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
 		$rows[] = array_values($rs);
 	}
-	$header = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action');
+	$header = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action', 'Action');
 	$attributes = array('id' => 'table-letters');
 	$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
@@ -93,6 +98,8 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	$add = 0;
 	if (count($edit_data) == 0)
 		$add = 1;
+
+	$action = arg(2);
 
 	$merge_fields = _get_letter_fields(arg(1));
 	$field_count = 1;
@@ -140,7 +147,7 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	$form['b']['a'] = array('#markup' => $merge_block);
  	//$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
 	$form['l_name'] = array('#title' => 'Letter Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
-		'#default_value' => $add?'':$edit_data['l_name'], '#required' => 1,  );
+		'#default_value' => ($add || $action =="copy")?'':$edit_data['l_name'], '#required' => 1,  );
 	$form['l_event'] = array('#title' => 'Status', '#type' => 'select', '#weight' => 2, 
 		'#default_value' => $add?'':$edit_data['l_event'], '#options' => $statuses, '#required' => 1,  );
 	$form['l_course_type'] = array('#title' => 'Course Type', '#type' => 'select',  '#weight' => 2, 
@@ -161,11 +168,12 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	$form['l_attachment'] = array('#title' => 'Attachment', '#type' => 'file', '#weight' => 5, 
 		'#default_value' => '' , '#required' => 0, '#description' => $add?'':$attach_link  );
 
-	if ($add)
-		$action = 'Add Letter';
+	if ($action == 'edit')
+		$action_sub = 'Update Letter';
 	else
-		$action = 'Update Letter';
-	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 100);
+		$action_sub = 'Add Letter';
+
+	$form['sub'] = array('#type' => 'submit', '#value' => $action_sub, '#weight' => 100);
 
 	drupal_add_js('
 		(function ($) {
@@ -259,7 +267,7 @@ function dh_letters_form_submit($form, &$form_state)
 	}
 
 
-	if ($action == 'add')
+	if ($action == 'add' || $action == 'copy')
 	{
 		$fields['l_created'] = date('Y-m-d H:i:s'); 
 		$fields['l_created_by'] = $user->uid;		
@@ -268,6 +276,8 @@ function dh_letters_form_submit($form, &$form_state)
 	}
 	else
 		db_update('dh_letter')->fields($fields)->condition('l_id', $id )->execute();
+
+	if($action == "copy") $action = "copi";
 	drupal_set_message("Letter ${action}ed successfully ");
 	drupal_goto("letters/$centre_id");
 }
