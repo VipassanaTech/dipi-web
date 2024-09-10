@@ -194,6 +194,11 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'1':$edit_data['cs_whatsapp_reconf'], '#required' => 1,  );
 
+  $form[$group]['cs_whatsapp_msg'] = array('#title' => 'Enable WhatsApp Messages on Status-Change', '#type' => 'radios',
+    '#weight' => 9.1,
+    '#options' => array(1 => 'Yes', 0 => 'No'),
+    '#default_value' => $add?'1':$edit_data['cs_whatsapp_msg'], '#required' => 1,  );
+
 
 	$form[$group]['c_lc_admin_email'] = array('#title' => 'Long course admin email', '#type' => 'textfield', '#weight' => 10,
 		'#default_value' => $add?'':$edit_data['c_lc_admin_email'], '#required' => 0, '#description' => 'Multiple emails can be added comma-separated' );

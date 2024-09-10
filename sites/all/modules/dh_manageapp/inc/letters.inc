@@ -639,12 +639,13 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		}
 	}
 
+  $center_setting = db_query("select cs_email_from_name, cs_email_reply_to, cs_whatsapp_msg from dh_center_setting where cs_center=".$row['CentreID'])->fetchAssoc();
 
 	if ( ($delivery_type == DELIVERY_TYPE_EMAIL) || ($delivery_type == DELIVERY_TYPE_BOTH) )
 	{
-		$from_email = db_query("select cs_email_from_name, cs_email_reply_to from dh_center_setting where cs_center=".$row['CentreID'])->fetchAssoc();
-		//$from = $from_email['cs_email_from_name'];
-		$from = $from_email['cs_email_from_name'].' <'.$from_email['cs_email_reply_to'].'>';
+
+		//$from = $center_setting['cs_email_from_name'];
+		$from = $center_setting['cs_email_from_name'].' <'.$center_setting['cs_email_reply_to'].'>';
 		$mg = Mailgun::create(variable_get('mailgun_key', ''));
 		$test_mode = variable_get('mode_test', '0');
 		$to = $row['a_email'];
@@ -698,7 +699,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$sms_url = variable_get('sms_url', '');
 		//$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
 		//$response = file_get_contents($sms_url);
-		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) )
+		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) && $center_setting['cs_whatsapp_msg'] )
 		{
       $a_type = "Sit";
       if ($row['a_type'] == "Sevak")
