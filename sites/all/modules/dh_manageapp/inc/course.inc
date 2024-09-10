@@ -137,6 +137,11 @@ function dh_manage_courses()
 				 } );
 
 				var table = $("#course-table").DataTable( {
+
+
+            "initComplete": function(){
+              '.$c.'
+            },
 				    ajax: "/course/handler/'.arg(1).'",
 				    dom: "Bfrtip",
 					columns: [
@@ -282,7 +287,7 @@ function dh_manage_courses()
 		            "order": [[ 2, "asc" ]]
 
 				} );
-        '.$c.'
+
 			}
 
 			$(document).ready(function(){
