@@ -98,7 +98,7 @@ function dh_manage_courses()
   $c = "";
   if (isset($_REQUEST['c']) && ($_REQUEST['c'] > 0))
   {
-    $c = 'setTimeout(function(){ if(document.getElementById("row_'.$_REQUEST['c'].'")){ table.search("'.$_REQUEST['c'].'").draw(); table.row("#row_'.$_REQUEST['c'].'").edit() } }, 300);';
+    $c = 'setTimeout(function(){ table.search("'.$_REQUEST['c'].'").draw(); if(document.getElementById("row_'.$_REQUEST['c'].'")){ table.row("#row_'.$_REQUEST['c'].'").edit() } }, 300);';
   }
 
 	$js = '
