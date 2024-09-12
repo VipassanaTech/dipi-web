@@ -171,3 +171,12 @@ fieldset#edit-advanced {
 .form-item.form-item-bulk-mail-name.form-type-textfield.form-group {
     clear: left;
 }
+
+
+.form-item.form-item-least-10-day.form-type-textfield.form-group {
+    clear: left;
+}
+
+.form-item.form-item-max-10-day.form-type-textfield.form-group {
+    clear: left;
+}

@@ -1449,6 +1449,23 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     if ( isset($storage['least_service']) && ($storage['least_service']) )
       $where .= " and ac.ac_service >= {$storage['least_service']} ";
 
+    if ( isset($storage['max_10_day']) && ($storage['max_10_day']) )
+      $where .= " and ac.ac_10d <= {$storage['max_10_day']} ";
+    if ( isset($storage['max_stp']) && ($storage['max_stp']) )
+      $where .= " and ac.ac_stp <= {$storage['max_stp']} ";
+    if ( isset($storage['max_spl']) && ($storage['max_spl']) )
+      $where .= " and ac.ac_spl <= {$storage['max_spl']} ";
+    if ( isset($storage['max_20_day']) && ($storage['max_20_day']) )
+      $where .= " and ac.ac_20d <= {$storage['max_20_day']} ";
+    if ( isset($storage['max_30_day']) && ($storage['max_30_day']) )
+      $where .= " and ac.ac_30d <= {$storage['max_30_day']} ";
+    if ( isset($storage['max_45_day']) && ($storage['max_45_day']) )
+      $where .= " and ac.ac_45d <= {$storage['max_45_day']} ";
+    if ( isset($storage['max_60_day']) && ($storage['max_60_day']) )
+      $where .= " and ac.ac_60d <= {$storage['max_60_day']} ";
+    if ( isset($storage['max_service']) && ($storage['max_service']) )
+      $where .= " and ac.ac_service <= {$storage['max_service']} ";
+
 
 		$out = '<h2>'.l("Back to Search", "search-app/".$centre_id).'</h2>';
 		//if ($storage['course'] <> '')
@@ -1581,6 +1598,15 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.6, );
       $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.7, );
       $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.8, );
+
+      $form[$group]['max_10_day'] = array('#title' => 'Max number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '300' ), '#size' => '15', '#weight' => 5.81, );
+      $form[$group]['max_stp'] = array('#title' => 'Max number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.82, );
+      $form[$group]['max_spl'] = array('#title' => 'Max number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.83, );
+      $form[$group]['max_20_day'] = array('#title' => 'Max number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.84, );
+      $form[$group]['max_30_day'] = array('#title' => 'Max number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.85, );
+      $form[$group]['max_45_day'] = array('#title' => 'Max number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.86, );
+      $form[$group]['max_60_day'] = array('#title' => 'Max number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.87, );
+      $form[$group]['max_service'] = array('#title' => 'Max number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.88, );
 		}
 
     if (user_access('mass mail') && $centre_id <> '')
