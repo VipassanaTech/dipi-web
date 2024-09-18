@@ -445,7 +445,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$row['a_login'] = $row['a_email'];
 		if ( $delivery_type == DELIVERY_TYPE_SMS )
 			$row['a_login'] = $row['a_phone_mobile'];
- 		$row['a_auth_code'] = generate_random_str(30);
+ 		$row['a_auth_code'] = $id.generate_random_str(15);
 		db_update('dh_applicant')->fields(array('a_auth_code' => $row['a_auth_code'], 'a_login' => $row['a_login']))->condition('a_id', $id)->execute();
 	}
 	$delivery_type = DELIVERY_TYPE_BOTH;	
@@ -484,8 +484,8 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$auth_reco = $al_row['al_recommending_auth'];
 		if (!$auth_reco)
 		{
-	 		$auth_area = generate_random_str(30);
-	 		$auth_reco = generate_random_str(30);
+	 		$auth_area = $id.generate_random_str(15);
+	 		$auth_reco = $id.generate_random_str(15);
 			db_update('dh_applicant_lc')->fields(array('al_area_auth' => $auth_area, 'al_recommending_auth' => $auth_reco))->condition('al_applicant', $id)->execute();
 		}
 		$search['[RAuth]'] = $auth_reco;
