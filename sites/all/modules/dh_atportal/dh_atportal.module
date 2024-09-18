@@ -753,11 +753,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
 	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1 or t_lc_area=1) and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
+  $area_teacher_title = 'Select Area-T / Full-T';
 
   if($r['td_key'] == '60-DayOSC')
   {
     $options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_cat=1 and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
     $options_area_t[''] = 'Select CAT';
+    $area_teacher_title = 'Select Area Teacher';
   }
 
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
@@ -774,7 +776,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		$form['reco_action']['#title'] = 'Recommending AT Action';
 		$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Recommending AT Comments');
 
-		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => 'Select Area Teacher');
+		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title);
 		$form['area_action'] = $form['reco_action'];
 		$form['area_action']['#title'] = 'AreaT Action';
 		$form['area_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'AreaT Comments');
