@@ -445,7 +445,7 @@ function dh_atportal_make_pretty( $value )
 function dh_atportal_get_centers_assigned()
 {
 	global $user;
-	$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'");
+	$res = db_query("select uc_center from dh_user_center where uc_deleted=0 and uc_user='".$user->uid."'");
 	$center_access = array();
 	while($r = $res->fetchAssoc())
 		$center_access[] = $r['uc_center'];
