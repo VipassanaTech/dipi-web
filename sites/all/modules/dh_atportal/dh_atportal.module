@@ -786,7 +786,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	{
 		if (!$reco_done)
 		{
-			$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => 'Select Area Teacher'); // '#required' => True
+			$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title); // '#required' => True
 		}
 		if ($reco_done)
 		{
