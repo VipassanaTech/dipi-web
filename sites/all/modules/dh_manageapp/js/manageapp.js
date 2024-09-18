@@ -193,7 +193,8 @@
 		}
 
 		autocomplete_teacher( "#edit-al-recommending", 'all', 'value' );
-		autocomplete_teacher( "#edit-al-area-at", 'full-t', 'value' );
+		// autocomplete_teacher( "#edit-al-area-at", 'full-t', 'value' );
+    $("#edit-al-area-at").select2();
 
 		$("#edit-ac-teacher-code").autocomplete({
 			source: function( request, response ) {

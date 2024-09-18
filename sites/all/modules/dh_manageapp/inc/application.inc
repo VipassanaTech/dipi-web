@@ -45,7 +45,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$LC = $TEEN = $CHILD = false;
 
-	$course_check = strtolower(db_query("select td_val3 from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchField());
+	$course_type_check = db_query("select td_val3, td_key from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchAssoc();
+
+  $course_check = strtolower($course_type_check['td_val3']);
 	if ($course_check == 'lc')
 		$LC = true;
 	elseif ($course_check == 'teen')
@@ -459,17 +461,28 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
       	)),
 
 		);	
-		$form[$group]['al_area_at'] = array('#title' => 'Area Teacher?', '#type' => 'textfield', 
-			 '#weight' => 30, '#maxlength' => 100, 
-			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0, 
-      '#attributes' => array(
-        'placeholder' => t('Start typing AT Name for suggestions, then select the AT.'),
-      ),
-				'#attached' => array(
-      		'library' => array(
-        		array('system', 'ui.autocomplete'),
-      	)),
 
+    $options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1 or t_lc_area=1) and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
+    $options_area_t[''] = 'Select CAT/T';
+    $al_area_at_title = 'Area Teacher / Full-T';
+
+    if($course_type_check['td_key'] == '60-DayOSC')
+    {
+      $options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_cat=1 and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
+      $options_area_t[''] = 'Select CAT';
+      $al_area_at_title = 'Area Teacher';
+    }
+
+    if($edit_data['al_area_at'])
+    {
+      $options_area_t[$edit_data['al_area_at']] = $edit_data['al_area_at'];
+    }
+
+
+
+		$form[$group]['al_area_at'] = array('#title' => $al_area_at_title, '#type' => 'select',
+			 '#weight' => 30, '#maxlength' => 100, '#options' => $options_area_t,
+			'#default_value' => isset($edit_data['al_area_at'])?$edit_data['al_area_at']:'', '#required' => 0,
 		);	
 
     if ($add)

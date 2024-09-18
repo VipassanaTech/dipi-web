@@ -674,9 +674,9 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	if ($at_name)
 		$at_names[] = $at_name;
 
-	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo,  
+	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo, td_key,
 		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri,  
-		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
+		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_type_detail td on (c.c_course_type=td.td_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
 	$result = db_query($q);
 	$r = $result->fetchAssoc();
 
@@ -753,6 +753,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
 	$options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where (t_cat=1 or t_full_t=1 or t_lc_area=1) and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 	$options_area_t[''] = 'Select CAT/T';
+
+  if($r['td_key'] == '60-DayOSC')
+  {
+    $options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_cat=1 and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
+    $options_area_t[''] = 'Select CAT';
+  }
+
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
 		'Approved' => 'Approve', 'Rejected' => 'Reject', 'Transfer to Registrar' => 'Transfer to Registrar'));
 
