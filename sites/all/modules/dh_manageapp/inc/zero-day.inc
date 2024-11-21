@@ -307,9 +307,10 @@ function dh_manageapp_list($centre_id, $course_id)
 		$rs[] = $r['Age'];
 		$rows[] = array_values($rs);
 	}
-	$header = array('Action', 'ConfNo', 'Applicant Name', 'Gender', 'City', 'Age');
+	$header = array('Action', 'ConfNo', 'Name', 'Gender', 'City', 'Age');
 	$attributes = array('id' => 'table-applicants');
-	$out = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
+  $out = "<h2><br>Unattended Applicants</h2>";
+	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 	return $out;
 }
 
@@ -683,7 +684,7 @@ function dh_manageapp_attended( $centre, $course_id )
 			$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] = 0;
 		$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] += 1;
 	}
-	$header = array('Update', 'ConfNo', 'Applicant Name', 'Gender', 'Type', 'Age', 'Teen/10D/STP', 'LC', 'RoomNo', 'Laundry', 'Valuable', 'Chowky', 'Chair', 'BackRest', 'Group', 'H' );
+	$header = array('Update', 'ConfNo', 'Name', 'Gender', 'Type', 'Age', 'Teen/10D/STP', 'LC', 'RoomNo', 'Laundry', 'Valuable', 'Chowky', 'Chair', 'BackRest', 'Group', 'H' );
 	$attributes = array('id' => 'table-attending');
 
 	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id).' | '.l("Manager List", "manager-list/".$centre."/".$course_id).' | '.l("Seating Plan", "seating/".$centre."/".$course_id).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1))).')  ) </h3>';
@@ -792,8 +793,9 @@ function dh_manageapp_attended( $centre, $course_id )
 		$out .= theme('table', array('header' => $header_group, 'rows' => $rows_group, 'attributes' => array('id' => 'table-group') ));
 	}
 	$out .= '</div><br />';
-	if (count($rows) > 0 )
-		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
+	// if (count($rows) > 0 )
+  $out .= "<br><h2>Attended Applicants</h2>";
+	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 	return $out;
 }
 
