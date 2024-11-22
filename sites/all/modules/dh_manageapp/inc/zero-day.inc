@@ -383,7 +383,7 @@ function dh_zero_main()
 				      "targets": 0,
 				      "data": null,
 				      "sortable": false,
-				      "defaultContent": "<button>Update</button>"					
+				      "defaultContent": "<button>Update</button>"
 				    }, 
 				    {
 				    	"targets": 15,
@@ -793,7 +793,8 @@ function dh_manageapp_attended( $centre, $course_id )
 		$out .= theme('table', array('header' => $header_group, 'rows' => $rows_group, 'attributes' => array('id' => 'table-group') ));
 	}
 	$out .= '</div><br />';
-	// if (count($rows) > 0 )
+	if (count($rows) == 0 )
+    $attributes = array('id' => 'table-attending-empty');
   $out .= "<br><h2>Attended Applicants</h2>";
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 	return $out;
