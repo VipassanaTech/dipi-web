@@ -475,6 +475,58 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     );
   }
 
+  $course_center_required = 1;
+  if(!$add && !isset($edit_data['r_course_center']) )
+    $course_center_required = 0;
+
+  $form[$group]['r_course_center'] = array(
+    '#title' => 'Referral Center',
+    '#description' => 'Name of the center in which in which incident happened',
+    '#type' => 'textfield',
+    '#default_value' => isset($edit_data['r_course_center'])?$edit_data['r_course_center']:'',
+    '#weight' => 25.6,
+    '#maxlength' => 200,
+    '#required' => $course_center_required,
+  );
+
+
+  $course_type_required = 1;
+  if(!$add && !isset($edit_data['r_course_type']) )
+    $course_type_required = 0;
+
+  $options_course_type = db_query("select td_id, td_val1 FROM dh_type_detail where td_type='course-type' and td_key not in ('Other', 'OSProgram');")->fetchAllKeyed();
+  $options_course_type[''] = 'Select Course Type';
+  $form[$group]['r_course_type'] = array(
+    '#type' => 'select',
+    '#options' => $options_course_type,
+    '#title' => 'Course Type',
+    '#default_value' => isset($edit_data['r_course_type'])?$edit_data['r_course_type']:'',
+    '#weight' => 25.7,
+    '#required' => $course_type_required,
+  );
+
+  $course_start_required = 1;
+  if(!$add && !isset($edit_data['r_course_start']) )
+    $course_start_required = 0;
+
+	$form[$group]['r_course_start'] = array(
+		'#title' => 'Course Start Date',
+		'#type' => 'date_popup',
+		'#size' => '20',
+		'#weight' => 25.8,
+		'#default_value' => isset($edit_data['r_course_start'])?$edit_data['r_course_start']:'',
+		'#date_format' => 'Y-m-d',
+		'#required' => 1,
+		'#datepicker_options' => array(
+			'maxDate' => 0,
+			'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+			'#required' => 1,
+		),
+		'#date_year_range' => '-50:0',
+		'#date_label_position' => 'above',
+		'#theme_wrappers' => array('date_popup'),
+		'#required' => $course_start_required,
+	);
 
   	$group = 'Course Info';
 	$form[$group] = array(
@@ -616,6 +668,9 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 	$css ='
 		.form-item-s-phone-mobile {
 			clear: both;
+		}
+		.form-item.form-item-r-course-center.form-type-textfield.form-group {
+    clear: left;
 		}
 	';
 
@@ -991,6 +1046,7 @@ function dh_referral_results()
 
 
 	$q = "select r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+		r_course_center, r_course_type, r_course_start,
     concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
     from dh_student a
     left join dh_student_course sc on (a.s_id=sc_student)
@@ -1054,6 +1110,9 @@ function dh_referral_results()
       if($r['teacher_id'])
         $rs['ref_by'] = '<a href="#" id="'.$r['teacher_id'].'" class="get-at-info" >'.$r['teacher'].'</a>';
     }
+
+    $r['r_course_type'] = db_query("select td_val1 FROM dh_type_detail where td_id=:td_id", array(':td_id' => $r['r_course_type']))->fetchField();
+    $rs['ref_course'] = "Center: {$r['r_course_center']}, Type: {$r['r_course_type']}, Start-Date: {$r['r_course_start']}";
 
     $rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
 		//if ($r['City'] == '')
@@ -1210,6 +1269,10 @@ function dh_referral_results()
 		                "<td><table><tr><td>Teen</td><td>10d</td><td>STP</td><td>SPL</td><td>TSC</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>Seva</td></tr>"+
 		                "<tr><td>"+d.course_teen+"</td><td>"+d.course_10d+"</td><td>"+d.course_stp+"</td><td>"+d.course_spl+"</td><td>"+d.course_tsc+"</td><td>"+d.course_20d+"</td><td>"+d.course_30d+"</td><td>"+d.course_45d+"</td><td>"+d.course_60d+"</td><td>"+d.course_seva+"</td></tr></table></td>"+
 		            "</tr>"+
+		            "<tr>"+
+		            "<td><label>Referral-Course:</label></td>"+
+                "<td colspan=3>"+d.ref_course+"</td>"+
+                "</tr>"+
                 "<tr>"+
                 "<td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading Activity Log...</div></td>"+
                 "</tr>"+
