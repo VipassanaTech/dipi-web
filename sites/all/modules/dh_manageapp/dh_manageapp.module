@@ -84,6 +84,7 @@ function dh_manageapp_permission()
 	$perms['view course report'] = array('title' => t('View Course report'));
 	$perms['access webhook'] = array('title' => t('Allow Webhook'));
   $perms['view finalize report'] = array('title' => t('View Finalize Report'));
+  $perms['access at details'] = array('title' => t('Access AT Details'));
 
 	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
@@ -454,7 +455,7 @@ function dh_manageapp_menu()
 
     $items['at-schedule/get-at-info/%'] = array( 'title' => t('AT Scheduling'),
 	       'page callback' => 'get_at_info',
-	       'access arguments' => array('at scheduling'),
+	       'access arguments' => array('access at details'),
 	       'type' => MENU_CALLBACK);
 
     $items['at-app-activity/%atappid'] = array( 'title' => t('AT Scheduling'),
