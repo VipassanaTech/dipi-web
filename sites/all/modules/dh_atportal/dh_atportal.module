@@ -765,8 +765,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
 		'Approved' => 'Approve', 'Rejected' => 'Reject', 'Transfer to Registrar' => 'Transfer to Registrar'));
 
+	$owner_center_app = in_array($r['a_center'], dh_atportal_get_centers_assigned());
+	$form['owner_center_app'] = array(
+		'#type' => 'value',
+		'#value' => $owner_center_app,
+	);
   //if (user_access('approve applications'))
-  	if (user_access('approve applications') && in_array($r['a_center'], dh_atportal_get_centers_assigned()) )
+  	if (user_access('approve applications') && $owner_center_app )
 	{
 		$options_reco_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 		$options_reco_t[''] = 'Select Recommending AT';
@@ -859,7 +864,7 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	drupal_set_message(t('Application updated successfully'));
 	$input = $form_state['input'];	
 	$app = array();
-	if (user_access('approve applications'))
+	if (user_access('approve applications') && $input['owner_center_app'])
 	{
 		if ($input['reco_teacher'] <> '')
 			$app['al_recommending'] = $input['reco_teacher'];
