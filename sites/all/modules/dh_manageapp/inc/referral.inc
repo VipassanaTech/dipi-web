@@ -718,6 +718,17 @@ function dh_referral_form_submit($form, &$form_state)
 
   if ($app_r['r_teacher'] == '')
     $app_r['r_teacher'] = NULL;
+
+    if ($app_r['r_course_type'] == '')
+        $app_r['r_course_type'] = NULL;
+
+    if ($app_r['r_course_start']['date'] == '')
+        $app_r['r_course_start'] = NULL;
+
+    if ($app_r['r_course_center'] == '')
+        $app_r['r_course_center'] = NULL;
+
+
 	if ($app_r['r_listed_10d'] == '')
 		$app_r['r_listed_10d'] = '0';
 	if ($app_r['r_listed_stp'] == '')
