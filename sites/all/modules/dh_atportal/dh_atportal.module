@@ -797,6 +797,8 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		if ($reco_done)
 		{
 			unset($form['action']['#options']['Transfer to Registrar']);
+			$form['action']['#options']['Transfer'] = 'Transfer';
+			$form['transfer_area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title);
 		}
 		$form['comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
 	}
@@ -810,7 +812,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 			{
 				var a = sel+"-comments";
 				console.log(a);
-				if ((val == "Approved") || (val == "Transfer to Registrar"))
+				if ((val == "Approved") || (val == "Transfer to Registrar") || (val == "Transfer"))
 				{
 					$("label[for="+a+"]").text("Comments");
 					$("#"+a).attr("required", false);
@@ -831,10 +833,24 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 					$("#edit-area-teacher").attr("required", true);
 					$(".form-item-area-teacher").show();
 				}
+
+                if ((val == "Transfer") && (sel == "edit"))
+                {
+                    $("#edit-transfer-area-teacher").attr("required", true);
+                    $(".form-item-transfer-area-teacher").show();
+                }
+                else if ((val != "Transfer"))
+                {
+                    $("#edit-transfer-area-teacher").attr("required", false);
+                    $(".form-item-transfer-area-teacher").hide();
+                }
 			}
 			$(document).ready(function(){
 				$("#edit-area-teacher").select2();
+                $("#edit-transfer-area-teacher").select2();
 				$("#edit-reco-teacher").select2();
+                $("#edit-transfer-area-teacher").attr("required", false);
+                $(".form-item-transfer-area-teacher").hide();
 				$("#edit-action,#edit-reco-action,#edit-area-action").change(function(){
 					check_required($(this).attr("id").replace("-action", ""), $(this).val());
 				});
@@ -847,6 +863,14 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 							return false;
 						}
 					}
+                    if ( $("#edit-action").val() == "Transfer" )
+                    {
+                        if ($("#edit-transfer-area-teacher").val() == "")
+                        {
+                            alert("Please '.$area_teacher_title.'");
+                            return false;
+                        }
+                    }
 					return true;
 				});
 			});
@@ -886,7 +910,11 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	}
 	else
 	{
-		if (isset($input['area_teacher']))
+        if (isset($input['transfer_area_teacher']) && $input['transfer_area_teacher'])
+        {
+            $app['al_area_at'] = $input['transfer_area_teacher'];
+        }
+		elseif (isset($input['area_teacher']))
 		{
 			$app['al_area_at'] = $input['area_teacher'];
 			$app['al_recommending_approved'] = $input['action'];
@@ -901,6 +929,7 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	$lc_id = arg(2);
 	db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $lc_id)->execute();
 	db_update('dh_applicant_lc')->fields($app)->condition('al_applicant', $lc_id)->execute();
+
 
 	$q = "select al_recommending_approved, al_area_at_approved from dh_applicant_lc where al_applicant=$lc_id";
 	$row = db_query($q)->fetchAssoc();
@@ -926,12 +955,30 @@ function dh_atportal_review_form_submit($form, &$form_state )
 			case 'Transfer to Registrar':
 				break;
 		}
-		if ($new_status <> '')
+
+        if(isset($input['transfer_area_teacher']) && $input['transfer_area_teacher'] && $new_status == 'A-ATReview')
+        {
+            $centre = db_query("select a_center from dh_applicant where a_id=$lc_id")->fetchField();
+            logit($centre,  'LC Workflow', $lc_id, "AreaT Transfer to {$input['transfer_area_teacher']} (Comment: {$input['comments']})");
+
+            dh_send_letter('a-teacher', $lc_id, $new_status);
+
+            $lid = db_query("select l_id from dh_letter where l_name='Recommending AT Approved' and l_center='$centre' limit 1")->fetchField();
+
+            if ($lid)
+                dh_send_letter('applicant', $lc_id, 'Custom', $lid);
+            else
+            {
+                $log = "No Recommending AT Approved letter found!";
+                logit($centre,  'Letter', $lc_id, $log );
+            }
+        }
+		elseif ($new_status <> '')
 		{
 			// $cmd = "/usr/bin/php status-trigger.php $lc_id '$new_status'";
 			// echo "$cmd";
 			// exec($cmd);
-      update_status_external($lc_id, $new_status);
+            update_status_external($lc_id, $new_status);
 		}
 	}
 
