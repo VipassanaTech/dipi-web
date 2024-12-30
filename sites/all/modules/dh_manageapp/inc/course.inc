@@ -50,6 +50,8 @@ function dh_course_dashboard()
 			$out .= '<h2><li>'.l($key, $val, array("query" => array("s" => '', 't' => '','g' => '', 'd' => $type))).'</li></h2>';
 		elseif ( in_array($key, array('Cell List', 'Seating Plan'))  )
 			$out .= '<h2><li>'.l($key, $val).' ('.l('Regenerate', $val, array("query" => array("r" => 1))).') </li></h2>';
+        elseif ( in_array($key, array('Generate Male PDF', 'Generate Female PDF'))  )
+            $out .= '<h2><li>'.l($key, $val).'<br>('.l('Sort as Seating Plan', $val, array("query" => array("seating" => 1))).') </li></h2>';
 		else
 			if (drupal_valid_path($val))
 				$out .= '<h2><li>'.l($key, $val).'</li></h2>';
