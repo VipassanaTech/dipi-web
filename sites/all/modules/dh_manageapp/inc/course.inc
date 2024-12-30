@@ -1137,10 +1137,15 @@ function check_student($r)
 	return $sid;
 }
 
-function generate_course_pdf($course_id, $type = 'M')
+function generate_course_pdf($course_id, $seating=0, $type = 'M')
 {
 	watchdog('DIPI', 'generate_course_pdf called', array(), WATCHDOG_NOTICE, 'link');
-	$q = "select a_id, a_uri from dh_applicant a left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_applicant_attended aa on (a.a_id=aa.aa_applicant) left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course=$course_id and a_attended = 1 and a_gender='$type' order by aa_group asc, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."), IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+    $orderby = " order by aa_group asc, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."), IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
+
+    if($seating)
+        $orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+
+	$q = "select a_id, a_uri from dh_applicant a left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_applicant_attended aa on (a.a_id=aa.aa_applicant) left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course=$course_id and a_attended = 1 and a_gender='$type' $orderby ";
 	$result = db_query($q);
 	$pdfs = array();
 	$i = 0;
@@ -1242,14 +1247,18 @@ function generate_course_pdf($course_id, $type = 'M')
 
 function course_pdf()
 {
+    $seating = 0;
+    if (isset($_REQUEST['seating']) && ($_REQUEST['seating'] == 1))
+        $seating = 1;
+
 	$course_id = arg(2);
 	if (arg(0) == 'course-pdf-m') {
 		$type = 'M';
-		$pdf = generate_course_pdf($course_id);
+		$pdf = generate_course_pdf($course_id, $seating);
 	}
 	else {
 		$type = 'F';
-		$pdf = generate_course_pdf($course_id, $type);
+		$pdf = generate_course_pdf($course_id, $seating, $type);
 	}
 	header("Content-type: application/pdf");
 	header("Content-Disposition: inline; filename=course-".$type.".pdf");
