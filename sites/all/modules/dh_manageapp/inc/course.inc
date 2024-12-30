@@ -1143,7 +1143,7 @@ function generate_course_pdf($course_id, $seating=0, $type = 'M')
     $orderby = " order by aa_group asc, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."), IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
 
     if($seating)
-        $orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+        $orderby = " order by a_gender, aa_group, a_type desc, GREATEST(aa_chowky, aa_chair) desc, aa_seat_row asc, aa_seat_col asc ";
 
 	$q = "select a_id, a_uri from dh_applicant a left join dh_applicant_course ac on (a.a_id=ac.ac_applicant) left join dh_applicant_attended aa on (a.a_id=aa.aa_applicant) left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course=$course_id and a_attended = 1 and a_gender='$type' $orderby ";
 	$result = db_query($q);
