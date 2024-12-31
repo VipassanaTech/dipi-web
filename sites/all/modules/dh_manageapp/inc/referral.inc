@@ -494,7 +494,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
   if(!$add && !isset($edit_data['r_course_type']) )
     $course_type_required = 0;
 
-  $options_course_type = db_query("select td_id, td_val1 FROM dh_type_detail where td_type='course-type' and td_key not in ('Other', 'OSProgram');")->fetchAllKeyed();
+  $options_course_type = db_query("select td_id, td_val1 FROM dh_type_detail where td_type='course-type';")->fetchAllKeyed();
   $options_course_type[''] = 'Select Course Type';
   $form[$group]['r_course_type'] = array(
     '#type' => 'select',
@@ -995,7 +995,7 @@ function dh_addedit_referral()
 		$new_row = array();
 		if (isset($_REQUEST['aid']) && ($_REQUEST['aid'] <> '') )
 		{
-			$row = db_query("select * from dh_applicant where a_id='".$_REQUEST['aid']."'")->fetchAssoc();
+			$row = db_query("select a.*, c.c_name as r_course_center, co.c_start as r_course_start, td_id as r_course_type from dh_applicant a left join dh_center c on a.a_center=c.c_id left join dh_course co on a.a_course=co.c_id left join dh_type_detail td on co.c_course_type=td.td_id where a_id='".$_REQUEST['aid']."'")->fetchAssoc();
 			foreach( $row as $k => $v)
 				$new_row[ str_replace("a_", "s_", $k) ] = $v;			
 		} 
