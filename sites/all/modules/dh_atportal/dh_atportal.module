@@ -668,8 +668,9 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		$at_names = dh_atportal_get_ats_assigned();
 	}
 	$at_code = $user->name;
-	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
-	$at_name = db_query($q)->fetchField();
+	$q = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'Name', t_email from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1")->fetchAssoc();
+	$at_name = $q['Name'];
+    $at_email = $q['t_email'];
 
 	if ($at_name)
 		$at_names[] = $at_name;
@@ -679,6 +680,10 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_type_detail td on (c.c_course_type=td.td_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
 	$result = db_query($q);
 	$r = $result->fetchAssoc();
+
+    $own_app = false;
+    if($r['a_email'] == $at_email && $r['ac_teacher'])
+        $own_app = true;
 
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace('private://', '', $r['a_photo']), 'stream');
 	if (!$ret['success'])
@@ -755,11 +760,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$options_area_t[''] = 'Select CAT/T';
   $area_teacher_title = 'Select Area-T / Full-T';
 
+  $sixty_day_course = false;
   if($r['td_key'] == '60-DayOSC')
   {
     $options_area_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_cat=1 and t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
     $options_area_t[''] = 'Select CAT';
     $area_teacher_title = 'Select Area Teacher';
+    $sixty_day_course = true;
   }
 
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
@@ -793,6 +800,9 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		if (!$reco_done)
 		{
 			$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title); // '#required' => True
+
+            if($own_app && !$sixty_day_course)
+                $form['action']['#options']['ApproveOwnApplication'] = 'ApproveOwnApplication';
 		}
 		if ($reco_done)
 		{
@@ -812,7 +822,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 			{
 				var a = sel+"-comments";
 				console.log(a);
-				if ((val == "Approved") || (val == "Transfer to Registrar") || (val == "Transfer"))
+				if ((val == "Approved") || (val == "Transfer to Registrar") || (val == "Transfer") || (val == "ApproveOwnApplication"))
 				{
 					$("label[for="+a+"]").text("Comments");
 					$("#"+a).attr("required", false);
@@ -887,6 +897,7 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	global $user;
 	drupal_set_message(t('Application updated successfully'));
 	$input = $form_state['input'];	
+    $update_ac_teacher_code = false;
 	$app = array();
 	if (user_access('approve applications') && $input['owner_center_app'])
 	{
@@ -910,7 +921,16 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	}
 	else
 	{
-        if (isset($input['transfer_area_teacher']) && $input['transfer_area_teacher'])
+        if(isset($input['action']) && $input['action'] == 'ApproveOwnApplication')
+        {
+            $app['al_area_at'] = "Not Applicable";
+            $app['al_recommending_approved'] = "Approved";
+            $app['al_recommending_comments'] = $input['comments'];
+            $app['al_area_at_approved'] = "Approved";
+            $app['al_area_at_comments'] = "Self approved by AT.";
+            $update_ac_teacher_code = true;
+        }
+        elseif (isset($input['transfer_area_teacher']) && $input['transfer_area_teacher'])
         {
             $app['al_area_at'] = $input['transfer_area_teacher'];
         }
@@ -929,6 +949,11 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	$lc_id = arg(2);
 	db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $lc_id)->execute();
 	db_update('dh_applicant_lc')->fields($app)->condition('al_applicant', $lc_id)->execute();
+    if($update_ac_teacher_code)
+    {
+        $ac_teacher_code=strtoupper(str_replace('.', '-', $user->name));
+        db_update('dh_applicant_course')->fields(array('ac_teacher_code' => $ac_teacher_code))->condition('ac_applicant', $lc_id)->execute();
+    }
 
 
 	$q = "select al_recommending_approved, al_area_at_approved from dh_applicant_lc where al_applicant=$lc_id";
