@@ -774,7 +774,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
 	$owner_center_app = in_array($r['a_center'], dh_atportal_get_centers_assigned());
 	$form['owner_center_app'] = array(
-		'#type' => 'value',
+		'#type' => 'hidden',
 		'#value' => $owner_center_app,
 	);
   //if (user_access('approve applications'))
