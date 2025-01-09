@@ -539,6 +539,14 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"R-ATReview\">R-AT Review</option><option value=\"Cancelled\">Cancelled</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 
 				}
+                else if (data.long_course && data.reco_status != "Approved" && data.app_status != "R-ATReview" && data.app_status != "R-ATTransfer")
+                {
+                    return "NA";
+                }
+                else if (data.long_course && data.reco_status == "Approved" && data.area_status != "Approved" && data.app_status != "A-ATReview")
+                {
+                    return "NA";
+                }
 				if (data.app_status == "Confirmed" || data.app_status == "ReConfirmation")
 				{
 					 tmp = "<option value=\"ReConfirmation\">ReConfirmation</option><option value=\"Expected\">Expected</option>";
