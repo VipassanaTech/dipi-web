@@ -163,12 +163,17 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
       ae_id_issued,
       ae_id_issued_by,
 			ae_parent_course,
-			ae_teen_std
+			ae_teen_std,
+            al_recommending,
+            al_recommending_approved,
+            al_area_at,
+            al_area_at_approved
 			from
 			dh_applicant
 			left join dh_applicant_course ac on (a_id=ac_applicant)
 			left join dh_applicant_attended aa on (a_id=aa_applicant)
 			left join dh_applicant_extra ae on (a_id=ae_applicant)
+            left join dh_applicant_lc al on (a_id=al_applicant)
 			left join dh_course c on (a_course=c.c_id)
 			left join dh_country co on (a_country=co.c_code)
 			left join dh_city ci on a_city=ci.c_id
@@ -277,8 +282,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 		$course_type = db_query("SELECT td_key, td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchAssoc();
 
+        $LC = false;
 		if ($course_type['td_val3'] == 'LC')
+        {
 			$rs['allowtransfer'] = 0;
+            $LC = true;
+        }
 
 		$rs['centreid'] = $r['a_center'];
 		$rs['finalized'] = $r['c_finalized']?1:0;
@@ -403,6 +412,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['voterid'] = $r['a_voter_id'];
 		$rs['pancard'] = $r['a_pancard'];
 		$rs['aadhar'] = $r['a_aadhar'];
+
+        $rs['long_course'] = $LC;
+        $rs['reco_t'] = $r['al_recommending'];
+        $rs['reco_status'] = $r['al_recommending_approved'];
+        $rs['area_t'] = $r['al_area_at'];
+        $rs['area_status'] = $r['al_area_at_approved'];
+
 
 		$rs['referral'] = $r['a_referral']?1:0;
 		if ($r['a_referral'])
@@ -596,6 +612,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	$js = '
 		function format ( d ) {
 			var pregnant = "", photo = "", referral = "", left_reason = "";
+            var long_course = "";
 			
 			if (d.gender == "Female")
 			{
@@ -618,11 +635,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					"<tr><td class=\"referral\"><label>Reason:</label></td><td class=\"referral\">"+d.ref_reason+"</td>"+
 					"<td class=\"referral\"><label>Listed For:</label></td><td class=\"referral\" colspan=\"3\">"+d.ref_listed_for+"</td></tr>";
 			}
+            if ( d.long_course )
+            {
+                long_course = "<tr><td colspan=2> <label>RecoAT:</label> "+d.reco_t+" ("+d.reco_status+")</td><td colspan=3><label>AreaT:</label> "+d.area_t+" ("+d.area_status+")</td></tr>";
+            }
 		    return "<div class=\"slider\">"+
 		        "<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" style=\"padding-left:50px;\">"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"clarification-response-"+d.aid+"\">Loading Clarification Data...</div></td>"+
-		            "</tr>"+ referral +
+		            "</tr>"+ referral + long_course +
 		            "<tr>"+
 		                "<td colspan=\"5\">"+d.address+", "+d.location+" / "+d.contact+"</td>"+
 		             "</tr>"+
