@@ -782,17 +782,31 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	{
 		$options_reco_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
 		$options_reco_t[''] = 'Select Recommending AT';
-		$form['reco_teacher'] = array('#type' => 'select', '#options' => $options_reco_t, '#title' => 'Select Recommending AT');	
+		$form['reco_teacher'] = array('#type' => 'select', '#options' => $options_reco_t,
+            '#title' => 'Select Recommending AT',
+            '#default_value' => isset($r['al_recommending'])?$r['al_recommending']:'',
+        );
 		$form['reco_action'] = $form['action'];
 		unset($form['action']);
 		unset($form['reco_action']['#options']['Transfer to Registrar']);
 		$form['reco_action']['#title'] = 'Recommending AT Action';
-		$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Recommending AT Comments');
+        $form['reco_action']['#default_value'] = isset($r['al_recommending_approved'])?$r['al_recommending_approved']:'';
+		$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3,
+            '#title' => 'Recommending AT Comments',
+            '#default_value' => isset($r['al_recommending_comments'])?$r['al_recommending_comments']:'',
+        );
 
-		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title);
+		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t,
+            '#title' => $area_teacher_title,
+            '#default_value' => isset($r['al_area_at'])?$r['al_area_at']:'',
+        );
 		$form['area_action'] = $form['reco_action'];
 		$form['area_action']['#title'] = 'AreaT Action';
-		$form['area_comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'AreaT Comments');
+        $form['area_action']['#default_value'] = isset($r['al_area_at_approved'])?$r['al_area_at_approved']:'';
+		$form['area_comments'] = array('#type' => 'textarea', '#rows' => 3,
+            '#title' => 'AreaT Comments',
+            '#default_value' => isset($r['al_area_at_comments'])?$r['al_area_at_comments']:'',
+        );
 
 	}
 	else
