@@ -619,70 +619,76 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	//$form['return'] = array('#type' => 'hidden', '#value' => $_SERVER['REQUEST_URI']);
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
 
-	$js ='
-		(function ($) {
-			function check_teacher()
-			{
-				if($("input[name=ac_teacher_code]:checked").val() == "1")
-					$("#edit-ac-teacher-code").prop("disabled", false);
-				else
-				{
-					$("#edit-ac-teacher-code").prop("disabled", true);				
-					$("#edit-ac-teacher-code").val("");
-				}
-			}
-			function check_oldstudent()
-			{
-				if($("input[name=a_old]:checked").val() == "1")
-					$("#edit-course-information :input").prop("disabled", false);
-				else
-					$("#edit-course-information :input").prop("disabled", true);				
+	// $js ='
+	// 	(function ($) {
+	// 		function check_teacher()
+	// 		{
+	// 			if($("input[name=ac_teacher_code]:checked").val() == "1")
+	// 				$("#edit-ac-teacher-code").prop("disabled", false);
+	// 			else
+	// 			{
+	// 				$("#edit-ac-teacher-code").prop("disabled", true);
+	// 				$("#edit-ac-teacher-code").val("");
+	// 			}
+	// 		}
+	// 		function check_oldstudent()
+	// 		{
+	// 			if($("input[name=a_old]:checked").val() == "1")
+	// 				$("#edit-course-information :input").prop("disabled", false);
+	// 			else
+	// 				$("#edit-course-information :input").prop("disabled", true);
 
-			}
-			function check_attending()
-			{
-				if($("input[name=attending]:checked").val() == "1")
-					$("#attending-fields :input").prop("disabled", false);
-				else
-					$("#attending-fields :input").prop("disabled", true);				
-			}
-			$(document).ready(function(){
-				check_attending();
-				check_teacher();
-				$("input[type=radio][name=attending]").change(function(){
-					check_attending();
-				});
-				$("input[type=radio][name=a_old]").change(function(){
-					check_oldstudent();
-				});
-				$("input[type=radio][name=ac_teacher_code]").change(function(){
-					alert("called");
-					check_teacher();
-				});
+	// 		}
+	// 		function check_attending()
+	// 		{
+	// 			if($("input[name=attending]:checked").val() == "1")
+    //             {
+	// 				$("#attending-fields :input").prop("disabled", false);
+    //                 $("#edit-aa-left :input").prop("disabled", false);
+    //             }
+	// 			else
+    //             {
+	// 				$("#attending-fields :input").prop("disabled", true);
+    //                 $("#edit-aa-left :input").prop("disabled", true);
+    //             }
+	// 		}
+	// 		$(document).ready(function(){
+	// 			check_attending();
+	// 			check_teacher();
+	// 			$("input[type=radio][name=attending]").change(function(){
+	// 				check_attending();
+	// 			});
+	// 			$("input[type=radio][name=a_old]").change(function(){
+	// 				check_oldstudent();
+	// 			});
+	// 			$("input[type=radio][name=ac_teacher_code]").change(function(){
+	// 				alert("called");
+	// 				check_teacher();
+	// 			});
 
-				$("#edit-ac-teacher-code").autocomplete({
-					source: function( request, response ) {
-						$("#edit-ac-teacher-code").addClass( "throbbing" );
-				        $.ajax({
-				          url: "/autocomplete/get-teacher/" + request.term,
-				          dataType: "json",
-				          success: function( data ) {
-				          	$("#edit-ac-teacher-code").removeClass( "throbbing" );
-				            response( data );
-				          }
-				        });
-					},
-		  			minLength: 1,
-		  			select: function( event, ui ) {
-		        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
-		        		$( "#edit-ac-teacher-code" ).val( ui.item.code );
-		        		return false;
-		      		}
-		  		});
+	// 			$("#edit-ac-teacher-code").autocomplete({
+	// 				source: function( request, response ) {
+	// 					$("#edit-ac-teacher-code").addClass( "throbbing" );
+	// 			        $.ajax({
+	// 			          url: "/autocomplete/get-teacher/" + request.term,
+	// 			          dataType: "json",
+	// 			          success: function( data ) {
+	// 			          	$("#edit-ac-teacher-code").removeClass( "throbbing" );
+	// 			            response( data );
+	// 			          }
+	// 			        });
+	// 				},
+	// 	  			minLength: 1,
+	// 	  			select: function( event, ui ) {
+	// 	        		//console.log( "Selected: " + ui.item.value + " aka " + ui.item.code );
+	// 	        		$( "#edit-ac-teacher-code" ).val( ui.item.code );
+	// 	        		return false;
+	// 	      		}
+	// 	  		});
 
-			});
-		})(jQuery);
-	';
+	// 		});
+	// 	})(jQuery);
+	// ';
 	// drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
 	// //drupal_add_js($js, 'inline');
 	// drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');

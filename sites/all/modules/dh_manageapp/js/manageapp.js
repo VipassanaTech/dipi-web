@@ -42,9 +42,15 @@
 	{
 		//alert($("input[name=attending]:checked").val());
 		if($("input[name=attending]:checked").val() == "1")
+        {
 			$("#attending-fields :input").prop("disabled", false);
+            $("#edit-aa-left :input").prop("disabled", false);
+        }
 		else
+        {
 			$("#attending-fields :input").prop("disabled", true);				
+            $("#edit-aa-left :input").prop("disabled", true);
+        }
 	}
 
   function check_left()
