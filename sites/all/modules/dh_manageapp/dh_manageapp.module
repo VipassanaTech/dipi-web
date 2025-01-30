@@ -1790,6 +1790,16 @@ function _move_to_centre_course()
 		exit;
 	}
 
+    $new_course_type = db_query("select td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=$new_course")->fetchField();
+    if($new_course_type == 'LC')
+    {
+        $out = array();
+        $out['status'] = 'Failed';
+        $out['msg'] = 'Can not transfer application to LC';
+        drupal_json_output($out);
+        exit;
+    }
+
 	$course_name = db_query("select c_name from dh_course where c_id=".$rs['a_course'])->fetchField();
 	$centre_name = db_query("select c_name from dh_center where c_id =".$rs['a_center'])->fetchField();
 
