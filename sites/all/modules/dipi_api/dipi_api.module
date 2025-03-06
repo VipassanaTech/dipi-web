@@ -1862,7 +1862,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
 
-    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, a_gender, a_old, a_type, c_name, c_course_type, td_val3  from dh_applicant 
+    $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, a_gender, a_old, a_type, a_course, c_name, c_course_type, td_val3  from dh_applicant
       left join dh_course on (a_course=c_id) 
       left join dh_type_detail on (c_course_type=td_id)
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
@@ -1926,7 +1926,7 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
             $out = "Unable to transfer to ".$new_course['c_name']." as either course status is FULL/Closed";
             return $out;
         }
-        $q = "update dh_applicant set a_center='".$new_course['c_center']."', a_course='".$new_course['c_id']."' where a_id='".$r['a_id']."'";
+        $q = "update dh_applicant set a_center='{$new_course['c_center']}', a_transferred_course='{$r['a_course']}', a_course='{$new_course['c_id']}' where a_id='{$r['a_id']}'";
         db_query($q);
         $msg = 'Re-Applied from '.$r['c_name']." (".$r['a_status'].") ";
         logit($new_course['c_id'], 'Status Change', $r['a_id'], $msg );

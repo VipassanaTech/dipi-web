@@ -1823,6 +1823,7 @@ function _move_to_centre_course()
 	$fields = array();
 	$fields['a_course'] = $new_course;
 	$fields['a_center'] = $new_centre;
+    $fields['a_transferred_course'] = $rs['a_course'];
 	$fields['a_status'] = $SYSTEM_RECEIVED; //STATUS_RECEIVED;
 	$fields['a_conf_no'] = '';
 	db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
