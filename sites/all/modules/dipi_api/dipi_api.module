@@ -15,6 +15,7 @@ function dipi_api_permission() {
     $perms['get application status'] = array('title' => t('Access Application Status') );
     $perms['at portal access'] = array('title' => t('Access AT Portal APIs'));
     $perms['zero day by conf num access'] = array('title' => t('Access Zero Day by Conf Num'));
+    $perms['mitra upakram'] = array('title' => t('Mitra Upakram'));
 
     return $perms;
 }
@@ -684,6 +685,54 @@ function dipi_api_services_resources() {
               ),
           ),
 
+
+
+        'mitra-get-apps' => array(
+              'help' => t("Get Mitra Apps"),
+              'access arguments' => array('mitra upakram'),
+              'access arguments append' => FALSE,
+              'callback' => '_mitra_get_apps',
+              'args' => array(
+                array(
+                  'name' => 'from_start_date',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'From Course Start Date',
+                ),
+                array(
+                  'name' => 'to_start_date',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'To Course Start Date',
+                ),
+              ),
+          ),
+
+
+        'mitra-get-transferred-apps' => array(
+              'help' => t("Get Transferred Mitra Apps"),
+              'access arguments' => array('mitra upakram'),
+              'access arguments append' => FALSE,
+              'callback' => '_mitra_get_transferred_apps',
+              'args' => array(
+                array(
+                  'name' => 'from_start_date',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'From Course Start Date',
+                ),
+                array(
+                  'name' => 'to_start_date',
+                  'optional' => FALSE,
+                  'source' => array('path' => 2),
+                  'type' => 'string',
+                  'description' => 'To Course Start Date',
+                ),
+              ),
+          ),
 
 
 
@@ -3708,6 +3757,164 @@ function _get_at_seva_apps ($at_code, $gender, $type)
   return array(
     'Success' => '',
     'AtSevaApps' => $rows,
+  );
+
+}
+
+function validateDate($date, $format = 'Y-m-d')
+{
+    $d = DateTime::createFromFormat($format, $date);
+    return $d && $d->format($format) == $date;
+}
+
+function _mitra_get_apps ($from_start_date, $to_start_date)
+{
+
+  if (!$from_start_date)
+    return array('Error' => 'From start date missing');
+
+  if (!validateDate($from_start_date))
+    return array('Error' => 'From start date not valid or in incorrect format, yyyy-mm-dd needed');
+
+  if (!$to_start_date)
+    return array('Error' => 'To start date missing');
+
+  if (!validateDate($to_start_date))
+    return array('Error' => 'To start date not valid or in incorrect format, yyyy-mm-dd needed');
+
+
+  $q = "
+    select
+    co.c_id as 'CourseId',
+    co.c_start as 'CourseStart',
+    co.c_end as 'CourseEnd',
+    td.td_val1 as 'CourseType',
+    co.c_description as 'CourseDescription',
+    a.a_id as 'AppId',
+    a.a_f_name as 'FirstName',
+    a.a_l_name as 'LastName',
+    a.a_address as 'Address',
+    IF(a.a_city is null, a.a_city_str, ci.c_name) as 'City',
+    st.s_name as 'State',
+    cy.c_name as 'Country',
+    a.a_zip as 'Pincode',
+    a.a_email as 'Email',
+    a.a_gender as 'Gender',
+    a.a_mob_country as 'MobileCountry',
+    a.a_phone_mobile as 'Mobile',
+    a.a_phone_home as 'PhoneHome',
+    a.a_phone_office as 'PhoneOffice',
+    a.a_dob as 'DOB',
+    a.a_type as 'ApplicantType',
+    a.a_old as 'OldStudent',
+    a.a_passport as 'Passport',
+    a.a_voter_id as 'VoterID',
+    a.a_pancard as 'PAN',
+    a.a_aadhar as 'Aadhaar',
+    a.a_education as 'Education',
+    a.a_occupation as 'Occupation',
+    a.a_company as 'Company',
+    a.a_department as 'Department',
+    a.a_designation as 'Designation',
+    a.a_lang_discourse as 'Language',
+    CONCAT(IFNULL(ac.ac_first_day, ''), '-', IFNULL(ac.ac_first_month, ''), '-', IFNULL(ac.ac_first_year, '')) as 'FirstCourseDate',
+    ac.ac_first_location_str as 'FirstCourseLoc',
+    CONCAT(IFNULL(ac.ac_last_day, ''), '-', IFNULL(ac.ac_last_month, ''), '-', IFNULL(ac.ac_last_year, '')) as 'LastCourseDate',
+    ac.ac_last_location_str as 'LastCourseLoc',
+    ac.ac_teen as 'TeenCourse',
+    ac.ac_10d as '10-Day',
+    ac.ac_stp as 'STP',
+    ac.ac_spl as '10 Day Spc',
+    ac.ac_20d as '20 Day',
+    ac.ac_30d as '30 Day',
+    ac.ac_45d as '45 Day',
+    ac.ac_60d as '60 Day',
+    a.a_emergency_name as 'EmergencyName',
+    a.a_emergency_relation as 'EmergencyRelation',
+    a.a_emergency_num as 'EmergencyNumber'
+    from dh_applicant a
+    left join dh_applicant_extra ae on (a.a_id=ae.ae_applicant)
+    left join dh_applicant_lc al on (a.a_id=al.al_applicant)
+    left join dh_applicant_course ac on (a.a_id=ac.ac_applicant)
+    left join dh_center c on (a.a_center=c.c_id)
+    left join dh_course co on (a.a_course=co.c_id)
+    left join dh_city ci on (a.a_city=ci.c_id)
+    left join dh_state st on (a.a_state=st.s_code AND a.a_country=st.s_country)
+    left join dh_country cy on (a.a_country=cy.c_code)
+    left join dh_type_detail td on co.c_course_type=td.td_id
+    where
+    a_center=286 and
+    co.c_start >= '$from_start_date' and
+    co.c_start <= '$to_start_date'
+    order by
+    co.c_start asc
+    ";
+
+  $res = db_query($q);
+  $rows = array();
+  while( $row = $res->fetchAssoc() )
+  {
+    $rows[] = $row;
+  }
+
+  return array(
+    'Success' => '',
+    'MitraApps' => $rows,
+  );
+
+}
+
+
+function _mitra_get_transferred_apps ($from_start_date, $to_start_date)
+{
+
+  if (!$from_start_date)
+    return array('Error' => 'From start date missing');
+
+  if (!validateDate($from_start_date))
+    return array('Error' => 'From start date not valid or in incorrect format, yyyy-mm-dd needed');
+
+  if (!$to_start_date)
+    return array('Error' => 'To start date missing');
+
+  if (!validateDate($to_start_date))
+    return array('Error' => 'To start date not valid or in incorrect format, yyyy-mm-dd needed');
+
+
+  $q = "
+    select
+    co.c_name as 'CourseName',
+    a.a_id as 'AppId',
+    a.a_f_name as 'FirstName',
+    a.a_l_name as 'LastName',
+    a.a_email as 'Email',
+    a.a_mob_country as 'MobileCountry',
+    a.a_phone_mobile as 'Mobile',
+    a.a_status as 'Status',
+    a.a_conf_no as 'ConfNo',
+    a.a_attended as 'Attended'
+    from dh_applicant a
+    left join dh_course co on (a.a_course=co.c_id)
+    left join dh_course cot on a.a_transferred_course=cot.c_id
+    where
+    cot.c_center=286 and
+    a.a_transferred_course is not null and
+    co.c_start >= '$from_start_date' and
+    co.c_start <= '$to_start_date'
+    order by
+    co.c_start asc
+    ";
+
+  $res = db_query($q);
+  $rows = array();
+  while( $row = $res->fetchAssoc() )
+  {
+    $rows[] = $row;
+  }
+
+  return array(
+    'Success' => '',
+    'MitraApps' => $rows,
   );
 
 }
