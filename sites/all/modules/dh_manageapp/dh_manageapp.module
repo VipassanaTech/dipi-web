@@ -1826,6 +1826,7 @@ function _move_to_centre_course()
     $fields['a_transferred_course'] = $rs['a_course'];
 	$fields['a_status'] = $SYSTEM_RECEIVED; //STATUS_RECEIVED;
 	$fields['a_conf_no'] = '';
+    $fields['a_updated'] = date("Y-m-d H:i:s");
 	db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
 	$out = array();
 	$out['status'] = 'OK';

@@ -687,49 +687,35 @@ function dipi_api_services_resources() {
 
 
 
-        'mitra-get-apps' => array(
+        'mitra-get-apps-updated-last-n-hours' => array(
               'help' => t("Get Mitra Apps"),
               'access arguments' => array('mitra upakram'),
               'access arguments append' => FALSE,
-              'callback' => '_mitra_get_apps',
+              'callback' => '_mitra_get_apps_updated_last_n_hours',
               'args' => array(
                 array(
-                  'name' => 'from_start_date',
+                  'name' => 'lastupdated',
                   'optional' => FALSE,
                   'source' => array('path' => 1),
                   'type' => 'string',
-                  'description' => 'From Course Start Date',
-                ),
-                array(
-                  'name' => 'to_start_date',
-                  'optional' => FALSE,
-                  'source' => array('path' => 2),
-                  'type' => 'string',
-                  'description' => 'To Course Start Date',
+                  'description' => 'Mitra apps updated in last n hours',
                 ),
               ),
           ),
 
 
-        'mitra-get-transferred-apps' => array(
+        'mitra-get-transferred-apps-updated-last-n-hours' => array(
               'help' => t("Get Transferred Mitra Apps"),
               'access arguments' => array('mitra upakram'),
               'access arguments append' => FALSE,
-              'callback' => '_mitra_get_transferred_apps',
+              'callback' => '_mitra_get_transferred_apps_updated_last_n_hours',
               'args' => array(
                 array(
-                  'name' => 'from_start_date',
+                  'name' => 'lastupdated',
                   'optional' => FALSE,
                   'source' => array('path' => 1),
                   'type' => 'string',
-                  'description' => 'From Course Start Date',
-                ),
-                array(
-                  'name' => 'to_start_date',
-                  'optional' => FALSE,
-                  'source' => array('path' => 2),
-                  'type' => 'string',
-                  'description' => 'To Course Start Date',
+                  'description' => 'Mitra transferred apps updated in last n hours',
                 ),
               ),
           ),
@@ -3761,26 +3747,14 @@ function _get_at_seva_apps ($at_code, $gender, $type)
 
 }
 
-function validateDate($date, $format = 'Y-m-d')
-{
-    $d = DateTime::createFromFormat($format, $date);
-    return $d && $d->format($format) == $date;
-}
 
-function _mitra_get_apps ($from_start_date, $to_start_date)
+function _mitra_get_apps_updated_last_n_hours ($lastupdated)
 {
 
-  if (!$from_start_date)
-    return array('Error' => 'From start date missing');
+  if (!$lastupdated)
+    return array('Error' => 'Invalid hours');
 
-  if (!validateDate($from_start_date))
-    return array('Error' => 'From start date not valid or in incorrect format, yyyy-mm-dd needed');
-
-  if (!$to_start_date)
-    return array('Error' => 'To start date missing');
-
-  if (!validateDate($to_start_date))
-    return array('Error' => 'To start date not valid or in incorrect format, yyyy-mm-dd needed');
+  $last = date("YmdHi", strtotime("-$lastupdated hours"));
 
 
   $q = "
@@ -3844,10 +3818,9 @@ function _mitra_get_apps ($from_start_date, $to_start_date)
     left join dh_type_detail td on co.c_course_type=td.td_id
     where
     a_center=286 and
-    co.c_start >= '$from_start_date' and
-    co.c_start <= '$to_start_date'
+    date_format(a.a_updated, '%Y%m%d%H%i') > $last
     order by
-    co.c_start asc
+    a.a_updated asc
     ";
 
   $res = db_query($q);
@@ -3859,26 +3832,19 @@ function _mitra_get_apps ($from_start_date, $to_start_date)
 
   return array(
     'Success' => '',
-    'MitraApps' => $rows,
+    'MitraAppsUpdated' => $rows,
   );
 
 }
 
 
-function _mitra_get_transferred_apps ($from_start_date, $to_start_date)
+function _mitra_get_transferred_apps_updated_last_n_hours ($lastupdated)
 {
 
-  if (!$from_start_date)
-    return array('Error' => 'From start date missing');
+  if (!$lastupdated)
+    return array('Error' => 'Invalid hours');
 
-  if (!validateDate($from_start_date))
-    return array('Error' => 'From start date not valid or in incorrect format, yyyy-mm-dd needed');
-
-  if (!$to_start_date)
-    return array('Error' => 'To start date missing');
-
-  if (!validateDate($to_start_date))
-    return array('Error' => 'To start date not valid or in incorrect format, yyyy-mm-dd needed');
+  $last = date("YmdHi", strtotime("-$lastupdated hours"));
 
 
   $q = "
@@ -3899,10 +3865,9 @@ function _mitra_get_transferred_apps ($from_start_date, $to_start_date)
     where
     cot.c_center=286 and
     a.a_transferred_course is not null and
-    co.c_start >= '$from_start_date' and
-    co.c_start <= '$to_start_date'
+    date_format(a.a_updated, '%Y%m%d%H%i') > $last
     order by
-    co.c_start asc
+    a.a_updated asc
     ";
 
   $res = db_query($q);
@@ -3914,7 +3879,7 @@ function _mitra_get_transferred_apps ($from_start_date, $to_start_date)
 
   return array(
     'Success' => '',
-    'MitraApps' => $rows,
+    'MitraTransferredAppsUpdated' => $rows,
   );
 
 }
