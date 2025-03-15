@@ -44,7 +44,8 @@
 .form-item-cs-seating-dir-male, .form-item-cs-email-from-name, .form-item-c-address,
 .form-item-cs-seat-per-row-male, .form-item-cs-chowky-per-row-male, .form-item-cs-cells-config, 
 .form-item-cs-seat-config, .form-item-s-zip, .form-item-s-address, .form-item-cs-reconf-enable,
-.form-item-cs-expected-enable, .form-item-t-address, .form-item-t-mob-phone, .form-item-t-responsibility, .form-item-a-emergency-name {
+.form-item-cs-expected-enable, .form-item-t-address, .form-item-t-mob-phone, .form-item-t-responsibility,
+.form-item-a-emergency-name, .form-item-t-lc-area {
 	clear: left;
 }
 
