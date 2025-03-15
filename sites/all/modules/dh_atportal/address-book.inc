@@ -204,6 +204,10 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 			'#default_value' => isset($edit_data['t_responsibility'])?$edit_data['t_responsibility']:'', '#maxlength' => 200  );
 	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 18, 
 			'#default_value' => isset($edit_data['t_area'])?$edit_data['t_area']:'', '#maxlength' => 255  );
+        $form[$group]['t_lc_area'] = array('#title' => '&nbsp;Allow LC 2nd Step Review', '#type' => 'checkbox',
+          '#default_value' => isset($edit_data['t_lc_area'])?$edit_data['t_lc_area']:'0',  '#weight' => 19);
+        $form[$group]['t_allow_cat_emails'] = array('#title' => '&nbsp;Send CAT Emails', '#type' => 'checkbox',
+          '#default_value' => isset($edit_data['t_allow_cat_emails'])?$edit_data['t_allow_cat_emails']:'0',  '#weight' => 20);
 	}	
 
 	if ($add)
