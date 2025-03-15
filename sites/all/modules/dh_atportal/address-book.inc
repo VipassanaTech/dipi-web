@@ -305,6 +305,10 @@ function dh_atportal_profile_submit($form, &$form_state)
 				$t['t_cat'] = '0';
 			if ($t['t_bhante'] == '')
 				$t['t_bhante'] = '0';
+            if ($t['t_lc_area'] == '')
+                $t['t_lc_area'] = '0';
+            if ($t['t_allow_cat_emails'] == '')
+                $t['t_allow_cat_emails'] = '0';
 	}
 
 
