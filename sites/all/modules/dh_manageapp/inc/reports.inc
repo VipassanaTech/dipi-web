@@ -201,7 +201,7 @@ function dh_center_course_report_form_submit($form, &$form_state)
 	while($row = $result->fetchAssoc())
 	{
 		$course_id = $row['CourseID'];
-		$q = "SELECT ct_type, CONCAT(t_f_name, ' ', t_l_name, ' (', t_gender, ')') as 'name' FROM dh_course_teacher ct left join dh_teacher t on ct.ct_teacher=t.t_id where ct_course=$course_id order by t_gender";
+		$q = "SELECT ct_type, CONCAT(t_f_name, ' ', t_l_name, ' (', t_gender, ')') as 'name' FROM dh_course_teacher ct left join dh_teacher t on ct.ct_teacher=t.t_id where ct_course=$course_id and ct_status='Confirmed' order by t_gender";
 		unset($row['CourseID']);
 		$out = db_query($q);
 
