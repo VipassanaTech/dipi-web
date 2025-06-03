@@ -123,7 +123,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
       $at_code_year = "FullT-{$edit_data['t_year_appointed']}";
     elseif($edit_data['t_status'] == 'Active' && $edit_data['t_sat'])
       $at_code_year = "SAT-{$edit_data['t_year_appointed']}";
-    if($edit_data['t_status'] == 'Active')
+    elseif($edit_data['t_status'] == 'Active')
       $at_code_year = "AT-{$edit_data['t_year_appointed']}";
 
     $form[$group]['at_info'] = array(
