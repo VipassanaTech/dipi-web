@@ -71,7 +71,8 @@ function pdf_fill_form($fdf, $pdf, $out)
 		$fdf_file = $fdf;
 
   $tmp_out_file = tempnam(sys_get_temp_dir(), gethostname());
-  $fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMono.ttf';
+  //$fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMono.ttf';
+  $fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMonoBold.ttf';
 	$cmd = "pdftk $pdf fill_form $fdf_file output $tmp_out_file flatten replacement_font $fontfile";
 	//drupal_set_message($cmd);
 	exec($cmd);
