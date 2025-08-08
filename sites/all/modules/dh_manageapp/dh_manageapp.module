@@ -1711,7 +1711,10 @@ function _search_course()
 	}
 
 	$out = '<h3>'.$msg.' ('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Add Applicant", "app/add/$centre_id/$course_id").'</h3>';
-	$out .= dh_manageapp_search_results( $type, $where, $centre_id );
+    $course_name = db_query("select c_name from dh_course where c_id=:c_id", array(":c_id"=>$course_id))->fetchField();
+    $course_name = str_replace(' / ', '_', $course_name);
+    $course_name = str_replace(' ', '_', $course_name);
+	$out .= dh_manageapp_search_results( $type, $where, $centre_id, false, $course_name );
 	$out .= '<h3>('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;</h3>';
 	return $out;
 }

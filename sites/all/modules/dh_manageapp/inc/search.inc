@@ -1,6 +1,6 @@
 <?php
 
-function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False )
+function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False, $excel_file_name = null )
 {
 	global $user;
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
@@ -599,12 +599,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 
 	$button_access = '';
+    $excel_file_name = ($excel_file_name)?$excel_file_name:"Student Data";
 	if (user_access('export data'))
 		if ( !($iPad || $iPhone || $iPod) )
 			$button_access = '                        
 				$.extend( true, {}, buttonCommon, {
       			    extend: "excelHtml5",
-	            	title: "Student Data"
+	            	title: "'.$excel_file_name.'"
 				} )
 			';
 
