@@ -1711,9 +1711,9 @@ function _search_course()
 	}
 
 	$out = '<h3>'.$msg.' ('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Add Applicant", "app/add/$centre_id/$course_id").'</h3>';
-    $course_name = db_query("select c_name from dh_course where c_id=:c_id", array(":c_id"=>$course_id))->fetchField();
-    $course_name = str_replace(' / ', '_', $course_name);
-    $course_name = str_replace(' ', '_', $course_name);
+    $course_details = db_query("select co.c_start, co.c_end, td.td_val1, c.c_subdomain FROM dh_course co left join dh_type_detail td on co.c_course_type=td.td_id  left join dh_center c on co.c_center=c.c_id where co.c_id=:c_id", array(":c_id"=>$course_id))->fetchAssoc();
+    $course_name = "{$course_details['c_subdomain']}_{$course_details['td_val1']}_{$course_details['c_start']}_to_{$course_details['c_end']}";
+    $course_name = str_replace(' ', '-', $course_name);
 	$out .= dh_manageapp_search_results( $type, $where, $centre_id, false, $course_name );
 	$out .= '<h3>('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;</h3>';
 	return $out;
