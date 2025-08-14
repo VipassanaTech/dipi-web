@@ -663,7 +663,34 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access webhook'),
 	       'type' => MENU_CALLBACK);
 
+	$items['home'] = array( 'title' => t('Dipi Home'),
+           'page callback' => 'dh_manageapp_home',
+           'access arguments' => array('access content'),
+           'type' => MENU_CALLBACK);
+
 	return $items;
+}
+
+function dh_manageapp_home()
+{
+
+    global $user;
+    if (in_array('AT Portal', $user->roles)) {
+        $cat = db_query("select t_cat from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
+        $role_id = 40;
+        if ($cat)
+        {
+            user_multiple_role_edit(array($user->uid), 'add_role', $role_id);
+        }
+        else {
+            user_multiple_role_edit(array($user->uid), 'remove_role', $role_id);
+        }
+    }
+
+    if (user_access("access centre"))
+       drupal_goto("centre");
+    elseif ( user_access("access at portal") )
+       drupal_goto("at-portal");
 }
 
 function dh_manageapp_theme()
@@ -2602,4 +2629,66 @@ function whatsapp_hook_bulk()
 		file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
 	}
 	exit(0);
+}
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function dh_manageapp_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
+
+  // logged in user
+  global $user;
+
+  // // Target user account being edited.
+  $account = $form['#user'];
+
+  if (!(user_access("access all centres")) && !(in_array('administrator', array_values($user->roles))))
+  {
+	  $count = db_query("select count(uc_id) FROM dh_user_center where uc_user='".$user->uid."' and uc_center in (select uc_center from dh_user_center where uc_user='".$account->uid."' and uc_deleted=0) and uc_deleted=0")->fetchField();
+    if(!$count)
+    {
+        drupal_access_denied();
+        drupal_exit();
+    }
+  }
+
+}
+
+
+
+function dh_manageapp_user_presave(&$edit, $account, $category) {
+    global $user;
+
+    $uid = $user->uid;
+    $msg = "";
+
+    if($account->name != $account->original->name)
+      $msg .= "UserName changed from '".$account->original->name."' to '.$account->name.'\n";
+
+    if($account->mail != $account->original->mail)
+      $msg .= "UserEmail changed from '".$account->original->mail."' to '".$account->mail."'\n";
+
+    if($account->pass != $account->original->pass)
+      $msg .= "Password Updated\n";
+
+    ksort($account->roles);
+    ksort($account->original->roles);
+    if(array_keys($account->roles) != array_keys($account->original->roles))
+      $msg .= "UserRoles changed from '".implode(', ', array_keys($account->original->roles))."' to '".implode(', ', array_keys($account->roles))."'\n";
+
+    if($account->status != $account->original->status)
+      $msg .= "UserStatus changed from '".$account->original->status."' to '".$account->status."'\n";
+
+    if($msg)
+    {
+        $fields['l_user'] = $uid;
+        $fields['l_center'] = 0;
+        $fields['l_msg'] = $msg;
+        $fields['l_module'] = 'user';
+        $fields['l_event'] = 'user update';
+        $fields['l_identifier'] = $account->uid;
+	db_insert('dh_log')->fields($fields)->execute();
+	watchdog('User Updated', 'User Updated '.$account->uid.'\n'.$msg);
+    }
 }
