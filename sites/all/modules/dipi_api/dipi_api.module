@@ -3113,7 +3113,7 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
     curl_close($curl);
     $ret = '';
 
-    if ($err) {
+    if ($err || $httpcode >= 300) {
         watchdog('dipi_api', 'Unable to send Whatsapp: '.$to.' template: '.$template.': '.$err.': '.$response, array(), WATCHDOG_ERROR);
     } else {
         $ret = json_decode($response)->messages[0]->id;
