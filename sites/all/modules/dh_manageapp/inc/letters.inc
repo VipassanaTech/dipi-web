@@ -733,9 +733,17 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 				if ($wa_id)
 				{
 					$response = send_whatsapp_360($wa_id, "status_update_2", $params );
-					$log = "WhatsApp sent - ".$event." ( Response: $response )";
-					dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
-					logit($centre,  'Letter', $id, $log );					
+                    if($response)
+                    {
+                        $log = "WhatsApp sent - ".$event." ( Response: $response )";
+                        dh_sms_billing( $centre, $course, $letter_id, $id, $row['a_phone_mobile']);
+                        logit($centre,  'Letter', $id, $log );
+                    }
+                    else
+                    {
+                        logit($centre,  'Letter', $id, "Could not send whatsapp" );
+                    }
+
 				}
 				else
 					logit($centre,  'Letter', $id, "Could not get contact whatsapp id to send" );
