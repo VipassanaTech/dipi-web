@@ -147,6 +147,8 @@ DirectoryIndex index.php index.html index.htm
   </IfModule>
 </IfModule>
 
+
+
 # Various header fixes.
 <IfModule mod_headers.c>
   # Disable content sniffing, since it's an attack vector.
@@ -154,3 +156,4 @@ DirectoryIndex index.php index.html index.htm
   # Disable Proxy header, since it's an attack vector.
   RequestHeader unset Proxy
 </IfModule>
+
