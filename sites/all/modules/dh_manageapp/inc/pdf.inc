@@ -618,7 +618,7 @@ function map_application_fields_lc($row)
 	    $fields['Last LC Date'] = ltrim($temp1, '/');
 	}
 
-
+    $fields['7DayTeen'] = $row['ac_teen'];
 	$fields['10Day'] = $row['ac_10d'];
 	$fields['STP'] = $row['ac_stp'];
 	$fields['10Day SPL'] = $row['ac_spl'];
