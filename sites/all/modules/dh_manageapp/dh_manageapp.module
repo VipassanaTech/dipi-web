@@ -2643,7 +2643,7 @@ function dh_manageapp_form_user_profile_form_alter(&$form, &$form_state, $form_i
   // // Target user account being edited.
   $account = $form['#user'];
 
-  if (!(user_access("access all centres")) && !(in_array('administrator', array_values($user->roles))))
+  if (!(user_access("access all centres")) && !(in_array('administrator', array_values($user->roles))) && !($user->uid == $account->uid))
   {
 	  $count = db_query("select count(uc_id) FROM dh_user_center where uc_user='".$user->uid."' and uc_center in (select uc_center from dh_user_center where uc_user='".$account->uid."' and uc_deleted=0) and uc_deleted=0")->fetchField();
     if(!$count)
