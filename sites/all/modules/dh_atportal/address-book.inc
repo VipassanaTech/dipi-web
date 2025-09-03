@@ -47,7 +47,12 @@ function address_book_search()
 	 
 	require( dirname(__FILE__).'/ssp.class.php' );
 	 
-	drupal_json_output( SSP::simple( $_GET, $sql_details, $table, $primaryKey, $columns ) );
+	// drupal_json_output( SSP::simple( $_GET, $sql_details, $table, $primaryKey, $columns ) );
+    if (user_access('add assistant teacher'))
+        drupal_json_output( SSP::simple( $_GET, $sql_details, $table, $primaryKey, $columns ) );
+    else
+        drupal_json_output( SSP::complex( $_GET, $sql_details, $table, $primaryKey, $columns, null, " t_status <> 'Training' " ) );
+
 	exit;
 }
 
@@ -174,7 +179,14 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	{
 		$group = 'AT Role Information';
 		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
-		$statuses = array('Active' => 'Active', 'Inactive' => 'Inactive', 'Deprecated' => 'Deprecated', 'Training' => 'Training', 'Deceased' => 'Deceased',);
+		$statuses = array(
+            'Active' => 'Active',
+            'Inactive' => 'Inactive',
+            'Deprecated' => 'Deprecated',
+            // 'Training' => 'Training',
+            'Deceased' => 'Deceased',
+        );
+
 		$default_status = '';
 		if ( !empty($edit_data) )
 		{
