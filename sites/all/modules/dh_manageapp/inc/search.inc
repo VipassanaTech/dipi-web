@@ -1560,7 +1560,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$centre_append = '';
 		if ( $centre_id <> '' )
 			$centre_append = ' and c_center='.$centre_id.' ';
-		$q = "select c_id, c_name from dh_course where c_start >= '$max_old_courses' $centre_append and c_deleted=0 order by c_start desc";
+		$q = "select c_id, c_name from dh_course where c_start >= '$max_old_courses' $centre_append and c_deleted=0 order by c_start asc";
 		$courses = db_query($q)->fetchAllKeyed();
 		$courses[''] = 'Choose';
 
