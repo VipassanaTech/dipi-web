@@ -1349,6 +1349,8 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
   {
     $update_bm = 1;
     $bm_id = arg(2);
+    $edit_data_status = explode( ',', $edit_data['status'] );
+    $edit_data['status'] = array_combine($edit_data_status, $edit_data_status);
   }
 
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
