@@ -709,7 +709,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$sms_url = variable_get('sms_url', '');
 		//$sms_url = str_replace(array('%phone', '%data'), array($row['a_phone_mobile'], urlencode($sms_body)), $sms_url );
 		//$response = file_get_contents($sms_url);
-		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left'))) && (in_array($type, array('applicant', 'student'))) && $center_setting['cs_whatsapp_msg'] )
+		if ( (!in_array(strtolower($event), array('custom', 'expected', 'attended', 'errors', 'left', 'duplicate'))) && (in_array($type, array('applicant', 'student'))) && $center_setting['cs_whatsapp_msg'] )
 		{
       $a_type = "Sit";
       if ($row['a_type'] == "Sevak")
