@@ -15,7 +15,7 @@ function address_book_search()
 	// indexes
 	$edit_at = function($d, $row) { return $d; };
 	if (user_access('add assistant teacher'))
-		$edit_at = function($d, $row) { return $d." (".l("Edit", "/at-portal/address-book/edit/".strtolower($d.".".$row['t_gender'])).')'; };
+		$edit_at = function($d, $row) { return $d." (".l("Edit", "/at-portal/address-book/edit/".strtolower($row['t_id'])).')'; };
 	$columns = array(
 	    array( 'db' => 't_code', 'dt' => 0, 'formatter' => $edit_at),
 	    array( 'db' => 't_gender',     'dt' => 1 ),
@@ -30,6 +30,7 @@ function address_book_search()
 	    array( 'db' => 't_full_t',     'dt' => 10, 'formatter' => function($d, $row) { return ($d?'Yes':''); }),
 	    array( 'db' => 't_cat',     'dt' => 11, 'formatter' => function($d, $row) { return ($d?'Yes':''); } ),
 	    array( 'db' => 't_bhante',     'dt' => 12 , 'formatter' => function($d, $row) { return ($d?'Yes':''); }),
+	    array( 'db' => 't_id',     'dt' => 13 ),
 	);
 	// SQL server connection information
 	$sql_details = array(
@@ -65,7 +66,7 @@ function dh_atportal_address_book()
 	$out = '';
 	if (user_access('add assistant teacher'))
 		$out = '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add").'</h2>';
-	$header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante'); 
+	$header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
 	$attributes = array('id' => 'at-address-book');
 
 	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
@@ -78,7 +79,10 @@ function dh_atportal_address_book()
 			{
 				var table = $(tid).DataTable({
 					dom: "lfr<\"clear\">tip",
-			        "ajax": "/at-portal/address-book/ajax"
+			        "ajax": "/at-portal/address-book/ajax",
+			        "columnDefs": [
+					   { "targets": 13, "visible": false },
+					]
 			    });			
 			}
 			$(document).ready(function(){
@@ -246,24 +250,25 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 function dh_manage_at()
 {
 	global $user;
+    $at_id = 0;
 	if (arg(3) == 'me')
 	{		
 		$at = explode(".", $user->name);
 		$at_code = $at[0];
 		$gender = $at[1];
+		$at_id = db_query("select t_id from dh_teacher where t_code='".$at_code."' and t_gender='".$gender."'")->fetchField();
 	}
 	else
 	{
-		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
-		$gender = substr(arg(3), -1);
+		$at_id = arg(3);
 	}
 	switch( arg(2) )
 	{
 		case 'add':
 			return drupal_get_form('dh_atportal_profile');
 			break;
-		case 'edit':						
-			$row = db_query("select * from dh_teacher where t_code='".$at_code."' and t_gender='".$gender."'")->fetchAssoc();
+		case 'edit':
+            $row = db_query("select * from dh_teacher where t_id=$at_id")->fetchAssoc();
 			return drupal_get_form('dh_atportal_profile', $row);
 			break;
 	}
@@ -272,17 +277,6 @@ function dh_manage_at()
 function dh_atportal_profile_submit($form, &$form_state)
 {
 	global $user;	
-	if (arg(3) == 'me')
-	{		
-		$at = explode(".", $user->name);
-		$at_code = $at[0];
-		$gender = $at[1];
-	}
-	else
-	{
-		$at_code = substr(arg(3), 0, strpos(arg(3), "."));
-		$gender = substr(arg(3), -1);
-	}
 
 	$input = $form_state['input'];
 	if (arg(2) == 'edit')
@@ -326,10 +320,21 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	if ( arg(2) == 'edit')
 	{
+		if (arg(3) == 'me')
+		{
+			$at = explode(".", $user->name);
+			$at_code = $at[0];
+			$gender = $at[1];
+			$at_id = db_query("select t_id from dh_teacher where t_code='".$at_code."' and t_gender='".$gender."'")->fetchField();
+		}
+		else
+		{
+			$at_id = arg(3);
+		}
 		//drupal_set_message(print_r($t, true));
 		$t['t_updated_by'] = $user->uid;
 		$t['t_updated'] = date('Y-m-d H:i:s');
-		db_update('dh_teacher')->fields($t)->condition('t_code', $at_code )->condition('t_gender', $gender )->execute();
+		db_update('dh_teacher')->fields($t)->condition('t_id', $at_id )->execute();
 	}
 
 	else 

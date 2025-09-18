@@ -53,7 +53,7 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-    $items['at-portal/address-book/edit/%atcode'] = array( 'title' => t('Edit Profile'),
+    $items['at-portal/address-book/edit/%atid'] = array( 'title' => t('Edit Profile'),
 	       'page callback' => 'dh_manage_at',
 	       'page arguments' => array('dh_manage_at', 3),
 	       'access arguments' => array('access at profile'),
@@ -209,13 +209,19 @@ function lcappid_load( $id )
 }
 
 
-function atcode_load( $id )
+function atid_load( $id )
 {
 	global $user;
+    if( !( is_numeric($id) || in_array($id, array("me")) ) )
+        return false;
+
 	if (user_access("at portal superadmin"))
-		return True;
-	if (in_array($id, array('me', 'all')))
-		return True;
+		return $id;
+
+	if (in_array($id, array('me')))
+		return $id;
+
+    return false;
 }
 
 
