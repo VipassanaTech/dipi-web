@@ -3341,7 +3341,7 @@ function upload_whatsapp_pdf($dir, $file)
         }
     }
 
-    $data = file_get_contents("{$dir}/{$file}");
+    $data = "{$dir}/{$file}";
     $caption = $file;
     $filename = $file;
 
@@ -3358,10 +3358,9 @@ function upload_whatsapp_pdf($dir, $file)
           CURLOPT_FOLLOWLOCATION => true,
           CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
           CURLOPT_CUSTOMREQUEST => 'POST',
-          CURLOPT_POSTFIELDS => $data,
+          CURLOPT_POSTFIELDS => array('messaging_product'=>'whatsapp','file'=> new CURLFILE($data, "application/pdf")),
           CURLOPT_HTTPHEADER => array(
             'D360-Api-Key: '.variable_get('wa360_api_key', ''),
-            'Content-Type: application/pdf'
           ),
         ));
 
@@ -3370,7 +3369,7 @@ function upload_whatsapp_pdf($dir, $file)
 
         $ret = json_decode($response);
 
-        $file_id = $ret->media[0]->id;
+        $file_id = $ret->id;
 
         if($file_id)
         {
