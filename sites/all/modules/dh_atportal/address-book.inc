@@ -65,7 +65,10 @@ function dh_atportal_address_book()
 
 	$out = '';
 	if (user_access('add assistant teacher'))
-		$out = '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add").'</h2>';
+		$out = '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal").'</h2>';
+    else
+        $out = '<h2>'.l("Back to AT-Portal", "at-portal").'</h2>';
+
 	$header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
 	$attributes = array('id' => 'at-address-book');
 
@@ -104,7 +107,19 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	if (count($edit_data) == 0)
 		$add = 1;
 
-	$form['a'] = array('#markup' => '<h2>Edit Profile</h2>');
+    $at_code_year = "";
+
+    if($edit_data['t_status'] == 'Active' && $edit_data['t_bhante'])
+      $at_code_year = "BT-{$edit_data['t_year_appointed']}";
+    elseif($edit_data['t_status'] == 'Active' && $edit_data['t_full_t'])
+      $at_code_year = "FullT-{$edit_data['t_year_appointed']}";
+    elseif($edit_data['t_status'] == 'Active' && $edit_data['t_sat'])
+      $at_code_year = "SAT-{$edit_data['t_year_appointed']}";
+    elseif($edit_data['t_status'] == 'Active')
+      $at_code_year = "AT-{$edit_data['t_year_appointed']}";
+
+	$form['a'] = array('#markup' => '<h2>'.l("Back to AT Address Book", "at-portal/address-book").'<br><br>Edit AT Profile</h2>');
+
 
 	$group = 'Personal Information';
 	$form['#attributes'] = array('class' => array('container-inline'));
@@ -127,13 +142,6 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
   }
   else
   {
-    $at_code_year = "";
-    if($edit_data['t_status'] == 'Active' && $edit_data['t_full_t'])
-      $at_code_year = "FullT-{$edit_data['t_year_appointed']}";
-    elseif($edit_data['t_status'] == 'Active' && $edit_data['t_sat'])
-      $at_code_year = "SAT-{$edit_data['t_year_appointed']}";
-    elseif($edit_data['t_status'] == 'Active')
-      $at_code_year = "AT-{$edit_data['t_year_appointed']}";
 
     $form[$group]['at_info'] = array(
       '#markup' => "
@@ -182,7 +190,13 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	if (user_access('add assistant teacher'))
 	{
 		$group = 'AT Role Information';
-		$form[$group] = array('#type' => 'fieldset', '#title' => 'Role Information',  '#collapsible' => true, '#collapsed' => false);
+		$form[$group] = array(
+            '#type' => 'fieldset',
+            '#title' => 'Role Information',
+            '#collapsible' => true,
+            '#collapsed' => false,
+            '#description' => "<b>In case of direct appointment to SAT, please use AT appointment date same as SAT</b><br><b>In case of direct appointment to Full-T, please use AT and SAT appointment date same as Full-T</b><br><b>Similarly in case of direct appointment from AT to Full-T, please use SAT appointment date same as Full-T</b><br><br>",
+            );
 		$statuses = array(
             'Active' => 'Active',
             'Inactive' => 'Inactive',
@@ -208,18 +222,102 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$form[$group]['t_code'] = array('#title' => 'AT Code', '#type' => 'textfield', '#size' => '10', '#weight' => 10, 
 			'#required' => 1,
 			'#default_value' => isset($edit_data['t_code'])?$edit_data['t_code']:'', '#maxlength' => 10  );
-		$form[$group]['t_year_appointed'] = array('#title' => 'Year of Appointment', '#type' => 'textfield', '#size' => '10', '#weight' => 10.1, 
-			'#default_value' => isset($edit_data['t_year_appointed'])?$edit_data['t_year_appointed']:'', '#maxlength' => 10  );
+		$form[$group]['t_year_appointed'] = array(
+            '#title' => 'Appointment Status',
+            '#type' => 'textfield',
+            '#size' => '10',
+            '#weight' => 10.1,
+			'#default_value' => $at_code_year,
+            '#maxlength' => 10,
+            '#disabled' => true,
+        );
+
+        $form[$group]['t_at_appointed'] = array(
+            '#title' => 'Date of AT Appointment',
+            '#type' => 'date_popup',
+            '#size' => '20',
+            '#weight' => 10.2,
+            '#default_value' => isset($edit_data['t_at_appointed'])?$edit_data['t_at_appointed']:'',
+            '#date_format' => 'Y-m-d',
+            '#datepicker_options' => array(
+                'maxDate' => 0,
+                '#required' => 1,
+                'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+                ),
+            '#date_year_range' => '-100:1',
+            '#date_label_position' => 'above',
+            '#theme_wrappers' => array('date_popup'),
+            '#suffix' => '',
+        );
+
 		$form[$group]['t_sat'] = array('#title' => '&nbsp;SAT', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_sat'])?$edit_data['t_sat']:'0',  '#weight' => 13);
+
+        $form[$group]['t_sat_appointed'] = array(
+            '#title' => 'Date of SAT Appointment',
+            '#type' => 'date_popup',
+            '#size' => '20',
+            '#weight' => 13.1,
+            '#default_value' => isset($edit_data['t_sat_appointed'])?$edit_data['t_sat_appointed']:'',
+            '#date_format' => 'Y-m-d',
+            '#datepicker_options' => array(
+                'maxDate' => 0,
+                '#required' => 1,
+                'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+                ),
+            '#date_year_range' => '-100:1',
+            '#date_label_position' => 'above',
+            '#theme_wrappers' => array('date_popup'),
+            '#suffix' => '',
+        );
+
 		$form[$group]['t_full_t'] = array('#title' => '&nbsp;T', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_full_t'])?$edit_data['t_full_t']:'0',  '#weight' => 14);
+
+        $form[$group]['t_full_t_appointed'] = array(
+            '#title' => 'Date of Full-T Appointment',
+            '#type' => 'date_popup',
+            '#size' => '20',
+            '#weight' => 14.1,
+            '#default_value' => isset($edit_data['t_full_t_appointed'])?$edit_data['t_full_t_appointed']:'',
+            '#date_format' => 'Y-m-d',
+            '#datepicker_options' => array(
+                'maxDate' => 0,
+                '#required' => 1,
+                'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+                ),
+            '#date_year_range' => '-100:1',
+            '#date_label_position' => 'above',
+            '#theme_wrappers' => array('date_popup'),
+            '#suffix' => '',
+        );
+
+        $form[$group]['t_bhante'] = array('#title' => '&nbsp;Bhikkhu/Bhikkhuni Teacher', '#type' => 'checkbox',
+          '#default_value' => isset($edit_data['t_bhante'])?$edit_data['t_bhante']:'0',  '#weight' => 15);
+
+        $form[$group]['t_bt_appointed'] = array(
+            '#title' => 'Date of BT Appointment',
+            '#type' => 'date_popup',
+            '#size' => '20',
+            '#weight' => 15.1,
+            '#default_value' => isset($edit_data['t_bt_appointed'])?$edit_data['t_bt_appointed']:'',
+            '#date_format' => 'Y-m-d',
+            '#datepicker_options' => array(
+                'maxDate' => 0,
+                '#required' => 1,
+                'dateFormat' => date_popup_format_to_popup('Y-m-d'),
+                ),
+            '#date_year_range' => '-100:1',
+            '#date_label_position' => 'above',
+            '#theme_wrappers' => array('date_popup'),
+            '#suffix' => '',
+        );
+
 		$form[$group]['t_ct'] = array('#title' => '&nbsp;CT', '#type' => 'checkbox',
-	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 14.1);
+	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 16);
 	    $form[$group]['t_cat'] = array('#title' => '&nbsp;CAT', '#type' => 'checkbox',
-	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 15);
-	    $form[$group]['t_bhante'] = array('#title' => '&nbsp;Bhikkhu', '#type' => 'checkbox',
-	      '#default_value' => isset($edit_data['t_bhante'])?$edit_data['t_bhante']:'0',  '#weight' => 16);
+	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 16.1);
+
 	    $form[$group]['t_responsibility'] = array('#title' => 'Additional Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
 			'#default_value' => isset($edit_data['t_responsibility'])?$edit_data['t_responsibility']:'', '#maxlength' => 200  );
 	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 18, 
@@ -239,8 +337,51 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
     $js ='
     (function ($) {
+        function check_appointments()
+        {
+            if($("input[name=t_sat]:checked").val() == "1")
+            {
+                $("#edit-t-sat-appointed :input").prop("disabled", false);
+            }
+            else
+            {
+                $("#edit-t-sat-appointed :input").prop("disabled", true);
+            }
+
+            if($("input[name=t_full_t]:checked").val() == "1")
+            {
+                $("#edit-t-full-t-appointed :input").prop("disabled", false);
+            }
+            else
+            {
+                $("#edit-t-full-t-appointed :input").prop("disabled", true);
+            }
+
+            if($("input[name=t_bhante]:checked").val() == "1")
+            {
+                $("#edit-t-bt-appointed :input").prop("disabled", false);
+            }
+            else
+            {
+                $("#edit-t-bt-appointed :input").prop("disabled", true);
+            }
+        }
+
       $(document).ready(function(){
+
+        check_appointments();
         autocomplete_state("#edit-t-state", "#edit-t-country");
+
+        $(document).on("change", "input[type=checkbox][name=t_sat]", function(){
+            check_appointments();
+        });
+        $(document).on("change", "input[type=checkbox][name=t_full_t]", function(){
+            check_appointments();
+        });
+        $(document).on("change", "input[type=checkbox][name=t_bhante]", function(){
+            check_appointments();
+        });
+
       });
     })(jQuery);
   ';
@@ -279,15 +420,54 @@ function dh_manage_at()
 	}
 }
 
+
+function dh_atportal_profile_validate($form, &$form_state)
+{
+    if ($form_state['input']['t_full_t'])
+    {
+        if($form_state['input']['t_full_t_appointed']['date'] == '')
+            form_set_error('t_full_t_appointed', t('Please enter Date of Full-T Appointment'));
+        if(!$form_state['input']['t_sat'])
+            form_set_error('t_sat', t('For Full-T SAT checkbox must be checked'));
+        if($form_state['input']['t_sat_appointed']['date'] == '')
+            form_set_error('t_sat_appointed', t('Please enter Date of SAT Appointment'));
+        if($form_state['input']['t_at_appointed']['date'] == '')
+            form_set_error('t_at_appointed', t('Please enter Date of AT Appointment'));
+
+        if( !( $form_state['input']['t_full_t_appointed']['date'] >= $form_state['input']['t_sat_appointed']['date'] ) )
+            form_set_error('t_full_t_appointed', t('Date of Full-T appointment must be greater then equal to date of SAT appointment'));
+
+        if( !( $form_state['input']['t_sat_appointed']['date'] >= $form_state['input']['t_at_appointed']['date'] ) )
+            form_set_error('t_sat_appointed', t('Date of SAT appointment must be greater then equal to date of AT appointment'));
+    }
+    elseif ($form_state['input']['t_sat'])
+    {
+        if($form_state['input']['t_sat_appointed']['date'] == '')
+            form_set_error('t_sat_appointed', t('Please enter Date of SAT Appointment'));
+        if($form_state['input']['t_at_appointed']['date'] == '')
+            form_set_error('t_at_appointed', t('Please enter Date of AT Appointment'));
+
+        if( !( $form_state['input']['t_sat_appointed']['date'] >= $form_state['input']['t_at_appointed']['date'] ) )
+            form_set_error('t_sat_appointed', t('Date of SAT appointment must be greater then equal to date of AT appointment'));
+    }
+
+    if ($form_state['input']['t_bhante'])
+    {
+        if($form_state['input']['t_bt_appointed']['date'] == '')
+            form_set_error('t_bt_appointed', t('Please enter Date of BT Appointment'));
+    }
+}
+
+
 function dh_atportal_profile_submit($form, &$form_state)
 {
 	global $user;	
 
 	$input = $form_state['input'];
-	if (arg(2) == 'edit')
-		$form_state['redirect'] = 'at-portal';
-	elseif ( arg(2) == 'add')
-		$form_state['redirect'] = 'at-portal/address-book';
+	// if (arg(2) == 'edit')
+	// 	$form_state['redirect'] = 'at-portal';
+	// elseif ( arg(2) == 'add')
+	// 	$form_state['redirect'] = 'at-portal/address-book';
 
 	foreach ($form_state['input'] as $key => $value) 
 	{
@@ -303,6 +483,18 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	if ($t['t_dob']['date'] == '')
 		$t['t_dob'] = NULL;
+
+    if ($t['t_at_appointed']['date'] == '')
+        $t['t_at_appointed'] = NULL;
+
+    if ($t['t_sat_appointed']['date'] == '')
+        $t['t_sat_appointed'] = NULL;
+
+    if ($t['t_full_t_appointed']['date'] == '')
+        $t['t_full_t_appointed'] = NULL;
+
+    if ($t['t_bt_appointed']['date'] == '')
+        $t['t_bt_appointed'] = NULL;
 
 	if (user_access('add assistant teacher'))
 	{
@@ -321,6 +513,18 @@ function dh_atportal_profile_submit($form, &$form_state)
             if ($t['t_allow_cat_emails'] == '')
                 $t['t_allow_cat_emails'] = '0';
 	}
+
+
+    if($t['t_bhante'])
+      $t['t_year_appointed'] = $t['t_bt_appointed'];
+    elseif($t['t_full_t'])
+      $t['t_year_appointed'] = $t['t_full_t_appointed'];
+    elseif($edit_data['t_sat'])
+      $t['t_year_appointed'] = $t['t_sat_appointed'];
+    else
+      $t['t_year_appointed'] = $t['t_at_appointed'];
+
+    $t['t_year_appointed'] = date("Y", strtotime($t['t_year_appointed']['date']));
 
 
 	if ( arg(2) == 'edit')
@@ -351,6 +555,6 @@ function dh_atportal_profile_submit($form, &$form_state)
 		db_insert('dh_teacher')->fields($t)->execute();
 	}
 
-	drupal_set_message(t("Details updated successfully"), 'status');
+	drupal_set_message(t("Details added/updated successfully"), 'status');
 
 }

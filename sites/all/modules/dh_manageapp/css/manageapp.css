@@ -45,7 +45,8 @@
 .form-item-cs-seat-per-row-male, .form-item-cs-chowky-per-row-male, .form-item-cs-cells-config, 
 .form-item-cs-seat-config, .form-item-s-zip, .form-item-s-address, .form-item-cs-reconf-enable,
 .form-item-cs-expected-enable, .form-item-t-address, .form-item-t-mob-phone, .form-item-t-responsibility,
-.form-item-a-emergency-name, .form-item-t-lc-area {
+.form-item-a-emergency-name, .form-item-t-lc-area,
+.form-item-t-sat, .form-item-t-full-t, .form-item-t-bhante, .form-item-t-ct {
 	clear: left;
 }
 
@@ -180,4 +181,14 @@ fieldset#edit-advanced {
 
 .form-item.form-item-max-10-day.form-type-textfield.form-group {
     clear: left;
+}
+
+.form-item-t-sat, .form-item-t-full-t, .form-item-t-bhante {
+    float: left;
+}
+
+.container-inline-date:has(.form-item-t-sat-appointed),
+.container-inline-date:has(.form-item-t-full-t-appointed),
+.container-inline-date:has(.form-item-t-bt-appointed) {
+    clear: none;
 }
