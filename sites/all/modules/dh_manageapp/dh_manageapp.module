@@ -2385,6 +2385,8 @@ function whatsapp_hook()
 
 	if (! empty($data))
 	{
+		if ( is_array($data) && (isset($data['entry'])) && (isset($data['entry'][0]['changes'])) && (isset($data['entry'][0]['changes'][0]['value'])) )
+		    $data = $data['entry'][0]['changes'][0]['value'];
 	    if ( is_array($data) && (isset($data['statuses'])) && (is_array($data['statuses'])) )
 	    {
 	        $msgs = array();

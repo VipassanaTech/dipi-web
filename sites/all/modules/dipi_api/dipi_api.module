@@ -3079,9 +3079,9 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
         $payload = json_encode(array('to' => $to, "type" => 'document', 'document' => $pdf ));
     }
     elseif ($type == 'template')
-        $payload = json_encode(array('to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
+        $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
     else
-        $payload = json_encode(array('to' => $to, "type" => 'text', 'text' => array("body" => $params) ));
+        $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'text', 'text' => array("body" => $params) ));
 
     $headers = [
         "Content-Type: application/json",
@@ -3124,6 +3124,7 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
 
 function whatsapp_360_get_waid( $to )
 {
+    return substr($to, 1);
     $namespace = variable_get('wa360_namespace', '');
     $wa_url = variable_get('wa360_url', '');
     $wa_api_key = variable_get('wa360_api_key', '');
@@ -3151,6 +3152,7 @@ function whatsapp_360_get_waid( $to )
 
     curl_close($curl);
     $ret = '';
+        watchdog('dipi_api', 'Unable to get Whatsapp ID: '.$to.': '.$err.': '.$response, array(), WATCHDOG_ERROR);
 
     if ($err) {
         watchdog('dipi_api', 'Unable to get Whatsapp ID: '.$to.': '.$err.': '.$response, array(), WATCHDOG_ERROR);
