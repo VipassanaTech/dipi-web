@@ -218,6 +218,9 @@ function atid_load( $id )
 	if (user_access("at portal superadmin"))
 		return $id;
 
+    if (user_access("access any profile"))
+        return $id;
+
 	if (in_array($id, array('me')))
 		return $id;
 

@@ -200,7 +200,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$statuses = array(
             'Active' => 'Active',
             'Inactive' => 'Inactive',
-            'Deprecated' => 'Deprecated',
+            // 'Deprecated' => 'Deprecated',
             'Training' => 'Training',
             'Deceased' => 'Deceased',
         );
@@ -210,8 +210,9 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		{
 			if ( $edit_data['t_status'] == 'Active' ) $default_status = 'Active';
 			if ( $edit_data['t_status'] == 'Inactive' ) $default_status = 'Inactive';		
-			if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
+			// if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
 			if ( $edit_data['t_status'] == 'Training' ) $default_status = 'Training';
+            if ( $edit_data['t_status'] != 'Training' ) unset($statuses['Training']);
 		};	
 
         if($add)
