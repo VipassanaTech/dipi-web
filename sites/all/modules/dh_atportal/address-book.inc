@@ -520,7 +520,7 @@ function dh_atportal_profile_submit($form, &$form_state)
       $t['t_year_appointed'] = $t['t_bt_appointed'];
     elseif($t['t_full_t'])
       $t['t_year_appointed'] = $t['t_full_t_appointed'];
-    elseif($edit_data['t_sat'])
+    elseif($t['t_sat'])
       $t['t_year_appointed'] = $t['t_sat_appointed'];
     else
       $t['t_year_appointed'] = $t['t_at_appointed'];
