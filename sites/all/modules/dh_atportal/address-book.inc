@@ -102,10 +102,12 @@ function dh_atportal_address_book()
 function dh_atportal_profile($form, &$form_state, $edit_data = array())
 {
 	global $user;
-	$at_code = arg(3);
 	$add = 0;
 	if (count($edit_data) == 0)
 		$add = 1;
+
+    if(!$add)
+        $at_id = arg(3);
 
     $at_code_year = "";
 
@@ -335,6 +337,39 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$action = 'Update';
 
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
+
+    if(!$add)
+    {
+        $q = "select tl_tstamp, tl_msg, name FROM dh_teacher_log left join users on tl_user=uid where tl_event='Teacher Updated' and tl_teacher=".$at_id." order by tl_tstamp desc;";
+        $res = db_query($q);
+        $rows = array();
+        while( $row = $res->fetchAssoc())
+        {
+            $msg_o ="";
+            $msg_n ="";
+            $msg_o = (array)(json_decode($row['tl_msg'])->old);
+            $msg_n = (array)(json_decode($row['tl_msg'])->new);
+            foreach(array_keys($msg_o) as $k)
+            {
+                $l = array();
+                $l[] = $row['tl_tstamp'];
+                $l[] = $k;
+                $l[] = $msg_o[$k];
+                $l[] = $msg_n[$k];
+                $l[] = $row['name'];
+                $rows[] = $l;
+            }
+
+        }
+        $header = array('DateTime', 'Field', 'OldValue', 'NewValue', 'User');
+        $out = '';
+        if (!empty($rows))
+            $out .= theme('table', array('header' => $header, 'rows' => $rows)) ;
+
+        $form['teacher_changelog'] = array('#type' => 'fieldset','#title' => '<h2>Change Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true, '#weight' => 112,);
+        $form['teacher_changelog']['a'] = array('#markup' => $out);
+    }
+
 
     $js ='
     (function ($) {
