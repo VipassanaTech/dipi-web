@@ -684,7 +684,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	if ($at_name)
 		$at_names[] = $at_name;
 
-	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo, td_key,
+	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_type,  a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo, td_key,
 		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri,  
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_type_detail td on (c.c_course_type=td.td_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
 	$result = db_query($q);
@@ -697,6 +697,11 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace('private://', '', $r['a_photo']), 'stream');
 	if (!$ret['success'])
 		watchdog('S3Photo', $ret['message']);
+
+    if ($r['a_type'] == "Student")
+        $r['a_type'] = '<b style="color:green;">SITTING</b>';
+    else
+        $r['a_type'] = '<b style="color:red;">SERVING</b>';
 
 	if ($r['City'] == '')
 		$r['City'] = $r['a_city_str'];
