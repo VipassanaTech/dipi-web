@@ -3076,7 +3076,7 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
 
     if ($type == 'pdf')
     {
-        $payload = json_encode(array('to' => $to, "type" => 'document', 'document' => $pdf ));
+        $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'document', 'document' => $pdf ));
     }
     elseif ($type == 'template')
         $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
@@ -3342,6 +3342,7 @@ function upload_whatsapp_pdf($dir, $file)
     }
 
     $data = "{$dir}/{$file}";
+    $data = drupal_realpath($data);
     $caption = $file;
     $filename = $file;
 
@@ -3382,6 +3383,7 @@ function upload_whatsapp_pdf($dir, $file)
         else
         {
             $out["success"] = false;
+	    watchdog("upload_whatsapp_pdf", "Error uploading $data: ".print_r((array)$ret, true));
             return $out;
         }
         
