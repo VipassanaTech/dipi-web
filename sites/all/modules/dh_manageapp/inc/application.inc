@@ -834,6 +834,9 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	if ( trim($input['ae_desc_other_technique']) <> '' )
 		$app['a_other_technique'] = 1;
 
+    if ( trim($input['a_friend_family_details']) <> '' )
+        $app['a_friend_family'] = 1;
+
 	if ($input['document_type'] <> '')
 		$app[$input['document_type']] = $input['document_id'];
 
