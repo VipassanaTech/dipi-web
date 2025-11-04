@@ -183,11 +183,24 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
 	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
 		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 20 );
-	
-	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile', '#type' => 'textfield', '#size' => '20', '#weight' => 7, 
+
+    $country_codes = db_query("select c_isd_code, CONCAT(c_name,' ','(+',c_isd_code,')') from dh_country order by c_name")->fetchAllKeyed();
+    $country_codes['0'] = 'Choose';
+
+    $form[$group]['t_mob_country'] = array('#title' => 'Country Code 1', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6.3,
+        '#default_value' => isset($edit_data['t_mob_country'])?$edit_data['t_mob_country']:'0', '#required' => 0, );
+	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile 1', '#type' => 'textfield', '#size' => '20', '#weight' => 6.4,
 		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 50 );
-	$form[$group]['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 8, 
+
+    $form[$group]['t_mob_country_alt'] = array('#title' => 'Country Code 2', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6.5,
+        '#default_value' => isset($edit_data['t_mob_country_alt'])?$edit_data['t_mob_country_alt']:'0', '#required' => 0, );
+    $form[$group]['t_mob_phone_alt'] = array('#title' => 'Mobile 2', '#type' => 'textfield', '#size' => '20', '#weight' => 6.6,
+        '#default_value' => isset($edit_data['t_mob_phone_alt'])?$edit_data['t_mob_phone_alt']:'', '#required' => 0, '#maxlength' => 50 );
+
+	$form[$group]['t_email'] = array('#title' => 'Email 1', '#type' => 'textfield', '#size' => '25', '#weight' => 8,
 		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 50 );
+    $form[$group]['t_email_alt'] = array('#title' => 'Email 2', '#type' => 'textfield', '#size' => '25', '#weight' => 8.1,
+        '#default_value' => isset($edit_data['t_email_alt'])?$edit_data['t_email_alt']:'', '#required' => 0, '#maxlength' => 50 );
 
 	if (user_access('add assistant teacher'))
 	{
@@ -418,12 +431,16 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
         $(document).on("change", "input[type=checkbox][name=t_bhante]", function(){
             check_appointments();
         });
+        $("#edit-t-mob-country").select2();
+        $("#edit-t-mob-country-alt").select2();
 
       });
     })(jQuery);
   ';
   drupal_add_js($js, 'inline');
 
+    drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+  drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 	drupal_add_css(drupal_get_path( 'module', 'dh_manageapp').'/css/manageapp.css');
   $form['#attached']['js'][] = drupal_get_path('module', 'dh_manageapp').'/js/location-common.js';
 
