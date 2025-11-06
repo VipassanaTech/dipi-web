@@ -766,7 +766,7 @@ function map_application_fields_lc($row)
 	$fields['Arrival'] = $row['al_arrival'];
 	$temp = explode("-", $row['c_start']); 
 	$fields['Date'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
-	$fields['lingo'] = $row['al_lang_discourse'];
+	$fields['lingo'] = $row['a_lang_discourse'];
 	$fields['otherlingo'] = $row['a_langs'];
 	$fields['R AT'] = "{$row['al_recommending']} ({$row['al_recommending_approved']})";
 	$fields['A AT'] = "{$row['al_area_at']} ({$row['al_area_at_approved']})";
