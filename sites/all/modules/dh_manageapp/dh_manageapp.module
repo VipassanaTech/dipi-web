@@ -2666,7 +2666,7 @@ function dh_manageapp_user_presave(&$edit, $account, $category) {
     $msg = "";
 
     if($account->name != $account->original->name)
-      $msg .= "UserName changed from '".$account->original->name."' to '.$account->name.'\n";
+      $msg .= "UserName changed from '".$account->original->name."' to '".$account->name."'\n";
 
     if($account->mail != $account->original->mail)
       $msg .= "UserEmail changed from '".$account->original->mail."' to '".$account->mail."'\n";
