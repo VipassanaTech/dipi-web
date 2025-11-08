@@ -2682,8 +2682,8 @@ function dh_manageapp_user_presave(&$edit, $account, $category) {
     if($account->status != $account->original->status)
       $msg .= "UserStatus changed from '".$account->original->status."' to '".$account->status."'\n";
 
-    if($msg)
-    {
+    //if($msg)
+    //{
         $fields['l_user'] = $uid;
         $fields['l_center'] = 0;
         $fields['l_msg'] = $msg;
@@ -2692,5 +2692,5 @@ function dh_manageapp_user_presave(&$edit, $account, $category) {
         $fields['l_identifier'] = $account->uid;
 	db_insert('dh_log')->fields($fields)->execute();
 	watchdog('User Updated', 'User Updated '.$account->uid.'\n'.$msg);
-    }
+    //}
 }
