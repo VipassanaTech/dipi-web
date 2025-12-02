@@ -58,7 +58,7 @@ function address_book_search()
 }
 
 
-function dh_atportal_address_book()
+function dh_atportal_address_book_form($form, &$form_state)
 {
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
@@ -66,15 +66,148 @@ function dh_atportal_address_book()
     drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
-	$out = '';
+    drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+    drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+
 	if (user_access('add assistant teacher'))
-		$out = '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal").'</h2>';
+		$form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal").'</h2>');
     else
-        $out = '<h2>'.l("Back to AT-Portal", "at-portal").'</h2>';
+        $form['at-portal'] = array('#markup' => '<h2>'.l("Back to AT-Portal", "at-portal").'</h2>');
 
 	// $header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
-    $header = array();
-	$attributes = array('id' => 'at-address-book');
+
+    $country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();
+
+    $state_codes = db_query("select s_id, CONCAT(s_name,' ','(',c_name,')') FROM dh_state left join dh_country on s_country=c_code")->fetchAllKeyed();
+
+    $form['t_code'] = array('#title' => 'AT-Code', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
+        '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
+
+    $form['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
+        '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
+
+
+    $form['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 4,
+        '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
+
+    $form['t_country'] = array(
+        '#title' => 'Country',
+        '#type' => 'select',
+        '#options' => $country_codes,
+        '#weight' => 6,
+        '#multiple' => "multiple",
+        '#attributes' => array(
+            'id' => 'edit-t-country',
+        ),
+    );
+
+    $form['s_id'] = array(
+        '#title' => 'State',
+        '#type' => 'select',
+        '#options' => $state_codes,
+        '#weight' => 8,
+        '#multiple' => "multiple",
+        '#attributes' => array(
+            'id' => 'edit-t-state',
+        ),
+    );
+
+    $form['t_sat'] = array(
+        '#title' => '&nbsp;Senior Assistant Teacher (SAT)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 10
+    );
+
+    $form['t_full_t'] = array(
+        '#title' => '&nbsp;Full Teacher (T)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 12
+    );
+
+    $form['t_bhante'] = array(
+        '#title' => '&nbsp;Bhante Teacher (BT)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 14
+    );
+
+    $form['t_cat'] = array(
+        '#title' => '&nbsp;Coordinating Area Teacher (CAT)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 16
+    );
+
+    $form['t_ct'] = array(
+        '#title' => '&nbsp;Center Teacher (CT)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18
+    );
+
+    $form['sub'] = array(
+        '#type' => 'submit',
+        '#value' => 'Search',
+        '#weight' => 25,
+        '#prefix' => '<br>',
+        '#suffix' => '<br><br><br>',
+    );
+
+$search_filters = "";
+
+if (isset($form_state['user_input']) && $form_state['user_input'])
+{
+    $values = $form_state['user_input'];
+
+    if($values['t_code'])
+        $search_filters .= " and t_code like '%{$values["t_code"]}%' ";
+
+    if($values['t_f_name'])
+        $search_filters .= " and t_f_name like '%{$values["t_f_name"]}%' ";
+
+    if($values['t_l_name'])
+        $search_filters .= " and t_l_name like '%{$values["t_l_name"]}%' ";
+
+    if( is_array($values['t_country']) && count($values['t_country'])>0 )
+        $search_filters .= " and t_country in ('".implode("','", $values['t_country'])."') ";
+
+    if( is_array($values['s_id']) && count($values['s_id'])>0 )
+        $search_filters .= " and s_id in ('".implode("','", $values['s_id'])."') ";
+
+    if ( isset($values['t_sat']) && ($values['t_sat']) )
+            $search_filters .= " and t_sat = 1 ";
+
+    if ( isset($values['t_full_t']) && ($values['t_full_t']) )
+            $search_filters .= " and t_full_t = 1 ";
+
+    if ( isset($values['t_bhante']) && ($values['t_bhante']) )
+            $search_filters .= " and t_bhante = 1 ";
+
+    if ( isset($values['t_ct']) && ($values['t_ct']) )
+            $search_filters .= " and t_ct = 1 ";
+
+    if ( isset($values['t_cat']) && ($values['t_cat']) )
+            $search_filters .= " and t_cat = 1 ";
+
+}
+
+    if (!user_access('add assistant teacher') || $search_filters)
+    {
+        $where = " where 1 ";
+
+
+        if(!user_access('add assistant teacher'))
+        {
+            $where .= " and t_status <> 'Training' ";
+        }
+
+        if($search_filters)
+        {
+            $where .= $search_filters;
+        }
+    }
 
     $q = "select
         t_id,
@@ -83,7 +216,7 @@ function dh_atportal_address_book()
         t_f_name,
         t_l_name,
         t_city,
-        t_state,
+        s_name,
         t_country,
         t_mob_country,
         t_mob_phone,
@@ -91,7 +224,7 @@ function dh_atportal_address_book()
         t_mob_phone_alt,
         t_email,
         t_email_alt,
-        t_dob,
+        TIMESTAMPDIFF( YEAR, t_dob, CURDATE() ) as 'age',
         t_responsibility,
         t_area,
         t_year_appointed,
@@ -105,14 +238,15 @@ function dh_atportal_address_book()
         t_full_t,
         t_cat,
         t_bhante
-        from dh_teacher ";
+        from dh_teacher
+        left join dh_state on (t_state = s_code and t_country = s_country)
+        $where";
 
-    if (!user_access('add assistant teacher'))
-        $q = $q." where t_status <> 'Training' ";
+
 
     $result = db_query($q);
     $data = array();
-    $country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();
+
     while( $r = $result->fetchAssoc() )
     {
         $r["edit_at"] = $r['t_code']."<br>(".l("Edit", "/at-portal/address-book/edit/".strtolower($r['t_id'])).')';
@@ -128,7 +262,11 @@ function dh_atportal_address_book()
     $data = json_encode($data);
 	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
 	// $out .= theme('table', array('header' => $header, 'rows' => array(array('1','2','3','4','5','1','2','3')), 'attributes' => $attributes));
-  $out .= theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
+    $header = array();
+    $attributes = array('id' => 'at-address-book');
+  $out = theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
+
+  $form['a'] = array('#markup' => $out, '#weight' => 101,);
 
 	$js = '
             function format ( d ) {
@@ -195,12 +333,16 @@ function dh_atportal_address_book()
                     t_full_t_appointed+
                     t_bt_appointed+
                     "<tr>"+
+                        "<td><label>Age:</label></td>"+
+                        "<td colspan=\"3\">"+d.age+" years</td>"+
+                    "</tr>"+
+                    "<tr>"+
                         "<td><label>City:</label></td>"+
                         "<td colspan=\"3\">"+d.t_city+"</td>"+
                     "</tr>"+
                     "<tr>"+
                         "<td><label>State:</label></td>"+
-                        "<td colspan=\"3\">"+d.t_state+"</td>"+
+                        "<td colspan=\"3\">"+d.s_name+"</td>"+
                     "</tr>"+
                     "<tr>"+
                         "<td><label>Mobile-1:</label></td>"+
@@ -228,6 +370,7 @@ function dh_atportal_address_book()
 			function do_datatable( tid, dataset )
 			{
 				var table = $(tid).DataTable({
+                    "bDestroy": true,
 					data: dataset,
                     columns: [
                         {
@@ -276,6 +419,9 @@ function dh_atportal_address_book()
 
 			}
 			$(document).ready(function(){
+                $("#edit-t-country").select2();
+                $("#edit-t-state").select2();
+
                 var dataset = '.$data.';
 				do_datatable("#at-address-book", dataset);
 
@@ -285,8 +431,15 @@ function dh_atportal_address_book()
 	';
 	drupal_add_js($js, 'inline');
 
-	return $out;
+	return $form;
 }
+
+function dh_atportal_address_book_form_submit($form, &$form_state)
+{
+    $form_state['user_input'] = $form_state['input'];
+    $form_state['rebuild'] = TRUE;
+}
+
 
 function dh_atportal_profile($form, &$form_state, $edit_data = array())
 {
@@ -670,8 +823,8 @@ function dh_atportal_profile_validate($form, &$form_state)
     {
         if($form_state['input']['t_full_t_appointed']['date'] == '')
             form_set_error('t_full_t_appointed', t('Please enter Date of Full-T Appointment'));
-        if(!$form_state['input']['t_sat'])
-            form_set_error('t_sat', t('For Full-T SAT checkbox must be checked'));
+        if($form_state['input']['t_sat'])
+            form_set_error('t_sat', t('For Full-T SAT checkbox must be unchecked'));
         if($form_state['input']['t_sat_appointed']['date'] == '')
             form_set_error('t_sat_appointed', t('Please enter Date of SAT Appointment'));
         if($form_state['input']['t_at_appointed']['date'] == '')
