@@ -731,7 +731,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
     (function ($) {
         function check_appointments()
         {
-            if($("input[name=t_sat]:checked").val() == "1")
+            if($("input[name=t_sat]:checked").val() == "1" || $("input[name=t_full_t]:checked").val() == "1")
             {
                 $("#edit-t-sat-appointed :input").prop("disabled", false);
             }
