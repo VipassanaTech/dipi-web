@@ -62,6 +62,9 @@ function dh_atportal_address_book()
 {
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+    drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+    drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+    drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 	$out = '';
 	if (user_access('add assistant teacher'))
@@ -69,27 +72,213 @@ function dh_atportal_address_book()
     else
         $out = '<h2>'.l("Back to AT-Portal", "at-portal").'</h2>';
 
-	$header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
+	// $header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
+    $header = array();
 	$attributes = array('id' => 'at-address-book');
 
+    $q = "select
+        t_id,
+        t_code,
+        t_gender,
+        t_f_name,
+        t_l_name,
+        t_city,
+        t_state,
+        t_country,
+        t_mob_country,
+        t_mob_phone,
+        t_mob_country_alt,
+        t_mob_phone_alt,
+        t_email,
+        t_email_alt,
+        t_dob,
+        t_responsibility,
+        t_area,
+        t_year_appointed,
+        t_at_appointed,
+        t_sat_appointed,
+        t_full_t_appointed,
+        t_bt_appointed,
+        t_status,
+        t_sat,
+        t_ct,
+        t_full_t,
+        t_cat,
+        t_bhante
+        from dh_teacher ";
+
+    if (!user_access('add assistant teacher'))
+        $q = $q." where t_status <> 'Training' ";
+
+    $result = db_query($q);
+    $data = array();
+    $country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();
+    while( $r = $result->fetchAssoc() )
+    {
+        $r["edit_at"] = $r['t_code']."<br>(".l("Edit", "/at-portal/address-book/edit/".strtolower($r['t_id'])).')';
+        $r["t_sat"] = $r["t_sat"]?'Yes':'';
+        $r["t_ct"] = $r["t_ct"]?'Yes':'';
+        $r["t_full_t"] = $r["t_full_t"]?'Yes':'';
+        $r["t_cat"] = $r["t_cat"]?'Yes':'';
+        $r["t_bhante"] = $r["t_cat"]?'Yes':'';
+
+        $r["t_country"] = $country_codes[$r["t_country"]];
+        $data[] = $r;
+    }
+    $data = json_encode($data);
 	//$out = theme('table', array('header' => $header, 'rows' => $rows_pending, 'attributes' => $attributes));
 	// $out .= theme('table', array('header' => $header, 'rows' => array(array('1','2','3','4','5','1','2','3')), 'attributes' => $attributes));
   $out .= theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
 
 	$js = '
+            function format ( d ) {
+
+            var t_at_appointed = "";
+            var t_sat_appointed = "";
+            var t_full_t_appointed = "";
+            var t_bt_appointed = "";
+            var t_responsibility = "";
+            var t_area = "";
+
+            if (d.t_responsibility)
+            {
+                t_responsibility =   "<tr>"+
+                        "<td><label>Other Responsibility:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_responsibility+"</td>"+
+                     "</tr>";
+            }
+
+            if (d.t_cat)
+            {
+                t_area =   "<tr>"+
+                        "<td><label>Area of Responsibility:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_area+"</td>"+
+                     "</tr>";
+            }
+
+            if (d.t_at_appointed)
+            {
+                t_at_appointed =   "<tr>"+
+                        "<td><label>AT Appointment Year:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_at_appointed+"</td>"+
+                     "</tr>";
+            }
+
+            if (d.t_sat_appointed)
+            {
+                t_sat_appointed =   "<tr>"+
+                        "<td><label>SAT Appointment Year:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_sat_appointed+"</td>"+
+                    "</tr>";
+            }
+
+            if (d.t_full_t_appointed)
+            {
+                t_full_t_appointed =   "<tr>"+
+                        "<td><label>Full-T Appointment Year:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_full_t_appointed+"</td>"+
+                    "</tr>";
+            }
+
+            if (d.t_bt_appointed)
+            {
+                t_bt_appointed =   "<tr>"+
+                        "<td><label>Bhante Teacher Appointment Year:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_bt_appointed+"</td>"+
+                    "</tr>";
+            }
+
+            return "<div class=\"slider\">"+
+                "<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\" style=\"padding-left:50px;\">"+
+                    t_at_appointed+
+                    t_sat_appointed+
+                    t_full_t_appointed+
+                    t_bt_appointed+
+                    "<tr>"+
+                        "<td><label>City:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_city+"</td>"+
+                    "</tr>"+
+                    "<tr>"+
+                        "<td><label>State:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_state+"</td>"+
+                    "</tr>"+
+                    "<tr>"+
+                        "<td><label>Mobile-1:</label></td>"+
+                        "<td colspan=\"3\">\+"+d.t_mob_country+" "+d.t_mob_phone+"</td>"+
+                    "</tr>"+
+                    "<tr>"+
+                        "<td><label>Mobile-2:</label></td>"+
+                        "<td colspan=\"3\">\+"+d.t_mob_country_alt+" "+d.t_mob_phone_alt+"</td>"+
+                    "</tr>"+
+                    "<tr>"+
+                        "<td><label>Email-1:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_email+"</td>"+
+                    "</tr>"+
+                    "<tr>"+
+                        "<td><label>Email-2:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_email_alt+"</td>"+
+                    "</tr>"+
+                    t_responsibility+
+                    t_area+
+                "</table>"+
+            "</div>";
+        }
+
 		(function ($) {
-			function do_datatable( tid )
+			function do_datatable( tid, dataset )
 			{
 				var table = $(tid).DataTable({
-					dom: "lfr<\"clear\">tip",
-			        "ajax": "/at-portal/address-book/ajax",
-			        "columnDefs": [
-					   { "targets": 13, "visible": false },
-					]
-			    });			
+					data: dataset,
+                    columns: [
+                        {
+                            "class":          "details-control",
+                            "orderable":      false,
+                            "data":           null,
+                            "title":          "Detail",
+                            "defaultContent": ""
+                        },
+                        { data: "edit_at", "title" : "Code" },
+                        { data: "t_gender", "title" : "Gender" },
+                        { data: "t_f_name", "title" : "FName"},
+                        { data: "t_l_name", "title" : "LName" },
+                        { data: "t_status", "title" : "Status" },
+                        // { data: "t_email", "title" : "Email" },
+                        { data: "t_country", "title" : "Country" },
+                        // { data: "t_mob_phone", "title" : "Mobile" },
+                        { data: "t_sat", "title" : "SAT" },
+                        { data: "t_ct", "title" : "CT" },
+                        { data: "t_full_t", "title" : "FullT" },
+                        { data: "t_cat", "title" : "CAT" },
+                        { data: "t_bhante", "title" : "Bhante" },
+                    ],
+                });
+
+                // Add event listener for opening and closing details
+                $("#at-address-book tbody").on("click", "td.details-control", function () {
+                    var tr = $(this).closest("tr");
+                    var row = table.row( tr );
+
+                    if ( row.child.isShown() ) {
+                        // This row is already open - close it
+                        $("div.slider", row.child()).slideUp( function () {
+                            row.child.hide();
+                            tr.removeClass("shown");
+                        });
+                    }
+                    else {
+                        // Open this row
+                        row.child( format(row.data()), "no-padding" ).show();
+                        tr.addClass("shown");
+                        $("div.slider", row.child()).slideDown();
+                    }
+                });
+
+
 			}
 			$(document).ready(function(){
-				do_datatable("#at-address-book");
+                var dataset = '.$data.';
+				do_datatable("#at-address-book", dataset);
+
 			});
 		})(jQuery);
 
