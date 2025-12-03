@@ -254,7 +254,7 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
         $r["t_ct"] = $r["t_ct"]?'Yes':'';
         $r["t_full_t"] = $r["t_full_t"]?'Yes':'';
         $r["t_cat"] = $r["t_cat"]?'Yes':'';
-        $r["t_bhante"] = $r["t_cat"]?'Yes':'';
+        $r["t_bhante"] = $r["t_bhante"]?'Yes':'';
 
         $r["t_country"] = $country_codes[$r["t_country"]];
         $data[] = $r;
