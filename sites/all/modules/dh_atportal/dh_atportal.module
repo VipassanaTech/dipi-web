@@ -71,6 +71,11 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at address book'),
 	       'type' => MENU_CALLBACK);
 
+    $items['at-portal/ct-list'] = array( 'title' => t('Center Teacher List'),
+            'page callback' => array('dh_atportal_ctlist'),
+           'access arguments' => array('access at address book'),
+           'type' => MENU_CALLBACK);
+
     $items['at-portal/address-book/add'] = array( 'title' => t('Add AT'),
 	       'page callback' => 'drupal_get_form',
 	       'page arguments' => array('dh_manage_at', 'add'),
