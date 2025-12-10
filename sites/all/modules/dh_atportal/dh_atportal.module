@@ -18,6 +18,7 @@ function dh_atportal_permission()
 	$perms['at portal superadmin'] = array('title' => t('AT Portal Superadmin'));
 	$perms['approve applications'] = array('title' => t('Center LC Admin Approve/Reject Apps'));
 	$perms['approve applications on behalf of at'] = array('title' => t('Teacher LC Admin Approve/Reject Apps'));
+    $perms['access area cluster'] = array('title' => t('Access Area Cluster') ) ;
 	return $perms;
 }
 
@@ -73,6 +74,11 @@ function dh_atportal_menu()
 
     $items['at-portal/ct-list'] = array( 'title' => t('Center Teacher List'),
             'page callback' => array('dh_atportal_ctlist'),
+           'access arguments' => array('access at address book'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/cat-list'] = array( 'title' => t('CAT List'),
+            'page callback' => array('dh_atportal_catlist'),
            'access arguments' => array('access at address book'),
            'type' => MENU_CALLBACK);
 
@@ -156,6 +162,21 @@ function dh_atportal_menu()
         'page callback' => 'at_course_sit_apply',
         'access arguments' => array('access at portal'),
         'type' => MENU_CALLBACK);
+
+    $items['at-portal/area-cluster/add'] = array( 'title' => t('Add Area Cluster'),
+           'page callback' => 'dh_atportal_manage_area_cluster',
+           'access arguments' => array('access area cluster'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/area-cluster/edit/%'] = array( 'title' => t('Edit Area Cluster'),
+           'page callback' => 'dh_atportal_manage_area_cluster',
+           'access arguments' => array('access area cluster'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/area-cluster-list'] = array( 'title' => t('Area Cluster List'),
+           'page callback' => 'dh_atportal_area_cluster_list',
+           'access arguments' => array('access area cluster'),
+           'type' => MENU_CALLBACK);
 
     return $items;
 }

@@ -47,7 +47,8 @@
 .form-item-cs-expected-enable, .form-item-t-address,
 .form-item-t-mob-country, .form-item-t-mob-country-alt, .form-item-t-email, .form-item-t-responsibility,
 .form-item-a-emergency-name, .form-item-t-lc-area,
-.form-item-t-sat, .form-item-t-full-t, .form-item-t-bhante, .form-item-t-ct {
+.form-item-t-sat, .form-item-t-full-t, .form-item-t-bhante, .form-item-t-ct, .form-item-t-ct-centers,
+.form-item-t-act-centers, .form-item-t-cat-areas, .form-item-t-acat-areas {
 	clear: left;
 }
 
@@ -192,4 +193,10 @@ fieldset#edit-advanced {
 .container-inline-date:has(.form-item-t-full-t-appointed),
 .container-inline-date:has(.form-item-t-bt-appointed) {
     clear: none;
+}
+
+
+.form-item-t-ct-centers, .form-item-t-act-centers, .form-item-t-cat-areas, .form-item-t-acat-areas {
+    display: block !important;
+    width: 100% !important;
 }

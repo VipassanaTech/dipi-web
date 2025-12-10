@@ -69,10 +69,12 @@ function dh_atportal_address_book_form($form, &$form_state)
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
-	if (user_access('add assistant teacher'))
-		$form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list").'</h2>');
+    if (user_access('add assistant teacher') && user_access('access area cluster'))
+        $form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list")." | ".l("Manage Area", "at-portal/area-cluster-list").'</h2>');
+	elseif (user_access('add assistant teacher'))
+		$form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list").'</h2>');
     else
-        $form['at-portal'] = array('#markup' => '<h2>'.l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list").'</h2>');
+        $form['at-portal'] = array('#markup' => '<h2>'.l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list").'</h2>');
 
 	// $header = array('Code', 'Gender', 'FName', 'LName', 'Status', 'Email', 'Country', 'Mobile', 'SAT', 'CT', 'FullT', 'CAT', 'Bhante', 'ID');
 
@@ -687,38 +689,70 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
         $ct_centers = db_query("select tc_id, CONCAT(tc_name,' ','(',c_name,')') from dh_teacher_center left join dh_country on tc_country=c_code order by tc_name")->fetchAllKeyed();
 
+        $cat_areas = db_query("select tac_id, tac_name from dh_teacher_area_cluster")->fetchAllKeyed();
+
         if(!$add)
         {
-            $edit_data['edit_ct_centers'] = db_query("select tc_id, tc_id from dh_teacher_role left join dh_teacher_center on tr_identifier=tc_id left join dh_country on tc_country=c_code where tr_role='CT' and tr_teacher=:tr_teacher and tr_deleted=0 order by tc_name", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
+            $edit_data['edit_ct_centers'] = db_query("select tr_identifier, tr_identifier from dh_teacher_role where tr_role='CT' and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
 
 
-            $edit_data['edit_act_centers'] = db_query("select tc_id, tc_id from dh_teacher_role left join dh_teacher_center on tr_identifier=tc_id left join dh_country on tc_country=c_code where tr_role='ACT' and tr_teacher=:tr_teacher and tr_deleted=0 order by tc_name", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
+            $edit_data['edit_act_centers'] = db_query("select tr_identifier, tr_identifier from dh_teacher_role where tr_role='ACT' and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
+
+            $edit_data['edit_cat_areas'] = db_query("select tr_identifier, tr_identifier from dh_teacher_role where tr_role='CAT' and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
+
+            $edit_data['edit_acat_areas'] = db_query("select tr_identifier, tr_identifier from dh_teacher_role where tr_role='ACAT' and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_teacher'=>$at_id))->fetchAllKeyed();
 
         }
 
-        $form['t_ct_centers'] = array(
-            '#title' => 'Center Teacher',
+    $form[$group]['t_cat_areas'] = array(
+            '#title' => '<br>Coordinating Area Teacher for:',
+            '#type' => 'select',
+            '#default_value' => isset($edit_data['edit_cat_areas'])?$edit_data['edit_cat_areas']:'',
+            '#options' => $cat_areas,
+            '#weight' => 21,
+            '#multiple' => "multiple",
+            '#attributes' => array(
+                'id' => 'edit-t-cat-areas',
+            ),
+        );
+
+    $form[$group]['t_acat_areas'] = array(
+            '#title' => 'Assistant to Coordinating Area Teacher for:',
+            '#type' => 'select',
+            '#default_value' => isset($edit_data['edit_acat_areas'])?$edit_data['edit_acat_areas']:'',
+            '#options' => $cat_areas,
+            '#weight' => 21,
+            '#multiple' => "multiple",
+            '#attributes' => array(
+                'id' => 'edit-t-acat-areas',
+            ),
+        );
+
+        $form[$group]['t_ct_centers'] = array(
+            '#title' => 'Center Teacher for:',
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_ct_centers'])?$edit_data['edit_ct_centers']:'',
             '#options' => $ct_centers,
-            '#weight' => 21,
+            '#weight' => 22,
             '#multiple' => "multiple",
             '#attributes' => array(
                 'id' => 'edit-t-ct-centers',
             ),
         );
 
-        $form['t_act_centers'] = array(
-            '#title' => 'Assistant to Center Teacher',
+        $form[$group]['t_act_centers'] = array(
+            '#title' => 'Assistant to Center Teacher for:',
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_act_centers'])?$edit_data['edit_act_centers']:'',
             '#options' => $ct_centers,
-            '#weight' => 22,
+            '#weight' => 23,
             '#multiple' => "multiple",
             '#attributes' => array(
                 'id' => 'edit-t-act-centers',
             ),
         );
+
+
 	}	
 
 	if ($add)
@@ -809,8 +843,10 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
         });
         $("#edit-t-mob-country").select2();
         $("#edit-t-mob-country-alt").select2();
-        $("#edit-t-ct-centers").select2();
-        $("#edit-t-act-centers").select2();
+        $("#edit-t-ct-centers").select2({ width: "100%" });
+        $("#edit-t-act-centers").select2({ width: "100%" });
+        $("#edit-t-cat-areas").select2({ width: "100%" });
+        $("#edit-t-acat-areas").select2({ width: "100%" });
 
       });
     })(jQuery);
@@ -907,11 +943,17 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
-    $t_ct_centers = $t['t_ct_centers'];
+    $new_t_role['CT'] = $t['t_ct_centers'];
     unset($t['t_ct_centers']);
 
-    $t_act_centers = $t['t_act_centers'];
+    $new_t_role['ACT'] = $t['t_act_centers'];
     unset($t['t_act_centers']);
+
+    $new_t_role['CAT'] = $t['t_cat_areas'];
+    unset($t['t_cat_areas']);
+
+    $new_t_role['ACAT'] = $t['t_acat_areas'];
+    unset($t['t_acat_areas']);
 
 	if ($t['t_email'])
 		$t['t_email'] = trim($t['t_email']);
@@ -992,69 +1034,46 @@ function dh_atportal_profile_submit($form, &$form_state)
 		$at_id = db_insert('dh_teacher')->fields($t)->execute();
 	}
 
-
-    if(is_array($t_ct_centers) && count($t_ct_centers))
+    foreach($new_t_role as $role_type => $new_values)
     {
-        foreach($t_ct_centers as $t_ct_center)
+        if(!$new_values)
+            $new_values = array();
+
+        $old_values = array_keys(db_query("select tr_identifier from dh_teacher_role where tr_role=:tr_role and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_role'=>$role_type, ':tr_teacher'=>$at_id))->fetchAllAssoc('tr_identifier'));
+
+        $added_values = array_diff($new_values, $old_values);
+        $removed_values = array_diff($old_values, $new_values);
+
+        if(is_array($added_values) && count($added_values))
         {
-            $tct = array();
-            $tct['tr_type'] = 'center';
-            $tct['tr_role'] = 'CT';
-            $tct['tr_created_by'] = $user->uid;
-            $tct['tr_updated_by'] = $user->uid;
-            db_merge('dh_teacher_role')
-                ->key(array('tr_identifier' => $t_ct_center, 'tr_teacher' => $at_id, 'tr_deleted' => 0))
-                ->fields($tct)
-                ->execute();
+            foreach($added_values as $added_value)
+            {
+                $tr = array();
+                $tr['tr_teacher'] = $at_id;
+                $tr['tr_identifier'] = $added_value;
+                $tr['tr_role'] = $role_type;
+                $tr['tr_created_by'] = $user->uid;
+                $tr['tr_updated_by'] = $user->uid;
+                db_insert('dh_teacher_role')->fields($tr)->execute();
+            }
         }
 
-        db_update('dh_teacher_role')
-            ->fields(array('tr_deleted' => 1,))
-            ->condition('tr_teacher', $at_id)
-            ->condition('tr_role', 'CT')
-            ->condition('tr_identifier', $t_ct_centers, 'NOT IN')
-            ->execute();
-    }
-    else
-    {
-        db_update('dh_teacher_role')
-            ->fields(array('tr_deleted' => 1,))
-            ->condition('tr_teacher', $at_id)
-            ->condition('tr_role', 'CT')
-            ->execute();
-    }
-
-    if(is_array($t_act_centers) && count($t_act_centers))
-    {
-        foreach($t_act_centers as $t_act_center)
+        if(is_array($removed_values) && count($removed_values))
         {
-            $tct = array();
-            $tct['tr_type'] = 'center';
-            $tct['tr_role'] = 'ACT';
-            $tct['tr_created_by'] = $user->uid;
-            $tct['tr_updated_by'] = $user->uid;
-            db_merge('dh_teacher_role')
-                ->key(array('tr_identifier' => $t_act_center, 'tr_teacher' => $at_id, 'tr_deleted' => 0))
-                ->fields($tct)
-                ->execute();
+                $tr = array();
+                $tr['tr_updated'] = date('Y-m-d H:i:s');
+                $tr['tr_updated_by'] = $user->uid;
+                $tr['tr_deleted'] = 1;
+
+                db_update('dh_teacher_role')
+                    ->fields($tr)
+                    ->condition('tr_identifier', $removed_values, 'IN')
+                    ->condition('tr_teacher', $at_id)
+                    ->condition('tr_role', $role_type)
+                    ->execute();
         }
 
-        db_update('dh_teacher_role')
-            ->fields(array('tr_deleted' => 1,))
-            ->condition('tr_teacher', $at_id)
-            ->condition('tr_role', 'ACT')
-            ->condition('tr_identifier', $t_act_centers, 'NOT IN')
-            ->execute();
     }
-    else
-    {
-        db_update('dh_teacher_role')
-            ->fields(array('tr_deleted' => 1,))
-            ->condition('tr_teacher', $at_id)
-            ->condition('tr_role', 'ACT')
-            ->execute();
-    }
-
 
 	drupal_set_message(t("Details added/updated successfully"), 'status');
 
@@ -1117,6 +1136,270 @@ function dh_atportal_ctlist()
             $(document).ready(function(){
                 var dataset = '.$data.';
                 do_datatable("#ct-list", dataset);
+            });
+        })(jQuery);
+
+    ';
+    drupal_add_js($js, 'inline');
+
+    return $out;
+}
+
+
+
+function dh_atportal_catlist()
+{
+    drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+    drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
+    $out = '<h2>'.l("Back to AT-Portal", "at-portal")." | ".l("Back to AT Address Book", "at-portal/address-book").'</h2>';
+
+    $q = "select
+        CASE WHEN ta_type = 'country' THEN ta_name WHEN ta_type ='state' THEN CONCAT(ta_name,' ','(',ta_country,')') WHEN ta_type ='zip' THEN CONCAT(ta_name,' ','(',ta_state, ', ',ta_country,')')  END as cat_area,
+        GROUP_CONCAT(IF(tr_role = 'CAT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as ta_cat,
+        GROUP_CONCAT(IF(tr_role = 'ACAT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as ta_acat
+        from dh_teacher_role
+        left join dh_teacher_area on tr_identifier=ta_id
+        left join dh_teacher on tr_teacher=t_id
+        where
+        tr_role in ('CAT', 'ACAT')
+        and tr_deleted=0
+        group by ta_id;
+        ";
+
+    $result = db_query($q);
+    $data = array();
+
+    while( $r = $result->fetchAssoc() )
+    {
+        $data[] = $r;
+    }
+
+    $data = json_encode($data);
+
+    $header = array();
+    $attributes = array('id' => 'cat-list');
+  $out .= theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
+    $js = '
+        (function ($) {
+            function do_datatable( tid, dataset )
+            {
+                var table = $(tid).DataTable({
+                    "bDestroy": true,
+                    data: dataset,
+                    columns: [
+                        { data: "cat_area", "title" : "Area" },
+                        { data: "ta_cat", "title" : "CAT"},
+                        { data: "ta_acat", "title" : "Assistant to CAT" },
+                    ],
+                });
+
+            }
+            $(document).ready(function(){
+                var dataset = '.$data.';
+                do_datatable("#cat-list", dataset);
+            });
+        })(jQuery);
+
+    ';
+    drupal_add_js($js, 'inline');
+
+    return $out;
+}
+
+
+function dh_atportal_manage_area_cluster()
+{
+    switch( arg(2) )
+    {
+        case 'add':
+            return drupal_get_form('dh_atportal_area_cluster_form');
+            break;
+        case 'edit':
+            $tac_id = arg(3);
+            $row = db_query("select * from dh_teacher_area_cluster where tac_id=$tac_id")->fetchAssoc();
+            return drupal_get_form('dh_atportal_area_cluster_form', $row);
+            break;
+    }
+}
+
+
+
+
+function dh_atportal_area_cluster_form($form, &$form_state, $edit_data = array())
+{
+    $add = 0;
+    if (count($edit_data) == 0)
+        $add = 1;
+
+    if(!$add)
+        $tac_id = arg(3);
+
+
+    $form['tac_name'] = array(
+        '#title' => 'Area Cluster Name',
+        '#type' => 'textarea',
+        '#size' => '100',
+        '#weight' => 1,
+        '#default_value' => isset($edit_data['tac_name'])?$edit_data['tac_name']:'',
+        '#maxlength' => 255
+    );
+
+
+    $tac_areas = db_query("select ta_id, CASE WHEN ta_type = 'country' THEN ta_name WHEN ta_type ='state' THEN CONCAT(ta_name,' ','(',ta_country,')') WHEN ta_type ='zip' THEN CONCAT(ta_name,' ','(',ta_state, ', ',ta_country,')')  END  from dh_teacher_area;")->fetchAllKeyed();
+
+    if(!$add)
+    {
+        $edit_data['edit_tac_areas'] = db_query("select ta_id, ta_id from dh_teacher_area where ta_cluster=:ta_cluster", array(':ta_cluster'=>$tac_id))->fetchAllKeyed();
+
+    }
+
+    $form['tac_areas'] = array(
+            '#title' => 'Containing Areas',
+            '#type' => 'select',
+            '#default_value' => isset($edit_data['edit_tac_areas'])?$edit_data['edit_tac_areas']:'',
+            '#options' => $tac_areas,
+            '#weight' => 2,
+            '#multiple' => "multiple",
+            '#attributes' => array(
+                'id' => 'edit-tac-areas',
+            ),
+        );
+
+
+    if ($add)
+        $action = 'Add';
+    else
+        $action = 'Update';
+
+    $form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
+
+
+
+    $js ='
+    (function ($) {
+      $(document).ready(function(){
+        $("#edit-tac-areas").select2({ width: "100%" });
+      });
+    })(jQuery);
+  ';
+    drupal_add_js($js, 'inline');
+
+    drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+    drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
+
+    return $form;
+}
+
+
+function dh_atportal_area_cluster_form_submit($form, &$form_state)
+{
+    global $user;
+    $input = $form_state['input'];
+
+    $new_tac_areas = $input['tac_areas'];
+    unset($input['tac_areas']);
+
+    $tac_id = '';
+    if ( arg(2) == 'edit')
+    {
+        $tac_id = arg(3);
+        $tac['tac_name'] = $input['tac_name'];
+        $tac['tac_updated_by'] = $user->uid;
+        $tac['tac_updated'] = date('Y-m-d H:i:s');
+        db_update('dh_teacher_area_cluster')->fields($tac)->condition('tac_id', $tac_id )->execute();
+    }
+    else
+    {
+        $tac['tac_name'] = $input['tac_name'];
+        $tac['tac_created_by'] = $user->uid;
+        $tac['tac_updated_by'] = $user->uid;
+        $tac_id = db_insert('dh_teacher_area_cluster')->fields($tac)->execute();
+    }
+
+    if(!$new_tac_areas)
+        $new_tac_areas = array();
+
+    $old_tac_areas = array_keys(db_query("select ta_id from dh_teacher_area where ta_cluster=:ta_cluster", array(':ta_cluster'=>$tac_id))->fetchAllAssoc('ta_id'));
+
+    $added_tac_areas = array_diff($new_tac_areas, $old_tac_areas);
+    $removed_tac_areas = array_diff($old_tac_areas, $new_tac_areas);
+
+    $ta = array();
+    $ta['ta_updated_by'] = $user->uid;
+    $ta['ta_updated'] = date('Y-m-d H:i:s');
+
+    if(is_array($added_tac_areas) && count($added_tac_areas))
+    {
+            $ta['ta_cluster'] = $tac_id;
+            db_update('dh_teacher_area')
+                ->fields($ta)
+                ->condition('ta_id', $added_tac_areas, 'IN')
+                ->execute();
+    }
+
+    if(is_array($removed_tac_areas) && count($removed_tac_areas))
+    {
+            $ta['ta_cluster'] = 0;
+            db_update('dh_teacher_area')
+                ->fields($ta)
+                ->condition('ta_id', $removed_tac_areas, 'IN')
+                ->execute();
+    }
+
+    drupal_set_message(t("Details added/updated successfully"), 'status');
+
+}
+
+
+function dh_atportal_area_cluster_list()
+{
+    drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
+    drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+
+    $out = '<h2>'.l("Add Area Cluster", "at-portal/area-cluster/add")." | ".l("Back to AT Portal", "at-portal")." | ".l("Back to AT Address Book", "at-portal/address-book").'</h2>';
+
+    $q = "select
+        tac_id,
+        tac_name,
+        GROUP_CONCAT(CASE WHEN ta_type = 'country' THEN ta_name WHEN ta_type ='state' THEN CONCAT(ta_name,' ','(',ta_country,')') WHEN ta_type ='zip' THEN CONCAT(ta_name,' ','(',ta_state, ', ',ta_country,')')  END SEPARATOR '<br>') as tac_areas
+        from dh_teacher_area_cluster
+        left join dh_teacher_area on tac_id=ta_cluster
+        group by tac_id;
+        ";
+
+    $result = db_query($q);
+    $data = array();
+
+    while( $r = $result->fetchAssoc() )
+    {
+        $r["tac_id"] = l("Edit", "/at-portal/area-cluster/edit/".strtolower($r['tac_id']));
+        $data[] = $r;
+    }
+
+    $data = json_encode($data);
+
+    $header = array();
+    $attributes = array('id' => 'tac-list');
+  $out .= theme('table', array('header' => $header, 'rows' => array(array()) ,'attributes' => $attributes));
+    $js = '
+        (function ($) {
+            function do_datatable( tid, dataset )
+            {
+                var table = $(tid).DataTable({
+                    "bDestroy": true,
+                    data: dataset,
+                    columns: [
+                        { data: "tac_id", "title" : "Edit" },
+                        { data: "tac_name", "title" : "Cluster Name"},
+                        { data: "tac_areas", "title" : "Containing Areas" },
+                    ],
+                });
+
+            }
+            $(document).ready(function(){
+                var dataset = '.$data.';
+                do_datatable("#tac-list", dataset);
             });
         })(jQuery);
 
