@@ -70,7 +70,7 @@ function dh_atportal_address_book_form($form, &$form_state)
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
     if (user_access('add assistant teacher') && user_access('access area cluster'))
-        $form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list")." | ".l("Manage Area", "at-portal/area-cluster-list").'</h2>');
+        $form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list")." | ".l("Area Cluster List", "at-portal/area-cluster-list").'</h2>');
 	elseif (user_access('add assistant teacher'))
 		$form['at-portal'] = array('#markup' => '<h2>'.l("Add Assistant Teacher", "at-portal/address-book/add")." | ".l("Back to AT-Portal", "at-portal")." | ".l("CT-List", "at-portal/ct-list")." | ".l("CAT-List", "at-portal/cat-list").'</h2>');
     else
@@ -1155,16 +1155,16 @@ function dh_atportal_catlist()
     $out = '<h2>'.l("Back to AT-Portal", "at-portal")." | ".l("Back to AT Address Book", "at-portal/address-book").'</h2>';
 
     $q = "select
-        CASE WHEN ta_type = 'country' THEN ta_name WHEN ta_type ='state' THEN CONCAT(ta_name,' ','(',ta_country,')') WHEN ta_type ='zip' THEN CONCAT(ta_name,' ','(',ta_state, ', ',ta_country,')')  END as cat_area,
+        tac_name,
         GROUP_CONCAT(IF(tr_role = 'CAT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as ta_cat,
         GROUP_CONCAT(IF(tr_role = 'ACAT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as ta_acat
         from dh_teacher_role
-        left join dh_teacher_area on tr_identifier=ta_id
+        left join dh_teacher_area_cluster on tr_identifier=tac_id
         left join dh_teacher on tr_teacher=t_id
         where
         tr_role in ('CAT', 'ACAT')
         and tr_deleted=0
-        group by ta_id;
+        group by tac_id;
         ";
 
     $result = db_query($q);
@@ -1188,7 +1188,7 @@ function dh_atportal_catlist()
                     "bDestroy": true,
                     data: dataset,
                     columns: [
-                        { data: "cat_area", "title" : "Area" },
+                        { data: "tac_name", "title" : "Area" },
                         { data: "ta_cat", "title" : "CAT"},
                         { data: "ta_acat", "title" : "Assistant to CAT" },
                     ],
@@ -1235,6 +1235,7 @@ function dh_atportal_area_cluster_form($form, &$form_state, $edit_data = array()
     if(!$add)
         $tac_id = arg(3);
 
+    $form['at-portal'] = array('#markup' => '<h2>'.l("Back to AT-Portal", "at-portal")." | ".l("Back to AT Address Book", "at-portal/address-book")." | ".l("Back to Area Cluster List", "at-portal/area-cluster-list").'</h2>'.'</h2>');
 
     $form['tac_name'] = array(
         '#title' => 'Area Cluster Name',
