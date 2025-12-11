@@ -450,7 +450,19 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$add = 1;
 
     if(!$add)
-        $at_id = arg(3);
+    {
+        if (arg(3) == 'me')
+        {
+            $at = explode(".", $user->name);
+            $at_code = $at[0];
+            $gender = $at[1];
+            $at_id = db_query("select t_id from dh_teacher where t_code='".$at_code."' and t_gender='".$gender."'")->fetchField();
+        }
+        else
+        {
+            $at_id = arg(3);
+        }
+    }
 
     $at_code_year = "";
 
@@ -704,36 +716,12 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
         }
 
-    $form[$group]['t_cat_areas'] = array(
-            '#title' => '<br>Coordinating Area Teacher for:',
-            '#type' => 'select',
-            '#default_value' => isset($edit_data['edit_cat_areas'])?$edit_data['edit_cat_areas']:'',
-            '#options' => $cat_areas,
-            '#weight' => 21,
-            '#multiple' => "multiple",
-            '#attributes' => array(
-                'id' => 'edit-t-cat-areas',
-            ),
-        );
-
-    $form[$group]['t_acat_areas'] = array(
-            '#title' => 'Assistant to Coordinating Area Teacher for:',
-            '#type' => 'select',
-            '#default_value' => isset($edit_data['edit_acat_areas'])?$edit_data['edit_acat_areas']:'',
-            '#options' => $cat_areas,
-            '#weight' => 21,
-            '#multiple' => "multiple",
-            '#attributes' => array(
-                'id' => 'edit-t-acat-areas',
-            ),
-        );
-
         $form[$group]['t_ct_centers'] = array(
             '#title' => 'Center Teacher for:',
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_ct_centers'])?$edit_data['edit_ct_centers']:'',
             '#options' => $ct_centers,
-            '#weight' => 22,
+            '#weight' => 21,
             '#multiple' => "multiple",
             '#attributes' => array(
                 'id' => 'edit-t-ct-centers',
@@ -745,10 +733,34 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_act_centers'])?$edit_data['edit_act_centers']:'',
             '#options' => $ct_centers,
-            '#weight' => 23,
+            '#weight' => 22,
             '#multiple' => "multiple",
             '#attributes' => array(
                 'id' => 'edit-t-act-centers',
+            ),
+        );
+
+    $form[$group]['t_cat_areas'] = array(
+            '#title' => '<br>Coordinating Area Teacher for:',
+            '#type' => 'select',
+            '#default_value' => isset($edit_data['edit_cat_areas'])?$edit_data['edit_cat_areas']:'',
+            '#options' => $cat_areas,
+            '#weight' => 23,
+            '#multiple' => "multiple",
+            '#attributes' => array(
+                'id' => 'edit-t-cat-areas',
+            ),
+        );
+
+    $form[$group]['t_acat_areas'] = array(
+            '#title' => 'Assistant to Coordinating Area Teacher for:',
+            '#type' => 'select',
+            '#default_value' => isset($edit_data['edit_acat_areas'])?$edit_data['edit_acat_areas']:'',
+            '#options' => $cat_areas,
+            '#weight' => 24,
+            '#multiple' => "multiple",
+            '#attributes' => array(
+                'id' => 'edit-t-acat-areas',
             ),
         );
 
@@ -762,7 +774,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 110);
 
-    if(!$add)
+    if(!$add && user_access('add assistant teacher'))
     {
         $q = "select tl_tstamp, tl_msg, name FROM dh_teacher_log left join users on tl_user=uid where tl_event='Teacher Updated' and tl_teacher=".$at_id." order by tl_tstamp desc;";
         $res = db_query($q);
