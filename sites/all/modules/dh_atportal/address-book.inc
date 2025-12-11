@@ -717,7 +717,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
         }
 
         $form[$group]['t_ct_centers'] = array(
-            '#title' => 'Center Teacher for:',
+            '#title' => '<br>Center Teacher for:',
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_ct_centers'])?$edit_data['edit_ct_centers']:'',
             '#options' => $ct_centers,
@@ -741,7 +741,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
         );
 
     $form[$group]['t_cat_areas'] = array(
-            '#title' => '<br>Coordinating Area Teacher for:',
+            '#title' => 'Coordinating Area Teacher for:',
             '#type' => 'select',
             '#default_value' => isset($edit_data['edit_cat_areas'])?$edit_data['edit_cat_areas']:'',
             '#options' => $cat_areas,
