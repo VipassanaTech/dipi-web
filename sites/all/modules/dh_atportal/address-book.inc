@@ -1016,7 +1016,14 @@ function dh_atportal_profile_submit($form, &$form_state)
     else
       $t['t_year_appointed'] = $t['t_at_appointed'];
 
-    $t['t_year_appointed'] = date("Y", strtotime($t['t_year_appointed']['date']));
+	if($t['t_year_appointed'])
+	{
+		$t['t_year_appointed'] = date("Y", strtotime($t['t_year_appointed']['date']));
+	}
+	else
+	{
+		$t['t_year_appointed'] = null;
+	}
 
     $at_id = "";
 	if ( arg(2) == 'edit')
