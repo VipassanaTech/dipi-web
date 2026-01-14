@@ -804,6 +804,38 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
         $form['teacher_changelog'] = array('#type' => 'fieldset','#title' => '<h2>Change Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true, '#weight' => 112,);
         $form['teacher_changelog']['a'] = array('#markup' => $out);
+
+
+
+        $q = "select tr_updated, tr_role,
+        CASE WHEN tac_id IS NOT NULL THEN tac_name ELSE tc_name END AS location,
+        tr_deleted, name
+        FROM dh_teacher_role
+        left join dh_teacher_area_cluster on (tr_identifier=tac_id and tr_role in ('CAT', 'ACAT'))
+        left join dh_teacher_center on (tr_identifier=tc_id and tr_role in ('CT', 'ACT'))
+        left join users on tr_updated_by=uid
+        where tr_teacher=$at_id
+        order by tr_updated desc";
+
+        $res = db_query($q);
+        $rows = array();
+        while( $row = $res->fetchAssoc())
+        {
+                $l = array();
+                $l[] = $row['tr_updated'];
+                $l[] = $row['tr_role'];
+                $l[] = $row['location'];
+                $l[] = ($row['tr_deleted']) ? "Deleted" : "Added";
+                $l[] = $row['name'];
+                $rows[] = $l;
+        }
+        $header = array('DateTime', 'Role', 'Location', 'Status', 'User');
+        $out = '';
+        if (!empty($rows))
+            $out .= theme('table', array('header' => $header, 'rows' => $rows)) ;
+
+        $form['teacher_role_log'] = array('#type' => 'fieldset','#title' => '<h2>Role Log - Click to open</h2>' , '#collapsible' => true, '#collapsed' => true, '#weight' => 113,);
+        $form['teacher_role_log']['a'] = array('#markup' => $out);
     }
 
 
