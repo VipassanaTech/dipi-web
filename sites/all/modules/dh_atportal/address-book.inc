@@ -1193,6 +1193,13 @@ function dh_atportal_ctlist()
     ';
     drupal_add_js($js, 'inline');
 
+        $css = '#ct-list td:nth-child(1) { width: 25%; text-align: left }
+                #ct-list td:nth-child(2) { width: 25%; text-align: left }
+                #ct-list td:nth-child(3) { width: 25%; text-align: left }
+                #ct-list td:nth-child(4) { width: 25%; text-align: left }
+        ';
+    drupal_add_css($css, 'inline');
+
     return $out;
 }
 
@@ -1254,6 +1261,12 @@ function dh_atportal_catlist()
 
     ';
     drupal_add_js($js, 'inline');
+
+    $css = '#cat-list td:nth-child(1) { width: 50%; text-align: left }
+            #cat-list td:nth-child(2) { width: 25%; text-align: left }
+            #cat-list td:nth-child(3) { width: 25%; text-align: left }
+        ';
+    drupal_add_css($css, 'inline');
 
     return $out;
 }
