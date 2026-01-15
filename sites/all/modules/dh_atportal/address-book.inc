@@ -1142,8 +1142,8 @@ function dh_atportal_ctlist()
     $q = "select
     tc_name,
     concat(tc_city, ', ' ,s_name, ', ', c_name) as tc_address,
-    GROUP_CONCAT(IF(tr_role = 'CT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as tc_ct,
-    GROUP_CONCAT(IF(tr_role = 'ACT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), '') SEPARATOR '<br>') as tc_act
+    GROUP_CONCAT(IF(tr_role = 'CT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), NULL) SEPARATOR '<br>') as tc_ct,
+    GROUP_CONCAT(IF(tr_role = 'ACT', concat(t_f_name, ' ', t_l_name, ' (', t_code, ')'), NULL) SEPARATOR '<br>') as tc_act
     FROM dh_teacher_role
     left join dh_teacher_center on tr_identifier=tc_id
     left join dh_teacher on tr_teacher=t_id
