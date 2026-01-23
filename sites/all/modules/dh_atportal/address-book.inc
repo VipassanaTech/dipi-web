@@ -85,11 +85,14 @@ function dh_atportal_address_book_form($form, &$form_state)
     $form['t_code'] = array('#title' => 'AT-Code', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
-    $form['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
+    $form['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
 
     $form['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 4,
+        '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
+
+    $form['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '30', '#weight' => 5,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
     $form['t_country'] = array(
@@ -171,6 +174,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 
     if($values['t_l_name'])
         $search_filters .= " and t_l_name like '%{$values["t_l_name"]}%' ";
+
+    if($values['t_email'])
+        $search_filters .= " and (t_email like '%{$values["t_email"]}%' or t_email_alt like '%{$values["t_email"]}%') ";
 
     if( is_array($values['t_country']) && count($values['t_country'])>0 )
         $search_filters .= " and t_country in ('".implode("','", $values['t_country'])."') ";
@@ -1470,6 +1476,12 @@ function dh_atportal_area_cluster_list()
 
     ';
     drupal_add_js($js, 'inline');
+
+    $css = '#tac-list td:nth-child(1) { width: 10%; text-align: left }
+            #tac-list td:nth-child(2) { width: 45%; text-align: left }
+            #tac-list td:nth-child(3) { width: 45%; text-align: left }
+        ';
+    drupal_add_css($css, 'inline');
 
     return $out;
 }
