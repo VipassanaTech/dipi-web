@@ -1238,7 +1238,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							        var tr = s.closest("tr");
 							        var row = table.row( tr );
 		        					var id = row.data().aid;
-		        					if ( course == row.data().courseid )
+		        					if ( course == row.data().courseid && action == "Transfer")
 		        					{
 		        						$.alert("Source and Destination course cannot be the same!");
 		        						return false;	
