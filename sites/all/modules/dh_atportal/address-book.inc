@@ -589,11 +589,11 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
             if ( $edit_data['t_status'] == 'Deceased' ) $default_status = 'Deceased';
 			// if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
 			if ( $edit_data['t_status'] == 'Training' ) $default_status = 'Training';
-            if ( $edit_data['t_status'] != 'Training' ) unset($statuses['Training']);
+            // if ( $edit_data['t_status'] != 'Training' ) unset($statuses['Training']);
 		};	
 
-        if($add)
-            unset($statuses['Training']);
+        // if($add)
+        //     unset($statuses['Training']);
 
 		$form[$group]['t_status'] = array('#title' => 'Status', '#type' => 'select', '#options' =>  $statuses,
 			'#default_value' => $default_status, '#weight' => 9, '#empty_option' => 'Choose', '#required' => 1);
