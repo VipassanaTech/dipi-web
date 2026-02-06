@@ -59,13 +59,22 @@ function xfdf_create($filename, $fields)
   file_put_contents($filename, $xfdf);
 }
 
+function json_values_create($filename, $fields)
+{
+  file_put_contents($filename, json_encode($fields));
+}
+
 
 function pdf_fill_form($fdf, $pdf, $out)
 {
+    global $user;
+    $values_json = "";
 	if (is_array($fdf))
 	{
 		$fdf_file = tempnam(sys_get_temp_dir(), gethostname());
 		xfdf_create($fdf_file, $fdf);
+        $values_json = $fdf_file."-json";
+        json_values_create($values_json, $fdf);
 	}
 	else
 		$fdf_file = $fdf;
@@ -75,12 +84,14 @@ function pdf_fill_form($fdf, $pdf, $out)
   $fontfile = drupal_get_path('module', 'dh_manageapp').'/fonts/FreeMonoBold.ttf';
 	$cmd = "pdftk $pdf fill_form $fdf_file output $tmp_out_file flatten replacement_font $fontfile";
 	//drupal_set_message($cmd);
-	exec($cmd);
-
+	if ( $user->uid == 222 )
+        $cmd = "cd /dhamma/scripts/dipi-automation && /usr/local/bin/uv run  app.py --template $pdf --values $values_json --outfile $tmp_out_file--delete-widgets ";
+    exec($cmd);
   $cmd = "/usr/bin/ps2pdf $tmp_out_file $out";
   exec($cmd);
 
 	unlink( $fdf_file );
+    unlink($fdf_file."-json");
   unlink( $tmp_out_file );
 }
 
