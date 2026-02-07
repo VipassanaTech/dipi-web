@@ -827,13 +827,13 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	if( !isset($teacher['F']))
 		$teacher['F'][1] = $teacher['M'][1];
 
-  $orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
+  $orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_bhante,0) desc, IFNULL(t_full_t,0) desc, IFNULL(t_sat,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
   if($seating)
     $orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -865,8 +865,21 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 				{
 					unset($row);
 					$row[] = $i++;
-          if($r['ac_teacher'])
-            $r['Full Name'] = $r['Full Name']." <b>(AT)</b>";
+
+
+        if($r['ac_teacher'])
+        {
+            if($r['t_bhante'])
+                $r['Full Name'] = $r['Full Name']." <b>(BT-".$r['t_year_appointed'].")</b>";
+            elseif($r['t_full_t'])
+                $r['Full Name'] = $r['Full Name']." <b>(T-".$r['t_year_appointed'].")</b>";
+            elseif($r['t_sat'])
+                $r['Full Name'] = $r['Full Name']." <b>(SAT-".$r['t_year_appointed'].")</b>";
+            else
+                $r['Full Name'] = $r['Full Name']." <b>(AT-".$r['t_year_appointed'].")</b>";
+        }
+
+
           if(strtolower($r['a_type']) == "sevak")
 					 $row[] = $r['Full Name']." <b>(Sevak)</b>";
           else
