@@ -588,6 +588,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$action_select .='<option value=\"Delete\">Delete</option>';
 			$actions[] = "Delete";
 		}
+        if ($LC)
+        {
+            $action_select .='<option value=\"Send Review Email\">Send Review Email</option>';
+            $actions[] = "Send Review Email";
+        }
 		//$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
 		$action = implode("," , $actions);
 //		$action_select .='<option value="Add">'.$add_action.'</option>';
@@ -1150,6 +1155,29 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					}
 
 				}
+
+                function app_at_email( s )
+                {
+                    var tr = $(s).closest("tr");
+                    var row = table.row( tr );
+                    var id = row.data().aid;
+                    var r = true;
+                    if (r == true)
+                    {
+                        $(tr).loading();
+                        $.getJSON( "/app/"+id+"/send-at-email", {} )
+                          .done(function( json ) {
+                                alert(json.msg);
+                          })
+                          .fail(function( jqxhr, textStatus, error ) {
+                            var err = textStatus + ", " + error;
+                            alert("Error updating "+err);
+                            $(tr).loading("stop");
+                        });
+                    }
+
+                }
+
 				function add_referral( s )
 				{
 			        var tr = $(s).closest("tr");
@@ -1212,6 +1240,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        	app_del(s);
 			        	return;
 			        }
+                    if ( action == "Send Review Email" )
+                    {
+                        app_at_email(s);
+                        return;
+                    }
 			        var comment_transfer = "";
 			        if ( action == "Transfer")
 			        	comment_transfer = "<label>Comment</label><br><textarea name=\"comment\" id=\"trf-comment\" size=\"30\"></textarea>";

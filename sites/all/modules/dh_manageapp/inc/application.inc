@@ -1267,6 +1267,33 @@ function app_delete( $id )
 	db_query($q);
 }
 
+function send_at_email()
+{
+    $id = arg(1);
+    $out['status'] = 'Failed';
+    $out['msg'] = '';
+    $status = db_query("select a_status from dh_applicant where a_id=$id")->fetchField();
+    if ($status == "R-ATReview")
+    {
+        dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
+        $out['status'] = 'OK';
+        $out['msg'] = 'Success! Sent RecoAT Email';
+    }
+    elseif ($status == "A-ATReview")
+    {
+        dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
+        $out['status'] = 'OK';
+        $out['msg'] = 'Success! Sent AreaT Email';
+    }
+    else
+    {
+        $out['msg'] = 'Failed! application is not R-ATReview or A-ATReview';
+    }
+
+    drupal_json_output($out);
+    exit;
+}
+
 function set_referral( $app_id )
 {
 	$referral = 0;

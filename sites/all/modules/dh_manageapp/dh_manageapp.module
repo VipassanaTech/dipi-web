@@ -332,6 +332,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('delete application'),
 	       'type' => MENU_CALLBACK);
 
+    $items['app/%app_id/send-at-email'] = array( 'title' => t('Day Zero'),
+           'page callback' => 'send_at_email',
+           'access arguments' => array('edit application'),
+           'type' => MENU_CALLBACK);
+
 
 	$items['app/add/%centre_id/%course_id'] = array( 'title' => t('Day Zero'),
 	       'page callback' => 'dh_manage_day_zero',
