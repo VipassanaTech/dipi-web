@@ -1174,6 +1174,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                             alert("Error updating "+err);
                             $(tr).loading("stop");
                         });
+                        $(tr).loading("stop");
                     }
 
                 }
