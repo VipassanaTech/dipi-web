@@ -1272,7 +1272,7 @@ function send_at_email()
     $app_id = arg(1);
     $out['status'] = 'Failed';
     $out['msg'] = '';
-    $status = db_query("select a_status from dh_applicant where a_id=$id")->fetchField();
+    $status = db_query("select a_status from dh_applicant where a_id=$app_id")->fetchField();
     if ($status == "R-ATReview")
     {
         dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
