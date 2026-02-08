@@ -1269,7 +1269,7 @@ function app_delete( $id )
 
 function send_at_email()
 {
-    $id = arg(1);
+    $app_id = arg(1);
     $out['status'] = 'Failed';
     $out['msg'] = '';
     $status = db_query("select a_status from dh_applicant where a_id=$id")->fetchField();
