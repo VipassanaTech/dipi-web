@@ -149,54 +149,54 @@ function create_d11_report_pdf( $course_id )
 	}
 
 	$fields = array();
-	$fields['form1[0].#subform[0].Header[0].cname[0]'] = $centre_name;
-	$fields['form1[0].#subform[0].cnumber[0]'] = 'NA';
-	$fields['form1[0].#subform[0].Header[0].cdate[0]'] = $course_date;
-	$fields['form1[0].#subform[0].ctype[0]'] = $course_type;
-	$fields['form1[0].#subform[0].address[0]'] = $address;
+	$fields['cname'] = $centre_name;
+	$fields['cnumber'] = 'NA';
+	$fields['cdate'] = $course_date;
+	$fields['ctype'] = $course_type;
+	$fields['address'] = $address;
 	$i = 1;
 	foreach( $teacher['M'] as $t )
 	{
-		$fields['form1[0].#subform[0].Table1[0].Row'.($i+1).'[0].M'.$i.'[0]'] = $t['t_name'].' ('.$t['t_code'].') - '.$t['ct_type'];
+		$fields['M'.$i] = $t['t_name'].' ('.$t['t_code'].') - '.$t['ct_type'];
 		$i++;		
 	}
 	$i = 1;
 	foreach( $teacher['F'] as $t )
 	{
-		$fields['form1[0].#subform[0].Table1[0].Row'.($i+1).'[0].F'.$i.'[0]'] = $t['t_name'].' ('.$t['t_code'].') - '.$t['ct_type'];
+		$fields['F'.$i] = $t['t_name'].' ('.$t['t_code'].') - '.$t['ct_type'];
 		$i++;		
 	}
 
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].IN1[0]'] = $totals['STUDENT']['M'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].IO1[0]'] = $totals['STUDENT']['M'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].FN1[0]'] = $totals['STUDENT']['M'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].FO1[0]'] = $totals['STUDENT']['M'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].DS1[0]'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row2[0].T1[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
+	$fields['IN1'] = $totals['STUDENT']['M'][0]['IN'];
+	$fields['IO1'] = $totals['STUDENT']['M'][1]['IN'];
+	$fields['FN1'] = $totals['STUDENT']['M'][0]['NON-IN'];
+	$fields['FO1'] = $totals['STUDENT']['M'][1]['NON-IN'];
+	$fields['DS1'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
+	$fields['T1'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].IN2[0]'] = $totals['STUDENT']['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].IO2[0]'] = $totals['STUDENT']['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].FN2[0]'] = $totals['STUDENT']['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].FO2[0]'] = $totals['STUDENT']['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].DS2[0]'] = $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row3[0].T2[0]'] = $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
+	$fields['IN2'] = $totals['STUDENT']['F'][0]['IN'];
+	$fields['IO2'] = $totals['STUDENT']['F'][1]['IN'];
+	$fields['FN2'] = $totals['STUDENT']['F'][0]['NON-IN'];
+	$fields['FO2'] = $totals['STUDENT']['F'][1]['NON-IN'];
+	$fields['DS2'] = $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
+	$fields['T2'] = $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].IN3[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].IO3[0]'] = $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].FN3[0]'] = $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].FO3[0]'] = $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].DS3[0]'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];;
-	$fields['form1[0].#subform[0].Table2[0].Row4[0].T3[0]'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
+	$fields['IN3'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'];
+	$fields['IO3'] = $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'];
+	$fields['FN3'] = $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'];
+	$fields['FO3'] = $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'];
+	$fields['DS3'] = $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];;
+	$fields['T3'] = $totals['STUDENT']['M'][0]['IN'] + $totals['STUDENT']['F'][0]['IN'] + $totals['STUDENT']['M'][1]['IN'] + $totals['STUDENT']['F'][1]['IN'] + $totals['STUDENT']['M'][0]['NON-IN'] + $totals['STUDENT']['F'][0]['NON-IN'] + $totals['STUDENT']['M'][1]['NON-IN'] + $totals['STUDENT']['F'][1]['NON-IN'] + $totals['SEVAK']['M'][1]['IN'] + $totals['SEVAK']['M'][1]['NON-IN'] + $totals['SEVAK']['F'][1]['IN'] + $totals['SEVAK']['F'][1]['NON-IN'];
 
 
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].IN4[0]'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].IO4[0]'] = $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].FN4[0]'] = $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].FO4[0]'] = $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].DS4[0]'] = $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
-	$fields['form1[0].#subform[0].Table2[0].Row5[0].T4[0]'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'] + $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'] + $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'] + $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'] + $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
+	$fields['IN4'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'];
+	$fields['IO4'] = $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'];
+	$fields['FN4'] = $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'];
+	$fields['FO4'] = $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'];
+	$fields['DS4'] = $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
+	$fields['T4'] = $left['STUDENT']['M'][0]['IN'] + $left['STUDENT']['F'][0]['IN'] + $left['STUDENT']['M'][1]['IN'] + $left['STUDENT']['F'][1]['IN'] + $left['STUDENT']['M'][0]['NON-IN'] + $left['STUDENT']['F'][0]['NON-IN'] + $left['STUDENT']['M'][1]['NON-IN'] + $left['STUDENT']['F'][1]['NON-IN'] + $left['SEVAK']['M'][1]['IN'] + $left['SEVAK']['F'][1]['IN'] + $left['SEVAK']['M'][1]['NON-IN'] + $left['SEVAK']['F'][1]['NON-IN'];
 
 
 	$template = drupal_get_path("module", "dh_manageapp")."/templates/report-d11-template.pdf";
