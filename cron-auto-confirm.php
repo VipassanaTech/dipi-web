@@ -48,7 +48,8 @@ while ($row = $result->fetchAssoc())
           $append = " and a_dob='".$row['a_dob']."'";
 
 	echo "append: $append\n";
-        $attended = db_query("select count(*) from dh_applicant left join dh_course on a_course=c_id left join dh_type_detail on td_id=c_course_type where a_f_name=:a_f_name and a_l_name=:a_l_name and td_val3 not in ('1-Day') and a_attended='1' $append", array(':a_f_name' => $row['a_f_name'], ':a_l_name' => $row['a_l_name']))->fetchField();
+        //$attended = db_query("select count(*) from dh_applicant left join dh_course on a_course=c_id left join dh_type_detail on td_id=c_course_type where a_f_name=:a_f_name and a_l_name=:a_l_name and td_val3 not in ('1-Day') and a_attended='1' $append", array(':a_f_name' => $row['a_f_name'], ':a_l_name' => $row['a_l_name']))->fetchField();
+        $attended = 1;
 	echo "attended: $attended\n";
         if($attended >=1)
         {
