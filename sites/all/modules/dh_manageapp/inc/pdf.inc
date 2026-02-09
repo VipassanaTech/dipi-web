@@ -85,14 +85,20 @@ function pdf_fill_form($fdf, $pdf, $out)
 	$cmd = "pdftk $pdf fill_form $fdf_file output $tmp_out_file flatten replacement_font $fontfile";
 	//drupal_set_message($cmd);
 	if ( $user->uid == 222 )
-        $cmd = "cd /dhamma/scripts/dipi-automation && /usr/local/bin/uv run  app.py --template $pdf --values $values_json --outfile $tmp_out_file--delete-widgets ";
+	{
+		$cmd = "cd /dhamma/scripts/dipi-automation && HOME=/dhamma/scripts/dipi-automation/cache /usr/local/bin/uv run  app.py --template ".DRUPAL_ROOT."/$pdf --values $values_json --outfile $tmp_out_file --delete-widgets ";
+		watchdog("dipilala", $cmd);
+	}
     exec($cmd);
   $cmd = "/usr/bin/ps2pdf $tmp_out_file $out";
   exec($cmd);
 
 	unlink( $fdf_file );
+	if ( $user->uid != 222 )
+	{
     unlink($fdf_file."-json");
-  unlink( $tmp_out_file );
+    unlink( $tmp_out_file );
+	}
 }
 
 function create_d11_report_pdf( $course_id )
