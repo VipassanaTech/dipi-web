@@ -79,7 +79,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_dob'])?$edit_data['a_dob']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
     		'maxDate' => 0, '#required' => 1, 
     		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
+    	),'#date_year_range' => '-100:-7', '#date_label_position' => 'above',
 		'#theme_wrappers' => array('date_popup'), '#suffix' => ''); /*'<div class="form-item">DOB Checked<input type="checkbox" id="edit-checked-dob" /></div>'); */
 	$form[$group]['age'] = array('#title' => 'Age', '#type' => 'textfield', '#size' => '5', '#weight' => 11, 
 		'#default_value' => '', '#required' => 0, '#maxlength' => 10 );

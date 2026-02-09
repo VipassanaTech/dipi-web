@@ -254,7 +254,7 @@
 				return false;				
 			}
 			var age = get_age($("#edit-a-dob-datepicker-popup-0").val());
-			if ( (age > 95) || (age < 9 ) )
+			if ( (age > 95) || (age < 7 ) )
 			{
 				alert("Please check Date of Birth");
 				$("#edit-a-dob-datepicker-popup-0").focus();
