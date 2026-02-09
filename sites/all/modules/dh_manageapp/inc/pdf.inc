@@ -61,6 +61,9 @@ function xfdf_create($filename, $fields)
 
 function json_values_create($filename, $fields)
 {
+    array_walk($fields, function (&$v, $k) {
+        $v = (string) $v;
+    });
   file_put_contents($filename, json_encode($fields));
 }
 
