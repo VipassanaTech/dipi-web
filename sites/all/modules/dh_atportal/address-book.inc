@@ -255,7 +255,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 
     while( $r = $result->fetchAssoc() )
     {
-        $r["edit_at"] = $r['t_code']."<br>(".l("Edit", "/at-portal/address-book/edit/".strtolower($r['t_id'])).')';
+        $r["edit_at"] = $r['t_code'];
+        if(user_access('add assistant teacher'))
+            $r["edit_at"] = $r['t_code']."<br>(".l("Edit", "/at-portal/address-book/edit/".strtolower($r['t_id'])).')';
         $r["t_sat"] = $r["t_sat"]?'Yes':'';
         $r["t_ct"] = $r["t_ct"]?'Yes':'';
         $r["t_full_t"] = $r["t_full_t"]?'Yes':'';
