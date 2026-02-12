@@ -1028,40 +1028,42 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	if (user_access('add assistant teacher'))
 	{
-			if ($t['t_sat'] == '')
-				$t['t_sat'] = '0';
-			if ($t['t_full_t'] == '')
-				$t['t_full_t'] = '0';
-			if ($t['t_ct'] == '')
-				$t['t_ct'] = '0';
-			if ($t['t_cat'] == '')
-				$t['t_cat'] = '0';
-			if ($t['t_bhante'] == '')
-				$t['t_bhante'] = '0';
-            if ($t['t_lc_area'] == '')
-                $t['t_lc_area'] = '0';
-            if ($t['t_allow_cat_emails'] == '')
-                $t['t_allow_cat_emails'] = '0';
+		if ($t['t_sat'] == '')
+			$t['t_sat'] = '0';
+		if ($t['t_full_t'] == '')
+			$t['t_full_t'] = '0';
+		if ($t['t_ct'] == '')
+			$t['t_ct'] = '0';
+		if ($t['t_cat'] == '')
+			$t['t_cat'] = '0';
+		if ($t['t_bhante'] == '')
+			$t['t_bhante'] = '0';
+        if ($t['t_lc_area'] == '')
+            $t['t_lc_area'] = '0';
+        if ($t['t_allow_cat_emails'] == '')
+            $t['t_allow_cat_emails'] = '0';
+
+        if($t['t_bhante'])
+          $t['t_year_appointed'] = $t['t_bt_appointed'];
+        elseif($t['t_full_t'])
+          $t['t_year_appointed'] = $t['t_full_t_appointed'];
+        elseif($t['t_sat'])
+          $t['t_year_appointed'] = $t['t_sat_appointed'];
+        else
+          $t['t_year_appointed'] = $t['t_at_appointed'];
+
+        if($t['t_year_appointed'])
+        {
+            $t['t_year_appointed'] = date("Y", strtotime($t['t_year_appointed']['date']));
+        }
+        else
+        {
+            $t['t_year_appointed'] = null;
+        }
 	}
 
 
-    if($t['t_bhante'])
-      $t['t_year_appointed'] = $t['t_bt_appointed'];
-    elseif($t['t_full_t'])
-      $t['t_year_appointed'] = $t['t_full_t_appointed'];
-    elseif($t['t_sat'])
-      $t['t_year_appointed'] = $t['t_sat_appointed'];
-    else
-      $t['t_year_appointed'] = $t['t_at_appointed'];
 
-	if($t['t_year_appointed'])
-	{
-		$t['t_year_appointed'] = date("Y", strtotime($t['t_year_appointed']['date']));
-	}
-	else
-	{
-		$t['t_year_appointed'] = null;
-	}
 
     $at_id = "";
 	if ( arg(2) == 'edit')
@@ -1091,46 +1093,50 @@ function dh_atportal_profile_submit($form, &$form_state)
 		$at_id = db_insert('dh_teacher')->fields($t)->execute();
 	}
 
-    foreach($new_t_role as $role_type => $new_values)
+    if (user_access('add assistant teacher'))
     {
-        if(!$new_values)
-            $new_values = array();
-
-        $old_values = array_keys(db_query("select tr_identifier from dh_teacher_role where tr_role=:tr_role and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_role'=>$role_type, ':tr_teacher'=>$at_id))->fetchAllAssoc('tr_identifier'));
-
-        $added_values = array_diff($new_values, $old_values);
-        $removed_values = array_diff($old_values, $new_values);
-
-        if(is_array($added_values) && count($added_values))
+        foreach($new_t_role as $role_type => $new_values)
         {
-            foreach($added_values as $added_value)
+            if(!$new_values)
+                $new_values = array();
+
+            $old_values = array_keys(db_query("select tr_identifier from dh_teacher_role where tr_role=:tr_role and tr_teacher=:tr_teacher and tr_deleted=0", array(':tr_role'=>$role_type, ':tr_teacher'=>$at_id))->fetchAllAssoc('tr_identifier'));
+
+            $added_values = array_diff($new_values, $old_values);
+            $removed_values = array_diff($old_values, $new_values);
+
+            if(is_array($added_values) && count($added_values))
             {
-                $tr = array();
-                $tr['tr_teacher'] = $at_id;
-                $tr['tr_identifier'] = $added_value;
-                $tr['tr_role'] = $role_type;
-                $tr['tr_created_by'] = $user->uid;
-                $tr['tr_updated_by'] = $user->uid;
-                db_insert('dh_teacher_role')->fields($tr)->execute();
+                foreach($added_values as $added_value)
+                {
+                    $tr = array();
+                    $tr['tr_teacher'] = $at_id;
+                    $tr['tr_identifier'] = $added_value;
+                    $tr['tr_role'] = $role_type;
+                    $tr['tr_created_by'] = $user->uid;
+                    $tr['tr_updated_by'] = $user->uid;
+                    db_insert('dh_teacher_role')->fields($tr)->execute();
+                }
             }
+
+            if(is_array($removed_values) && count($removed_values))
+            {
+                    $tr = array();
+                    $tr['tr_updated'] = date('Y-m-d H:i:s');
+                    $tr['tr_updated_by'] = $user->uid;
+                    $tr['tr_deleted'] = 1;
+
+                    db_update('dh_teacher_role')
+                        ->fields($tr)
+                        ->condition('tr_identifier', $removed_values, 'IN')
+                        ->condition('tr_teacher', $at_id)
+                        ->condition('tr_role', $role_type)
+                        ->execute();
+            }
+
         }
-
-        if(is_array($removed_values) && count($removed_values))
-        {
-                $tr = array();
-                $tr['tr_updated'] = date('Y-m-d H:i:s');
-                $tr['tr_updated_by'] = $user->uid;
-                $tr['tr_deleted'] = 1;
-
-                db_update('dh_teacher_role')
-                    ->fields($tr)
-                    ->condition('tr_identifier', $removed_values, 'IN')
-                    ->condition('tr_teacher', $at_id)
-                    ->condition('tr_role', $role_type)
-                    ->execute();
-        }
-
     }
+
 
 	drupal_set_message(t("Details added/updated successfully"), 'status');
 
