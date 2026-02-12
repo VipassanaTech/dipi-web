@@ -178,7 +178,9 @@ function dh_manage_courses()
 								return "No (<a href=\"/course/'.arg(1).'/"+data.dh_course.c_id+"\">View</a>)";
 						} },
 					],
-				    select: true,
+				    select: {
+                        style: "single" // Restricts selection to one row
+                    },
 				    buttons: [
 				        { extend: "create", editor: editor },
 				        { extend: "edit",   editor: editor },
