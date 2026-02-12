@@ -993,18 +993,6 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$t[$key] = $value;
 	}
 
-    $new_t_role['CT'] = $t['t_ct_centers'];
-    unset($t['t_ct_centers']);
-
-    $new_t_role['ACT'] = $t['t_act_centers'];
-    unset($t['t_act_centers']);
-
-    $new_t_role['CAT'] = $t['t_cat_areas'];
-    unset($t['t_cat_areas']);
-
-    $new_t_role['ACAT'] = $t['t_acat_areas'];
-    unset($t['t_acat_areas']);
-
 	if ($t['t_email'])
 		$t['t_email'] = trim($t['t_email']);
 
@@ -1014,20 +1002,32 @@ function dh_atportal_profile_submit($form, &$form_state)
 	if ($t['t_dob']['date'] == '')
 		$t['t_dob'] = NULL;
 
-    if ($t['t_at_appointed']['date'] == '')
-        $t['t_at_appointed'] = NULL;
-
-    if ($t['t_sat_appointed']['date'] == '')
-        $t['t_sat_appointed'] = NULL;
-
-    if ($t['t_full_t_appointed']['date'] == '')
-        $t['t_full_t_appointed'] = NULL;
-
-    if ($t['t_bt_appointed']['date'] == '')
-        $t['t_bt_appointed'] = NULL;
-
 	if (user_access('add assistant teacher'))
 	{
+        $new_t_role['CT'] = $t['t_ct_centers'];
+        unset($t['t_ct_centers']);
+
+        $new_t_role['ACT'] = $t['t_act_centers'];
+        unset($t['t_act_centers']);
+
+        $new_t_role['CAT'] = $t['t_cat_areas'];
+        unset($t['t_cat_areas']);
+
+        $new_t_role['ACAT'] = $t['t_acat_areas'];
+        unset($t['t_acat_areas']);
+
+        if ($t['t_at_appointed']['date'] == '')
+            $t['t_at_appointed'] = NULL;
+
+        if ($t['t_sat_appointed']['date'] == '')
+            $t['t_sat_appointed'] = NULL;
+
+        if ($t['t_full_t_appointed']['date'] == '')
+            $t['t_full_t_appointed'] = NULL;
+
+        if ($t['t_bt_appointed']['date'] == '')
+            $t['t_bt_appointed'] = NULL;
+
 		if ($t['t_sat'] == '')
 			$t['t_sat'] = '0';
 		if ($t['t_full_t'] == '')
