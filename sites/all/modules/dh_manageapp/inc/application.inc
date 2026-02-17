@@ -428,16 +428,16 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 
 		$form[$group]['al_left_course_details'] = array('#title' => 'Refused Admission/Left Course Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 21, 
+			'#rows' => 3, '#weight' => 21,  '#maxlength' => 200,
 			'#default_value' => isset($edit_data['al_left_course_details'])?$edit_data['al_left_course_details']:'', '#required' => 0, );
 		$form[$group]['al_reduce_practice_details'] = array('#title' => 'Asked to reduce meditation Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 22, '#maxlength' => 100, 
+			'#rows' => 3, '#weight' => 22, '#maxlength' => 200,
 			'#default_value' => isset($edit_data['al_reduce_practice_details'])?$edit_data['al_reduce_practice_details']:'', '#required' => 0, );
 		$form[$group]['al_personal_tragedy_details'] = array('#title' => 'Personal Tragedy in Last year Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 23, '#maxlength' => 100,
+			'#rows' => 3, '#weight' => 23, '#maxlength' => 200,
 			'#default_value' => isset($edit_data['al_personal_tragedy_details'])?$edit_data['al_personal_tragedy_details']:'', '#required' => 0, );
 		$form[$group]['al_difficulty_details'] = array('#title' => 'Any Difficulties encountered Details', '#type' => 'textarea', 
-			'#rows' => 3, '#weight' => 24, '#maxlength' => 100,
+			'#rows' => 3, '#weight' => 24, '#maxlength' => 200,
 			'#default_value' => isset($edit_data['al_difficulty_details'])?$edit_data['al_difficulty_details']:'', '#required' => 0, );
 		$form[$group]['al_special_req_details'] = array('#title' => 'Special Requirement Details', '#type' => 'textarea', 
 			'#rows' => 3, '#weight' => 25,
@@ -446,7 +446,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#rows' => 3, '#weight' => 26,
 			'#default_value' => isset($edit_data['al_additional_info'])?$edit_data['al_additional_info']:'', '#required' => 0, );
 		$form[$group]['al_arrival'] = array('#title' => 'Arrival at Centre?', '#type' => 'textfield', 
-			 '#weight' => 27, '#maxlength' => 50,
+			 '#weight' => 27, '#maxlength' => 100,
 			'#default_value' => isset($edit_data['al_arrival'])?$edit_data['al_arrival']:'', '#required' => 0, );	
 
 		$form[$group]['al_recommending'] = array('#title' => 'Recommending AT', '#type' => 'textfield', 
