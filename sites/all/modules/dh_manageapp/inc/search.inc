@@ -534,12 +534,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				if (data.app_status == "R-ATReview" || data.app_status == "A-ATReview")
 				{
 					var t = "Rejected-"+data.app_status[0]+"-AT";
-					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"Approved\">Approved</option><option value=\""+t+"\">Rejected</option><option value=\"Cancelled\">Cancelled</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
+					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"Approved\">Approved</option><option value=\""+t+"\">Rejected</option><option value=\"Cancelled\">Cancelled</option><option value=\"Custom\">Custom</option></select><div class=\"sub-letter-"+data.aid+"\" subletter=\"\"></div><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 				}
 				else if (data.app_status == "R-ATTransfer")
 				{
 					var t = "R-ATReview";
-					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"R-ATReview\">R-AT Review</option><option value=\"Cancelled\">Cancelled</option></select><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
+					return "<select id=\"new-status-"+data.aid+"\" name=\"newstatus"+data.aid+"\" class=\"status-select\"><option value=\"\">Choose</option><option value=\"R-ATReview\">R-AT Review</option><option value=\"Cancelled\">Cancelled</option><option value=\"Custom\">Custom</option></select><div class=\"sub-letter-"+data.aid+"\" subletter=\"\"></div><button type=\"button\" class=\"update-status\" id=\"btn-"+data.aid+"\">Update</button>";
 
 				}
                 else if (data.long_course && data.reco_status != "Approved" && data.app_status != "R-ATReview" && data.app_status != "R-ATTransfer")
