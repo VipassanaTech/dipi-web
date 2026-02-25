@@ -95,6 +95,9 @@ function dh_atportal_address_book_form($form, &$form_state)
     $form['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '30', '#weight' => 5,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
+    $form['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '30', '#weight' => 5.1,
+        '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
+
     $form['t_country'] = array(
         '#title' => 'Country',
         '#type' => 'select',
@@ -166,6 +169,10 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 {
     $values = $form_state['user_input'];
 
+    foreach ($values as $key => $value) {
+        $values[$key] = addslashes($value);
+    }
+
     if($values['t_code'])
         $search_filters .= " and t_code like '%{$values["t_code"]}%' ";
 
@@ -177,6 +184,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 
     if($values['t_email'])
         $search_filters .= " and (t_email like '%{$values["t_email"]}%' or t_email_alt like '%{$values["t_email"]}%') ";
+
+    if($values['t_city'])
+        $search_filters .= " and t_city like '%{$values["t_city"]}%' ";
 
     if( is_array($values['t_country']) && count($values['t_country'])>0 )
         $search_filters .= " and t_country in ('".implode("','", $values['t_country'])."') ";
