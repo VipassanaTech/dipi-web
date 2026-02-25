@@ -170,7 +170,8 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
     $values = $form_state['user_input'];
 
     foreach ($values as $key => $value) {
-        $values[$key] = addslashes($value);
+        if(is_string($value))
+            $values[$key] = addslashes($value);
     }
 
     if($values['t_code'])

@@ -1420,6 +1420,12 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	if ( isset($form_state['storage']) )
 	{
 		$storage = $form_state['storage'];
+
+        foreach ($storage as $key => $value) {
+            if(is_string($value))
+                $storage[$key] = addslashes($value);
+        }
+
 		if( $centre_id == '')
 			$centre_id = $storage['centre'];
 
