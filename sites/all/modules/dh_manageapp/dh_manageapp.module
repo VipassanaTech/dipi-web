@@ -235,6 +235,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage letters'),
 	       'type' => MENU_CALLBACK);
 
+    $items['letters/%centre_id/restore/%letter_id'] = array( 'title' => t('Manage Letters'),
+           'page callback' => 'dh_manage_letters',
+           'access arguments' => array('manage letters'),
+           'type' => MENU_CALLBACK);
+
 	$items['letters/%centre_id/delattach/%letter_id'] = array( 'title' => t('Manage Letters'),
 	       'page callback' => 'dh_manage_letters',
 	       'access arguments' => array('manage letters'),

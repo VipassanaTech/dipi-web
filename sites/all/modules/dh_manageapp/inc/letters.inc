@@ -28,6 +28,10 @@ function dh_manage_letters()
 			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Letter deleted successfully");
 			drupal_goto("letters/".arg(1));
+        case 'restore':
+            db_update("dh_letter")->fields(array('l_deleted' => 0))->condition('l_id', arg(3))->execute();
+            drupal_set_message("Letter restored successfully");
+            drupal_goto("letters/".arg(1));
 		case 'delattach':
 			db_update("dh_letter")->fields(array('l_attachment' => null))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Attachment deleted successfully");
@@ -66,11 +70,35 @@ function dh_letters_listing()
 	$attributes = array('id' => 'table-letters');
 	$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
+
+
+    $q_d = "select l_id, l_name as 'LetterName', l_event as 'Status', tdc.td_val1 as 'Course Type', l_subject as 'Subject' from dh_letter left join dh_type_detail tdc on l_course_type=tdc.td_id where l_center='$centre_id' and l_deleted=1 order by l_event , tdc.td_val1";
+//and a_status='Confirmed'
+    $result_d = db_query($q_d);
+    $rows_d = array();
+    while( $r_d = $result_d->fetchAssoc() )
+    {
+        unset($rs_d);
+
+        $rs_d[] = $r_d['LetterName'];
+        $rs_d[] = $r_d['Status'];
+        $rs_d[] = $r_d['Course Type']?$r['Course Type']:"All";
+        $rs_d[] = $r_d['Subject'];
+        $rs_d[] = l("Restore", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
+        $rows_d[] = array_values($rs_d);
+    }
+    $header_d = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
+    $attributes_d = array('id' => 'table-letters-d');
+    $out .= "<br><br><h2>Deleted Letters</h2>";
+    $out .= theme('table', array('header' => $header_d, 'rows' => $rows_d, 'attributes' => $attributes_d));
+
+
 	//$out .= '<div id="replace-me"></div>';
 	$js = '
 		(function ($) {
 			$(document).ready(function(){
 				$("#table-letters").DataTable();
+                $("#table-letters-d").DataTable();
 				$("#table-letters tbody").on("click", ".delete-letter", function () {
 					var lname = $(this).attr("txt");
 					var r = confirm("Are you sure you want to delete the letter "+lname+"?");
@@ -79,6 +107,14 @@ function dh_letters_listing()
 					else
 						return true;
 				});
+                $("#table-letters-d tbody").on("click", ".restore-letter", function () {
+                    var lname = $(this).attr("txt");
+                    var r = confirm("Are you sure you want to restore the letter "+lname+"?");
+                    if ( r == false )
+                        return false;
+                    else
+                        return true;
+                });
 			});
 
 		})(jQuery);
