@@ -2269,31 +2269,25 @@ function _get_student_cancel_count()
 function _get_student_finalize()
 {
     global $user;
-    $c_course = arg(1);
+    $course = arg(1);
 
-    $q = "SELECT count(a_attended) as TotalAttended,
-      td.td_key as CourseType,
-      c_list_only as ListOnly
-      from dh_applicant a
-      left join dh_course c on a.a_course=c.c_id
-      left join dh_type_detail td on c.c_course_type=td.td_id
-      where c_end <= CURDATE() and a_attended=1 and a_course=$c_course";
-    $result = db_query($q);
-    $Count = $result->rowCount();
-    if ($Count > 0) 
-    {
-        $rows = array();
-        while ($r = $result->fetchAssoc()) 
-        {
-            $row = array();
-            $row['Count'] = intval($r['TotalAttended']);
-            if ($r['CourseType'] == '1-DayOSC' || $r['ListOnly'])
-              $row['Count'] = 1;
-        }
-    } else 
+    $row = array('Count' => 0);
+
+    $r = db_query("select td_key, c_end, c_list_only, IF(c_end <= CURDATE(), 1, 0) as completed from  dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array(":c_id" => $course ))->fetchAssoc();
+
+    if (!$r['completed'])
     {
         $row['Count'] = 0;
     }
+    elseif ($r['td_key'] == '1-DayOSC' || $r['c_list_only'])
+    {
+        $row['Count'] = 1;
+    }
+    else
+    {
+        $row['Count'] = db_query("select count(a_id) from dh_applicant where a_attended=1 and a_course=:a_course", array(":a_course" => $course ))->fetchField();
+    }
+
     drupal_json_output($row);
     exit;
 }
