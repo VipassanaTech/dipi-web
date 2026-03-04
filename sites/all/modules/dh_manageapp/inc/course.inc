@@ -269,10 +269,21 @@ function dh_manage_courses()
 			                			{	
 			                				if(obj.Count > 0)
 			                				{
+                                                var row_finalized = table.row({ selected: true });
 
-			                				editor.edit( table.row( { selected: true } ).index(), false )
-			                					.set( "dh_course.c_finalized", "1" )
-					                        	.submit();
+                                                if (!row_finalized.any()) {
+                                                    alert("Please select a course first.");
+                                                    return;
+                                                }
+
+                                                editor.edit(row_finalized, false)
+                                                      .set("dh_course.c_finalized", "1")
+                                                      .submit();
+
+			                				// editor.edit( table.row( { selected: true } ).index(), false )
+			                				// 	.set( "dh_course.c_finalized", "1" )
+					                        // 	.submit();
+
 			                				}
 			                				else
 			                				{
