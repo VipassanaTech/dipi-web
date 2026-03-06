@@ -1151,6 +1151,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		}
 	});
 
+    original_array = [];
 
   $(".store-seat-changes").click( function(){
     //console.log("inside click event");
@@ -1189,7 +1190,24 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
       }
     });
 
-    $.getJSON( update_path, { u: JSON.stringify(update_array) } )
+    let originalMap = {};
+    original_array.forEach(row => {
+        originalMap[row[0]] = row;
+    });
+
+    let changed = [];
+
+    update_array.forEach(row => {
+        let id = row[0];
+
+        if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row)) {
+            changed.push(row);
+        }
+    });
+
+    // console.log(changed);
+
+    $.getJSON( update_path, { u: JSON.stringify(changed) } )
         .done(function( json ) {
           if (json.status == "OK")
           {
@@ -1234,6 +1252,27 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 
     $(".sortable-f").sortable();
     $(".sortable-f").disableSelection();
+
+
+    $(".ui-sortable li .s-app-id").each(function(){
+      closest_ul = $(this).closest("ul");
+      student_name = $(this).siblings(".s-name ").html();
+      application_id = $(this).attr("data-s-app-id");
+      col_per_row = $(this).attr("data-cols");
+      if(application_id)
+      {
+        no_of_li = closest_ul.children("li").length;
+        current_li = $(this).closest("li").index()+1;
+        current_position = no_of_li - current_li + 1;
+        student_row = Math.ceil(current_position / col_per_row) - 1;
+        student_column = (current_position % col_per_row) - 1;
+        if(student_column == -1)
+          student_column = col_per_row - 1 ;
+
+        original_array.push([application_id, student_row, student_column]);
+      }
+    });
+    // console.log(original_array);
 
   } );
   </script>
