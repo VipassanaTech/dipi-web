@@ -1177,6 +1177,7 @@ function dh_atportal_ctlist()
     where
     tr_role in ('CT', 'ACT')
     and tr_deleted=0
+    and t_status='active'
     group by tc_id;
         ";
 
@@ -1247,6 +1248,7 @@ function dh_atportal_catlist()
         where
         tr_role in ('CAT', 'ACAT')
         and tr_deleted=0
+        and t_status='active'
         group by tac_id;
         ";
 
