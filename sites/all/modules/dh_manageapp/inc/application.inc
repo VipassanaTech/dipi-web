@@ -387,6 +387,18 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 10, 
 			'#default_value' => isset($edit_data['al_sexual_misconduct'])?$edit_data['al_sexual_misconduct']:'0', '#required' => 0, );
 
+        $form[$group]['al_committed_details'] = array('#title' => 'Fully Committed Details', '#type' => 'textarea',
+            '#rows' => 3, '#weight' => 10.1,  '#maxlength' => 250,
+            '#default_value' => isset($edit_data['al_committed_details'])?$edit_data['al_committed_details']:'', '#required' => 0, );
+
+        $form[$group]['al_exclusive_2yrs_details'] = array('#title' => 'Exclusively Involved Details', '#type' => 'textarea',
+            '#rows' => 3, '#weight' => 10.2,  '#maxlength' => 250,
+            '#default_value' => isset($edit_data['al_exclusive_2yrs_details'])?$edit_data['al_exclusive_2yrs_details']:'', '#required' => 0, );
+
+        $form[$group]['al_5_precepts_details'] = array('#title' => 'Maintained 5 Precepts Details', '#type' => 'textarea',
+            '#rows' => 3, '#weight' => 10.3,  '#maxlength' => 250,
+            '#default_value' => isset($edit_data['al_5_precepts_details'])?$edit_data['al_5_precepts_details']:'', '#required' => 0, );
+
 
 		$form[$group]['al_at_year'] = array('#title' => 'If AT Year Apptd?', '#type' => 'textfield', 
 			'#size' => 5, '#weight' => 11, '#maxlength' => 10,

@@ -610,6 +610,12 @@ function map_application_fields_lc($row)
 	$fields['Dailypractice'] = $row['al_daily_practice_yrs'];
 	$fields['practicedetails'] = $row['al_daily_practice_details'];
 
+    $fields['committeddetails'] = $row['al_committed_details'];
+    $fields['exclusivedetails'] = $row['al_exclusive_2yrs_details'];
+    $fields['5preceptsdetails'] = $row['al_5_precepts_details'];
+    $fields['ratcomment'] = $row['al_recommending_comments'];
+    $fields['aatcomment'] = $row['al_area_at_comments'];
+
 	if ($row['al_5_precepts']) $fields['5 Precepts Y'] = 'Yes'; else $fields['5 Precepts N'] = 'Yes';
 	if ($row['al_sexual_misconduct']) $fields['Sexual Misconduct Y'] = 'Yes'; else $fields['Sexual Misconduct N'] = 'Yes';
 	if ($row['al_intoxicants']) $fields['Intoxicants Y'] = 'Yes'; else $fields['Intoxicants N'] = 'Yes';
