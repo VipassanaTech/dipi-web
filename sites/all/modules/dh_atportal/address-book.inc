@@ -82,6 +82,14 @@ function dh_atportal_address_book_form($form, &$form_state)
 
     $state_codes = db_query("select s_id, CONCAT(s_name,' ','(',c_name,')') FROM dh_state left join dh_country on s_country=c_code")->fetchAllKeyed();
 
+    $ct_info = db_query("select tr_teacher, GROUP_CONCAT(tc_name)  from dh_teacher_role left join dh_teacher_center on tr_identifier=tc_id where tr_deleted=0 and tr_role='CT' group by tr_teacher")->fetchAllKeyed();
+
+    $act_info = db_query("select tr_teacher, GROUP_CONCAT(tc_name)  from dh_teacher_role left join dh_teacher_center on tr_identifier=tc_id where tr_deleted=0 and tr_role='ACT' group by tr_teacher")->fetchAllKeyed();
+
+    $cat_info = db_query("select tr_teacher, GROUP_CONCAT(tac_name)  from dh_teacher_role left join dh_teacher_area_cluster on tr_identifier=tac_id where tr_deleted=0 and tr_role='CAT' group by tr_teacher")->fetchAllKeyed();
+
+    $acat_info = db_query("select tr_teacher, GROUP_CONCAT(tac_name)  from dh_teacher_role left join dh_teacher_area_cluster on tr_identifier=tac_id where tr_deleted=0 and tr_role='ACAT' group by tr_teacher")->fetchAllKeyed();
+
     $form['t_code'] = array('#title' => 'AT-Code', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
@@ -276,6 +284,11 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
         $r["t_bhante"] = $r["t_bhante"]?'Yes':'';
         $r["t_country"] = $country_codes[$r["t_country"]];
 
+        $r["t_ct_info"] = $ct_info[$r["t_id"]]?$ct_info[$r["t_id"]]:'';
+        $r["t_act_info"] = $act_info[$r["t_id"]]?$act_info[$r["t_id"]]:'';
+        $r["t_cat_info"] = $cat_info[$r["t_id"]]?$cat_info[$r["t_id"]]:'';
+        $r["t_acat_info"] = $acat_info[$r["t_id"]]?$acat_info[$r["t_id"]]:'';
+
 
         $data[] = $r;
     }
@@ -297,6 +310,10 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
             var t_bt_appointed = "";
             var t_responsibility = "";
             var t_area = "";
+            var t_ct_info = "";
+            var t_act_info = "";
+            var t_cat_info = "";
+            var t_acat_info = "";
 
             if (d.t_responsibility)
             {
@@ -346,6 +363,38 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
                     "</tr>";
             }
 
+            if (d.t_ct_info)
+            {
+                t_ct_info =   "<tr>"+
+                        "<td><label>Center Teacher:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_ct_info+"</td>"+
+                    "</tr>";
+            }
+
+            if (d.t_act_info)
+            {
+                t_act_info =   "<tr>"+
+                        "<td><label>Assistant to Center Teacher:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_act_info+"</td>"+
+                    "</tr>";
+            }
+
+            if (d.t_cat_info)
+            {
+                t_cat_info =   "<tr>"+
+                        "<td><label>Coordinating Area Teacher:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_cat_info+"</td>"+
+                    "</tr>";
+            }
+
+            if (d.t_acat_info)
+            {
+                t_acat_info =   "<tr>"+
+                        "<td><label>Assistant to Coordinating Area Teacher:</label></td>"+
+                        "<td colspan=\"3\">"+d.t_acat_info+"</td>"+
+                    "</tr>";
+            }
+
             return "<div class=\"slider\">"+
                 "<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\" style=\"padding-left:50px;\">"+
                     t_at_appointed+
@@ -380,8 +429,11 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
                         "<td><label>Email-2:</label></td>"+
                         "<td colspan=\"3\">"+d.t_email_alt+"</td>"+
                     "</tr>"+
+                    t_ct_info+
+                    t_act_info+
+                    t_cat_info+
+                    t_acat_info+
                     t_responsibility+
-                    t_area+
                 "</table>"+
             "</div>";
         }
