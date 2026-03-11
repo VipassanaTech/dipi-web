@@ -705,7 +705,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
         );
 
 		$form[$group]['t_ct'] = array('#title' => '&nbsp;CT', '#type' => 'checkbox',
-	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 16);
+	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 16, '#disabled' => true,);
 	    $form[$group]['t_cat'] = array('#title' => '&nbsp;CAT', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 16.1, '#disabled' => true,);
 
@@ -1076,6 +1076,10 @@ function dh_atportal_profile_submit($form, &$form_state)
         {
             $t['t_year_appointed'] = null;
         }
+
+        unset($t['t_ct']);
+        unset($t['t_cat']);
+        unset($t['t_area']);
 	}
 
 
@@ -1171,6 +1175,27 @@ function dh_atportal_profile_submit($form, &$form_state)
         else
         {
             db_query("update dh_teacher set t_area='', t_cat=0 where t_id=:t_id",
+            array('t_id' => $at_id));
+        }
+
+        $ct_flag = db_query("select
+            count(t_id) AS count
+            FROM dh_teacher
+            LEFT JOIN dh_teacher_role ON t_id = tr_teacher
+            where
+            t_id=:at_id
+            AND tr_deleted = 0
+            AND tr_role = 'CT'
+            GROUP BY t_id", array(':at_id' => $at_id))->fetchField();
+
+        if($ct_flag)
+        {
+            db_query("update dh_teacher set t_ct=1 where t_id=:t_id",
+            array('t_id' => $at_id));
+        }
+        else
+        {
+                db_query("update dh_teacher set t_ct=0 where t_id=:t_id",
             array('t_id' => $at_id));
         }
 
