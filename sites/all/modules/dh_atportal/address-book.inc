@@ -707,12 +707,12 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$form[$group]['t_ct'] = array('#title' => '&nbsp;CT', '#type' => 'checkbox',
 	      '#default_value' => isset($edit_data['t_ct'])?$edit_data['t_ct']:'0',  '#weight' => 16);
 	    $form[$group]['t_cat'] = array('#title' => '&nbsp;CAT', '#type' => 'checkbox',
-	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 16.1);
+	      '#default_value' => isset($edit_data['t_cat'])?$edit_data['t_cat']:'0',  '#weight' => 16.1, '#disabled' => true,);
 
 	    $form[$group]['t_responsibility'] = array('#title' => 'Additional Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 17, 
 			'#default_value' => isset($edit_data['t_responsibility'])?$edit_data['t_responsibility']:'', '#maxlength' => 200  );
-	    $form[$group]['t_area'] = array('#title' => 'Area of Responsibility', '#type' => 'textarea', '#size' => '100', '#weight' => 18, 
-			'#default_value' => isset($edit_data['t_area'])?$edit_data['t_area']:'', '#maxlength' => 255  );
+	    $form[$group]['t_area'] = array('#title' => 'CAT Area', '#type' => 'textarea', '#size' => '100', '#weight' => 18,
+			'#default_value' => isset($edit_data['t_area'])?$edit_data['t_area']:'', '#maxlength' => 255, '#disabled' => true, );
         $form[$group]['t_comments'] = array('#title' => 'Internal Comments', '#type' => 'textarea', '#size' => '100', '#weight' => 18.1,
             '#default_value' => isset($edit_data['t_comments'])?$edit_data['t_comments']:'',  );
 
@@ -1151,6 +1151,29 @@ function dh_atportal_profile_submit($form, &$form_state)
             }
 
         }
+
+        $cat_areas = db_query("select
+                GROUP_CONCAT(tac_name) AS areas
+                FROM dh_teacher
+                LEFT JOIN dh_teacher_role ON t_id = tr_teacher
+                LEFT JOIN dh_teacher_area_cluster ON tr_identifier = tac_id
+                where
+                t_id=:at_id
+                AND tr_deleted = 0
+                AND tr_role = 'CAT'
+                GROUP BY t_id", array(':at_id' => $at_id))->fetchField();
+
+        if($cat_areas)
+        {
+            db_query("update dh_teacher set t_area=:t_area, t_cat=1 where t_id=:t_id",
+            array(':t_area' => $cat_areas, 't_id' => $at_id));
+        }
+        else
+        {
+            db_query("update dh_teacher set t_area='', t_cat=0 where t_id=:t_id",
+            array('t_id' => $at_id));
+        }
+
     }
 
 
