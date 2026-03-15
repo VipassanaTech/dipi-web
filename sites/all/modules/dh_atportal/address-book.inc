@@ -163,6 +163,42 @@ function dh_atportal_address_book_form($form, &$form_state)
         '#weight' => 18
     );
 
+    $form['t_status_active'] = array(
+        '#title' => '&nbsp;Active',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#prefix' => '<br>',
+        '#weight' => 18.1
+    );
+
+    $form['t_status_inactive'] = array(
+        '#title' => '&nbsp;Inactive',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18.2
+    );
+
+    $form['t_status_deceased'] = array(
+        '#title' => '&nbsp;Deceased',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18.3
+    );
+
+    $form['t_status_training'] = array(
+        '#title' => '&nbsp;Training',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18.4
+    );
+
+    $form['t_status_deprecated'] = array(
+        '#title' => '&nbsp;Deprecated',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18.5
+    );
+
     $form['sub'] = array(
         '#type' => 'submit',
         '#value' => 'Search',
@@ -203,20 +239,61 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
     if( is_array($values['s_id']) && count($values['s_id'])>0 )
         $search_filters .= " and s_id in ('".implode("','", $values['s_id'])."') ";
 
-    if ( isset($values['t_sat']) && ($values['t_sat']) )
-            $search_filters .= " and t_sat = 1 ";
+    // if ( isset($values['t_sat']) && ($values['t_sat']) )
+    //         $search_filters .= " and t_sat = 1 ";
 
-    if ( isset($values['t_full_t']) && ($values['t_full_t']) )
-            $search_filters .= " and t_full_t = 1 ";
+    // if ( isset($values['t_full_t']) && ($values['t_full_t']) )
+    //         $search_filters .= " and t_full_t = 1 ";
 
-    if ( isset($values['t_bhante']) && ($values['t_bhante']) )
-            $search_filters .= " and t_bhante = 1 ";
+    // if ( isset($values['t_bhante']) && ($values['t_bhante']) )
+    //         $search_filters .= " and t_bhante = 1 ";
 
-    if ( isset($values['t_ct']) && ($values['t_ct']) )
-            $search_filters .= " and t_ct = 1 ";
+    // if ( isset($values['t_ct']) && ($values['t_ct']) )
+    //         $search_filters .= " and t_ct = 1 ";
 
-    if ( isset($values['t_cat']) && ($values['t_cat']) )
-            $search_filters .= " and t_cat = 1 ";
+    // if ( isset($values['t_cat']) && ($values['t_cat']) )
+    //         $search_filters .= " and t_cat = 1 ";
+
+    $or_desigation = array();
+
+    if (!empty($values['t_sat']))
+        $or_desigation[] = " t_sat = 1 ";
+
+    if (!empty($values['t_full_t']))
+        $or_desigation[] = " t_full_t = 1 ";
+
+    if (!empty($values['t_bhante']))
+        $or_desigation[] = " t_bhante = 1 ";
+
+    if (!empty($values['t_ct']))
+        $or_desigation[] = " t_ct = 1 ";
+
+    if (!empty($values['t_cat']))
+        $or_desigation[] = " t_cat = 1 ";
+
+    if (!empty($or_desigation))
+        $search_filters .= " AND (" . implode(" OR ", $or_desigation) . ") ";
+
+    $or_status = array();
+
+    if (!empty($values['t_status_active']))
+        $or_status[] = " t_status = 'Active' ";
+
+    if (!empty($values['t_status_inactive']))
+        $or_status[] = " t_status = 'Inactive' ";
+
+    if (!empty($values['t_status_deceased']))
+        $or_status[] = " t_status = 'Deceased' ";
+
+    if (!empty($values['t_status_training']))
+        $or_status[] = " t_status = 'Training' ";
+
+    if (!empty($values['t_status_deprecated']))
+        $or_status[] = " t_status = 'Deprecated' ";
+
+    if (!empty($or_status))
+        $search_filters .= " AND (" . implode(" OR ", $or_status) . ") ";
+
 
 }
 
