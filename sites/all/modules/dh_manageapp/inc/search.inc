@@ -482,6 +482,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
         {
            $rs['ref_listed_by'] = $r_ref['r_listed_by'];
            $rs['ref_listed_title'] = "Center RefListed by:";
+           $rs['special_list'] = "Not Applicable";
         }
         else
         {
@@ -490,6 +491,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
           if($r_ref['teacher_id'])
             $rs['ref_listed_by'] = '<a href="#" id="'.$r_ref['teacher_id'].'" class="get-at-info" >'.$r_ref['teacher'].'</a>';
+
+            if ($r_ref['r_special'])
+                $rs['special_list'] = "Yes";
+            else
+                $rs['special_list'] = "No";
         }
 
         $listed_for = "";
@@ -650,7 +656,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					"<td class=\"referral\"><label>From:</label></td><td class=\"referral\">"+d.ref_start+"</td>"+
 					"<td class=\"referral\"><label>To:</label></td><td class=\"referral\">"+d.ref_end+"</td></tr>"+
 					"<tr><td class=\"referral\"><label>Reason:</label></td><td class=\"referral\">"+d.ref_reason+"</td>"+
-					"<td class=\"referral\"><label>Listed For:</label></td><td class=\"referral\" colspan=\"3\">"+d.ref_listed_for+"</td></tr>";
+					"<td class=\"referral\"><label>Listed For:</label></td><td class=\"referral\" colspan=\"3\">"+d.ref_listed_for+"</td></tr>"
+                    +"<tr><td class=\"referral\"><label>In Special List:</label></td><td class=\"referral\">"+d.special_list+"</td></tr>";
 			}
             if ( d.long_course )
             {

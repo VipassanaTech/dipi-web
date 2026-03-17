@@ -389,6 +389,18 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     	'#weight' => 23,
     );
 
+    if (!$center_id)
+    {
+        $form[$group]['r_special'] = array(
+            '#title' => '<br>List Type',
+            '#type' => 'radios',
+            '#options' => array("0" => 'Referral List', '1' => 'Special List')  ,
+            '#default_value' => isset($edit_data['r_special'])?$edit_data['r_special']:'0',
+            '#weight' => 23.01,
+            '#required' => 1 ,
+        );
+    }
+
     $form[$group]['r_start'] = array(
     	'#title' => 'Start Date',
     	'#type' => 'date_popup',
@@ -669,7 +681,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		.form-item-s-phone-mobile {
 			clear: both;
 		}
-		.form-item.form-item-r-course-center.form-type-textfield.form-group {
+		.form-item.form-item-r-course-center.form-type-textfield.form-group, .form-item-r-special {
     clear: left;
 		}
 	';
