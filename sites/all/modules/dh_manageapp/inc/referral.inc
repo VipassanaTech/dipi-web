@@ -1068,7 +1068,7 @@ function dh_referral_results()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
 
-	$q = "select r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+	$q = "select r_special, r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
 		r_course_center, r_course_type, r_course_start,
     concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
     from dh_student a
@@ -1108,6 +1108,9 @@ function dh_referral_results()
 		  $rs['name'] = _ma_make_link($r['Full Name'],'center-referral/'.arg(1).'/edit/'.$rs['ref_id']);
 		else
 		  $rs['name'] = $r['Full Name'];
+
+        if($r['r_special'])
+            $rs['name'] = $rs['name']."<br>(Special List)";
 
     $readonly = "";
     if($r['r_readonly'])
