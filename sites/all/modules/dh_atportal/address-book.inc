@@ -288,9 +288,6 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
     if (!empty($values['t_status_training']))
         $or_status[] = " t_status = 'Training' ";
 
-    if (!empty($values['t_status_deprecated']))
-        $or_status[] = " t_status = 'Deprecated' ";
-
     if (!empty($or_status))
         $search_filters .= " AND (" . implode(" OR ", $or_status) . ") ";
 
