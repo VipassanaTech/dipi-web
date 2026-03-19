@@ -192,13 +192,6 @@ function dh_atportal_address_book_form($form, &$form_state)
         '#weight' => 18.4
     );
 
-    $form['t_status_deprecated'] = array(
-        '#title' => '&nbsp;Deprecated',
-        '#type' => 'checkbox',
-        '#default_value' => '0',
-        '#weight' => 18.5
-    );
-
     $form['sub'] = array(
         '#type' => 'submit',
         '#value' => 'Search',
