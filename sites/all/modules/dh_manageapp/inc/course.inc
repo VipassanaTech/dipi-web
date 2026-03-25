@@ -309,6 +309,7 @@ function dh_manage_courses()
 			    $.fn.dataTable.moment( "DD MMM YYYY" );	
 
 				load_editor();
+                $("#finalized-courses").DataTable();
 			});
 		})(jQuery);
 
@@ -338,10 +339,10 @@ function dh_manage_courses()
 	else
 		$out .= '&nbsp;&nbsp;&nbsp;&nbsp;('.l("Course Schedule", "https://www.dhamma.org/en/schedules/".$code, array('attributes' => array("target" => "_blank") )).')</h2>';
 	
-	$finalized = theme("table", array('header' => $header, 'rows' => $rows ));
+	$finalized = theme("table", array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'finalized-courses') ));
 	$fieldset_vars = array(
 		'element' => array(
-		'#title' => t('Finalized Courses'),
+		'#title' => t('Finalized Courses (click to Expand/Collapse)'),
 		'#collapsible' => true,
 		'#collapsed' => true,
 		'#value' => '',
@@ -349,6 +350,7 @@ function dh_manage_courses()
 		),
 	);
 	$out .= theme('fieldset', $fieldset_vars);
+    $out .= '<hr><br>';
 
 	$out .= '<table id="course-table" class="display">
 				<thead>
