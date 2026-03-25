@@ -368,7 +368,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
 
 		$temp = "";
-		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>&nbsp;|&nbsp;':"").($r['a_monk']?'<div class="ochre">Monk</div>':"");
+		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>&nbsp;|&nbsp;':"").($r['a_monk']?'<div class="ochre">Monk</div>&nbsp;|&nbsp;':"").($r['a_referral']?'<div class="red">Referral-List</div>':"");
 
 
 		$rs['course_teen'] = $r['ac_teen']?$r['ac_teen']:"0";
