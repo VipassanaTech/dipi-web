@@ -592,7 +592,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 		al.al_recommending, al.al_area_at,
 		a_uri, a_id, a_status
 		from dh_applicant_lc al left join dh_applicant a on (al.al_applicant=a.a_id) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_center ce on (a.a_center=ce.c_id) left join dh_course cr on a.a_course=cr.c_id left join dh_type_detail td on cr.c_course_type=td.td_id where $where
-		  and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) <= $diff_days  order by a_created desc";
+		  and td.td_val3 = 'LC' and DATEDIFF(CURDATE(), cr.c_start) <= $diff_days  order by CASE WHEN al_recommending_approved = 'Pending' THEN 1 WHEN al_recommending_approved = 'Approved' AND al_area_at_approved = 'Pending' THEN 2 ELSE 3 END, a_created desc";
 	$result = db_query($q, $where_opts);
 	$rows_completed = $rows_pending = array();
 	while( $r = $result->fetchAssoc() )
