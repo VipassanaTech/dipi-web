@@ -234,7 +234,17 @@ function create_d11_report_pdf( $course_id )
 
 function create_application_pdf( $application_id )
 {
-	$query = "select c.*, a.*, ac.*, ae.*, aa.*, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ci.c_name as 'City',td_val3, td_val1, al.* from dh_applicant a left join dh_course c on a.a_course=c.c_id left join dh_applicant_course ac on ac.ac_applicant=a.a_id left join dh_applicant_extra ae on ae.ae_applicant=a.a_id left join dh_applicant_attended aa on aa.aa_applicant=a.a_id left join dh_applicant_lc al on al.al_applicant=a.a_id left join dh_city ci on a_city=ci.c_id left join dh_type_detail td on c.c_course_type=td.td_id where a_id='$application_id'";
+	$query = "select c.*, a.*, ac.*, ae.*, aa.*, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ci.c_name as 'City',td_val3, td_val1, al.*, st.s_name, cy.c_name as 'country'
+        from dh_applicant a
+        left join dh_course c on a.a_course=c.c_id
+        left join dh_applicant_course ac on ac.ac_applicant=a.a_id
+        left join dh_applicant_extra ae on ae.ae_applicant=a.a_id
+        left join dh_applicant_attended aa on aa.aa_applicant=a.a_id
+        left join dh_applicant_lc al on al.al_applicant=a.a_id
+        left join dh_city ci on a_city=ci.c_id
+        left join dh_state st on (a.a_state=st.s_code AND a.a_country=st.s_country)
+        left join dh_country cy on (a.a_country=cy.c_code)
+        left join dh_type_detail td on c.c_course_type=td.td_id where a_id='$application_id'";
 	$row = db_query($query)->fetchAssoc(); 
 	if ($row['City'] == '')
 		$row['City'] = $row['a_city_str'];
@@ -365,7 +375,7 @@ function map_application_fields($row)
 	$fields['dd'] = $temp[2]; 	$fields['mm'] = $temp[1];	$fields['yyyy'] = $temp[0];
 
 	$fields['First Name'] = $row['a_f_name']; 	$fields['Last Name'] = $row['a_l_name'];	$fields['Middle Name'] = $row['a_m_name'];
-	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['a_state'].', '.$row['a_country']; 	$fields['pincode'] = $row['a_zip'];
+	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['s_name'].', '.$row['country']; 	$fields['pincode'] = $row['a_zip'];
 	$fields['home'] = $row['a_phone_home']; 	$fields['work'] = $row['a_phone_office'];	$fields['mobile'] = $row['a_phone_mobile']; 
 	$fields['email'] = $row['a_email'];
 
@@ -577,7 +587,7 @@ function map_application_fields_lc($row)
 	$fields['DOB'] = $temp[2].'/'.$temp[1].'/'.$temp[0];
 
 	$fields['Full Name'] = $row['a_f_name'].' '.$row['a_m_name'].' '.$row['a_l_name'];
-	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['a_state'].', '.$row['a_country'].' - '.$row['a_zip'];
+	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['s_name'].', '.$row['country'].' - '.$row['a_zip'];
 
 
 	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
