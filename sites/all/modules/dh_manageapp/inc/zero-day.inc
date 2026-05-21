@@ -680,9 +680,9 @@ function dh_manageapp_attended( $centre, $course_id )
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['chowky'] += $r['aa_chowky'];
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['chair'] += $r['aa_chair'];
 		$special[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])]['backrest'] += $r['aa_backrest'];
-		if ( !isset($group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] ) )
-			$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] = 0;
-		$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])] += 1;
+		if ( !isset($group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] ) )
+			$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] = 0;
+		$group[$r['aa_group']][$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] += 1;
 	}
 	$header = array('Update', 'ConfNo', 'Name', 'Gender', 'Type', 'Age', 'Teen/10D/STP', 'LC', 'RoomNo', 'Laundry', 'Valuable', 'Chowky', 'Chair', 'BackRest', 'Group', 'H' );
 	$attributes = array('id' => 'table-attending');
@@ -762,24 +762,42 @@ function dh_manageapp_attended( $centre, $course_id )
 	$t_backrest = $special['old']['M']['backrest'] + $special['new']['M']['backrest'] + $special['old']['F']['backrest'] + $special['new']['F']['backrest'];
 	$rows_special[] = array( '<b>Total</b>', '<b>'.$t_chowky.'<b>', '<b>'.$t_chair.'</b>', "<b>$t_backrest</b>" );
 
+    $group_teachers = db_query(
+        "select ct_group,
+        GROUP_CONCAT(concat(t_f_name, ' ', t_l_name) SEPARATOR ' | ')
+        FROM `dh_course_teacher`
+        left join dh_teacher on t_id=ct_teacher
+        where ct_course=$course_id
+        and ct_status='confirmed'
+        group by ct_group"
+    )->fetchAllKeyed();
 	ksort($group);
-	$header_group = array('Group No', 'NM', 'OM', 'Total', '&nbsp;&nbsp;', 'NF', 'OF', 'Total');
+	$header_group = array('Group No', 'Teachers', 'NM', 'OM', 'Total', 'SM', '&nbsp;&nbsp;', 'NF', 'OF', 'Total', 'SF');
 	$rows_group = array(); $row = array();
 	foreach( $group as $g_no => $v )
 	{
-		if ( ! isset($group[$g_no]['old']['M']) ) $group[$g_no]['old']['M'] = 0;
-		if ( ! isset($group[$g_no]['new']['M']) ) $group[$g_no]['new']['M'] = 0;
-		if ( ! isset($group[$g_no]['old']['F']) ) $group[$g_no]['old']['F'] = 0;
-		if ( ! isset($group[$g_no]['new']['F']) ) $group[$g_no]['new']['F'] = 0;
+		if ( ! isset($group[$g_no]['old']['M']['Student']) ) $group[$g_no]['old']['M']['Student'] = 0;
+		if ( ! isset($group[$g_no]['new']['M']['Student']) ) $group[$g_no]['new']['M']['Student'] = 0;
+		if ( ! isset($group[$g_no]['old']['F']['Student']) ) $group[$g_no]['old']['F']['Student'] = 0;
+		if ( ! isset($group[$g_no]['new']['F']['Student']) ) $group[$g_no]['new']['F']['Student'] = 0;
+
+        if ( ! isset($group[$g_no]['old']['M']['Sevak']) ) $group[$g_no]['old']['M']['Sevak'] = 0;
+        if ( ! isset($group[$g_no]['new']['M']['Sevak']) ) $group[$g_no]['new']['M']['Sevak'] = 0;
+        if ( ! isset($group[$g_no]['old']['F']['Sevak']) ) $group[$g_no]['old']['F']['Sevak'] = 0;
+        if ( ! isset($group[$g_no]['new']['F']['Sevak']) ) $group[$g_no]['new']['F']['Sevak'] = 0;
+
 		unset($row);
 		$row[] = '<b>'.$g_no.'</b>';
-		$row[] = $group[$g_no]['new']['M'];
-		$row[] = $group[$g_no]['old']['M'];
-		$row[] = '<b>'.($group[$g_no]['old']['M'] + $group[$g_no]['new']['M']).'</b>';
+        $row[] = '<b>'.$group_teachers[$g_no].'</b>';
+		$row[] = $group[$g_no]['new']['M']['Student'];
+		$row[] = $group[$g_no]['old']['M']['Student'];
+		$row[] = '<b>'.($group[$g_no]['old']['M']['Student'] + $group[$g_no]['new']['M']['Student']).'</b>';
+        $row[] = '<b>'.($group[$g_no]['old']['M']['Sevak'] + $group[$g_no]['new']['M']['Sevak']).'</b>';
 		$row[] = '&nbsp;&nbsp;';
-		$row[] = $group[$g_no]['new']['F'];
-		$row[] = $group[$g_no]['old']['F'];
-		$row[] = '<b>'.($group[$g_no]['old']['F'] + $group[$g_no]['new']['F']).'</b>';
+		$row[] = $group[$g_no]['new']['F']['Student'];
+		$row[] = $group[$g_no]['old']['F']['Student'];
+		$row[] = '<b>'.($group[$g_no]['old']['F']['Student'] + $group[$g_no]['new']['F']['Student']).'</b>';
+        $row[] = '<b>'.($group[$g_no]['old']['F']['Sevak'] + $group[$g_no]['new']['F']['Sevak']).'</b>';
 		$rows_group[] = $row;
 	}
 
