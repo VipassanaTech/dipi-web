@@ -606,7 +606,7 @@ function cron_auto_cancel()
 		}
 
         $append1 = '';
-        if ( $r['cs_preconf_enable'] && ($r['cs_preconf_enable'] > 0) )
+        if ( $r['cs_preconf_enable'] && ($r['cs_preconf_days'] > 0) )
         {
             $send_date = date('Y-m-d', strtotime("-".$r['cs_preconf_days']." day"));
             $append1 = " (a_status='PreConfirmation' and date_format(c_start, '%Y%m%d') > '".date("Ymd")."' and a_pc_date <= '$send_date')";
