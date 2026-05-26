@@ -915,7 +915,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
           $row[] = $r['ac_60d'];
 					//$row[] = $r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
 					//$row[] = $r['ac_teen']+$r['ac_10d']+$r['ac_stp'];
-                    if($r['aa_cell_group'] >= 0)
+                    if($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 0)
                         $row[] = $r['aa_cell']. " (" . $r['aa_cell_group']+1 . ")";
                     else
                         $row[] = $r['aa_cell'];
