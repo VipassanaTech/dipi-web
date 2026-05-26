@@ -910,19 +910,19 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
           if($r['ac_10d'])
             $courses .= "<b>10D: </b>".$r['ac_10d'];
         if($r['ac_stp'])
-            $courses .= " | <b>STP: </b>".$r['ac_stp'];
+            $courses .= " <b>STP: </b>".$r['ac_stp'];
         if($r['ac_spl'])
-            $courses .= " | <b>SPL: </b>".$r['ac_spl'];
+            $courses .= " <b>SPL: </b>".$r['ac_spl'];
         if($r['ac_tsc'])
-            $courses .= " | <b>TSC: </b>".$r['ac_tsc'];
+            $courses .= " <b>TSC: </b>".$r['ac_tsc'];
         if($r['ac_20d'])
-            $courses .= " | <b>20D: </b>".$r['ac_20d'];
+            $courses .= " <b>20D: </b>".$r['ac_20d'];
         if($r['ac_30d'])
-            $courses .= " | <b>30D: </b>".$r['ac_30d'];
+            $courses .= " <b>30D: </b>".$r['ac_30d'];
         if($r['ac_45d'])
-            $courses .= " | <b>45D: </b>".$r['ac_45d'];
+            $courses .= " <b>45D: </b>".$r['ac_45d'];
         if($r['ac_60d'])
-            $courses .= " | <b>60D: </b>".$r['ac_60d'];
+            $courses .= " <b>60D: </b>".$r['ac_60d'];
           $row[] = $courses;
 					//$row[] = $r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
 					//$row[] = $r['ac_teen']+$r['ac_10d']+$r['ac_stp'];
