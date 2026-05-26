@@ -860,7 +860,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$data[strtoupper($r['a_gender'])][$r['a_old']?'old':'new'][$r['aa_group']][] = $r;
 	}
 
-	$header = array('S/N', 'Student', 'RoomNo', 'Age', 'City', '10D', 'STP', 'SPL', 'TSC', '20D', '30D', '45D', '60D', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
+	$header = array('S/N', 'Student', 'RoomNo', 'Age', 'City', 'Courses', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
   // $header = array('SrNo', 'Student', 'RoomNo', 'Age', 'City', 'Teen', '10D', 'STP', 'SPL', 'TSC', '20D', '30D', '45D', '60D', 'LongCourses', '10Day', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
 	$attributes = array('class' => array('table-teacher-list') );
 	$title = '<div class="header-teacher"><div align="center" class="title"><b>Teacher List</b></div>'.
@@ -905,14 +905,25 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 					$row[] = $r['aa_section'].'-'.$r['aa_acco'];
 					$row[] = $r['Age'];
 					$row[] = $r['City'];
-          $row[] = $r['ac_10d'];
-          $row[] = $r['ac_stp'];
-          $row[] = $r['ac_spl'];
-          $row[] = $r['ac_tsc'];
-          $row[] = $r['ac_20d'];
-          $row[] = $r['ac_30d'];
-          $row[] = $r['ac_45d'];
-          $row[] = $r['ac_60d'];
+
+          $courses = "";
+          if($r['ac_10d'])
+            $courses .= "<b>10D: </b>".$r['ac_10d'];
+        if($r['ac_stp'])
+            $courses .= " | <b>STP: </b>".$r['ac_stp'];
+        if($r['ac_spl'])
+            $courses .= " | <b>SPL: </b>".$r['ac_spl'];
+        if($r['ac_tsc'])
+            $courses .= " | <b>TSC: </b>".$r['ac_tsc'];
+        if($r['ac_20d'])
+            $courses .= " | <b>20D: </b>".$r['ac_20d'];
+        if($r['ac_30d'])
+            $courses .= " | <b>30D: </b>".$r['ac_30d'];
+        if($r['ac_45d'])
+            $courses .= " | <b>45D: </b>".$r['ac_45d'];
+        if($r['ac_60d'])
+            $courses .= " | <b>60D: </b>".$r['ac_60d'];
+          $row[] = $courses;
 					//$row[] = $r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
 					//$row[] = $r['ac_teen']+$r['ac_10d']+$r['ac_stp'];
                     if($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
@@ -967,8 +978,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
     $(document).ready(function(){
 
      $(document).on("click", ".remove-column", function(){
-        $("table tr").find("td:eq(17),th:eq(17)").remove();
-        $("table tr").find("td:eq(17),th:eq(17)").remove();
+        $("table tr").find("td:eq(10),th:eq(10)").remove();
+        $("table tr").find("td:eq(10),th:eq(10)").remove();
     });
 
     });
