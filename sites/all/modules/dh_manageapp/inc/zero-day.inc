@@ -1754,7 +1754,8 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	global $base_url;
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/day0-list.css");</style>';
     $zero_day_list_conf = $base_url."/day0-list/$centre/$course?conf=1";
-    $out .= ' <a href="'.$zero_day_list_conf.'/">Click to Generate Zero-Day-List in order of confirmation number.</a>';
+    $out .= '<button type="button" class="no-print remove-column">Click to remove ContactDetails column</button>';
+    $out .= ' <a class="no-print" href="'.$zero_day_list_conf.'/">Click to Generate Zero-Day-List in order of confirmation number.</a>';
 
 	$temp = db_query("select c_name,td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
 	$course_name = $temp['c_name'];
@@ -1860,6 +1861,20 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 		create_pdf_from_html($out, $pdf);
 	else
 	{
+    $out .= '
+        <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+        <script>
+        (function ($) {
+        $(document).ready(function(){
+
+         $(document).on("click", ".remove-column", function(){
+            $("table tr").find("td:eq(8),th:eq(8)").remove();
+        });
+
+        });
+        })(jQuery);
+        </script>
+    ';
 		print $out;
 		exit;
 	}	

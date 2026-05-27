@@ -96,3 +96,11 @@ table.table-day0-list td {
 #footer {
 	page-break-after: always;
 }
+
+@media print
+{
+    .no-print, .no-print *
+    {
+        display: none !important;
+    }
+}
