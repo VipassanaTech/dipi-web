@@ -863,6 +863,8 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
           '#default_value' => isset($edit_data['t_lc_area'])?$edit_data['t_lc_area']:'0',  '#weight' => 19);
         $form[$group]['t_allow_cat_emails'] = array('#title' => '&nbsp;Receive CAT emails', '#type' => 'checkbox',
           '#default_value' => isset($edit_data['t_allow_cat_emails'])?$edit_data['t_allow_cat_emails']:'0',  '#weight' => 20);
+        $form[$group]['t_disable_group_emails'] = array('#title' => '&nbsp;Disable Group Emails', '#type' => 'checkbox',
+          '#default_value' => isset($edit_data['t_disable_group_emails'])?$edit_data['t_disable_group_emails']:'0',  '#weight' => 20);
 
         $ct_centers = db_query("select tc_id, CONCAT(tc_name,' ','(',c_name,')') from dh_teacher_center left join dh_country on tc_country=c_code order by tc_name")->fetchAllKeyed();
 
@@ -1201,6 +1203,8 @@ function dh_atportal_profile_submit($form, &$form_state)
             $t['t_lc_area'] = '0';
         if ($t['t_allow_cat_emails'] == '')
             $t['t_allow_cat_emails'] = '0';
+        if ($t['t_disable_group_emails'] == '')
+            $t['t_disable_group_emails'] = '0';
 
         if($t['t_bhante'])
           $t['t_year_appointed'] = $t['t_bt_appointed'];
