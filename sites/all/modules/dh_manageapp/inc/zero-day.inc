@@ -1774,8 +1774,12 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	}
 
 	$header = array('Sr.', 'ConfNo', 'Student', 'Courses', 'Education', 'Age', 'City', 'Occupation', 'ContactDetails' , 'Recom. By / Comments');
+    $contact_col = 8;
 	if ($c_type == 'lc')
-		$header = array('Sr', 'ConfNo', 'Student', 'Courses', 'City/Country', 'Age' , 'Contact', 'Health Problems', 'Special Requirement', '10d', 'STP', 'TSC', '20d', '30d', '45d', '60d', 'Languages' );
+    {
+		$header = array('Sr', 'ConfNo', 'Student', 'Courses', 'City/Country', 'Age' , 'Languages', 'Health Problems', 'Special Requirement', '10d', 'STP', 'TSC', '20d', '30d', '45d', '60d', 'Contact' );
+        $contact_col = 16;
+    }
 	$attributes = array('class' => array('table-day0-list') );
 	$title = '<div class="header-day0"><div align="center" class="title"><b>Day 0 List</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
@@ -1827,7 +1831,12 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 					else
 						$row[] = $r['Country'];					
 					$row[] = $r['Age'];
-					$row[] = 'M: '.'('.$r['a_mob_country'].') '.$r['a_phone_mobile'];
+
+                    if($r['a_source'] == 'ExtApp')
+                        $row[] = $r['a_lang_discourse'];
+                    else
+                        $row[] = $r['a_lang_discourse'].', '.$r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'];
+
 					$row[] = $r['ae_desc_physical'].' '.$r['ae_desc_mental'];
 					$row[] = $r['al_special_req_details'];
 					$row[] = $r['ac_10d'];
@@ -1837,11 +1846,8 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 					$row[] = $r['ac_30d'];
 					$row[] = $r['ac_45d'];
 					$row[] = $r['ac_60d'];
-          if($r['a_source'] == 'ExtApp')
-            $row[] = $r['a_lang_discourse'];
-          else
-            $row[] = $r['a_lang_discourse'].', '.$r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'];
-					// $row[] = $r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'];
+                    $row[] = 'M: '.'('.$r['a_mob_country'].') '.$r['a_phone_mobile'];
+
 
 				}
 				$rows[] = $row;
@@ -1868,7 +1874,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
         $(document).ready(function(){
 
          $(document).on("click", ".remove-column", function(){
-            $("table tr").find("td:eq(8),th:eq(8)").remove();
+            $("table tr").find("td:eq('.$contact_col.'),th:eq('.$contact_col.')").remove();
         });
 
         });
