@@ -33,6 +33,42 @@
 				<td><label>Area Teacher Status</label></td>
 				<td colspan="2"><?php echo $data['al_area_status'];?></td>
 			</tr>
+            <tr>
+            <?php
+                if ($data['referral']):
+            ?>
+                <table class="referral table table-hover">
+                    <tr>
+                        <td colspan="9" style="color:red"><h3>Referral Info</h3></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>Special List:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_special_list'];?></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>Referring AT:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_listed_by'];?></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>Reason:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_reason'];?></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>Listed For:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_listed_for'];?></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>Start Date:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_start'];?></td>
+                    </tr>
+                    <tr class="align-left">
+                        <td><label>End Date:</label></td>
+                        <td  colspan="2"><?php echo $data['ref_end'];?></td>
+                    </tr>
+                </table>
+            <?php endif ?>
+
+            </tr>
 			<tr>
 					<table class="course-details table table-hover">
 						<tr>

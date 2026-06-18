@@ -478,7 +478,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
         $rs['ref_start'] = $r_ref['r_start'];
         $rs['ref_end'] = $r_ref['r_end'];
 
-        if($r_ref['center'])
+        if($r_ref['r_center'])
         {
            $rs['ref_listed_by'] = $r_ref['r_listed_by'];
            $rs['ref_listed_title'] = "Center RefListed by:";

@@ -712,10 +712,50 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 		$at_names[] = $at_name;
 
 	$q = "select CONCAT(a_f_name, ' ', a_m_name, ' ', a_l_name) as 'Name', a_type,  a_id, a_center, a_course, c.c_name, c.c_start, a_status,a_city_str, a_photo, td_key,
-		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri,  
+		co.c_name as 'Country', s.s_name as 'State', cci.c_name as 'City', a_email, a_phone_mobile, DATE_FORMAT(a_dob, '%d %b, %Y' ) as 'DOB', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, a_referral,
 		ac.*, al.* from dh_applicant a left join dh_course c on (a.a_course=c.c_id) left join dh_type_detail td on (c.c_course_type=td.td_id) left join dh_applicant_lc al on (a_id=al_applicant) left join dh_applicant_course ac on (a_id=ac_applicant) left join dh_country co on a.a_country=co.c_code left join dh_state s on (a.a_country=s.s_country and a.a_state=s.s_code) left join dh_city cci on a.a_city=cci.c_id where  a_id =$appid";
 	$result = db_query($q);
 	$r = $result->fetchAssoc();
+
+
+    $r['referral'] = 0;
+    if ($r['a_referral'])
+    {
+        $q = "select
+        concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher,
+        t_id as teacher_id,
+        r.*
+        from dh_referral r left join dh_teacher t on r.r_teacher=t.t_id where r_id=".$r['a_referral'];
+
+        $r_ref = db_query($q)->fetchAssoc();
+
+        if( date_create() <= date_create($r_ref['r_end']) && !($r_ref['r_center']))
+        {
+            $r['referral'] = 1;
+            $r['ref_listed_by'] = "";
+
+            if($r_ref['teacher_id'])
+            $r['ref_listed_by'] = '<a href="#" id="'.$r_ref['teacher_id'].'" class="get-at-info" >'.$r_ref['teacher'].'</a>';
+
+            if ($r_ref['r_special'])
+                $r['ref_special_list'] = "Yes";
+            else
+                $r['ref_special_list'] = "No";
+
+            $r['ref_reason'] = $r_ref['r_reason'];
+            $r['ref_start'] = $r_ref['r_start'];
+            $r['ref_end'] = $r_ref['r_end'];
+
+            $listed_for = "";
+            $temp = array('10d', 'stp', 'spl', '20d', '30d', '45d', '60d', 'tsc', '10d_seva', 'lc_seva', 'longseva');
+
+            foreach( $temp as $a )
+                if ($r_ref['r_listed_'.$a])
+                    $listed_for .= strtoupper($a)." | ";
+
+            $r['ref_listed_for'] = $listed_for;
+        }
+    }
 
     $own_app = false;
     if($r['a_email'] == $at_email && $r['ac_teacher'])
