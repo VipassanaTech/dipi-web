@@ -475,6 +475,7 @@ function dh_manageapp_menu()
 
     $items['autocomplete/get-trainee-teacher'] = array( 'title' => t('Trainee Teacher'),
 	       'page callback' => '_get_trainee_teacher',
+           'access callback' => '_access_teacher',
 	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
 
@@ -576,7 +577,7 @@ function dh_manageapp_menu()
 
 	$items['autocomplete/get-teacher'] = array( 'title' => t('Teacher'),
 	       'page callback' => '_get_teacher',
-	       'access arguments' => array('access zero day'),
+	       'access callback' => '_access_teacher',
 	       'type' => MENU_CALLBACK);
 
 	$items['webhook/mailgun'] = array( 'title' => t('Mailgun'),
@@ -679,6 +680,10 @@ function dh_manageapp_menu()
            'type' => MENU_CALLBACK);
 
 	return $items;
+}
+
+function _access_teacher() {
+  return user_access('access zero day') || user_access('at scheduling');
 }
 
 function dh_manageapp_home()
