@@ -805,6 +805,9 @@ function dh_ma_applicant_form_validate($form, &$form_state)
   {
     unset($form_state['storage']['file']);
   }
+
+  if (!valid_email_address($form_state['input']['a_email']))
+    form_set_error('a_email', t('Please enter a valid email address.'));
 }
 
 function dh_ma_applicant_form_submit($form, &$form_state)
