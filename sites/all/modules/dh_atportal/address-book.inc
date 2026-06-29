@@ -1304,7 +1304,7 @@ function dh_atportal_profile_submit($form, &$form_state)
         }
 
         $cat_areas = db_query("select
-                GROUP_CONCAT(tac_name) AS areas
+                GROUP_CONCAT(tac_name SEPARATOR ', ') AS areas
                 FROM dh_teacher
                 LEFT JOIN dh_teacher_role ON t_id = tr_teacher
                 LEFT JOIN dh_teacher_area_cluster ON tr_identifier = tac_id
