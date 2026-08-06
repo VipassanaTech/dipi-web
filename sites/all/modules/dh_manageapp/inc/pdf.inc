@@ -416,6 +416,10 @@ function map_application_fields($row)
 	// }
     $fields['Other occupation'] = $occupation;
     $fields['Department'] = $row['a_department'];
+    $fields['MentalState'] = $row['a_extra'];
+    $fields['Learn'] = $row['a_learn_about_vip'];
+    $fields['Reason'] = $row['a_purpose'];
+    $fields['SpecialNeeds'] = $row['ae_desc_special_requirement'];
 
 	$fields['Education'] = $row['a_education']; 	
 	$fields['Name of Organization'] = $row['a_company'];		$fields['Designation'] = $row['a_designation'];
