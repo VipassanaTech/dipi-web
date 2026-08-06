@@ -393,27 +393,29 @@ function map_application_fields($row)
 	}
 	else
 	 	$fields['present'] = 'Yes'; // Occupation
-	$arr_occ = array('doctor', 'lawyer', 'engineer', 'it', 'business', 'ca/acct.', 'ngo', 'student', 'defense', 'govt. (class-1)', 'govt. (class-2)', 'real estate', 'agriculture', 'teacher', 'politician' );
-	if ($occupation == 'doctor') $fields['Doctor'] = 'Yes';
-	if ($occupation == 'lawyer') $fields['lawyer'] = 'Yes'; 	
-	if ($occupation == 'engineer') $fields['engg'] = 'Yes';	
-	if ($occupation == 'it') $fields['it'] = 'Yes'; 
-	if ($occupation == 'business') $fields['bus'] = 'Yes'; 
-	if ($occupation == 'ca/acct.') $fields['ca'] = 'Yes';	
-	if ($occupation == 'ngo') $fields['ngo'] = 'Yes';		
-	if ($occupation == 'student') $fields['student'] = 'Yes'; 	
-	if ($occupation == 'defense') $fields['defence'] = 'Yes'; 
-	if ($occupation == 'govt. (class-1)') $fields['class1'] = 'Yes';	
-	if ($occupation == 'govt. (class-2)') $fields['class2'] = 'Yes';
-	if ($occupation == 'real estate') $fields['real est'] = 'Yes';
-	if ($occupation == 'agriculture') $fields['agri'] = 'Yes';
-	if ($occupation == 'teacher') $fields['teacher'] = 'Yes';	
-	if ($occupation == 'politician') $fields['politician'] = 'Yes';
-	if ( ! in_array($occupation, $arr_occ) ) 
-	{
-		$fields['other'] = 'Yes';
-		$fields['Other occupation'] = $occupation;
-	}
+	// $arr_occ = array('doctor', 'lawyer', 'engineer', 'it', 'business', 'ca/acct.', 'ngo', 'student', 'defense', 'govt. (class-1)', 'govt. (class-2)', 'real estate', 'agriculture', 'teacher', 'politician' );
+	// if ($occupation == 'doctor') $fields['Doctor'] = 'Yes';
+	// if ($occupation == 'lawyer') $fields['lawyer'] = 'Yes';
+	// if ($occupation == 'engineer') $fields['engg'] = 'Yes';
+	// if ($occupation == 'it') $fields['it'] = 'Yes';
+	// if ($occupation == 'business') $fields['bus'] = 'Yes';
+	// if ($occupation == 'ca/acct.') $fields['ca'] = 'Yes';
+	// if ($occupation == 'ngo') $fields['ngo'] = 'Yes';
+	// if ($occupation == 'student') $fields['student'] = 'Yes';
+	// if ($occupation == 'defense') $fields['defence'] = 'Yes';
+	// if ($occupation == 'govt. (class-1)') $fields['class1'] = 'Yes';
+	// if ($occupation == 'govt. (class-2)') $fields['class2'] = 'Yes';
+	// if ($occupation == 'real estate') $fields['real est'] = 'Yes';
+	// if ($occupation == 'agriculture') $fields['agri'] = 'Yes';
+	// if ($occupation == 'teacher') $fields['teacher'] = 'Yes';
+	// if ($occupation == 'politician') $fields['politician'] = 'Yes';
+	// if ( ! in_array($occupation, $arr_occ) )
+	// {
+	// 	$fields['other'] = 'Yes';
+	// 	$fields['Other occupation'] = $occupation;
+	// }
+    $fields['Other occupation'] = $occupation;
+    $fields['Department'] = $row['a_department'];
 
 	$fields['Education'] = $row['a_education']; 	
 	$fields['Name of Organization'] = $row['a_company'];		$fields['Designation'] = $row['a_designation'];
