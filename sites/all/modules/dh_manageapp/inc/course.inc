@@ -42,13 +42,13 @@ function dh_course_dashboard()
 	//if ($finalized) $type = 's';
 	$out = "<h2>$course_name (".l("Edit", "manage-course/".arg(1), array('query' => array('c' => arg(2) ))).")</h2>";
 	$out .= "<h3>".l("Back to Dashboard", "centre/".arg(1))."</h3>";
-	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
+	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Group-wise Seating' => 'group-seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )
 	{
 		if ( $key == 'View Applications')
 			$out .= '<h2><li>'.l($key, $val, array("query" => array("s" => '', 't' => '','g' => '', 'd' => $type))).'</li></h2>';
-		elseif ( in_array($key, array('Cell List', 'Seating Plan'))  )
+		elseif ( in_array($key, array('Cell List', 'Seating Plan', 'Group-wise Seating'))  )
 			$out .= '<h2><li>'.l($key, $val).' ('.l('Regenerate', $val, array("query" => array("r" => 1))).') </li></h2>';
         elseif ( in_array($key, array('Generate Male PDF', 'Generate Female PDF'))  )
             $out .= '<h2><li>'.l($key, $val).'<br>('.l('Sort as Seating Plan', $val, array("query" => array("seating" => 1))).') </li></h2>';

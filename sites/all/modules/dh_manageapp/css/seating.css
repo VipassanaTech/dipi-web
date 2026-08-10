@@ -63,6 +63,16 @@ ul {
 	display: inline-block;
 }
 
+/* Chowky placed at the back of the hall: full-width block above the seats. */
+.chowky-back {
+	display: block;
+	clear: both;
+	margin-bottom: 10px;
+}
+.chowky-back .chowky-div {
+	display: inline-block;
+}
+
 .footer {
 	page-break-after: always;
 }

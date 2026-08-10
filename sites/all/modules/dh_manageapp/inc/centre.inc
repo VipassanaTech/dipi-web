@@ -247,8 +247,24 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'1':$edit_data['cs_chowky_per_row_female'], '#required' => 1,  );
 
 	*/
+	$seat_config_template = ";Male side\n[RIGHT]\nSeatsPerRow = 5\nSeatsPerRowChowky = 1\nSeatDirection = right\nChowkyPosition = right\nRow-2 = 6\nGROUP1-SeatsPerRow = 4\nGROUP1-ChowkyPosition = back\nGROUP2-SeatsPerRow = 5\n\n;Female side\n[LEFT]\nSeatsPerRow = 4\nSeatsPerRowChowky = 1\nSeatDirection = left\nChowkyPosition = left\nGROUP1-SeatsPerRow = 3\nGROUP2-SeatsPerRow = 2\n";
+	$seat_config_help =
+		'<p>Describes the hall as two sides: <b>[RIGHT]</b> = Male, <b>[LEFT]</b> = Female. Put these keys under each side (only SeatsPerRow is required):</p>'.
+		'<ul style="margin:4px 0 4px 18px;">'.
+		'<li><b>SeatsPerRow</b> &mdash; number of cushion seats in each row.</li>'.
+		'<li><b>SeatsPerRowChowky</b> &mdash; number of chowky (low seats) in each row.</li>'.
+		'<li><b>Row-&lt;n&gt;</b> &mdash; make one row a different width, e.g. <code>Row-2 = 8</code>. <b>ChowkyRow-&lt;n&gt;</b> does the same for chowky.</li>'.
+		'<li><b>SeatDirection</b> &mdash; <code>left</code> or <code>right</code>: which side these seats align to.</li>'.
+		'<li><b>ChowkyPosition</b> &mdash; <code>left</code>, <code>right</code> or <code>back</code>: chowky as a side column, or a full-width row at the back (behind the seats).</li>'.
+		'</ul>'.
+		'<p>SeatDirection and ChowkyPosition are optional; if omitted they use the natural side for that half of the hall.</p>'.
+		'<p><b>Different sizes per group</b> (Group-wise Seating Plan only): repeat any key with a <b>GROUP&lt;n&gt;-</b> prefix to change it for just that group &mdash; e.g. <code>GROUP1-SeatsPerRow = 4</code>, <code>GROUP1-Row-2 = 6</code>, <code>GROUP1-ChowkyPosition = back</code>. The main Seating Plan ignores every GROUP&lt;n&gt;- key.</p>'.
+		'<p><b>If a group has no GROUP&lt;n&gt;- key, it uses the plain [RIGHT]/[LEFT] hall settings.</b> So if you add no GROUP&lt;n&gt;- keys at all, every group is laid out with the same main hall settings; add them only for the groups that need a different layout.</p>'.
+		'<p>Lines starting with <code>;</code> are comments. Example:</p>'.
+		'<pre style="background:#f5f5f5;border:1px solid #ddd;padding:8px;">'.check_plain($seat_config_template).'</pre>';
 	$form[$group]['cs_seat_config'] = array('#title' => 'Seating Configuration', '#type' => 'textarea', '#weight' => 8,
-		'#default_value' => $add?"#Female\n[LEFT]\nSeatsPerRow = 4\nSeatsPerRowChowky = 1\n\n#Male\n[RIGHT]\nSeatsPerRow = 5\nSeatsPerRowChowky = 1\n":$edit_data['cs_seat_config'], '#required' => 1, '#rows'  => 10 );
+		'#default_value' => $add?"#Female\n[LEFT]\nSeatsPerRow = 4\nSeatsPerRowChowky = 1\n\n#Male\n[RIGHT]\nSeatsPerRow = 5\nSeatsPerRowChowky = 1\n":$edit_data['cs_seat_config'], '#required' => 1, '#rows'  => 16,
+		'#description' => $seat_config_help );
 
 
 	$group = 'Cell Settings';

@@ -35,7 +35,27 @@ function dh_manage_day_zero()
 			if (isset($_REQUEST['r']))
 				dh_auto_allocate_seats(arg(1), $course);
 			return dh_generate_seating_plan(arg(1), $course);
-		break;		
+		break;
+		case 'group-seating':
+			zeroize_new_course_data(arg(1), arg(2));
+			$other_course = db_query("select c_combined_seat_course from dh_course where c_id=".arg(2))->fetchField();
+			if ($other_course > 0 )
+				$course = array(arg(2), $other_course);
+			else
+				$course = arg(2);
+			// Fill in positions for any unseated students (full re-pack when ?r=1),
+			// then render. Uses group columns; the main hall plan is untouched.
+			dh_auto_allocate_group_seats(arg(1), $course, isset($_REQUEST['r']));
+			return dh_generate_group_seating_plan(arg(1), $course);
+		break;
+		case 'group-seating-update':
+			$other_course = db_query("select c_combined_seat_course from dh_course where c_id=".arg(2))->fetchField();
+			if ($other_course > 0 )
+				$course = array(arg(2), $other_course);
+			else
+				$course = arg(2);
+			dh_update_group_seating(arg(1), $course);
+		break;
 		case 'seating2':
 			zeroize_new_course_data(arg(1), arg(2));
 			return dh_generate_seating_plan2(arg(1), arg(2));
@@ -687,7 +707,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	$header = array('Update', 'ConfNo', 'Name', 'Gender', 'Type', 'Age', 'Teen/10D/STP', 'LC', 'RoomNo', 'Laundry', 'Valuable', 'Chowky', 'Chair', 'BackRest', 'Group', 'H' );
 	$attributes = array('id' => 'table-attending');
 
-	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id).' | '.l("Manager List", "manager-list/".$centre."/".$course_id).' | '.l("Seating Plan", "seating/".$centre."/".$course_id).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1))).')  ) </h3>';
+	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id).' | '.l("Manager List", "manager-list/".$centre."/".$course_id).' | '.l("Seating Plan", "seating/".$centre."/".$course_id).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id).'  ) </h3>';
 	if (!isset($totals['new']['M']['Student'])) $totals['new']['M']['Student'] = 0;
   if (!isset($totals['new']['M']['Sevak'])) $totals['new']['M']['Sevak'] = 0;
   if (!isset($totals['new']['F']['Student'])) $totals['new']['F']['Student'] = 0;
@@ -1090,6 +1110,147 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	}
 }
 
+/**
+ * Resolve where a gender's chowky block sits: 'left', 'right' or 'back'.
+ * $cfgval is the configured ChowkyPosition (may be empty). When unset, keep the
+ * historical behaviour: the side implied by the seat direction.
+ */
+function dh_chowky_position($cfgval, $direction)
+{
+	$p = strtolower(trim((string)$cfgval));
+	if ($p == 'left' || $p == 'right' || $p == 'back')
+		return $p;
+	return ($direction == LEFT_TO_RIGHT) ? 'right' : 'left';
+}
+
+
+/**
+ * Resolve a gender's seat direction from config: 'right' aligns seats to the
+ * right (LEFT_TO_RIGHT), 'left' to the left (RIGHT_TO_LEFT). Anything else keeps
+ * $default_dir (the historical direction implied by which side the gender is on).
+ */
+function dh_seat_direction($cfgval, $default_dir)
+{
+	$v = strtolower(trim((string)$cfgval));
+	if ($v == 'right') return LEFT_TO_RIGHT;
+	if ($v == 'left')  return RIGHT_TO_LEFT;
+	return $default_dir;
+}
+
+
+/**
+ * Assemble the seats + chowky blocks for one gender according to $position:
+ * 'back' puts chowky as a full-width block above the seats; 'left'/'right' keep
+ * it as a side column.
+ */
+function dh_layout_seats_chowky($out_seats, $out_chowky, $position)
+{
+	if ($position == 'back')
+		return '<div class="chowky-back">'.$out_chowky.'</div>'.$out_seats;
+	if ($position == 'left')
+		return $out_chowky.$out_seats;
+	return $out_seats.$out_chowky;
+}
+
+
+/**
+ * Validate a Seating Configuration string. Returns an array of human-readable
+ * problems (empty array = OK). Only clearly-wrong values are flagged; unknown
+ * keys are ignored so existing configs keep working.
+ */
+function dh_validate_seat_config($settings)
+{
+	if (!is_string($settings) || trim($settings) === '')
+		return array('The Seating Configuration is empty.');
+	$ini = @parse_ini_string($settings, true, INI_SCANNER_RAW);
+	if (!is_array($ini))
+		return array('The Seating Configuration could not be read. Check the format: [RIGHT] / [LEFT] sections with "key = value" lines.');
+
+	$sections = array();
+	foreach ($ini as $s => $keys)
+		$sections[strtoupper($s)] = $keys;
+
+	$errors = array();
+	if (!isset($sections['LEFT']) && !isset($sections['RIGHT']))
+		$errors[] = 'Missing [RIGHT] (Male) and/or [LEFT] (Female) section.';
+
+	foreach ($sections as $sname => $keys)
+	{
+		if (!is_array($keys)) continue;
+		foreach ($keys as $k => $v)
+		{
+			// Classify by the key name, ignoring any GROUP<n>- prefix. Only the
+			// placement keys are value-checked: numeric keys (SeatsPerRow etc.) are
+			// left alone because the plans already tolerate 0 / blank (they clamp),
+			// and many existing centres rely on that.
+			$base = $k;
+			if (preg_match('/^group\s*[0-9a-z]+-(.+)$/i', $k, $m)) $base = $m[1];
+			$bl = strtolower(trim($base));
+			$vt = trim((string)$v);
+			if ($bl === 'chowkyposition')
+			{
+				if (!in_array(strtolower($vt), array('left', 'right', 'back')))
+					$errors[] = "[$sname] $k must be left, right or back (got \"$vt\").";
+			}
+			elseif ($bl === 'seatdirection')
+			{
+				if (!in_array(strtolower($vt), array('left', 'right')))
+					$errors[] = "[$sname] $k must be left or right (got \"$vt\").";
+			}
+		}
+	}
+
+	// Each side that is defined must carry an (un-prefixed) SeatsPerRow line.
+	// This catches typos like "SeatsPerRw" that would otherwise be ignored.
+	foreach (array('RIGHT', 'LEFT') as $sn)
+	{
+		if (!isset($sections[$sn]) || !is_array($sections[$sn])) continue;
+		$has_spr = false;
+		foreach ($sections[$sn] as $k => $v)
+		{
+			if (preg_match('/^group/i', $k)) continue;   // ignore GROUP<n>- keys
+			if (strtolower(trim($k)) === 'seatsperrow') { $has_spr = true; break; }
+		}
+		if (!$has_spr)
+			$errors[] = "[$sn] has no SeatsPerRow line (each side needs one - check for a typo in the key name).";
+	}
+
+	return $errors;
+}
+
+
+/**
+ * Print (or PDF) a "settings are not correct" page listing the problems, then
+ * exit. Used by the seating plans when dh_validate_seat_config() fails.
+ */
+function dh_seat_config_error_output($centre, $errors, $pdf = '')
+{
+	global $base_url;
+	$out = '<html><head>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style>';
+	$out .= '</head><body>';
+	$out .= '<div class="helptext">';
+	$out .= '<h2>Seating settings are not correct</h2>';
+	$out .= '<p>Please correct the <b>Seating Configuration</b> in '.l('Center Settings', 'centre/'.$centre.'/edit').', then open the seating plan again.</p>';
+	if (!empty($errors))
+	{
+		$out .= '<ul>';
+		foreach ($errors as $e)
+			$out .= '<li>'.check_plain($e).'</li>';
+		$out .= '</ul>';
+	}
+	$out .= '</div></body></html>';
+
+	if ($pdf <> '')
+		create_pdf_from_html($out, $pdf);
+	else
+	{
+		print $out;
+		exit;
+	}
+}
+
+
 function dh_generate_seating_plan($centre, $course, $pdf = '')
 {
 	global $base_url;
@@ -1315,6 +1476,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 ';
 
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
+	$config_errors = dh_validate_seat_config($settings);
+	if (!empty($config_errors))
+		return dh_seat_config_error_output($centre, $config_errors, $pdf);
 	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$ini = array();
 	if ($settings <> '')
@@ -1380,14 +1544,14 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		$male_dir = LEFT_TO_RIGHT;
 	else
 		$male_dir = RIGHT_TO_LEFT;
+	$male_section = ($ini['RIGHT']['gender'] == 'M') ? 'RIGHT' : 'LEFT';
+	$male_dir = dh_seat_direction(isset($ini[$male_section]['SeatDirection']) ? $ini[$male_section]['SeatDirection'] : '', $male_dir);
+	$male_chowky_pos = dh_chowky_position(isset($ini[$male_section]['ChowkyPosition']) ? $ini[$male_section]['ChowkyPosition'] : '', $male_dir);
 
-	$out .= '<div class="teacher-seat">Seating Plan - MALE<br>'.$course_name.'</div>';	
+	$out .= '<div class="teacher-seat">Seating Plan - MALE<br>'.$course_name.'</div>';
 	$out_seats = dh_print_seats($seats['M']['seats'], $max_col['M']+1, $male_dir, 'main-div', $alpha);
-	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div', $alpha);		
-	if ($male_dir == LEFT_TO_RIGHT)
-		$out .= $out_seats.$out_chowky;
-	else
-		$out .= $out_chowky.$out_seats;
+	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div', $alpha);
+	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '<div class="footer"></div>';
@@ -1396,16 +1560,16 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 		$female_dir = RIGHT_TO_LEFT;
 	else
 		$female_dir = LEFT_TO_RIGHT;
+	$female_section = ($ini['LEFT']['gender'] == 'F') ? 'LEFT' : 'RIGHT';
+	$female_dir = dh_seat_direction(isset($ini[$female_section]['SeatDirection']) ? $ini[$female_section]['SeatDirection'] : '', $female_dir);
+	$female_chowky_pos = dh_chowky_position(isset($ini[$female_section]['ChowkyPosition']) ? $ini[$female_section]['ChowkyPosition'] : '', $female_dir);
 
 	$place = 'LEFT';
 
-	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';	
+	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';
 	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div', $alpha);
 	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div', $alpha);
-	if ($female_dir == LEFT_TO_RIGHT)
-		$out .= $out_seats.$out_chowky;
-	else
-		$out .= $out_chowky.$out_seats;
+	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '<div class="footer"></div>';
@@ -1429,6 +1593,8 @@ function dh_auto_allocate_seats($centre, $course)
 	if (!is_array($course))
 		$course = array($course);
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchAssoc();
+	if (dh_validate_seat_config($settings['cs_seat_config']))
+		return;   // invalid config - dh_generate_seating_plan will show the error
 
 	$ini = array();
 	if ($settings['cs_seat_config'] <> '')
@@ -1711,8 +1877,523 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 	$ret .= $out;
 	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
 	$ret .= '</div>';
-	
 
+
+	return $ret;
+}
+
+
+/**
+ * Extract the per-group overrides that share the centre's Seating Configuration
+ * (cs_seat_config), parsed with the standard INI parser. Format:
+ *
+ *   [RIGHT]                        ; section = Male
+ *   SeatsPerRow = 5                ; hall default (also the group fallback)
+ *   GROUP1-SeatsPerRow = 4         ; per-group override, prefixed GROUP<n>-
+ *   GROUP1-SeatsPerRowChowky = 2
+ *   GROUP2-SeatsPerRow = 5
+ *   [LEFT]                         ; section = Female
+ *   ...
+ *
+ * Returns $cfg[SECTION][GROUP][key] = value; keys without a GROUP<n>- prefix
+ * are stored under group '' (the section-wide default). Per-row overrides use
+ * GROUP<n>-Row-<r> (seats) and GROUP<n>-ChowkyRow-<r> (chowky).
+ */
+function dh_parse_group_seat_config($text)
+{
+	$cfg = array();
+	if (!is_string($text) || trim($text) === '')
+		return $cfg;
+	$ini = parse_ini_string($text, true, INI_SCANNER_RAW);
+	if (!is_array($ini))
+		return $cfg;
+	foreach ($ini as $section => $keys)
+	{
+		$section = strtoupper($section);
+		if (!is_array($keys))
+			continue;
+		foreach ($keys as $k => $v)
+		{
+			if (preg_match('/^group\s*([0-9a-zA-Z]+)-(.+)$/i', $k, $m))
+				$cfg[$section][$m[1]][$m[2]] = $v;   // group-specific key
+			else
+				$cfg[$section][''][$k] = $v;          // section-wide default
+		}
+	}
+	return $cfg;
+}
+
+
+/**
+ * Resolve grid dimensions for one group + section (gender). SeatsPerRow /
+ * SeatsPerRowChowky fall back: group block -> section-wide default ('') ->
+ * main hall config ($ini[$section]) -> hard defaults. Per-row overrides are
+ * taken ONLY from the group's own GROUP<n>- block (never inherited from the
+ * hall's Row-N), so group grids stay predictable.
+ */
+function dh_group_dims($gcfg, $ini, $section, $group)
+{
+	$grp = isset($gcfg[$section][$group]) ? $gcfg[$section][$group] : array();
+	$def = isset($gcfg[$section]['']) ? $gcfg[$section][''] : array();
+
+	$spr  = isset($grp['SeatsPerRow'])       ? (int)$grp['SeatsPerRow']       : (isset($def['SeatsPerRow'])       ? (int)$def['SeatsPerRow']       : (isset($ini[$section]['SeatsPerRow'])       ? (int)$ini[$section]['SeatsPerRow']       : 5));
+	$sprc = isset($grp['SeatsPerRowChowky']) ? (int)$grp['SeatsPerRowChowky'] : (isset($def['SeatsPerRowChowky']) ? (int)$def['SeatsPerRowChowky'] : (isset($ini[$section]['SeatsPerRowChowky']) ? (int)$ini[$section]['SeatsPerRowChowky'] : 1));
+	if ($spr  < 1) $spr  = 1;
+	if ($sprc < 1) $sprc = 1;
+
+	// Optional per-row overrides (1-based row number -> 0-based index), from the
+	// group's own block only.
+	$row_overrides = array();
+	$chowky_overrides = array();
+	foreach ($grp as $k => $v)
+	{
+		if (preg_match('/^chowkyrow-([0-9]+)$/i', $k, $m))
+			$chowky_overrides[(int)$m[1] - 1] = (int)$v;
+		elseif (preg_match('/^row-([0-9]+)$/i', $k, $m))
+			$row_overrides[(int)$m[1] - 1] = (int)$v;
+	}
+
+	$seats_cols = $spr;
+	foreach ($row_overrides as $c) if ($c > $seats_cols) $seats_cols = $c;
+	$chowky_cols = $sprc;
+	foreach ($chowky_overrides as $c) if ($c > $chowky_cols) $chowky_cols = $c;
+
+	// Chowky placement and seat direction: group block -> section default -> hall
+	// config -> '' (caller falls back to the gender's default).
+	$cpos = isset($grp['ChowkyPosition']) ? $grp['ChowkyPosition'] : (isset($def['ChowkyPosition']) ? $def['ChowkyPosition'] : (isset($ini[$section]['ChowkyPosition']) ? $ini[$section]['ChowkyPosition'] : ''));
+	$sdir = isset($grp['SeatDirection']) ? $grp['SeatDirection'] : (isset($def['SeatDirection']) ? $def['SeatDirection'] : (isset($ini[$section]['SeatDirection']) ? $ini[$section]['SeatDirection'] : ''));
+
+	return array(
+		'SeatsPerRow' => $spr, 'SeatsPerRowChowky' => $sprc,
+		'row_overrides' => $row_overrides, 'chowky_overrides' => $chowky_overrides,
+		'seats_cols' => $seats_cols, 'chowky_cols' => $chowky_cols,
+		'chowky_position' => strtolower(trim((string)$cpos)),
+		'seat_direction' => strtolower(trim((string)$sdir)),
+	);
+}
+
+
+/**
+ * Lay an ordered (seniority-sorted) list of students into a grid of the given
+ * width. Fills row by row; a per-row override caps that specific row's width.
+ * Returns array('grid' => [row][col] => student, 'maxrow' => int, 'maxcol' => int).
+ */
+function dh_group_allocate($students, $seats_per_row, $row_overrides = array())
+{
+	$grid = array();
+	$row = 0; $col = 0; $maxcol = 0;
+	if ($seats_per_row < 1) $seats_per_row = 1;
+	$cap = isset($row_overrides[0]) ? $row_overrides[0] : $seats_per_row;
+	if ($cap < 1) $cap = $seats_per_row;
+	foreach ($students as $st)
+	{
+		if ($col >= $cap)
+		{
+			$row++; $col = 0;
+			$cap = isset($row_overrides[$row]) ? $row_overrides[$row] : $seats_per_row;
+			if ($cap < 1) $cap = $seats_per_row;
+		}
+		$grid[$row][$col] = $st;
+		if ($col > $maxcol) $maxcol = $col;
+		$col++;
+	}
+	$maxrow = count($grid) ? max(array_keys($grid)) : 0;
+	return array('grid' => $grid, 'maxrow' => $maxrow, 'maxcol' => $maxcol);
+}
+
+
+/**
+ * Allocate group-wise seat positions (aa_group_seat_row / aa_group_seat_col),
+ * kept separate from the main hall positions (aa_seat_row / aa_seat_col). Each
+ * group/gender is packed into its own dimensions (dh_group_dims) in seniority
+ * order. $force = full re-pack (clears then re-assigns everyone); otherwise only
+ * students without a position yet are appended below the current bottom row, so
+ * manually dragged arrangements are preserved.
+ */
+function dh_auto_allocate_group_seats($centre, $course, $force = false)
+{
+	if (!is_array($course))
+		$course = array($course);
+
+	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
+	if (dh_validate_seat_config($settings))
+		return;   // invalid config - dh_generate_group_seating_plan will show the error
+	$ini = array();
+	if ($settings <> '')
+		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
+	if (!isset($ini['LEFT']['gender']))  $ini['LEFT']['gender']  = 'F';
+	if (!isset($ini['RIGHT']['gender'])) $ini['RIGHT']['gender'] = 'M';
+	$gcfg = dh_parse_group_seat_config($settings);
+	$male_section   = ($ini['RIGHT']['gender'] == 'M') ? 'RIGHT' : 'LEFT';
+	$female_section = ($male_section == 'RIGHT') ? 'LEFT' : 'RIGHT';
+	$section_for = array('M' => $male_section, 'F' => $female_section);
+
+	if ($force)
+		db_query("update dh_applicant_attended aa left join dh_applicant a on a.a_id=aa.aa_applicant set aa_group_seat_row=NULL, aa_group_seat_col=NULL where a_course in (".implode(",", $course).")");
+
+	$q = "select a_id, aa_id, a_gender, aa_group, aa_chowky, aa_chair, aa_group_seat_row, aa_group_seat_col, ac_teacher from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$result = db_query($q);
+	$grids = array();
+	while($r = $result->fetchAssoc())
+	{
+		$g = trim($r['aa_group']);
+		if ($g === '') $g = 'Unassigned';
+		$gender = strtoupper($r['a_gender']);
+		if ($gender != 'M' && $gender != 'F') continue;
+		$type = ($r['aa_chowky'] || $r['aa_chair']) ? 'chowky' : 'seats';
+		$grids[$g][$gender][$type][] = $r;
+	}
+
+	foreach ($grids as $g => $byGender)
+	{
+		foreach (array('M', 'F') as $gender)
+		{
+			if (empty($byGender[$gender])) continue;
+			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
+			foreach (array('seats' => 'SeatsPerRow', 'chowky' => 'SeatsPerRowChowky') as $type => $sprk)
+			{
+				if (empty($byGender[$gender][$type])) continue;
+				$ov  = ($type == 'seats') ? $dims['row_overrides'] : $dims['chowky_overrides'];
+
+				// Students still needing a seat, and the current bottom row of this grid.
+				$missing = array();
+				$base_row = -1;
+				foreach ($byGender[$gender][$type] as $st)
+				{
+					if ($st['aa_group_seat_row'] === null || $st['aa_group_seat_col'] === null)
+						$missing[] = $st;
+					elseif ((int)$st['aa_group_seat_row'] > $base_row)
+						$base_row = (int)$st['aa_group_seat_row'];
+				}
+				if (empty($missing)) continue;
+
+				$alloc = dh_group_allocate($missing, $dims[$sprk], $ov);
+				$offset = $base_row + 1;
+				foreach ($alloc['grid'] as $rr => $cols)
+					foreach ($cols as $cc => $st)
+						db_update('dh_applicant_attended')
+							->fields(array('aa_group_seat_row' => $rr + $offset, 'aa_group_seat_col' => $cc))
+							->condition('aa_id', $st['aa_id'])->execute();
+			}
+		}
+	}
+}
+
+
+/**
+ * Persist drag-and-drop changes from the group-wise seating plan into
+ * aa_group_seat_row / aa_group_seat_col. Mirrors dh_update_seating but targets
+ * the group columns. Payload $_REQUEST['u'] is a JSON array of [a_id, row, col].
+ */
+function dh_update_group_seating($centre, $course)
+{
+	$updates = json_decode($_REQUEST['u']);
+	if (!is_array($course))
+		$course = array($course);
+	if (is_array($updates))
+	{
+		foreach ($updates as $update)
+		{
+			$q = "update dh_applicant_attended aa left join dh_applicant a on a.a_id= aa.aa_applicant set aa_group_seat_row=:aa_seat_row, aa_group_seat_col=:aa_seat_col where a.a_id=:a_id and a_center=:a_center and a_course in (:a_course)";
+			db_query($q, array(
+				":aa_seat_row" => $update[1],
+				":aa_seat_col" => $update[2],
+				":a_id"        => $update[0],
+				":a_center"    => $centre,
+				":a_course"    => $course,
+			));
+		}
+	}
+	drupal_json_output(array('status' => 'OK'));
+	exit;
+}
+
+
+/**
+ * Group-wise seating plan: one page per zero-day group number. Each group's
+ * students are laid out into that group's OWN dimensions, taken from the
+ * centre's Seating Configuration (cs_seat_config) via GROUP<n>- prefixed keys.
+ * A group with no such key falls back to the un-prefixed (hall) dimensions.
+ * Seats are draggable and saved via "Store Seat Changes" (group columns).
+ *
+ * Because each group can have different dimensions, seat numbers here are local
+ * to the group grid and need not match the main (full-hall) Seating Plan.
+ */
+function dh_generate_group_seating_plan($centre, $course, $pdf = '')
+{
+	global $base_url;
+	if (!is_array($course))
+		$course = array($course);
+
+	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
+	$config_errors = dh_validate_seat_config($settings);
+	if (!empty($config_errors))
+		return dh_seat_config_error_output($centre, $config_errors, $pdf);
+	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
+	$ini = array();
+	if ($settings <> '')
+		$ini = parse_ini_string($settings, true, INI_SCANNER_RAW);
+	if (!isset($ini['LEFT']['gender']))
+		$ini['LEFT']['gender'] = 'F';
+	if (!isset($ini['RIGHT']['gender']))
+		$ini['RIGHT']['gender'] = 'M';
+	// Per-group overrides live in the SAME config, as GROUP<n>- prefixed keys.
+	$gcfg = dh_parse_group_seat_config($settings);
+
+	// Which INI section is Male / Female (usually RIGHT=M, LEFT=F).
+	$male_section   = ($ini['RIGHT']['gender'] == 'M') ? 'RIGHT' : 'LEFT';
+	$female_section = ($male_section == 'RIGHT') ? 'LEFT' : 'RIGHT';
+	$section_for = array('M' => $male_section, 'F' => $female_section);
+	$dir = array(
+		'M' => ($ini['RIGHT']['gender'] == 'M') ? LEFT_TO_RIGHT : RIGHT_TO_LEFT,
+		'F' => ($ini['LEFT']['gender'] == 'F')  ? RIGHT_TO_LEFT : LEFT_TO_RIGHT,
+	);
+
+	$course_name = '';
+	$h = db_query("select c_name from dh_course where c_id in (".implode(",", $course).")");
+	while($r = $h->fetchAssoc())
+		$course_name .= $r['c_name']." / ";
+
+	// Read the (already allocated) group seat positions.
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$result = db_query($q);
+
+	// Build grids from stored group positions: $groups[label][GENDER][type][row][col] = student.
+	$groups = array();
+	$maxrow = array();
+	$maxcol = array();
+	$group_keys = array();
+	while($r = $result->fetchAssoc())
+	{
+		$g = trim($r['aa_group']);
+		if ($g === '')
+			$g = 'Unassigned';
+		$group_keys[$g] = $g;
+		$gender = strtoupper($r['a_gender']);
+		if ($gender != 'M' && $gender != 'F')
+			continue;
+		$type = ($r['aa_chowky'] || $r['aa_chair']) ? 'chowky' : 'seats';
+		if ($r['aa_group_seat_row'] === null || $r['aa_group_seat_col'] === null)
+			continue;
+		$row = (int)$r['aa_group_seat_row'];
+		$col = (int)$r['aa_group_seat_col'];
+		$groups[$g][$gender][$type][$row][$col] = $r;
+		if (!isset($maxrow[$g][$gender][$type]) || $row > $maxrow[$g][$gender][$type]) $maxrow[$g][$gender][$type] = $row;
+		if (!isset($maxcol[$g][$gender][$type]) || $col > $maxcol[$g][$gender][$type]) $maxcol[$g][$gender][$type] = $col;
+	}
+
+	// Numeric groups ascending, 'Unassigned' last.
+	$group_labels = array_values($group_keys);
+	usort($group_labels, function($a, $b) {
+		if ($a === 'Unassigned') return 1;
+		if ($b === 'Unassigned') return -1;
+		return intval($a) - intval($b);
+	});
+
+	$out = '<html><head>';
+	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script><script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style>';
+	$out .= '<style>.group-page{page-break-before: always;} .group-title{width:1000px;text-align:center;font-weight:bold;font-size:22px;margin-top:15px;} .group-empty{color:#888;padding:10px;}
+		/* Keep CW-/CH- seat numbers on one line so chowky cells do not overflow. */
+		.s-seat-no{white-space:nowrap;} .s-seat-no .cwch{font-size:13px;}
+		/* Clip any residual overflow so a cell can never bleed into the next one. */
+		.ui-state-default{overflow:hidden;}</style>';
+	$out .= '<script>
+	$(function(){
+		// Seat numbers live only in the fixed background layer; student cards live
+		// only in the draggable layer. This way seat numbers stay put at their
+		// location while students are dragged between them.
+		$(".sortable-m .seatnumber, .sortable-f .seatnumber").empty();
+		$(".bg-table-m, .bg-table-f").find(".s-acco, .s-cell, .s-name, .s-old-student, .s-age, .s-backrest, .cwch").empty();
+
+		$(".sortable-m, .sortable-f").sortable();
+		$(".sortable-m, .sortable-f").disableSelection();
+		$(document).on("mouseenter", ".sortable-m .ui-state-default, .sortable-f .ui-state-default", function(){ $(this).css({"cursor":"move"}); });
+
+		$(document).on("click", ".add-row", function(){
+			var cols = parseInt($(this).val(), 10) || 1;
+			var uls = $(this).prevAll("ul");   // [0]=foreground sortable, [1]=background bg-table
+			for (var i=0; i<cols; i++) {
+				uls.eq(0).prepend(\'<li class="ui-state-default"><div class="s-app-id" data-s-app-id=""></div></li>\');
+				uls.eq(1).prepend(\'<li class="ui-state-default"></li>\');
+			}
+		});
+
+		$(".store-seat-changes").click(function(){
+			var btn = $(this);
+			btn.off("click").text("Processing... the seating plan will reload shortly.");
+			var update_array = [];
+			var current_path = window.location.pathname;
+			var update_path = current_path.replace("group-seating", "group-seating-update");
+			$(".ui-sortable li .s-app-id").each(function(){
+				var closest_ul = $(this).closest("ul");
+				var application_id = $(this).attr("data-s-app-id");
+				var col_per_row = parseInt($(this).attr("data-cols"), 10);
+				if (application_id) {
+					var no_of_li = closest_ul.children("li").length;
+					var current_li = $(this).closest("li").index() + 1;
+					var current_position = no_of_li - current_li + 1;
+					var student_row = Math.ceil(current_position / col_per_row) - 1;
+					var student_column = (current_position % col_per_row) - 1;
+					if (student_column == -1) student_column = col_per_row - 1;
+					update_array.push([application_id, student_row, student_column]);
+				}
+			});
+			$.getJSON(update_path, { u: JSON.stringify(update_array) })
+				.done(function(json){
+					if (json.status == "OK") { window.location = current_path; }
+					else { alert("Update failed!\n" + (json.msg || "")); btn.text("Store Seat Changes").on("click"); }
+				})
+				.fail(function(){ alert("Update failed!"); btn.text("Store Seat Changes"); });
+		});
+	});
+	</script>';
+	$out .= '</head><body>';
+	$out .= '<div class="helptext no-print">
+		<h2>Group-wise Seating Plan</h2>
+		<p>One page per group, laid out using each group\'s own dimensions from the centre\'s Seating Configuration (GROUP&lt;n&gt;- keys; falls back to the hall dimensions).</p>
+		<p>Rearrange seats by dragging. Click "Store Seat Changes" to save, or "Add Empty Row" to make space. "Regenerate" re-packs all groups from the configuration.</p>
+		<p>Print by clicking "Print Seating Plan" or CTRL-P. Help text and buttons are ignored on print.</p>
+		</div>
+		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
+		<button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
+
+	if (count($group_labels) == 0)
+		$out .= '<div class="group-empty">No attending students found for this course.</div>';
+
+	$first = true;
+	foreach ($group_labels as $g)
+	{
+		$page_class = $first ? '' : 'group-page';
+		$first = false;
+		$out .= '<div class="'.$page_class.'">';
+		$out .= '<div class="group-title">GROUP '.check_plain($g).'<br>'.$course_name.'</div>';
+
+		$rendered_any = false;
+		foreach (array('M' => 'MALE', 'F' => 'FEMALE') as $gender => $label)
+		{
+			if (!isset($groups[$g][$gender]['seats']) && !isset($groups[$g][$gender]['chowky']))
+				continue;
+			$rendered_any = true;
+			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
+
+			$s_grid = isset($groups[$g][$gender]['seats'])  ? $groups[$g][$gender]['seats']  : array();
+			$c_grid = isset($groups[$g][$gender]['chowky']) ? $groups[$g][$gender]['chowky'] : array();
+			// Grid width from config, but never narrower than the stored positions.
+			$s_cols = $dims['seats_cols'];
+			if (isset($maxcol[$g][$gender]['seats']) && $maxcol[$g][$gender]['seats'] + 1 > $s_cols) $s_cols = $maxcol[$g][$gender]['seats'] + 1;
+			$c_cols = $dims['chowky_cols'];
+			if (isset($maxcol[$g][$gender]['chowky']) && $maxcol[$g][$gender]['chowky'] + 1 > $c_cols) $c_cols = $maxcol[$g][$gender]['chowky'] + 1;
+			$s_mr = isset($maxrow[$g][$gender]['seats'])  ? $maxrow[$g][$gender]['seats']  : 0;
+			$c_mr = isset($maxrow[$g][$gender]['chowky']) ? $maxrow[$g][$gender]['chowky'] : 0;
+
+			$gdir = dh_seat_direction($dims['seat_direction'], $dir[$gender]);
+			$out .= '<div class="teacher-seat">'.$label.'</div>';
+			$out_seats  = dh_print_group_seats($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha);
+			$out_chowky = dh_print_group_seats($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha);
+			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
+			$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $chowky_pos);
+			$out .= '<div style="clear:both"></div><div class="teacher-seat">TEACHER</div>';
+		}
+
+		if (!$rendered_any)
+			$out .= '<div class="group-empty">No students in this group.</div>';
+
+		$out .= '</div>';
+	}
+
+	$out .= '</body></html>';
+
+	if ($pdf <> '')
+		create_pdf_from_html($out, $pdf);
+	else
+	{
+		print $out;
+		exit;
+	}
+}
+
+
+/**
+ * Grid renderer for the group-wise seating plan. Renders a single <ul> of
+ * fixed-width <li> cells (which jQuery UI sortable turns into a drag grid) and
+ * an "Add Empty Row" button. Does NOT write to the DB - saving is handled by
+ * the Store Seat Changes flow (dh_update_group_seating). $max_row is the last
+ * row index of the grid; $cushion_cols its width. Seat numbers are local to
+ * this grid.
+ */
+function dh_print_group_seats($seats, $cushion_cols, $max_row, $direction, $div, $alpha)
+{
+	if (count((array)$seats) <= 0)
+		return '';
+
+	$rows = $max_row + 1;
+	$counter = $rows * $cushion_cols;
+	$cls = ($direction == LEFT_TO_RIGHT) ? 'sortable-m' : 'sortable-f';
+	$bg_cls = ($direction == LEFT_TO_RIGHT) ? 'bg-table-m' : 'bg-table-f';
+	$width = ($cushion_cols * 142) + 6;
+
+	$ret = '<div class="'.$div.'">';
+	$out = '<ul class="'.$cls.'" style="width:'.$width.'px">';
+
+	for ($row = $rows - 1; $row >= 0; $row--)
+	{
+		for ($col = 0; $col < $cushion_cols; $col++)
+		{
+			$col2 = $cushion_cols - $col - 1;
+			$s_no = $counter;
+			$counter--;
+			if ($alpha)
+				$s_no = sprintf("%c%d", (65 + $col2), ($row + 1));
+			$s_no_html = '<span class="seatnumber">'.$s_no.'</span>';
+			$seat_no = '<div class="seat-no">'.$s_no_html.'</div>';
+
+			$out .= '<li class="ui-state-default">';
+			if ( isset($seats[$row][$col2]) && is_array($seats[$row][$col2]) )
+			{
+				$r = $seats[$row][$col2];
+				if ($r['aa_chowky'])
+					$seat_no = '<div class="seat-no"><span class="cwch">CW-</span>'.$s_no_html.'</div>';
+				if ($r['aa_chair'])
+					$seat_no = '<div class="seat-no"><span class="cwch">CH-</span>'.$s_no_html.'</div>';
+				if ($r['a_old']) $t = '(O)'; else $t = '';
+				$teacher = '';
+				$br = '';
+				if ($r['aa_backrest'] || $r['aa_chowky']) $br = 's-backrest-yes';
+				$age_info = ' ('.$r['Age'].')';
+				$short_courses = $long_courses = '';
+				if ( $r['a_old'] )
+				{
+					$short_courses = 's:'.($r['ac_teen'] + $r['ac_10d'] + $r['ac_stp']);
+					$long_courses = 'L:'.($r['ac_20d'] + $r['ac_30d'] + $r['ac_45d'] + $r['ac_60d'] + $r['ac_tsc'] + $r['ac_spl']);
+					if ( $r['ac_teacher'] )
+						$teacher = 's-teacher';
+				}
+				$out .= '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
+					'<div class="s-seat-no">'.$seat_no.'</div>'.
+					'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].'</div>'.
+					'<div class="s-cell">'.($r['aa_cell'] ? "Cell: {$r['aa_cell']}" : "").'</div>'.
+					'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
+					'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.
+					'<div class="s-age">Age: '.$age_info.'</div>'.
+					'<div class="s-backrest '.$br.'"></div>';
+			}
+			else
+			{
+				$out .= '<div class="s-app-id" data-s-app-id=""></div>'.
+					'<div class="s-seat-no">'.$seat_no.'</div>';
+			}
+			$out .= '</li>';
+		}
+	}
+	$out .= '</ul>';
+	// Duplicate the grid: a fixed background layer (bg-table-*, holds the seat
+	// numbers) behind the draggable foreground layer (sortable-*, holds the
+	// student cards). The layers are separated in JS; see the render script.
+	$out = str_replace('class="'.$cls.'"', 'class="'.$bg_cls.'"', $out).$out;
+	$ret .= $out;
+	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= '</div>';
 	return $ret;
 }
 

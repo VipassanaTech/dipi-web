@@ -403,6 +403,16 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['group-seating/%centre_id/%course_id'] = array( 'title' => t('Group-wise Seating Plan'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['group-seating-update/%centre_id/%course_id'] = array( 'title' => t('Update Group-wise Seating Plan'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
   $items['seating-update/%centre_id/%course_id'] = array( 'title' => t('Update Seating Plan'),
        'page callback' => 'dh_manage_day_zero',
        'access arguments' => array('access zero day'),
