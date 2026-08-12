@@ -3176,8 +3176,8 @@ function handle_whatsapp_msg($sender, $data)
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $data));
     $today = date('Y-m-d');
-    $q = "select count(sl_id) from dh_sms_log where sl_from = '$sender' and sl_tstamp >= '$today'";
-    $msg_count = db_query($q)->fetchField();
+    $q = "select count(sl_id) from dh_sms_log where sl_from = :from and sl_tstamp >= :today";
+    $msg_count = db_query($q, array(':from' => $sender, ':today' => $today))->fetchField();
     if ($msg_count > 100)
     {
         watchdog('dipi_api', 'Sender '.$sender.' blocked due to too many messages');
