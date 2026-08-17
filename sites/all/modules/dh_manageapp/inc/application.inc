@@ -1290,15 +1290,25 @@ function send_at_email()
     $status = db_query("select a_status from dh_applicant where a_id=$app_id")->fetchField();
     if ($status == "R-ATReview")
     {
-        dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
-        $out['status'] = 'OK';
-        $out['msg'] = 'Success! Sent RecoAT Email';
+        $ret = dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
+        if ( isset($ret['error']) )
+            $out['msg'] = 'Failed! '.$ret['error'];
+        else
+        {
+            $out['status'] = 'OK';
+            $out['msg'] = 'Success! Sent RecoAT Email';
+        }
     }
     elseif ($status == "A-ATReview")
     {
-        dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
-        $out['status'] = 'OK';
-        $out['msg'] = 'Success! Sent AreaT Email';
+        $ret = dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
+        if ( isset($ret['error']) )
+            $out['msg'] = 'Failed! '.$ret['error'];
+        else
+        {
+            $out['status'] = 'OK';
+            $out['msg'] = 'Success! Sent AreaT Email';
+        }
     }
     else
     {

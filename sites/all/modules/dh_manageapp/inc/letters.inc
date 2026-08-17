@@ -492,7 +492,7 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		if ($type == 'a-teacher') $teacher = $row['al_area_at'];
 		if ($type == 'lc-admin') $teacher = $row['al_recommending'];
 		if (in_array($type, array('r-teacher', 'a-teacher')))
-			$q = "select t_email, t_mob_phone, t_country  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' limit 1";
+			$q = "select t_email, t_mob_phone, t_country  from dh_teacher where CONCAT(t_f_name,' ', t_l_name) = '".addslashes($teacher)."' and t_status='Active' limit 1";
 		else
 			$q = "select c_lc_admin_email as 't_email' from dh_center where c_id=".$centre;
 		$t_data = db_query($q)->fetchAssoc();
@@ -635,7 +635,10 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$ret = dh_get_letter($type, $id, $event, $letter_id, $comment);
 
 	if (!$ret['result'])
-		return;
+	{
+		$ret_val['error'] = $ret['msg'];
+		return $ret_val;
+	}
 
 	$row = $ret['row'];
 	$centre = $row['CentreID'];
@@ -680,8 +683,15 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		{
 			$log = "No email found for AT ";
 			logit($centre,  'Letter', $id, $log );
-			$user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
-			_update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
+            $ret_val['error'] = "No email found for AT";
+            if ( in_array($event, array('R-ATReview')) )
+            {
+                $user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
+                _update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
+                $ret_val['error'] .= ", application moved to R-ATTransfer";
+            }
+
+			return $ret_val;
 		}
 	}
 
