@@ -1155,10 +1155,18 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		else
 			unset($app_aa['aa_left_on']);
 
-		if (isset($input['aa_cell_fixed']) && ($input['aa_cell_fixed']))
+		/* "Cell No Fixed?" with no Cell No is meaningless: the blank ends up in the
+		   reserved list in generate_cell_list() and used to hang the cell-list
+		   page. Refuse the flag rather than storing it, and say why. */
+		$aa_cell_val = isset($app_aa['aa_cell']) ? trim($app_aa['aa_cell']) : '';
+		if (isset($input['aa_cell_fixed']) && ($input['aa_cell_fixed']) && ($aa_cell_val !== ''))
 			$app_aa['aa_cell_fixed'] = 1;
 		else
+		{
+			if (isset($input['aa_cell_fixed']) && ($input['aa_cell_fixed']) && ($aa_cell_val === ''))
+				drupal_set_message(t('"Cell No Fixed?" was not saved because no Cell No was entered.'), 'warning');
 			$app_aa['aa_cell_fixed'] = 0;
+		}
 
 		$app_aa['aa_updated_by'] = $user->uid;
 		$app_aa['aa_updated'] = date('Y-m-d H:i:s');

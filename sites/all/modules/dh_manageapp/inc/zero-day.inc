@@ -2576,7 +2576,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, IFNULL(aa_cell_group,0) as 'aa_cell_group' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, IFNULL(aa_cell_group,0) as 'aa_cell_group' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
@@ -2690,17 +2690,21 @@ function generate_cell_list($centre, $course)
 		}
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$data['MALE']['old'] = $data['MALE']['new'] = $data['FEMALE']['old'] = $data['FEMALE']['new'] = array();
 	$reserved['Reserved-old']['MALE'] = $reserved['Reserved-new']['MALE'] = $reserved['Reserved-old']['FEMALE'] = $reserved['Reserved-new']['FEMALE'] = array();
 	while($r = $result->fetchAssoc())
 	{
 		$data[strtoupper($r['a_gender']) == 'M'?'MALE':'FEMALE'][$r['a_old']?'old':'new'][] = $r;
-		if ($r['aa_cell_fixed'])
+		/* A cell reserved with no cell number is meaningless, and it used to hang
+		   the allocation loops below: the blank lands in Reserved, and once $c
+		   runs past the end of Cells the lookup yields NULL, which loosely
+		   equals '' - so the while() never exits. Skip blanks. */
+		if ($r['aa_cell_fixed'] && trim($r['aa_cell']) !== '')
 		{
 			$cell_alloc['Reserved'][$r['a_gender'] == 'M'?'MALE':'FEMALE'][] = $r['aa_cell'];
-			$reserved['Reserved-'.($r['a_old']?'old':'new')][$r['a_gender'] == 'M'?'MALE':'FEMALE'][] = $r['aa_cell'];						
+			$reserved['Reserved-'.($r['a_old']?'old':'new')][$r['a_gender'] == 'M'?'MALE':'FEMALE'][] = $r['aa_cell'];
 		}
 	}
 
@@ -2723,7 +2727,10 @@ function generate_cell_list($centre, $course)
 				}
 				else
 				{
-					while( in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) ) )
+					/* $c < count() guard: past the last cell the lookup is NULL, and
+					   NULL == '' loosely, so without it this loop never exits. */
+					while( $c < count($cell_alloc['Cells'][$g])
+					       && in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) ) )
 						$c++;
 					if ( $cell_alloc['Cells'][$g][$c] <> '' )
 						$cell_alloc['Old'][$g][] = $cell_alloc['Cells'][$g][$c++];
@@ -2739,10 +2746,12 @@ function generate_cell_list($centre, $course)
 				}
 				else
 				{
-					while( in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) )  )
+					/* same guard as the 'old' loop above */
+					while( $c < count($cell_alloc['Cells'][$g])
+					       && in_array($cell_alloc['Cells'][$g][$c], array_values($cell_alloc['Reserved'][$g]) )  )
 						$c++;
 					if ( $cell_alloc['Cells'][$g][$c] <> '' )
-						$cell_alloc['New'][$g][] = $cell_alloc['Cells'][$g][$c++];					
+						$cell_alloc['New'][$g][] = $cell_alloc['Cells'][$g][$c++];
 				}
 			}
 		}
