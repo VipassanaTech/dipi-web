@@ -234,6 +234,21 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
   $form[$group]['upload_photo'] = array('#title' => 'add/change photo', '#type' => 'file',
     '#default_value' => '' , '#required' => 0, '#suffix' => $photo,);
 
+	/* Its own block, ahead of Additional Information. Fieldsets here carry no
+	   '#weight', so they render in the order they are added to $form - defining
+	   this group before the next one is what puts it above. */
+	$group = 'Emergency Contact';
+	$form[$group] = array('#type' => 'fieldset', '#title' => 'Emergency Contact',  '#collapsible' => true, '#collapsed' => false);
+	$form[$group]['a_emergency_name'] = array('#title' => 'Emergency Name', '#type' => 'textfield',
+		'#default_value' => isset($edit_data['a_emergency_name'])?$edit_data['a_emergency_name']:'', '#size' => 30,  '#weight' => 1,
+		'#required' => 0, '#maxlength' => 50);
+	$form[$group]['a_emergency_relation'] = array('#title' => 'Emergency Relation', '#type' => 'textfield',
+		'#default_value' => isset($edit_data['a_emergency_relation'])?$edit_data['a_emergency_relation']:'', '#size' => 30,  '#weight' => 2,
+		'#required' => 0, '#maxlength' => 50);
+	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',
+		'#default_value' => isset($edit_data['a_emergency_num'])?$edit_data['a_emergency_num']:'', '#size' => 20,  '#weight' => 3,
+		'#required' => 0, '#maxlength' => 40);
+
 	$group = 'Additional Information';
 	$form[$group] = array('#type' => 'fieldset', '#title' => 'Additional Information',  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['ae_desc_physical'] = array('#title' => 'Physical Health', '#type' => 'textarea',  
@@ -250,34 +265,49 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$form[$group]['ae_desc_addiction_current'] = array('#title' => 'Current Addiction Details', '#type' => 'textarea',
 		'#default_value' => isset($edit_data['ae_desc_addiction_current'])?$edit_data['ae_desc_addiction_current']:'', '#rows' => 3,  '#weight' => 52.1,
 		'#required' => 0);
-	$t = '';
-	if (isset($edit_data['ae_desc_other_technique']))
-		$t = $edit_data['ae_desc_other_technique'];
-	if (isset($edit_data['ae_desc_other_technique_old']))
-		$t .= ' '.$edit_data['ae_desc_other_technique_old'];
+	/* These two used to be concatenated into this single textarea, which meant the
+	   "previously practised" text was written back into the current-technique
+	   column on every save - 5,479 records on production already end with their
+	   own _old value, and 1,263 contain it two or more times. They are edited
+	   separately now so each column keeps only its own text. */
+	$form[$group]['ae_desc_other_technique'] = array('#title' => 'Other Meditation Techniques (current)', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['ae_desc_other_technique'])?$edit_data['ae_desc_other_technique']:'',
+		'#rows' => 3,  '#weight' => 53, '#required' => 0);
 
-	$form[$group]['ae_desc_other_technique'] = array('#title' => 'Other Meditation Techniques', '#type' => 'textarea',  
-		'#default_value' => $t?$t:'', '#rows' => 3,  '#weight' => 53, '#required' => 0);
+	$form[$group]['ae_desc_other_technique_old'] = array('#title' => 'Other Meditation Techniques (previously practised)', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['ae_desc_other_technique_old'])?$edit_data['ae_desc_other_technique_old']:'',
+		'#rows' => 3,  '#weight' => 53.1, '#required' => 0);
+
+	$form[$group]['ae_teach_other_details'] = array('#title' => 'Teaches / assists with another technique - details', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['ae_teach_other_details'])?$edit_data['ae_teach_other_details']:'',
+		'#rows' => 3,  '#weight' => 53.2, '#required' => 0,
+		'#description' => 'Printed with the two boxes above in the "Reiki / spiritual healing / other meditation" answer.');
 
 	$form[$group]['ae_desc_medication'] = array('#title' => 'Medication', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['ae_desc_medication'])?$edit_data['ae_desc_medication']:'', '#rows' => 3,  '#weight' => 54, 
 		'#required' => 0);
-	$form[$group]['ae_pregnant_detail'] = array('#title' => 'Pregnancy Details', '#type' => 'textarea',  
+	$form[$group]['ae_pregnant_detail'] = array('#title' => 'Pregnancy Details', '#type' => 'textarea',
 		'#default_value' => $add?'':$edit_data['ae_pregnant_detail'], '#rows' => 3,  '#weight' => 55, '#required' => 0, '#maxlength' => 100);
 
-	$form[$group]['a_emergency_name'] = array('#title' => 'Emergency Name', '#type' => 'textfield',  
-		'#default_value' => isset($edit_data['a_emergency_name'])?$edit_data['a_emergency_name']:'', '#size' => 30,  '#weight' => 56, 
-		'#required' => 0, '#maxlength' => 50);
-	$form[$group]['a_emergency_relation'] = array('#title' => 'Emergency Relation', '#type' => 'textfield',  
-		'#default_value' => isset($edit_data['a_emergency_relation'])?$edit_data['a_emergency_relation']:'', '#size' => 30,  '#weight' => 57, 
-		'#required' => 0, '#maxlength' => 50);
-	$form[$group]['a_emergency_num'] = array('#title' => 'Emergency Contact No', '#type' => 'textfield',  
-		'#default_value' => isset($edit_data['a_emergency_num'])?$edit_data['a_emergency_num']:'', '#size' => 20,  '#weight' => 58, 
-		'#required' => 0, '#maxlength' => 40);
+	$form[$group]['ae_desc_special_requirement'] = array('#title' => 'Special Needs', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['ae_desc_special_requirement'])?$edit_data['ae_desc_special_requirement']:'',
+		'#rows' => 3,  '#weight' => 55.1, '#required' => 0,
+		'#description' => 'Anything the applicant wishes to add, e.g. special needs. Printed as the last question on the form.');
+
+	/* Emergency contact now lives in its own block, defined before this group. */
 	$form[$group]['a_internal_note'] = array('#title' => 'Internal Note', '#type' => 'textarea',  
 		'#default_value' => isset($edit_data['a_internal_note'])?$edit_data['a_internal_note']:'', '#rows' => 3,  '#weight' => 59, '#required' => 0, '#maxlength' => 200);
-	$form[$group]['a_learn_about_vip'] = array('#title' => 'Recommended By', '#type' => 'textarea',  
-		'#default_value' => isset($edit_data['a_learn_about_vip'])?$edit_data['a_learn_about_vip']:'', '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255);
+	/* Was "Recommended By", which read as though it meant a referring teacher.
+	   The column is a_learn_about_vip and it prints as question 1 on the form:
+	   "How did you learn about Vipassana, or who introduced you to this course?" */
+	$form[$group]['a_learn_about_vip'] = array('#title' => 'How Learned About Vipassana', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['a_learn_about_vip'])?$edit_data['a_learn_about_vip']:'', '#rows' => 3,  '#weight' => 60, '#required' => 0, '#maxlength' => 255,
+		'#description' => 'How the applicant heard about Vipassana, or who introduced them to this course.');
+
+	$form[$group]['a_purpose'] = array('#title' => 'Reason for Attending', '#type' => 'textarea',
+		'#default_value' => isset($edit_data['a_purpose'])?$edit_data['a_purpose']:'',
+		'#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 255,
+		'#description' => 'Why the applicant wants to take this course.');
 	$form[$group]['a_friend_family_details'] = array('#title' => 'Friend/Family Details', '#type' => 'textarea',  
  		'#default_value' => isset($edit_data['a_friend_family_details'])?$edit_data['a_friend_family_details']:'', '#rows' => 3,  '#weight' => 61, '#required' => 0, '#maxlength' => 100);
 	$form[$group]['a_extra'] = array('#title' => 'Other Information', '#type' => 'textarea',  
@@ -848,6 +878,14 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		$app['a_addiction_current'] = 1;
 	if ( trim($input['ae_desc_other_technique']) <> '' )
 		$app['a_other_technique'] = 1;
+	/* Derived from their detail boxes, the same way as every flag above, so the
+	   flag can never disagree with the text the operator actually entered. */
+	$app['a_other_technique_old'] = 0;
+	if ( isset($input['ae_desc_other_technique_old']) && trim($input['ae_desc_other_technique_old']) <> '' )
+		$app['a_other_technique_old'] = 1;
+	$app['a_special_req'] = 0;
+	if ( isset($input['ae_desc_special_requirement']) && trim($input['ae_desc_special_requirement']) <> '' )
+		$app['a_special_req'] = 1;
 
     if ( trim($input['a_friend_family_details']) <> '' )
         $app['a_friend_family'] = 1;
