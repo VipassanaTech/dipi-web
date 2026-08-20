@@ -203,6 +203,14 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$form[$group]['c_lc_admin_email'] = array('#title' => 'Long course admin email', '#type' => 'textfield', '#weight' => 10,
 		'#default_value' => $add?'':$edit_data['c_lc_admin_email'], '#required' => 0, '#description' => 'Multiple emails can be added comma-separated' );
 
+	$form[$group]['cs_applicant_template'] = array('#title' => 'Applicant PDF Layout', '#type' => 'radios', '#weight' => 11,
+		'#options' => array(0 => 'Standard (2 pages)', 1 => 'Large (3 pages) - bigger answer boxes'),
+		'#default_value' => $add?0:$edit_data['cs_applicant_template'], '#required' => 0,
+		'#description' => 'The Large layout spreads the same questions over three pages so long answers '
+			. '(health details, reason for attending, family/mental state) print at a readable size instead '
+			. 'of shrinking to fit. Applies to the general applicant form only - long-course, seva, teenager '
+			. 'and children forms are unchanged.' );
+
 
 	$group = 'Search Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);

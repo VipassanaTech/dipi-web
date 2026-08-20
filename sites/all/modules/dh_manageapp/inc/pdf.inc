@@ -316,7 +316,15 @@ function create_application_pdf( $application_id )
 	else
 	{
 		$fields = map_application_fields($row);
-		$template = drupal_get_path("module", "dh_manageapp")."/templates/applicant-template.pdf";
+		/* Centres opt in to the 3-page layout under Centre > Registration Settings
+		   ("Applicant PDF Layout"). Anything other than 1 - including a missing
+		   settings row - keeps the original 2-page form, so nothing changes for a
+		   centre until it chooses to switch. Field names are identical in both
+		   templates, so map_application_fields() is the same either way. */
+		$large = db_query("select cs_applicant_template from dh_center_setting where cs_center=:c",
+			array(':c' => $row['a_center']))->fetchField();
+		$tpl = ($large == 1) ? "applicant-template-3page.pdf" : "applicant-template.pdf";
+		$template = drupal_get_path("module", "dh_manageapp")."/templates/".$tpl;
 	}
 	$uri = 'private://';
 	$path= drupal_realpath($uri);
