@@ -1692,6 +1692,31 @@ function _api_wa_own_centre($phone)
  * reach these paths, and silence would be worse than the terse reply they get
  * today, so anything that fails here still gets an answer.
  */
+/**
+ * The answer with the menu attached beneath it.
+ *
+ * A list message carries a body of up to 1024 characters, so the reply itself
+ * can go there and the options ride along in the same message - no second
+ * message, and nothing to type to get back to the menu.
+ *
+ * Returns false when the answer will not fit, which over 30 days is CENTRES
+ * every time (about 1,520 characters of centre names) and roughly 61 unusually
+ * long STATUS or CANCEL replies. Those go out as plain text, as before.
+ */
+function _api_wa_answer_menu($text)
+{
+    $text = trim($text);
+    /* headroom under the 1024 limit - the count is characters, and a reply can
+       carry names that are more than one byte each */
+    if ($text === '' || mb_strlen($text) > 950)
+        return false;
+    $menu = _api_wa_menu();
+    $menu['body']['text'] = $text;
+    $menu['footer']['text'] = 'Tap below for anything else';
+    $menu['action']['button'] = 'More options';
+    return $menu;
+}
+
 function _api_wa_send_menu($sender, $menu, $fallback_text)
 {
     $id = send_whatsapp_360($sender, "", $menu, "interactive");
@@ -3537,11 +3562,25 @@ function handle_whatsapp_msg($sender, $data)
     {
         _sms_log($sender, $keyword, $data, $pdf_response['filename']);
         send_whatsapp_360($sender, "", "", "pdf", $pdf_response);
+        /* A document cannot carry a menu, so this is the one case that needs a
+           second message to leave the options within reach. */
+        $after = _api_wa_menu();
+        $after['body']['text'] = 'Your newsletter is above.';
+        $after['footer']['text'] = 'Tap below for anything else';
+        $after['action']['button'] = 'More options';
+        _api_wa_send_menu($sender, $after, "Send HELP to see the options again.");
     }
     elseif ($response)
     {
         _sms_log($sender, $keyword, $data, $response);
-        send_whatsapp_360($sender, "", $response, "text");
+        /* Answers that ask for a tap - the application list, the language list -
+           have already returned above, so what reaches here is a finished reply
+           and the menu belongs with it. */
+        $with_menu = _api_wa_answer_menu($response);
+        if ($with_menu !== false)
+            _api_wa_send_menu($sender, $with_menu, $response);
+        else
+            send_whatsapp_360($sender, "", $response, "text");
     }
     
 }
