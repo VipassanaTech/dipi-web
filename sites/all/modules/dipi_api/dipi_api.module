@@ -1635,31 +1635,77 @@ function _api_wa_app_menu($phone, $keyword)
 }
 
 /**
- * Patrika languages as tappable rows.
+ * The languages the newsletter actually exists in, code => name.
  *
- * There are eleven and a list holds ten, so the first page shows the nine most
- * asked for and hands the rest to a second page. hi, en and mr alone are about
- * nine tenths of the language requests.
+ * Read from disk rather than listed here, so adding a PDF is all it takes for a
+ * language to appear. recent/ is checked first because that is where a new one
+ * shows up, and it is eleven files against the 1,842 in the archive; the
+ * current year is checked too in case a language arrives there first.
+ *
+ * Names come from dh_languages, matched without case - the table holds zh-HANS
+ * while the files are named zh-hans. Anything with no entry falls back to its
+ * own code, so an unknown language is still offered rather than hidden.
+ */
+function _api_wa_patrika_langs()
+{
+    $base = drupal_realpath('public://') . '/patrika-pdf';
+    $codes = array();
+    foreach ((array) glob("$base/recent/patrika-*.pdf") as $f)
+        if (preg_match('/^patrika-(.+)\.pdf$/', basename($f), $m))
+            $codes[strtolower($m[1])] = true;
+    $y = (int) date('Y');
+    foreach ((array) glob("$base/$y/patrika-*.pdf") as $f)
+        if (preg_match('/^patrika-(.+)-\d{1,2}-\d{4}\.pdf$/', basename($f), $m))
+            $codes[strtolower($m[1])] = true;
+    if (!$codes)
+        return array();
+
+    $names = array();
+    foreach (db_query("select l_code, l_name from dh_languages") as $r)
+        $names[strtolower($r->l_code)] = $r->l_name;
+
+    /* Most asked for first - hi, en and mr are about nine tenths of requests -
+       then whatever else exists, alphabetically. A newly added language lands
+       at the end rather than displacing the common ones. */
+    $preferred = array('hi', 'en', 'mr', 'gu', 'ta', 'te', 'kn', 'ml');
+    $out = array();
+    foreach ($preferred as $c)
+        if (isset($codes[$c])) { $out[$c] = isset($names[$c]) ? $names[$c] : strtoupper($c); unset($codes[$c]); }
+    $rest = array();
+    foreach (array_keys($codes) as $c)
+        $rest[$c] = isset($names[$c]) ? $names[$c] : strtoupper($c);
+    asort($rest);
+    return $out + $rest;
+}
+
+/**
+ * Patrika languages as tappable rows, nine at a time.
+ *
+ * There are eleven today and a list holds ten, so this pages the same way the
+ * issues do - and keeps working if the number changes.
  */
 function _api_wa_patrika_menu($page = 1)
 {
-    $langs = array(
-        'hi' => 'Hindi',        'en' => 'English',   'mr' => 'Marathi',
-        'gu' => 'Gujarati',     'ta' => 'Tamil',     'te' => 'Telugu',
-        'kn' => 'Kannada',      'ml' => 'Malayalam', 'vi' => 'Vietnamese',
-        'zh-hans' => 'Chinese (Simplified)',         'zh-hant' => 'Chinese (Traditional)',
-    );
-    $keys = array_keys($langs);
-    $first = array_slice($keys, 0, 9);
-    $rest = array_slice($keys, 9);
+    $langs = _api_wa_patrika_langs();
+    if (!$langs)
+        return false;
+    $codes = array_keys($langs);
+    $page = max(1, (int) $page);
+    $skip = ($page - 1) * 9;
+    $remaining = array_slice($codes, $skip);
+    if (!$remaining)
+        return false;
+    $more = count($remaining) > 10;
+    $slice = array_slice($remaining, 0, $more ? 9 : 10);
 
     $rows = array();
-    foreach (($page == 1 ? $first : $rest) as $code)
-        $rows[] = array('id' => 'PATRIKAMENU:'.$code, 'title' => mb_substr($langs[$code], 0, 24),
+    foreach ($slice as $code)
+        $rows[] = array('id' => 'PATRIKAMENU:'.$code,
+                        'title' => mb_substr($langs[$code], 0, 24),
                         'description' => 'Newsletters in '.$langs[$code]);
-    if ($page == 1)
-        $rows[] = array('id' => 'PATRIKAMORE', 'title' => 'More languages',
-                        'description' => 'Chinese (Simplified) and Traditional');
+    if ($more)
+        $rows[] = array('id' => 'PATRIKAMORE:'.($page + 1), 'title' => 'More languages',
+                        'description' => 'Other languages available');
 
     return array(
         'type' => 'list',
@@ -3567,11 +3613,25 @@ function handle_whatsapp_msg($sender, $data)
         }
         $data = 'PATRIKA '.$_p[1];
     }
-    if ( strtoupper(trim($data)) == 'PATRIKAMORE' )
+    if ( preg_match('/^PATRIKAMORE(?: +([0-9]+))?$/i', trim($data), $_pm) )
     {
-        _api_wa_send_menu($sender, _api_wa_patrika_menu(2), "Send PATRIKA followed by your language code, e.g. PATRIKA hi");
-        _sms_log($sender, 'PATRIKAMORE', $data, "patrika language list page 2");
-        return array("Result" => "Patrika page 2 sent");
+        $pg = isset($_pm[1]) ? (int) $_pm[1] : 2;
+        $menu = _api_wa_patrika_menu($pg);
+        /* Asking for a page past the end - the number of languages can shrink,
+           and an old message can be tapped at any time - should show the list
+           again rather than the general menu, which would look like the tap
+           did nothing to do with the newsletter. */
+        if ($menu === false)
+        {
+            $pg = 1;
+            $menu = _api_wa_patrika_menu(1);
+        }
+        if ($menu !== false)
+        {
+            _api_wa_send_menu($sender, $menu, "Send PATRIKA followed by your language code, e.g. PATRIKA hi");
+            _sms_log($sender, 'PATRIKAMORE', $data, "patrika language list page $pg");
+            return array("Result" => "Patrika page $pg sent");
+        }
     }
     $temp = explode(" ", $data);
     $keyword = $temp[0];
