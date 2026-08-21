@@ -1603,6 +1603,10 @@ function _api_wa_app_menu($phone, $keyword)
     $where = "date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
     if ($keyword == 'CONFIRM')
         $where .= " and a_status IN ('PreConfirmation','ReConfirmation')";
+    else
+        /* the same rule the cancel handler applies, so the list never offers a
+           row that would then be refused */
+        $where .= ' and '._api_cancellable_sql('a_status');
 
     $res = db_query("select a_id, a_status, c_name from dh_applicant
                        left join dh_course on (a_course=c_id) where $where");
@@ -2100,9 +2104,48 @@ function _api_sms_keyword_status($phone)
 }
 
 
+/**
+ * Whether an applicant may still cancel an application.
+ *
+ * A deny-list of terminal states, not an allow-list of live ones. The
+ * allow-list is what failed: the email form named five statuses and left out
+ * Received and WaitList, so around 16,000 applicants could not cancel from
+ * their own link. With this shape a status added later is cancellable by
+ * default, which is the safer direction - the harm found was people cancelling
+ * applications that were already dead, not people unable to cancel.
+ *
+ * Attended and Left only arise once a course has run, and every path already
+ * refuses a course that has started, so they are belt and braces - though one
+ * Left application is currently sitting on a future course, so they earn it.
+ *
+ * Errors is deliberately absent: a broken record should still be withdrawable.
+ *
+ * Whether the course has started is a separate question, checked where it
+ * always has been.
+ */
+function _api_application_is_cancellable($status)
+{
+    return !in_array(strtolower(trim((string) $status)),
+                     array('cancelled', 'rejected', 'regret', 'duplicate', 'attended', 'left'));
+}
+
+/**
+ * The same rule as SQL, so a query and a check can never disagree about which
+ * applications are cancellable.
+ */
+function _api_cancellable_sql($col = 'a_status')
+{
+    return "lower(trim(coalesce($col,''))) not in ('cancelled','rejected','regret','duplicate','attended','left')";
+}
+
 function _api_sms_keyword_cancel($phone, $id)
 {
     $phone = addslashes($phone);
+    /* Only applications that can still be withdrawn. Applied to the count as
+       well as the list, so "no applications found" means what it says and a
+       terminal one is never offered. Without this, 866 Rejected or Regret
+       applications have been flipped to Cancelled since 2019. */
+    $live = ' and '._api_cancellable_sql('a_status');
     $out = '';
     $count_q = "select count(a_id) from dh_applicant left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
@@ -2110,6 +2153,9 @@ function _api_sms_keyword_cancel($phone, $id)
     $q = "select a_id, a_status, CONCAT(a_f_name, ' ', a_l_name) as 'name', a_conf_no, c_name  from dh_applicant 
       left join dh_course on (a_course=c_id) 
       where date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
+
+    $q .= $live;
+    $count_q .= $live;
 
     if ($id <> '')
     {
@@ -2125,7 +2171,7 @@ function _api_sms_keyword_cancel($phone, $id)
     if ( $records == 0 && $id <> '')
         return "No application found for this phone number having AppID: $id";
     elseif ( $records == 0 )
-        return "No applications found for this phone number";        
+        return "No applications found for this phone number that can be cancelled";        
     elseif ($records > 1)
     {
         $res = db_query($q);
@@ -2590,6 +2636,22 @@ function _api_cancel_app($phone, $appid)
 
     $res = db_query($q);
     $r = $res->fetchAssoc();
+
+    /* Nothing matched - wrong number, wrong id, or the course has started. This
+       used to fall through and report success while running status-trigger.php
+       with an empty application id. */
+    if (!$r)
+    {
+        $out = "No application found for this phone number and application id";
+        _ivr_log($phone, "course", "cancel", $out );
+        return $out;
+    }
+    if (! _api_application_is_cancellable($r['a_status']) )
+    {
+        $out = "Application Id ".$r['a_id']." is already ".$r['a_status']." and cannot be cancelled";
+        _ivr_log($phone, "course", "cancel", $out );
+        return $out;
+    }
 
     $out = "Application Id ".$r['a_id']." for ".$r['c_name']." cancelled successfully";
     $cmd = "/usr/bin/php status-trigger.php ".$r['a_id']." 'Cancelled'";
