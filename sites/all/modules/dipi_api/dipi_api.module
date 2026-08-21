@@ -1544,6 +1544,166 @@ function _api_sms_keywords()
     return array('HELP', 'STATUS', 'CANCEL', 'CONFIRM', 'TRANSFER' , 'ADDRESS',  'CONTACT', 'CENTRES', 'PATRIKA');
 }
 
+/**
+ * The nine keywords as a tappable list.
+ *
+ * Typing them is where the trouble is: of 140,545 messages in 90 days, 42,978
+ * were not a recognised keyword and another 14,728 were someone asking HELP.
+ * WhatsApp allows ten rows in a list, so all nine fit in one.
+ *
+ * Row ids are the keywords themselves, so a tap arrives at handle_whatsapp_msg()
+ * looking exactly like someone having typed the word.
+ */
+function _api_wa_menu()
+{
+    /* Titles stay as the keywords themselves. They are what applicants already
+       know, they match what HELP has always listed, and anyone who would rather
+       type than tap still learns the word. The description does the explaining -
+       including saying so where a follow-up reply is needed. */
+    $rows = array(
+        array('STATUS',   'STATUS',   'Current status of your application'),
+        array('CONFIRM',  'CONFIRM',  'Confirm when status is PreConfirmation or ReConfirmation'),
+        array('CANCEL',   'CANCEL',   'Cancel your application for the course you applied to'),
+        array('TRANSFER', 'TRANSFER', 'Transfer application to another centre or course'),
+        array('CENTRES',  'CENTRES',  'Names of all centres, for use with ADDRESS or CONTACT'),
+        array('ADDRESS',  'ADDRESS',  'Centre address and map link'),
+        array('CONTACT',  'CONTACT',  "Centre's phone and email"),
+        array('PATRIKA',  'PATRIKA',  'Download the Vipassana newsletter (Patrika)'),
+        array('HELP',     'HELP',     'Show this list of options again'),
+    );
+    $list = array();
+    foreach ($rows as $r)
+        $list[] = array('id' => $r[0], 'title' => $r[1], 'description' => $r[2]);
+
+    return array(
+        'type' => 'list',
+        'body' => array('text' => "Namaste. Please choose what you would like to do."),
+        'footer' => array('text' => 'Vipassana Course Registration'),
+        'action' => array(
+            'button' => 'Choose an option',
+            'sections' => array(array('title' => 'Available options', 'rows' => $list)),
+        ),
+    );
+}
+
+/**
+ * The applications behind a phone number, as tappable rows.
+ *
+ * Read-only, and deliberately separate from _api_sms_keyword_confirm/cancel:
+ * those decide bookings and fire status-trigger.php, so nothing here changes
+ * them. If this returns false the caller falls through to the existing text
+ * reply, which stays the source of truth.
+ *
+ * $keyword is CONFIRM or CANCEL - CONFIRM only counts applications actually
+ * awaiting confirmation, matching the filter that handler uses.
+ */
+function _api_wa_app_menu($phone, $keyword)
+{
+    $phone = addslashes($phone);
+    $where = "date_format(c_start, '%Y%m%d') >= ".date("Ymd")." and CONCAT(a_mob_country,a_phone_mobile)='$phone'";
+    if ($keyword == 'CONFIRM')
+        $where .= " and a_status IN ('PreConfirmation','ReConfirmation')";
+
+    $res = db_query("select a_id, a_status, c_name from dh_applicant
+                       left join dh_course on (a_course=c_id) where $where");
+    $rows = array();
+    foreach ($res as $r)
+    {
+        /* c_name is "Centre / Type / Year / Dates"; the centre alone is the
+           clearest row title, the rest tells them which course it was. */
+        $parts = explode('/', $r->c_name);
+        $centre = trim($parts[0]);
+        $rest = trim(implode('/', array_slice($parts, 1)));
+        $rows[] = array(
+            'id' => $keyword.':'.$r->a_id,
+            'title' => mb_substr($centre <> '' ? $centre : $r->c_name, 0, 24),
+            'description' => mb_substr(trim($rest.' - '.$r->a_status), 0, 72),
+        );
+    }
+    /* One is handled directly by the existing code, and more than ten will not
+       fit a list, so both fall back to the text reply. */
+    if (count($rows) < 2 || count($rows) > 10)
+        return false;
+
+    $verb = ($keyword == 'CONFIRM') ? 'confirm' : 'cancel';
+    return array(
+        'type' => 'list',
+        'body' => array('text' => "You have more than one application. Which one would you like to $verb?"),
+        'action' => array('button' => 'Choose application',
+                          'sections' => array(array('title' => 'Your applications', 'rows' => $rows))),
+    );
+}
+
+/**
+ * Patrika languages as tappable rows.
+ *
+ * There are eleven and a list holds ten, so the first page shows the nine most
+ * asked for and hands the rest to a second page. hi, en and mr alone are about
+ * nine tenths of the language requests.
+ */
+function _api_wa_patrika_menu($page = 1)
+{
+    $langs = array(
+        'hi' => 'Hindi',        'en' => 'English',   'mr' => 'Marathi',
+        'gu' => 'Gujarati',     'ta' => 'Tamil',     'te' => 'Telugu',
+        'kn' => 'Kannada',      'ml' => 'Malayalam', 'vi' => 'Vietnamese',
+        'zh-hans' => 'Chinese (Simplified)',         'zh-hant' => 'Chinese (Traditional)',
+    );
+    $keys = array_keys($langs);
+    $first = array_slice($keys, 0, 9);
+    $rest = array_slice($keys, 9);
+
+    $rows = array();
+    foreach (($page == 1 ? $first : $rest) as $code)
+        $rows[] = array('id' => 'PATRIKA:'.$code, 'title' => mb_substr($langs[$code], 0, 24),
+                        'description' => 'Latest issue in '.$langs[$code]);
+    if ($page == 1)
+        $rows[] = array('id' => 'PATRIKAMORE', 'title' => 'More languages',
+                        'description' => 'Chinese (Simplified) and Traditional');
+
+    return array(
+        'type' => 'list',
+        'body' => array('text' => 'Which language would you like the newsletter in?'),
+        'action' => array('button' => 'Choose language',
+                          'sections' => array(array('title' => 'Patrika languages', 'rows' => $rows))),
+    );
+}
+
+/**
+ * The centre on a phone number's most recent application, or '' if unknown.
+ * Most people asking for an address or contact want their own centre - 3,180
+ * sent nothing but the word "Contact" - so ask the data before asking them.
+ */
+function _api_wa_own_centre($phone)
+{
+    $phone = addslashes($phone);
+    return (string) db_query("select ce.c_subdomain from dh_applicant a
+              left join dh_center ce on a.a_center = ce.c_id
+             where CONCAT(a.a_mob_country, a.a_phone_mobile) = '$phone'
+               and ce.c_subdomain is not null and ce.c_subdomain <> ''
+             order by a.a_id desc limit 1")->fetchField();
+}
+
+/**
+ * Send an interactive menu, falling back to plain text if it does not go out.
+ *
+ * send_whatsapp_360() returns an empty id when the API refuses - an expired
+ * 24-hour window, a malformed payload, an outage. Around 640 messages a day
+ * reach these paths, and silence would be worse than the terse reply they get
+ * today, so anything that fails here still gets an answer.
+ */
+function _api_wa_send_menu($sender, $menu, $fallback_text)
+{
+    $id = send_whatsapp_360($sender, "", $menu, "interactive");
+    if ($id === '' || $id === null)
+    {
+        watchdog('dipi_api', 'Whatsapp interactive send failed for '.$sender.', fell back to text', array(), WATCHDOG_WARNING);
+        send_whatsapp_360($sender, "", $fallback_text, "text");
+        return false;
+    }
+    return true;
+}
+
 function _api_handle_sms($params)
 {
     //watchdog("SMS", "I got data".print_r($params, true));
@@ -3105,6 +3265,11 @@ function send_whatsapp_360( $to, $template, $params, $type = "template", $pdf = 
     }
     elseif ($type == 'template')
         $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'template', 'template' => array('namespace' => $namespace, "language" => array("policy" => "deterministic", "code" => "en"), "name" => $template, "components" => array(array("type" => "body", "parameters" => $p_arr)))));
+    elseif ($type == 'interactive')
+        /* $params is the interactive object already shaped by the caller - a
+           button or list payload. 360dialog passes Cloud API JSON straight
+           through, so nothing here needs to know which of the two it is. */
+        $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'interactive', 'interactive' => $params ));
     else
         $payload = json_encode(array("messaging_product"=> "whatsapp", "recipient_type" => "individual", 'to' => $to, "type" => 'text', 'text' => array("body" => $params) ));
 
@@ -3197,6 +3362,21 @@ function handle_whatsapp_msg($sender, $data)
 {
     $keywords = _api_sms_keywords();
     $response = "";
+    /* A tap returns the row id, which carries its own argument: CANCEL:1435470,
+       PATRIKA:hi. Turn it back into the spaced form so everything below sees
+       exactly what the same command typed by hand would produce. Colons survive
+       the sanitising further down, which strips quotes and shell characters. */
+    if ( preg_match('/^([A-Za-z]+):(.+)$/', trim($data), $_tap) )
+        $data = $_tap[1].' '.$_tap[2];
+    /* Second page of the patrika languages. A tap-only id, checked here because
+       it is deliberately not one of the keywords - HELP and the SMS path should
+       never advertise something that cannot be typed usefully. */
+    if ( strtoupper(trim($data)) == 'PATRIKAMORE' )
+    {
+        _api_wa_send_menu($sender, _api_wa_patrika_menu(2), "Send PATRIKA followed by your language code, e.g. PATRIKA hi");
+        _sms_log($sender, 'PATRIKAMORE', $data, "patrika language list page 2");
+        return array("Result" => "Patrika page 2 sent");
+    }
     $temp = explode(" ", $data);
     $keyword = $temp[0];
     $content = trim(str_replace($keyword, "", $data));
@@ -3216,10 +3396,13 @@ function handle_whatsapp_msg($sender, $data)
     */
     if (!in_array( strtoupper($keyword), $keywords ))
     {
-        $response = "Unknown Keyword $keyword, try HELP";
-        $result = send_whatsapp_360($sender, "", $response, "text");
-        _sms_log($sender, $keyword, "No data", $response);
-        return array("Result" => "Bad Keyword $keyword"); //['status']
+        /* "Unknown Keyword, try HELP" went out 42,978 times in 90 days. Most of
+           those messages are "hi", "ok" or "thanks" - someone opening a
+           conversation, not mistyping a command. Offer the menu instead of
+           asking them to guess again. */
+        _api_wa_send_menu($sender, _api_wa_menu(), _api_sms_keyword_help());
+        _sms_log($sender, $keyword, "No data", "menu sent");
+        return array("Result" => "Menu sent for $keyword"); //['status']
     }
 
     $content = str_replace(array("'", '"', '&','$','#','%','`','~'), '', $content);
@@ -3231,11 +3414,43 @@ function handle_whatsapp_msg($sender, $data)
         return array("Result" => "Bad Content $keyword"); //['status']        
     }
 
+    /* Offer a choice rather than asking for one to be typed. Each of these only
+       fires when no argument came with the keyword, and each falls through to
+       the existing text reply if a menu is not appropriate - so the handlers
+       below, which are the ones that actually change bookings, are untouched. */
+    if ($content === '')
+    {
+        $kw = strtoupper($keyword);
+        if ($kw == 'CONFIRM' || $kw == 'CANCEL')
+        {
+            $menu = _api_wa_app_menu($sender, $kw);
+            if ($menu !== false)
+            {
+                _api_wa_send_menu($sender, $menu, "You have more than one application. Send ".$kw." followed by the AppID.");
+                _sms_log($sender, $keyword, $data, "application list sent");
+                return array("Result" => "Application list sent");
+            }
+        }
+        elseif ($kw == 'PATRIKA')
+        {
+            _api_wa_send_menu($sender, _api_wa_patrika_menu(1), "Send PATRIKA followed by your language code, e.g. PATRIKA hi");
+            _sms_log($sender, $keyword, $data, "patrika language list sent");
+            return array("Result" => "Patrika language list sent");
+        }
+        elseif ($kw == 'ADDRESS' || $kw == 'CONTACT')
+        {
+            /* Answer for their own centre instead of asking which one. */
+            $own = _api_wa_own_centre($sender);
+            if ($own <> '')
+                $content = $own;
+        }
+    }
     switch ( strtoupper($keyword) ) 
     {
         case 'HELP':
-            $response = _api_sms_keyword_help();
-            break;
+            _api_wa_send_menu($sender, _api_wa_menu(), _api_sms_keyword_help());
+            _sms_log($sender, $keyword, $data, "menu sent");
+            return array("Result" => "Menu sent");
         case 'ADDRESS':
             $response = _api_sms_keyword_address( $content ) ;
             break;      
@@ -3313,7 +3528,9 @@ function handle_whatsapp_msg($sender, $data)
             }
             break;
         default:
-            $response = _api_sms_keyword_help();
+            _api_wa_send_menu($sender, _api_wa_menu(), _api_sms_keyword_help());
+            _sms_log($sender, $keyword, $data, "menu sent");
+            return array("Result" => "Menu sent");
     }
 
     if ($pdf_response)

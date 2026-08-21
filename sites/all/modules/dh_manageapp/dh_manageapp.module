@@ -2395,6 +2395,40 @@ function show_clarification( $app_id, $clarification_id )
 
 }
 
+/**
+ * What an inbound WhatsApp message actually says, or null if there is nothing
+ * to act on.
+ *
+ * Kept out of whatsapp_hook() so it can be exercised without a live webhook -
+ * the shapes below are easy to get wrong and hard to notice, because an
+ * unhandled one is simply dropped.
+ */
+function whatsapp_message_body($msg)
+{
+	if (! isset($msg['from']))
+		return null;
+	$body = null;
+	if ( isset($msg['text']) && is_array($msg['text']) && isset($msg['text']['body']) )
+		$body = $msg['text']['body'];
+	/* A tap on a list row or a reply button arrives here, not as text. Without
+	   this the tap is logged and then silently dropped, so any menu we send
+	   would appear to do nothing. Row ids carry the keyword, so downstream this
+	   is indistinguishable from the person having typed it. */
+	elseif ( isset($msg['interactive']) && is_array($msg['interactive']) )
+	{
+		$i = $msg['interactive'];
+		if ( isset($i['list_reply']['id']) )
+			$body = $i['list_reply']['id'];
+		elseif ( isset($i['button_reply']['id']) )
+			$body = $i['button_reply']['id'];
+	}
+	/* Quick-reply buttons on a template answer as type "button" */
+	elseif ( isset($msg['button']['payload']) )
+		$body = $msg['button']['payload'];
+
+	return ($body !== null && trim($body) !== '') ? $body : null;
+}
+
 function whatsapp_hook()
 {
 	$LOG = "/var/log/whatsapp.log";
@@ -2429,10 +2463,11 @@ function whatsapp_hook()
 	    	file_put_contents($LOG, "[".date("Y-m-d H:i:s")."] ".print_r($data, true)."\n", FILE_APPEND);
 	    	foreach($data['messages'] as $msg)
 	    	{
-	    		if (isset($msg['from']) && (isset($msg['text'])) && (is_array($msg['text'])) && (isset($msg['text']['body'])) )
+	    		$body = whatsapp_message_body($msg);
+	    		if ($body !== null)
 	    		{
-	    			//handle_whatsapp_msg($msg['from'], $msg['text']['body']);
-	    			push_to_queue( 'Dipi', 'whatsapp', json_encode( array('from' => $msg['from'], 'msg' => $msg['text']['body'])) );
+	    			//handle_whatsapp_msg($msg['from'], $body);
+	    			push_to_queue( 'Dipi', 'whatsapp', json_encode( array('from' => $msg['from'], 'msg' => $body)) );
 	    		}
 	    	}
 	    }
