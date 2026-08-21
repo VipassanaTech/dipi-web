@@ -2465,8 +2465,19 @@ function _get_app_detail( $appid )
         $lc_days = db_query($q, array('td_key' => $row['LastLcType']))->fetchField();
         if ($lc_days)
         {
-            if (($last_lc_start_time = strtotime(str_replace('/', '-', $row['LastLcDate']))) !== false)
+            /* Same parser the applicant PDF uses, so the approval form in the AT
+               app and the printed form can never disagree about the gap. The old
+               strtotime() call read a bare "2019" as a time of day and returned
+               today, inventing a gap for around 2,000 applications.
+               parse_last_lc_date() lives in dh_manageapp's pdf.inc, which that
+               module includes at load; dipi_api already calls across to
+               dh_send_letter() the same way. */
+            $last_lc = function_exists('parse_last_lc_date')
+                     ? parse_last_lc_date($row['LastLcDate'])
+                     : false;
+            if ($last_lc !== false)
             {
+                $last_lc_start_time = $last_lc->getTimestamp();
                 $last_lc_end_time = $last_lc_start_time + ($lc_days*24*60*60);
                 $current_lc_start_time = strtotime($row['CourseStartDate']);
                 if ($current_lc_start_time > $last_lc_end_time)

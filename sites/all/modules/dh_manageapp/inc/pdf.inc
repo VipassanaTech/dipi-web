@@ -594,21 +594,41 @@ function parse_last_lc_date($raw, &$matched = null)
 	   Day-first is the local convention and is what the old strtotime() call
 	   already produced for these, so 14/8/2019 stays 14 August. */
 	$formats = array(
-		'Y-m-d', 'Y/m/d', 'Y.m.d',          /* year first   */
-		'd/m/Y', 'j/n/Y', 'd-m-Y', 'j-n-Y', /* day first    */
-		'd.m.Y', 'j.n.Y',
-		'd M Y', 'j M Y', 'd F Y', 'j F Y', /* named month  */
-		'M Y', 'F Y',
-		'Y-m', 'Y/m', 'Y-n', 'Y/n',         /* year-month   */
+		/* year first, padded or not */
+		'Y-m-d', 'Y/m/d', 'Y.m.d', 'Y-n-j', 'Y/n/j', 'Y.n.j',
+		/* day first, four-digit year - listed before the two-digit forms so
+		   1/05/2025 is never mistaken for a two-digit year */
+		'd/m/Y', 'j/n/Y', 'j/m/Y', 'd-m-Y', 'j-n-Y', 'd.m.Y', 'j.n.Y',
+		/* day first, two-digit year: 4-11-24, 15.12.25 */
+		'd/m/y', 'j/n/y', 'd-m-y', 'j-n-y', 'd.m.y', 'j.n.y',
+		/* named month with a day */
+		'd M Y', 'j M Y', 'd F Y', 'j F Y', 'j M y', 'j F y',
+		/* named month and year, either order: Feb/2017, 2025 Apr */
+		'M Y', 'F Y', 'M/Y', 'F/Y', 'M-Y', 'F-Y',
+		'Y M', 'Y F', 'Y/M', 'Y/F', 'Y-M', 'Y-F',
+		/* year and month only, either order: 2019/08 and 08/2019. Year-first is
+		   listed first so 2019/08 is never read as month 20. */
+		'Y-m', 'Y/m', 'Y-n', 'Y/n',
+		'm/Y', 'n/Y', 'm-Y', 'n-Y', 'm.Y', 'n.Y',
 	);
-	foreach ($formats as $fmt)
+	/* A dot straight after a month name is punctuation - "Nov.2023", "2022 Aug." -
+	   unlike the dots in 15.12.25, which follow digits. Try that reading too. */
+	$candidates = array($raw);
+	$undotted = preg_replace('/\s+/', ' ', trim(preg_replace('/([A-Za-z])\./', '$1 ', $raw)));
+	if ($undotted !== $raw)
+		$candidates[] = $undotted;
+
+	foreach ($candidates as $cand)
 	{
-		$d = DateTime::createFromFormat('!'.$fmt, $raw);
-		/* case-insensitive so MAY 2015 matches as readily as May 2015 */
-		if ($d && strcasecmp($d->format($fmt), $raw) === 0)
+		foreach ($formats as $fmt)
 		{
-			$matched = $fmt;
-			return $d;
+			$d = DateTime::createFromFormat('!'.$fmt, $cand);
+			/* case-insensitive so MAY 2015 matches as readily as May 2015 */
+			if ($d && strcasecmp($d->format($fmt), $cand) === 0)
+			{
+				$matched = $fmt;
+				return $d;
+			}
 		}
 	}
 	$matched = null;

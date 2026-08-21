@@ -399,7 +399,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		$form[$group]['al_last_lc_teacher'] = array('#title' => 'Last LC Course Teacher', '#type' => 'textfield', '#size' => '25', '#weight' => 4, 
 			'#default_value' => isset($edit_data['al_last_lc_teacher'])?$edit_data['al_last_lc_teacher']:'', '#required' => 0, '#maxlength' => 100 );
 		$form[$group]['al_last_lc_date'] = array('#title' => 'LC Date', '#type' => 'textfield', '#weight' => 5, '#size' => 20,
-			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, '#maxlength' => 100 );
+			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, '#maxlength' => 100,
+			'#description' => 'e.g. 15/08/2019 or Aug 2019. A year alone cannot give the gap.' );
 
 		$form[$group]['al_committed'] = array('#title' => 'Fully Committed?', '#type' => 'radios', 
 			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 6, 
@@ -838,6 +839,28 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 
   if (!valid_email_address($form_state['input']['a_email']))
     form_set_error('a_email', t('Please enter a valid email address.'));
+
+  /* This form is where most unreadable last-LC dates come from - around eighty a
+     year, against none from dhamma.org since 2022. The gap since the last long
+     course is worked out from it and shown to the AT, and a value like "2016" or
+     "Dec" cannot produce one.
+
+     Only check it when the operator has actually changed the field. Roughly 4,900
+     existing rows hold something unreadable, and refusing those outright would
+     stop the application being saved at all - a worse problem than the one being
+     fixed here. The check accepts every format parse_last_lc_date() does, so a
+     record that arrived from dhamma.org, the schedule site or the app is never
+     rejected for a format DIPI itself is happy to store. */
+  $lc_date = isset($form_state['input']['al_last_lc_date']) ? trim($form_state['input']['al_last_lc_date']) : '';
+  /* Find the stored value wherever the field sits rather than naming its fieldset:
+     if that name ever changed, a hardcoded lookup would quietly return nothing,
+     every existing value would look edited, and legacy records would stop saving. */
+  $lc_date_was = '';
+  foreach (element_children($form) as $grp)
+    if (isset($form[$grp]['al_last_lc_date']['#default_value']))
+      $lc_date_was = trim($form[$grp]['al_last_lc_date']['#default_value']);
+  if ( ($lc_date <> '') && ($lc_date <> $lc_date_was) && (parse_last_lc_date($lc_date) === false) )
+    form_set_error('al_last_lc_date', t('Last LC Date is not a date DIPI can read, so the gap since the last long course cannot be worked out. Use a full date or a month and year, for example 15/08/2019, 2019-08-15, Aug 2019 or 08/2019. A year on its own is not enough.'));
 }
 
 function dh_ma_applicant_form_submit($form, &$form_state)
