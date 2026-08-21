@@ -584,7 +584,7 @@ function map_application_fields($row)
  * strtotime() cannot be used here: it reads a bare "2019" as a time of day and
  * silently returns today, which put a wrong gap on the applicant PDF.
  */
-function parse_last_lc_date($raw)
+function parse_last_lc_date($raw, &$matched = null)
 {
 	/* collapse runs of whitespace so "May  2015" is still recognised */
 	$raw = preg_replace('/\s+/', ' ', trim($raw));
@@ -606,8 +606,12 @@ function parse_last_lc_date($raw)
 		$d = DateTime::createFromFormat('!'.$fmt, $raw);
 		/* case-insensitive so MAY 2015 matches as readily as May 2015 */
 		if ($d && strcasecmp($d->format($fmt), $raw) === 0)
+		{
+			$matched = $fmt;
 			return $d;
+		}
 	}
+	$matched = null;
 	return false;
 }
 
@@ -695,19 +699,15 @@ function map_application_fields_lc($row)
 
 	if ($row['al_last_lc_date'])
 	{
-		/* Only reverse to dd/mm/yyyy when this really is a date. A range or free
-		   text came out scrambled - "2018/05/04 to2018/06" became
-		   "06/04 to2018/05/2018" - so print those exactly as the applicant wrote them. */
-		if ( parse_last_lc_date($row['al_last_lc_date']) )
-		{
-			$temp = explode('/', str_replace('-', '/', $row['al_last_lc_date']));
-			$temp1='';
-			foreach ($temp as $val)
-		    {
-		        $temp1 = "/$val$temp1";
-		    }
-		    $fields['Last LC Date'] = ltrim($temp1, '/');
-		}
+		/* This used to reverse the components on '/', which only ever suited a
+		   year-first date: 14/8/2019 came out as 2019/8/14, and a range like
+		   "2018/05/04 to2018/06" as "06/04 to2018/05/2018". Format the parsed
+		   date instead, and leave anything unparseable exactly as written. */
+		$fmt = null;
+		$last_lc = parse_last_lc_date($row['al_last_lc_date'], $fmt);
+		if ($last_lc)
+			/* keep the applicant's precision: no day given, no day shown */
+			$fields['Last LC Date'] = $last_lc->format( strpbrk($fmt, 'dj') === false ? 'm/Y' : 'd/m/Y' );
 		else
 			$fields['Last LC Date'] = $row['al_last_lc_date'];
 	}
