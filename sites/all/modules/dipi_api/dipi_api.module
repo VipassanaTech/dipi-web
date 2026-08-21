@@ -1655,8 +1655,8 @@ function _api_wa_patrika_menu($page = 1)
 
     $rows = array();
     foreach (($page == 1 ? $first : $rest) as $code)
-        $rows[] = array('id' => 'PATRIKA:'.$code, 'title' => mb_substr($langs[$code], 0, 24),
-                        'description' => 'Latest issue in '.$langs[$code]);
+        $rows[] = array('id' => 'PATRIKAISSUES:'.$code, 'title' => mb_substr($langs[$code], 0, 24),
+                        'description' => 'Issues available in '.$langs[$code]);
     if ($page == 1)
         $rows[] = array('id' => 'PATRIKAMORE', 'title' => 'More languages',
                         'description' => 'Chinese (Simplified) and Traditional');
@@ -1703,6 +1703,48 @@ function _api_wa_own_centre($phone)
  * every time (about 1,520 characters of centre names) and roughly 61 unusually
  * long STATUS or CANCEL replies. Those go out as plain text, as before.
  */
+/**
+ * The issues of one language that actually exist on disk, newest first.
+ *
+ * Availability is uneven - hi, en and mr have every month of 2026 while gu has
+ * none - so this reads the directory rather than offering months that would
+ * come back "not found". 83% of archive requests are for the current year and
+ * 91% for this or last year, so two years is enough to cover nearly all of them.
+ *
+ * Returns false when the language has no dated issues, and the caller should
+ * just send the latest.
+ */
+function _api_wa_patrika_issues($lang)
+{
+    $lang = preg_replace('/[^a-z-]/', '', strtolower($lang));
+    if ($lang === '')
+        return false;
+    $months = array(1=>'January','February','March','April','May','June',
+                    'July','August','September','October','November','December');
+    $base = drupal_realpath('public://') . '/patrika-pdf';
+    $rows = array(array('id' => 'PATRIKA:'.$lang, 'title' => 'Latest issue',
+                        'description' => 'The most recent newsletter'));
+    $found = 0;
+    for ($y = (int) date('Y'); $y >= (int) date('Y') - 1 && $found < 9; $y--)
+        for ($m = 12; $m >= 1 && $found < 9; $m--)
+            if (file_exists("$base/$y/patrika-$lang-$m-$y.pdf"))
+            {
+                $rows[] = array('id' => "PATRIKA:$lang:$m:$y",
+                                'title' => mb_substr($months[$m].' '.$y, 0, 24),
+                                'description' => 'Issue of '.$months[$m].' '.$y);
+                $found++;
+            }
+    if ($found === 0)
+        return false;
+    return array(
+        'type' => 'list',
+        'body' => array('text' => 'Which issue would you like?'),
+        'footer' => array('text' => 'Older issues: send PATRIKA language month year'),
+        'action' => array('button' => 'Choose issue',
+                          'sections' => array(array('title' => 'Available issues', 'rows' => $rows))),
+    );
+}
+
 function _api_wa_answer_menu($text)
 {
     $text = trim($text);
@@ -3391,11 +3433,23 @@ function handle_whatsapp_msg($sender, $data)
        PATRIKA:hi. Turn it back into the spaced form so everything below sees
        exactly what the same command typed by hand would produce. Colons survive
        the sanitising further down, which strips quotes and shell characters. */
-    if ( preg_match('/^([A-Za-z]+):(.+)$/', trim($data), $_tap) )
-        $data = $_tap[1].' '.$_tap[2];
+    if ( preg_match('/^[A-Za-z]+:/', trim($data)) )
+        $data = str_replace(':', ' ', trim($data));
     /* Second page of the patrika languages. A tap-only id, checked here because
        it is deliberately not one of the keywords - HELP and the SMS path should
        never advertise something that cannot be typed usefully. */
+    if ( preg_match('/^PATRIKAISSUES +([a-zA-Z-]+)$/', trim($data), $_pi) )
+    {
+        $issues = _api_wa_patrika_issues($_pi[1]);
+        if ($issues !== false)
+        {
+            _api_wa_send_menu($sender, $issues, "Send PATRIKA ".$_pi[1]." for the latest issue.");
+            _sms_log($sender, 'PATRIKA', $data, "issue list sent");
+            return array("Result" => "Issue list sent");
+        }
+        /* no dated issues for this language - fall through to the latest */
+        $data = 'PATRIKA '.$_pi[1];
+    }
     if ( strtoupper(trim($data)) == 'PATRIKAMORE' )
     {
         _api_wa_send_menu($sender, _api_wa_patrika_menu(2), "Send PATRIKA followed by your language code, e.g. PATRIKA hi");
