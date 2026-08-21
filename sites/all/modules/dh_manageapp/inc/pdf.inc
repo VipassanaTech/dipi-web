@@ -257,10 +257,19 @@ function create_application_pdf( $application_id )
 	{
 
 		$fields = map_application_fields($row);
-		if ( $row['ae_seva_details'])
+		/* An empty column is not the only way of saying "none". The answer comes
+		   in as 0, no, none, nil, na or - at least as often, and every one of
+		   those except the exact string "0" is truthy in PHP, so testing the
+		   column alone ticked "has served before" on a form whose detail line
+		   read "no". */
+		$seva = trim($row['ae_seva_details']);
+		$seva_none = ($seva == '')
+		          || preg_match('/^0+$/', $seva)
+		          || in_array(strtolower($seva), array('no','none','na','n/a','nil','nill','non','nan','no.','nothing','-','.'));
+		if ( !$seva_none )
 		{
-		$fields['seva_details'] = $row['ae_seva_details']; 	
-		$fields['seva_yes'] = 'Yes';	
+			$fields['seva_details'] = $row['ae_seva_details'];
+			$fields['seva_yes'] = 'Yes';
 		}
 		else
 			$fields['seva_no'] = 'Yes';
