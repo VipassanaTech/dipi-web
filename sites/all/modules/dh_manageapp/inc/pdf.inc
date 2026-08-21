@@ -575,6 +575,30 @@ function map_application_fields($row)
 }
 
 
+/**
+ * al_last_lc_date is free text, and applicants use it inconsistently: ISO dates,
+ * "2021/2" year-month, a bare year, and often a whole date range because a long
+ * course has a start and an end. Only return a date for the formats that really
+ * are one - anything else must not be guessed at.
+ *
+ * strtotime() cannot be used here: it reads a bare "2019" as a time of day and
+ * silently returns today, which put a wrong gap on the applicant PDF.
+ */
+function parse_last_lc_date($raw)
+{
+	$raw = trim($raw);
+	if ($raw == '')
+		return false;
+	/* '!' resets the unspecified parts, so a year-month lands on the 1st at 00:00 */
+	foreach (array('Y-m-d', 'Y/m/d', 'Y-m', 'Y/m', 'Y-n', 'Y/n') as $fmt)
+	{
+		$d = DateTime::createFromFormat('!'.$fmt, $raw);
+		if ($d && $d->format($fmt) === $raw)
+			return $d;
+	}
+	return false;
+}
+
 function map_application_fields_lc($row)
 {
 	$fields = array();
@@ -659,13 +683,21 @@ function map_application_fields_lc($row)
 
 	if ($row['al_last_lc_date'])
 	{
-		$temp = explode('/', str_replace('-', '/', $row['al_last_lc_date']));
-		$temp1='';
-		foreach ($temp as $val)
-	    {   
-	        $temp1 = "/$val$temp1";
-	    }   
-	    $fields['Last LC Date'] = ltrim($temp1, '/');
+		/* Only reverse to dd/mm/yyyy when this really is a date. A range or free
+		   text came out scrambled - "2018/05/04 to2018/06" became
+		   "06/04 to2018/05/2018" - so print those exactly as the applicant wrote them. */
+		if ( parse_last_lc_date($row['al_last_lc_date']) )
+		{
+			$temp = explode('/', str_replace('-', '/', $row['al_last_lc_date']));
+			$temp1='';
+			foreach ($temp as $val)
+		    {
+		        $temp1 = "/$val$temp1";
+		    }
+		    $fields['Last LC Date'] = ltrim($temp1, '/');
+		}
+		else
+			$fields['Last LC Date'] = $row['al_last_lc_date'];
 	}
 
     $fields['7DayTeen'] = $row['ac_teen'];
@@ -714,8 +746,9 @@ function map_application_fields_lc($row)
 		$lc_days = db_query($q, array('td_key' => $row['al_last_lc_type']))->fetchField();
 		if ($lc_days)
 		{
-			if (($last_lc_start_time = strtotime(str_replace('/', '-', $row['al_last_lc_date']))) !== false)
+			if ( ($last_lc = parse_last_lc_date($row['al_last_lc_date'])) !== false )
 			{
+				$last_lc_start_time = $last_lc->getTimestamp();
 				$last_lc_end_time = $last_lc_start_time + ($lc_days*24*60*60);
 				$current_lc_start_time = strtotime($row['c_start']);
 				if ($current_lc_start_time > $last_lc_end_time)

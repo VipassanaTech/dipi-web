@@ -398,8 +398,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 			'#default_value' => isset($edit_data['al_last_lc_location'])?$edit_data['al_last_lc_location']:'', '#required' => 0, '#maxlength' => 30 );
 		$form[$group]['al_last_lc_teacher'] = array('#title' => 'Last LC Course Teacher', '#type' => 'textfield', '#size' => '25', '#weight' => 4, 
 			'#default_value' => isset($edit_data['al_last_lc_teacher'])?$edit_data['al_last_lc_teacher']:'', '#required' => 0, '#maxlength' => 100 );
-		$form[$group]['al_last_lc_date'] = array('#title' => 'LC Date', '#type' => 'textfield', '#weight' => 5, '#size' => 10,
-			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, '#maxlength' => 20 );
+		$form[$group]['al_last_lc_date'] = array('#title' => 'LC Date', '#type' => 'textfield', '#weight' => 5, '#size' => 20,
+			'#default_value' => isset($edit_data['al_last_lc_date'])?$edit_data['al_last_lc_date']:'', '#required' => 0, '#maxlength' => 100 );
 
 		$form[$group]['al_committed'] = array('#title' => 'Fully Committed?', '#type' => 'radios', 
 			'#options' => array('0' => 'No', '1' => 'Yes'), '#weight' => 6, 
