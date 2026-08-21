@@ -232,6 +232,20 @@ function create_d11_report_pdf( $course_id )
 }
 
 
+/**
+ * "None" is written many ways in the seva answer - 0, no, none, nil, na, - -
+ * and every one of them except the exact string "0" is truthy in PHP, so a
+ * plain truthiness test reads them all as "yes, I have served".
+ * Returns true when the value carries no real answer.
+ */
+function seva_details_is_none($raw)
+{
+	$s = trim($raw);
+	return ($s == '')
+	    || preg_match('/^0+$/', $s)
+	    || in_array(strtolower($s), array('no','none','na','n/a','nil','nill','non','nan','no.','nothing','-','.'));
+}
+
 function create_application_pdf( $application_id )
 {
 	$query = "select c.*, a.*, ac.*, ae.*, aa.*, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ci.c_name as 'City',td_val3, td_val1, al.*, st.s_name, cy.c_name as 'country'
@@ -262,11 +276,7 @@ function create_application_pdf( $application_id )
 		   those except the exact string "0" is truthy in PHP, so testing the
 		   column alone ticked "has served before" on a form whose detail line
 		   read "no". */
-		$seva = trim($row['ae_seva_details']);
-		$seva_none = ($seva == '')
-		          || preg_match('/^0+$/', $seva)
-		          || in_array(strtolower($seva), array('no','none','na','n/a','nil','nill','non','nan','no.','nothing','-','.'));
-		if ( !$seva_none )
+		if ( !seva_details_is_none($row['ae_seva_details']) )
 		{
 			$fields['seva_details'] = $row['ae_seva_details'];
 			$fields['seva_yes'] = 'Yes';
@@ -511,7 +521,12 @@ function map_application_fields($row)
 
 		$fields['10'] = $row['ac_10d'];		$fields['stp'] = $row['ac_stp'];	$fields['20'] = $row['ac_20d'];		$fields['spl'] = $row['ac_spl'];		
 		$fields['tsc'] = $row['ac_tsc']; 	$fields['30'] = $row['ac_30d'];		$fields['45'] = $row['ac_45d'];		$fields['60'] = $row['ac_60d'];
-		$fields['seva'] = $row['ac_service'];				
+		$fields['seva'] = $row['ac_service'];
+		/* Which courses were served, not just how many. Only the 3-page layout
+		   has a box for this; the other templates fed by this function simply
+		   drop an unknown field, so they are unaffected. */
+		if ( !seva_details_is_none($row['ae_seva_details']) )
+			$fields['seva_details'] = $row['ae_seva_details'];
 	}
 
 	if ( $row['a_old'] )

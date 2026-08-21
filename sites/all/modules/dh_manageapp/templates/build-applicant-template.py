@@ -206,7 +206,14 @@ _b = _region(src, IDBAND_TOP, IDBAND_BOT, extra=_RULE,
              graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED)  # Photo ID row
 _c = _region(src, IDBAND_BOT, IDENT_BOT)   # identity block + photo    - unmoved
 _d = _region(src, IDENT_BOT, TOP_END)      # questions 1-6             - down QSHIFT
-_e = _region(src, BOT_START, BOT_END)      # old students              - up SHIFT
+# The old-students block is split so a line can be opened between the course
+# counters and question 4. In source coordinates the grid's closing rule sits at
+# ~712 and question 4 starts at ~724, leaving 11.7pt once composed - enough for
+# the text but under 1pt clear of the rule above it.
+SEVA_GAP = 16.0                         # room for the "Other courses served" line
+BOT_SPLIT = 718.0                       # source y between the grid and question 4
+_e = _region(src, BOT_START, BOT_SPLIT)    # counters grid             - up SHIFT
+_e2 = _region(src, BOT_SPLIT, BOT_END)     # question 4 onwards        - up SHIFT, then down SEVA_GAP
 
 _p1 = doc.new_page(width=W, height=H)
 _p1.show_pdf_page(fitz.Rect(0, HDR_SHIFT, W, H + HDR_SHIFT), _a, 0)
@@ -214,6 +221,7 @@ _p1.show_pdf_page(fitz.Rect(0, 0, W, H), _c, 0)
 _p1.show_pdf_page(fitz.Rect(0, IDBAND_TO - IDBAND_TOP, W, H + IDBAND_TO - IDBAND_TOP), _b, 0)
 _p1.show_pdf_page(fitz.Rect(0, QSHIFT, W, H + QSHIFT), _d, 0)
 _p1.show_pdf_page(fitz.Rect(0, -SHIFT, W, H - SHIFT), _e, 0)
+_p1.show_pdf_page(fitz.Rect(0, -SHIFT + SEVA_GAP, W, H - SHIFT + SEVA_GAP), _e2, 0)
 
 # Re-attach page 1's form fields: content is copied by show_pdf_page, annotations
 # are not. Fields above the gap keep their place; those below move up with the art.
@@ -240,7 +248,9 @@ for _w in src[0].widgets():
         if _w.field_name == "10":
             r.x0, r.x1 = 110.0, 137.6
     # follow the same five bands the artwork was split into
-    if r.y0 >= BOT_START:                          # old students   -> up
+    if r.y0 >= BOT_SPLIT:                          # question 4 on  -> up, less the gap
+        _dy = -SHIFT + SEVA_GAP
+    elif r.y0 >= BOT_START:                        # counters grid  -> up
         _dy = -SHIFT
     elif r.y0 >= TOP_END:
         continue                                   # the retired boxes' gap
@@ -260,9 +270,9 @@ for _w in src[0].widgets():
 # The last question ("Have you maintained your practice...") had a single 12pt rule
 # for its answer. Cover that rule and give it a proper multi-line box in the space
 # the reflow just freed.
-_rule_y = 757.8 - SHIFT
+_rule_y = 757.8 - SHIFT + SEVA_GAP
 _p1.draw_rect(fitz.Rect(288, _rule_y - 2, 552, _rule_y + 2), color=None, fill=(1, 1, 1))
-_ans_top = BOT_END - SHIFT + 4
+_ans_top = BOT_END - SHIFT + SEVA_GAP + 4
 PRACTICE_H = 37                    # hand-tuned; reduced again to free page-head room
 _p1.draw_rect(fitz.Rect(L + 30, _ans_top, R, _ans_top + PRACTICE_H), color=BLACK, width=0.7)
 widgets.append((0, "text", "If yes please give details how much time daily etc",
@@ -320,6 +330,17 @@ def labelled_box(pg, pg_i, y, label, field, height, note=None):
     tf(pg_i, field, L + 3, top + 2, R - 3, top + height - 2, multiline=True)
     return top + height + 11
 
+
+# Which courses were served, on one line directly under the counters grid that
+# says how many of each. The answer arrives from dhamma.org and the app into
+# ae_seva_details; before this it had nowhere to print on this form, only on the
+# seva and long-course templates. SEVA_GAP above opened the room for it.
+_SEVA_LABEL = "Other courses served:"
+_SEVA_BASE = 657.0                      # baseline, centred in the opened gap
+text(_p1, L + 30, _SEVA_BASE, _SEVA_LABEL, size=9, font=BOLD)
+_seva_x = L + 30 + fitz.get_text_length(_SEVA_LABEL, BOLD, 9) + 5
+line(_p1, _seva_x, _SEVA_BASE + 2, R)
+tf(0, "seva_details", _seva_x + 2, _SEVA_BASE - 9, R - 2, _SEVA_BASE + 1)
 
 # ================================================================= PAGE 2
 p2 = doc.new_page(width=W, height=H)
@@ -502,6 +523,7 @@ doc.close()
 # ---------------------------------------------------------------- verify
 # Field names come from the source template itself, so this check needs no side
 # files. Re-open SRC: `src` was rebound to the repaired page-1-only document.
+ADDED = {"seva_details"}    # see the seva block on page 1
 orig = {"Text": [], "CheckBox": []}
 for _pg in fitz.open(SRC):
     for _w in _pg.widgets():
@@ -537,7 +559,9 @@ else:
 ok = True
 for kind in ("Text", "CheckBox"):
     missing = sorted(set(orig[kind]) - set(got.get(kind, [])))
-    extra = sorted(set(got.get(kind, [])) - set(orig[kind]))
+    # Fields deliberately added here rather than inherited from the source
+    # template. Anything else showing up as extra is unintended drift.
+    extra = sorted(set(got.get(kind, [])) - set(orig[kind]) - ADDED)
     dup = sorted({n for n in got.get(kind, []) if got[kind].count(n) > 1})
     print(f"{kind}: original={len(orig[kind])} new={len(got.get(kind, []))}")
     if missing: print(f"  MISSING : {missing}"); ok = False
