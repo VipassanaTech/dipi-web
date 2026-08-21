@@ -742,7 +742,11 @@ function map_application_fields_lc($row)
 	$fields['60Day'] = $row['ac_60d'];
 	$fields['TSC'] = $row['ac_tsc'];
 	$fields['Dhamma Service'] = $row['ac_service'];
-	$fields['Other courses served'] = $row['ae_seva_details']." ".$row['al_served_other'];
+	/* al_served_other used to be joined on here: dhamma.org and the VRI-app wrote
+	   it while DIPI's own form wrote ae_seva_details, so the answer arrived in one
+	   of two columns depending on the route. It now lands in ae_seva_details from
+	   every route, which is also the only one an operator can see and correct. */
+	$fields['Other courses served'] = $row['ae_seva_details'];
 
 	if (isset($row['al_10day_after_last_lc']) && !is_null($row['al_10day_after_last_lc']))
 	{
