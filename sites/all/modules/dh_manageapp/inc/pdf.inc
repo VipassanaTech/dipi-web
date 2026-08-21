@@ -589,8 +589,16 @@ function parse_last_lc_date($raw)
 	$raw = trim($raw);
 	if ($raw == '')
 		return false;
-	/* '!' resets the unspecified parts, so a year-month lands on the 1st at 00:00 */
-	foreach (array('Y-m-d', 'Y/m/d', 'Y-m', 'Y/m', 'Y-n', 'Y/n') as $fmt)
+	/* '!' resets the unspecified parts, so a year-month lands on the 1st at 00:00.
+	   Day-first is the local convention and is what the old strtotime() call
+	   already produced for these, so 14/8/2019 stays 14 August. */
+	$formats = array(
+		'Y-m-d', 'Y/m/d', 'Y.m.d',          /* year first  */
+		'd/m/Y', 'j/n/Y', 'd-m-Y', 'j-n-Y', /* day first   */
+		'd.m.Y', 'j.n.Y',
+		'Y-m', 'Y/m', 'Y-n', 'Y/n',         /* year-month  */
+	);
+	foreach ($formats as $fmt)
 	{
 		$d = DateTime::createFromFormat('!'.$fmt, $raw);
 		if ($d && $d->format($fmt) === $raw)
