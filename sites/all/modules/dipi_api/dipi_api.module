@@ -1704,17 +1704,20 @@ function _api_wa_own_centre($phone)
  * long STATUS or CANCEL replies. Those go out as plain text, as before.
  */
 /**
- * The issues of one language that actually exist on disk, newest first.
+ * One page of the issues that exist for a language, newest first.
  *
- * Availability is uneven - hi, en and mr have every month of 2026 while gu has
- * none - so this reads the directory rather than offering months that would
- * come back "not found". 83% of archive requests are for the current year and
- * 91% for this or last year, so two years is enough to cover nearly all of them.
+ * A list holds ten rows, and a language can have far more than that - Hindi has
+ * twenty across 2025 and 2026 alone, and the files go back to 1977. So this
+ * pages: nine issues at a time with an "Older issues" row leading to the next.
  *
- * Returns false when the language has no dated issues, and the caller should
- * just send the latest.
+ * Availability is uneven - hi, en and mr hold every month of 2026 while gu has
+ * none - so it reads the directory rather than offering months blindly, which
+ * would answer "not found".
+ *
+ * Returns false when the language has no dated issues at all, and the caller
+ * should just send the latest.
  */
-function _api_wa_patrika_issues($lang)
+function _api_wa_patrika_issues($lang, $page = 1)
 {
     $lang = preg_replace('/[^a-z-]/', '', strtolower($lang));
     if ($lang === '')
@@ -1722,24 +1725,52 @@ function _api_wa_patrika_issues($lang)
     $months = array(1=>'January','February','March','April','May','June',
                     'July','August','September','October','November','December');
     $base = drupal_realpath('public://') . '/patrika-pdf';
-    $rows = array(array('id' => 'PATRIKA:'.$lang, 'title' => 'Latest issue',
-                        'description' => 'The most recent newsletter'));
-    $found = 0;
-    for ($y = (int) date('Y'); $y >= (int) date('Y') - 1 && $found < 9; $y--)
-        for ($m = 12; $m >= 1 && $found < 9; $m--)
+    $page = max(1, (int) $page);
+    /* Ten rows is the whole budget. Page one spends one on "Latest issue", and
+       any page with more behind it spends one on "Older issues" - otherwise
+       page one fills up and there is no way to reach page two. */
+    $latest_row = ($page == 1) ? 1 : 0;
+    $capacity = 10 - $latest_row;
+    /* what earlier pages consumed: 8 on page one, 9 on each page after it */
+    $skip = ($page == 1) ? 0 : 8 + ($page - 2) * 9;
+
+    /* Read one more than we can show, so "is there another page" needs no
+       second pass over twenty years of directories. */
+    $want = $skip + $capacity + 1;
+    $issues = array();
+    for ($y = (int) date('Y'); $y >= 1977 && count($issues) < $want; $y--)
+        for ($m = 12; $m >= 1 && count($issues) < $want; $m--)
             if (file_exists("$base/$y/patrika-$lang-$m-$y.pdf"))
-            {
-                $rows[] = array('id' => "PATRIKA:$lang:$m:$y",
-                                'title' => mb_substr($months[$m].' '.$y, 0, 24),
-                                'description' => 'Issue of '.$months[$m].' '.$y);
-                $found++;
-            }
-    if ($found === 0)
+                $issues[] = array($m, $y);
+
+    if (!$issues)
         return false;
+    $remaining = array_slice($issues, $skip);
+    if (!$remaining)
+        return false;
+    $more = count($remaining) > $capacity;
+    $slice = array_slice($remaining, 0, $more ? $capacity - 1 : $capacity);
+
+    $rows = array();
+    if ($latest_row)
+        $rows[] = array('id' => 'PATRIKA:'.$lang, 'title' => 'Latest issue',
+                        'description' => 'The most recent newsletter');
+    foreach ($slice as $i)
+        $rows[] = array('id' => "PATRIKA:$lang:{$i[0]}:{$i[1]}",
+                        'title' => mb_substr($months[$i[0]].' '.$i[1], 0, 24),
+                        'description' => 'Issue of '.$months[$i[0]].' '.$i[1]);
+    if ($more)
+    {
+        $last = $slice[count($slice) - 1];
+        $rows[] = array('id' => "PATRIKAISSUES:$lang:".($page + 1),
+                        'title' => 'Older issues',
+                        'description' => 'Issues before '.$months[$last[0]].' '.$last[1]);
+    }
+
     return array(
         'type' => 'list',
         'body' => array('text' => 'Which issue would you like?'),
-        'footer' => array('text' => 'Older issues: send PATRIKA language month year'),
+        'footer' => array('text' => 'Or send: PATRIKA '.$lang.' month year'),
         'action' => array('button' => 'Choose issue',
                           'sections' => array(array('title' => 'Available issues', 'rows' => $rows))),
     );
@@ -3438,9 +3469,9 @@ function handle_whatsapp_msg($sender, $data)
     /* Second page of the patrika languages. A tap-only id, checked here because
        it is deliberately not one of the keywords - HELP and the SMS path should
        never advertise something that cannot be typed usefully. */
-    if ( preg_match('/^PATRIKAISSUES +([a-zA-Z-]+)$/', trim($data), $_pi) )
+    if ( preg_match('/^PATRIKAISSUES +([a-zA-Z-]+)(?: +([0-9]+))?$/', trim($data), $_pi) )
     {
-        $issues = _api_wa_patrika_issues($_pi[1]);
+        $issues = _api_wa_patrika_issues($_pi[1], isset($_pi[2]) ? $_pi[2] : 1);
         if ($issues !== false)
         {
             _api_wa_send_menu($sender, $issues, "Send PATRIKA ".$_pi[1]." for the latest issue.");
