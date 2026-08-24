@@ -233,7 +233,11 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'':$edit_data['cs_hall_combined'], '#required' => 1,  );
 	$form[$group]['cs_seat_naming_conv'] = array('#title' => 'Seat naming convention', '#type' => 'radios', '#weight' => 1,
-		'#options' => array(0 => 'Numerical', 1 => 'Alphabetical'), 
+		'#options' => array(
+			0 => 'Numerical (running number)',
+			1 => 'Alphanumeric - Columns A, B, C  /  Rows 1, 2, 3  (e.g. A1, B1 across a row)',
+			2 => 'Alphanumeric - Rows A, B, C  /  Columns 1, 2, 3  (e.g. A1, A2 across a row)',
+		),
 		'#default_value' => $add?'':$edit_data['cs_seat_naming_conv'], '#required' => 1,  );	
 
 	/*$seat_direction = array(LEFT_TO_RIGHT => 'Left To Right', RIGHT_TO_LEFT => 'Right to Left');

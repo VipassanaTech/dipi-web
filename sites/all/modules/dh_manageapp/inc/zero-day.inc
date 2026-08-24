@@ -1,5 +1,41 @@
 <?php
 
+/**
+ * A seat's printed label from its zero-based column and row.
+ *
+ * cs_seat_naming_conv:
+ *   0  numerical - handled by the callers, not here
+ *   1  alphabetical, columns lettered:  column A,B,C  row 1,2,3  -> "A1"
+ *   2  alphabetical, columns numbered:  column 1,2,3  row A,B,C  -> "1A"
+ *
+ * One place, so the two conventions cannot drift between the four screens that
+ * print seat numbers.
+ */
+function dh_seat_label($col, $row, $conv)
+{
+	if ($conv == 2)
+		return dh_seat_letter($row) . ($col + 1);   /* row letter, column number: A1, A2 across a row */
+	return dh_seat_letter($col) . ($row + 1);       /* column letter, row number: A1, B1 across a row */
+}
+
+/**
+ * A zero-based index as spreadsheet-style letters: 0->A .. 25->Z, 26->AA, ...
+ *
+ * A plain chr($n+65) breaks past Z, which matters here because convention 2 puts
+ * the letters on the row axis and halls run to hundreds of rows (the data has
+ * rows past 400). Convention 1 keeps letters on the columns, which never exceed
+ * about twenty, so its output is unchanged.
+ */
+function dh_seat_letter($n)
+{
+	$n = (int) $n;
+	$s = '';
+	do {
+		$s = chr(65 + ($n % 26)) . $s;
+		$n = intdiv($n, 26) - 1;
+	} while ($n >= 0);
+	return $s;
+}
 
 function dh_manage_day_zero()
 {
@@ -1810,7 +1846,7 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
       $s_no = $counter;
       $counter--;
       if ($alpha) {
-        $s_no = sprintf("%c%d", (65+$col2), ($row+1));
+        $s_no = dh_seat_label($col2, $row, $alpha);
       }
       $aa_seat = $s_no;
       $s_no = '<span class="seatnumber">'.$s_no.'</span>';
@@ -2344,7 +2380,7 @@ function dh_print_group_seats($seats, $cushion_cols, $max_row, $direction, $div,
 			$s_no = $counter;
 			$counter--;
 			if ($alpha)
-				$s_no = sprintf("%c%d", (65 + $col2), ($row + 1));
+				$s_no = dh_seat_label($col2, $row, $alpha);
 			$s_no_html = '<span class="seatnumber">'.$s_no.'</span>';
 			$seat_no = '<div class="seat-no">'.$s_no_html.'</div>';
 
@@ -3007,7 +3043,7 @@ function dh_student_chit($centre, $course, $seating)
 			if ( !isset($r['a_f_name']) )
 				continue;
 			if ($alpha)
-				$r['SeatNo'] = chr($r['aa_seat_col']+65).($r['aa_seat_row']+1);
+				$r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
 			else
 			{
 				$offset = 0;
@@ -3119,7 +3155,7 @@ function dh_checking_slip($centre, $course, $seating)
       if ( !isset($r['a_f_name']) )
         continue;
       if ($alpha)
-        $r['SeatNo'] = chr($r['aa_seat_col']+65).($r['aa_seat_row']+1);
+        $r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
       else
       {
         $offset = 0;
