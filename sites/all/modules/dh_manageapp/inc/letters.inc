@@ -14,25 +14,35 @@ function dh_manage_letters()
 	switch( arg(2) )
 	{
 		case 'add':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			return drupal_get_form('dh_letters_form');
 			break;
+		case 'view':
+			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
+			return dh_letters_view($row);
+			break;
 		case 'edit':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
 			return drupal_get_form('dh_letters_form', $row);
 			break;
     case 'copy':
+      if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
       $row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
       return drupal_get_form('dh_letters_form', $row);
       break;
 		case 'delete':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
 			drupal_goto("letters/".arg(1));
         case 'restore':
+            if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
             db_update("dh_letter")->fields(array('l_deleted' => 0))->condition('l_id', arg(3))->execute();
             drupal_set_message("Letter marked as active.");
             drupal_goto("letters/".arg(1));
 		case 'delattach':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			db_update("dh_letter")->fields(array('l_attachment' => null))->condition('l_id', arg(3))->execute();
 			drupal_set_message("Attachment deleted successfully");
 			drupal_goto("letters/".arg(1)."/edit/".arg(3));
@@ -45,6 +55,7 @@ function dh_manage_letters()
 
 function dh_letters_listing()
 {
+	$can_manage = dh_letters_access('manage');
 	$centre_id = arg(1);
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
@@ -61,14 +72,22 @@ function dh_letters_listing()
 		$rs[] = $r['Status'];
 		$rs[] = $r['Course Type']?$r['Course Type']:"All";
 		$rs[] = $r['Subject'];
-		$rs[] = l("Edit", "letters/$centre_id/edit/".$r['l_id'] );
-		$rs[] = l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
-		$rs[] = l("Mark Inactive", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
+		$rs[] = l("View", "letters/$centre_id/view/".$r['l_id'] );
+		if ($can_manage)
+		{
+			$rs[] = l("Edit", "letters/$centre_id/edit/".$r['l_id'] );
+			$rs[] = l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
+			$rs[] = l("Mark Inactive", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
+		}
 		$rows[] = array_values($rs);
 	}
-	$header = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action', 'Action');
+	$header = $can_manage ? array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action', 'Action', 'Action')
+	                     : array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
 	$attributes = array('id' => 'table-letters');
-	$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
+	if ($can_manage)
+		$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
+	else
+		$out = '<h2>'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	$out .= "<h2>Active Letters</h2>";
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 
@@ -87,13 +106,18 @@ function dh_letters_listing()
            showed the last active letter's course type instead of its own */
         $rs_d[] = $r_d['Course Type']?$r_d['Course Type']:"All";
         $rs_d[] = $r_d['Subject'];
-        $rs_d[] = l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
+        $rs_d[] = l("View", "letters/$centre_id/view/".$r_d['l_id'] );
+        if ($can_manage)
+            $rs_d[] = l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
         $rows_d[] = array_values($rs_d);
     }
-    $header_d = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
+    $header_d = $can_manage ? array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action')
+                          : array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
     $attributes_d = array('id' => 'table-letters-d');
     $out .= "<br><br><h2>Inactive Letters</h2>";
-    $out .= "<p>These letters are not in use and will not be sent. They are not deleted - use Mark Active to bring one back.</p>";
+    $out .= $can_manage
+        ? "<p>These letters are not in use and will not be sent. They are not deleted - use Mark Active to bring one back.</p>"
+        : "<p>These letters are not in use and will not be sent. They are not deleted.</p>";
     $out .= theme('table', array('header' => $header_d, 'rows' => $rows_d, 'attributes' => $attributes_d));
 
 
@@ -129,6 +153,63 @@ function dh_letters_listing()
 
 	return $out;
 
+}
+
+/**
+ * Read-only rendering of one letter.
+ *
+ * Shows the letter as it is stored: the body is displayed as HTML because that
+ * is how it is composed and sent, and the [MergeField] tokens are left exactly
+ * as written - there is no applicant in this context to substitute them for.
+ */
+function dh_letters_view($row)
+{
+	if (!$row)
+		return '<p>'.t('Letter not found.').'</p>';
+
+	$centre_id = arg(1);
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+
+	$course_type = $row['l_course_type']
+		? db_query("select td_val1 from dh_type_detail where td_id=:t", array(':t' => $row['l_course_type']))->fetchField()
+		: t('All');
+
+	$out  = '<h2>'.l("Back to Manage Letters", "letters/$centre_id").'</h2>';
+	if ( dh_letters_access('manage') )
+		$out .= '<p><em>Read-only view. '.l("Edit this letter", "letters/$centre_id/edit/".$row['l_id']).' to make changes.</em></p>';
+	else
+		$out .= '<p><em>'.t('You are viewing this letter. You do not have permission to change it.').'</em></p>';
+
+	/* metadata */
+	$out .= '<table class="letter-view"><tbody>';
+	$out .= '<tr><th>'.t('Letter Name').'</th><td>'.check_plain($row['l_name']).'</td></tr>';
+	$out .= '<tr><th>'.t('Status').'</th><td>'.check_plain($row['l_event']).'</td></tr>';
+	$out .= '<tr><th>'.t('Course Type').'</th><td>'.check_plain($course_type ? $course_type : t('All')).'</td></tr>';
+	$out .= '<tr><th>'.t('Subject').'</th><td>'.check_plain($row['l_subject']).'</td></tr>';
+	$out .= '</tbody></table>';
+
+	/* body - stored and sent as HTML, so shown as HTML; tokens stay literal */
+	$out .= '<h3>'.t('Letter Body').'</h3>';
+	$out .= '<div class="letter-view-body" style="border:1px solid #ccc;padding:12px;background:#fff;">'
+	      . ($row['l_body'] !== '' ? $row['l_body'] : '<em>'.t('(empty)').'</em>')
+	      . '</div>';
+
+	/* SMS - plain text */
+	if (trim($row['l_sms']) !== '')
+	{
+		$out .= '<h3>'.t('SMS Text').'</h3>';
+		$out .= '<div class="letter-view-sms" style="border:1px solid #ccc;padding:12px;white-space:pre-wrap;">'
+		      . check_plain($row['l_sms']).'</div>';
+	}
+
+	/* attachment */
+	if (trim($row['l_attachment']) !== '')
+	{
+		$out .= '<h3>'.t('Attachment').'</h3><p>'
+		      . l(t('View Attachment'), file_create_url($row['l_attachment'])).'</p>';
+	}
+
+	return $out;
 }
 
 function dh_letters_form($form, &$form_state, $edit_data = array())

@@ -61,6 +61,7 @@ function dh_manageapp_permission()
 	$perms['change status'] = array('title' => t('Change Application Status') ) ;
 	$perms['transfer course'] = array('title' => t('Transfer to Course') ) ;
 	$perms['manage letters'] = array('title' => t('Manage Letters') ) ;
+	$perms['view letters'] = array('title' => t('View Letters (read-only)') ) ;
 	$perms['access daily activity'] = array('title' => t('Access Daily Activity'));
 	$perms['access male'] = array('title' => t('Access Male Applications'));
 	$perms['access female'] = array('title' => t('Access Female Applications'));
@@ -217,7 +218,16 @@ function dh_manageapp_menu()
 
 	$items['letters/%centre_id'] = array( 'title' => t('Manage Letters'),
 	       'page callback' => 'dh_manage_letters',
-	       'access arguments' => array('manage letters'),
+	       'access callback' => 'dh_letters_access',
+	       'access arguments' => array('view'),
+	       'type' => MENU_CALLBACK);
+
+	/* Read-only view of a single letter. Anyone who can manage letters can
+	   reach it too, but it needs no more than 'view letters'. */
+	$items['letters/%centre_id/view/%letter_id'] = array( 'title' => t('View Letter'),
+	       'page callback' => 'dh_manage_letters',
+	       'access callback' => 'dh_letters_access',
+	       'access arguments' => array('view'),
 	       'type' => MENU_CALLBACK);
 
 	$items['letters/%centre_id/edit/%letter_id'] = array( 'title' => t('Manage Letters'),
@@ -690,6 +700,19 @@ function dh_manageapp_menu()
            'type' => MENU_CALLBACK);
 
 	return $items;
+}
+
+/**
+ * Letters access.
+ *   'view'   - the listing and the read-only view: either permission
+ *   'manage' - add, edit, copy, mark inactive/active: manage only
+ * A manager can view, but a viewer cannot manage.
+ */
+function dh_letters_access($op = 'manage')
+{
+	if ($op === 'view')
+		return user_access('manage letters') || user_access('view letters');
+	return user_access('manage letters');
 }
 
 function _access_teacher() {
