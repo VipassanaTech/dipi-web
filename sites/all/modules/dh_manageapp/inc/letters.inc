@@ -26,11 +26,11 @@ function dh_manage_letters()
       break;
 		case 'delete':
 			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
-			drupal_set_message("Letter deleted successfully");
+			drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
 			drupal_goto("letters/".arg(1));
         case 'restore':
             db_update("dh_letter")->fields(array('l_deleted' => 0))->condition('l_id', arg(3))->execute();
-            drupal_set_message("Letter restored successfully");
+            drupal_set_message("Letter marked as active.");
             drupal_goto("letters/".arg(1));
 		case 'delattach':
 			db_update("dh_letter")->fields(array('l_attachment' => null))->condition('l_id', arg(3))->execute();
@@ -63,12 +63,13 @@ function dh_letters_listing()
 		$rs[] = $r['Subject'];
 		$rs[] = l("Edit", "letters/$centre_id/edit/".$r['l_id'] );
 		$rs[] = l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
-		$rs[] = l("Delete", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
+		$rs[] = l("Mark Inactive", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
 		$rows[] = array_values($rs);
 	}
 	$header = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action', 'Action');
 	$attributes = array('id' => 'table-letters');
 	$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
+	$out .= "<h2>Active Letters</h2>";
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 
 
@@ -82,14 +83,17 @@ function dh_letters_listing()
 
         $rs_d[] = $r_d['LetterName'];
         $rs_d[] = $r_d['Status'];
-        $rs_d[] = $r_d['Course Type']?$r['Course Type']:"All";
+        /* was $r['Course Type'] - the active loop's variable, so every row here
+           showed the last active letter's course type instead of its own */
+        $rs_d[] = $r_d['Course Type']?$r_d['Course Type']:"All";
         $rs_d[] = $r_d['Subject'];
-        $rs_d[] = l("Restore", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
+        $rs_d[] = l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
         $rows_d[] = array_values($rs_d);
     }
     $header_d = array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
     $attributes_d = array('id' => 'table-letters-d');
-    $out .= "<br><br><h2>Deleted Letters</h2>";
+    $out .= "<br><br><h2>Inactive Letters</h2>";
+    $out .= "<p>These letters are not in use and will not be sent. They are not deleted - use Mark Active to bring one back.</p>";
     $out .= theme('table', array('header' => $header_d, 'rows' => $rows_d, 'attributes' => $attributes_d));
 
 
@@ -101,7 +105,7 @@ function dh_letters_listing()
                 $("#table-letters-d").DataTable();
 				$("#table-letters tbody").on("click", ".delete-letter", function () {
 					var lname = $(this).attr("txt");
-					var r = confirm("Are you sure you want to delete the letter "+lname+"?");
+					var r = confirm("Mark the letter "+lname+" as inactive? It will stop being sent, but you can make it active again.");
 					if ( r == false )
 						return false;
 					else
@@ -109,7 +113,7 @@ function dh_letters_listing()
 				});
                 $("#table-letters-d tbody").on("click", ".restore-letter", function () {
                     var lname = $(this).attr("txt");
-                    var r = confirm("Are you sure you want to restore the letter "+lname+"?");
+                    var r = confirm("Mark the letter "+lname+" as active again?");
                     if ( r == false )
                         return false;
                     else
