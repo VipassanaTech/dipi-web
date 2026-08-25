@@ -212,7 +212,7 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_CALLBACK);
 
-	$items['applicant-reviews/%app_id'] = array( 'title' => t('Internal Reviews'),
+	$items['applicant-reviews/%app_id'] = array( 'title' => t('Internal Review Comments'),
 	       'page callback' => '_get_applicant_reviews',
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_CALLBACK);
@@ -1912,11 +1912,11 @@ function _get_applicant_reviews()
 		$rows[] = $r;
 	}
 	$header = array('DateTime', 'Review', 'Reviewer');
-	$out = '<h4>Internal Reviews</h4>';
+	$out = '<h4>Internal Review Comments</h4>';
 	if (!empty($rows))
 		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('internal-reviews-table'))));
 	else
-		$out .= '<em>No reviews yet.</em>';
+		$out .= '<em>No review comments yet.</em>';
 	print $out;
 	exit;
 }

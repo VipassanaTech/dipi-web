@@ -720,7 +720,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
 		            "</tr>"+
 		            "<tr>"+
-		            "<td colspan=6><div class=\"internal-reviews-"+d.aid+"\">Loading Internal Reviews...</div></td>"+
+		            "<td colspan=6><div class=\"internal-reviews-"+d.aid+"\">Loading Internal Review Comments...</div></td>"+
 		            "</tr>"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"activity-log-"+d.aid+"\">Loading Activity Log...</div></td>"+
@@ -973,7 +973,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					        		str += "</select>";
 					        	}
 				        		if ( '.$can_add_review.' )
-				        			str += "<div style=\"margin-top:6px\"><a href=\"#\" class=\"add-review-btn\" style=\"display:inline-block;padding:2px 10px;background:#2e7d32;color:#fff;border-radius:12px;text-decoration:none;font-size:12px;white-space:nowrap;\">+ Add Review</a></div>";
+				        			str += "<div style=\"margin-top:6px\"><a href=\"#\" class=\"add-review-btn\" style=\"display:inline-block;padding:2px 10px;background:#2e7d32;color:#fff;border-radius:12px;text-decoration:none;font-size:12px;white-space:nowrap;\">+ Add Review Comment</a></div>";
 				        		if (str == "")
 				        			return "No Access";
 				        		return str;
@@ -1216,7 +1216,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					var nm = row.data().name;
 					var edId = "review-editor-" + id;
 					$.confirm({
-						title: "Add Internal Review",
+						title: "Add Internal Review Comment",
 						columnClass: "large",
 						content: "<div style=\"margin-bottom:8px\"><b>" + nm + "</b></div><form class=\"formName\"><textarea id=\"" + edId + "\" name=\"review\" rows=\"10\" style=\"width:100%\"></textarea></form>",
 						onContentReady: function () {
