@@ -1327,21 +1327,15 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$(".bg-table-f .drag-img").empty();
 
 
-	/* Pin each grid to (columns x cell width), read from the DOM. Do NOT use the
-	   whole grid\'s measured width: when the window is narrower than the plan
-	   (e.g. the page was zoomed in), that measurement comes back short and the
-	   floated cells then wrap into too few columns, breaking the layout. A single
-	   cell keeps its fixed width regardless of the viewport, so columns x cell
-	   width is a stable target. */
-	function dhGridWidth(sel){
-	  var $t = $(sel), $td = $t.find("td").first();
-	  if (!$td.length) return 0;
-	  return $t.find("tr").first().children("td").length * $td.outerWidth(true);
-	}
-	$(".main-div .sortable-m").width(dhGridWidth(".main-div .sortable-m"));
-	$(".chowky-div .sortable-m").width(dhGridWidth(".chowky-div .sortable-m"));
-	$(".main-div .sortable-f").width(dhGridWidth(".main-div .sortable-f"));
-	$(".chowky-div .sortable-f").width(dhGridWidth(".chowky-div .sortable-f"));
+	/* Capture each grid column count now, while it is still a table (the first
+	   row cell count). After the table becomes a <ul> of floated <li> cells the
+	   row structure is gone. The width is applied further down, once the cells
+	   are <li>, so it matches their real width exactly. Pinning the width to
+	   columns x cell-width (not the whole-grid measured width) keeps the layout
+	   stable when the window is narrower than the plan. */
+	function dhCols(sel){ var tr = $(sel).find("tr").first(); return tr.children("td").length; }
+	var dhColsMM = dhCols(".main-div .sortable-m"),  dhColsMC = dhCols(".chowky-div .sortable-m"),
+	    dhColsFM = dhCols(".main-div .sortable-f"),  dhColsFC = dhCols(".chowky-div .sortable-f");
 
     $(".sortable-m td, .sortable-f td").replaceWith(function(){
       return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
@@ -1356,11 +1350,6 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
       return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
     });
 
-	$(".main-div .bg-table-m").width(dhGridWidth(".main-div .bg-table-m"));
-	$(".chowky-div .bg-table-m").width(dhGridWidth(".chowky-div .bg-table-m"));
-	$(".main-div .bg-table-f").width(dhGridWidth(".main-div .bg-table-f"));
-	$(".chowky-div .bg-table-f").width(dhGridWidth(".chowky-div .bg-table-f"));
-
     $(".bg-table-m td, .bg-table-f td").replaceWith(function(){
       return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
     });
@@ -1373,6 +1362,18 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
     $(".bg-table-m, .bg-table-f").replaceWith(function(){
       return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
     });
+
+	/* Now that every grid is a <ul> of floated <li> cells, pin each to columns x
+	   actual cell width. Doing it here (not on the table) uses the real <li>
+	   width, so a full row fills the width exactly with no slack - otherwise the
+	   slack lands on the left of the right-floated male grid and its left margin
+	   no longer matches the left-floated female grid. */
+	function dhSetW(sel, cols){ var ul = $(sel), li = ul.find("li.ui-state-default")[0];
+	  if (li && cols) ul.width(cols * li.getBoundingClientRect().width); }
+	dhSetW(".main-div .sortable-m", dhColsMM);  dhSetW(".chowky-div .sortable-m", dhColsMC);
+	dhSetW(".main-div .sortable-f", dhColsFM);  dhSetW(".chowky-div .sortable-f", dhColsFC);
+	dhSetW(".main-div .bg-table-m", dhColsMM);  dhSetW(".chowky-div .bg-table-m", dhColsMC);
+	dhSetW(".main-div .bg-table-f", dhColsFM);  dhSetW(".chowky-div .bg-table-f", dhColsFC);
 
     /* Shorten an over-long name at a word boundary: keep as many whole leading
        words as fit, then show the first word that does not fit as just its
