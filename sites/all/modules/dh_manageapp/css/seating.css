@@ -194,10 +194,11 @@ ul {
         display: none !important;
     }
 
-    /* Remove the side page margins so the plan can use the full sheet width
-       (keep a small top/bottom margin so the title is not clipped at the edge).
-       Lets the operator scale the plan up further before it runs onto more pages. */
-    @page { margin: 6mm 0; }
+    /* Keep the page margins small so the plan can use most of the sheet width
+       (lets the operator scale it up before it runs onto more pages), but not
+       zero on the sides - a zero side margin jams the plan against the left edge
+       on print. A small even margin on all sides keeps it off the edges. */
+    @page { margin: 6mm; }
     html, body { margin: 0 !important; padding: 0 !important; }
 }
 
