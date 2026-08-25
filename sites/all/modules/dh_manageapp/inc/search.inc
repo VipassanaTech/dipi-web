@@ -11,6 +11,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	$iPad    = stripos($_SERVER['HTTP_USER_AGENT'],"iPad");
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
+	/* Rich-text editor for the "Add Review" internal note dialog. */
+	drupal_add_js( libraries_get_path("ckeditor"). "/ckeditor.js");
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
 	if ( !($iPad || $iPhone || $iPod) )
 	{
@@ -573,8 +575,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	
 //	$add_action = 'return "<a href=\"#\" action=\"Add\" class=\"applicant-add\">Add</a>";';
 
-	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')))
-	{	
+	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')) || (user_access('add applicant review')))
+	{
 		$action_select = '<option value=\"\" selected=\"selected\">Choose</option>';
 		$actions = array();
 		if (user_access("transfer course")) {
@@ -599,8 +601,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		}
         if ($LC)
         {
-            $action_select .='<option value=\"Send Review Email\">Send Review Email</option>';
-            $actions[] = "Send Review Email";
+            $action_select .='<option value=\"Send LC Review Email\">Send LC Review Email</option>';
+            $actions[] = "Send LC Review Email";
         }
 		//$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
 		$action = implode("," , $actions);
@@ -610,6 +612,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	else
 		$action = '';
 		//$action = 'return "No access"';
+	$can_add_review = user_access('add applicant review') ? 1 : 0;
 
 
 	$button_access = '';
@@ -715,6 +718,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                 "</tr>"+
  		            "<tr>"+
 		            "<td colspan=6><div class=\"applied-courses-"+d.aid+"\">Loading Course Data...</div></td>"+
+		            "</tr>"+
+		            "<tr>"+
+		            "<td colspan=6><div class=\"internal-reviews-"+d.aid+"\">Loading Internal Reviews...</div></td>"+
 		            "</tr>"+
 		            "<tr>"+
 		            "<td colspan=6><div class=\"activity-log-"+d.aid+"\">Loading Activity Log...</div></td>"+
@@ -947,23 +953,29 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        } },
 				        { data: null, "title" : "Action", render: function(data, type, row) {
 				        		var a = "'.$action.'";
-				        		if (a == "")
-				        			return "No Access";
-				        		var t = a.split(",");
-				        		var str = "<select id=\"action-type\" class=\"action-select\"><option value=\"\" selected=\"selected\">Choose</option>";
-				        		for (var i=0; i < t.length; i++ )
+				        		var str = "";
+				        		if (a != "")
 				        		{
-				        			if ( t[i] == "Transfer" || t[i] == "Delete" )
-				        			{
-					        			if ((data.allowtransfer == 1)   )
+					        		var t = a.split(",");
+					        		str += "<select id=\"action-type\" class=\"action-select\"><option value=\"\" selected=\"selected\">Choose</option>";
+					        		for (var i=0; i < t.length; i++ )
+					        		{
+					        			if ( t[i] == "Transfer" || t[i] == "Delete" )
 					        			{
+						        			if ((data.allowtransfer == 1)   )
+						        			{
+						        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
+						        			}
+					        			}
+					        			else
 					        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
-					        			}				       			
-				        			}
-				        			else
-				        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
-				        		}
-				        		str += "</select>";
+					        		}
+					        		str += "</select>";
+					        	}
+				        		if ( '.$can_add_review.' )
+				        			str += "<div style=\"margin-top:6px\"><a href=\"#\" class=\"add-review-btn\" style=\"display:inline-block;padding:2px 10px;background:#2e7d32;color:#fff;border-radius:12px;text-decoration:none;font-size:12px;white-space:nowrap;\">+ Add Review</a></div>";
+				        		if (str == "")
+				        			return "No Access";
 				        		return str;
 				        } },
 				        { data: null, "title": "" },
@@ -1028,7 +1040,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            $("div.slider", row.child()).slideDown();
 		            	$(".clarification-response-"+row.data().aid).load("/app-clarifications/"+row.data().aid);
 		            	$(".applied-courses-"+row.data().aid).load("/app-courses/"+row.data().aid);
-		            	$(".activity-log-"+row.data().aid).load("/app-activity/"+row.data().aid);			            	
+		            	$(".activity-log-"+row.data().aid).load("/app-activity/"+row.data().aid);
+		            	$(".internal-reviews-"+row.data().aid).load("/applicant-reviews/"+row.data().aid);
 			        }
 			    });
 
@@ -1195,6 +1208,50 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
                 }
 
+				function add_review( s )
+				{
+					var tr = $(s).closest("tr");
+					var row = table.row( tr );
+					var id = row.data().aid;
+					var nm = row.data().name;
+					var edId = "review-editor-" + id;
+					$.confirm({
+						title: "Add Internal Review",
+						columnClass: "large",
+						content: "<div style=\"margin-bottom:8px\"><b>" + nm + "</b></div><form class=\"formName\"><textarea id=\"" + edId + "\" name=\"review\" rows=\"10\" style=\"width:100%\"></textarea></form>",
+						onContentReady: function () {
+							if (window.CKEDITOR) {
+								if (CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
+								CKEDITOR.replace(edId);
+							}
+						},
+						onClose: function () {
+							if (window.CKEDITOR && CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
+						},
+						buttons: {
+							save: {
+								text: "Save Review",
+								btnClass: "btn-blue",
+								action: function () {
+									var html = (window.CKEDITOR && CKEDITOR.instances[edId]) ? CKEDITOR.instances[edId].getData() : $("#" + edId).val();
+									if ( $.trim(html.replace(/<[^>]*>/g, "")) == "" ) { $.alert("Please enter a review note."); return false; }
+									$.post( "/add-review/" + id, { r: html }, function (json) {
+										if (json && json.status) {
+											$.alert("Review added.");
+											if ( row.child && row.child.isShown() ) {
+												$(".internal-reviews-" + id).load("/applicant-reviews/" + id);
+											}
+										} else {
+											$.alert((json && json.msg) ? json.msg : "Failed to add review.");
+										}
+									}, "json").fail(function () { $.alert("Failed to add review."); });
+								}
+							},
+							cancel: { text: "Cancel" }
+						}
+					});
+				}
+
 				function add_referral( s )
 				{
 			        var tr = $(s).closest("tr");
@@ -1232,6 +1289,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				});
 
 				//$("#table-applicants tbody").on("click", ".course-transfer,.applicant-add", function() {
+				$("#table-applicants tbody").on("click", ".add-review-btn", function(e) {
+					e.preventDefault();
+					add_review($(this));
+				});
+
 				$("#table-applicants tbody").on("change", "#action-type", function() {
 					var s = $(this);
 					//var action = s.attr("action");
@@ -1257,7 +1319,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        	app_del(s);
 			        	return;
 			        }
-                    if ( action == "Send Review Email" )
+                    if ( action == "Send LC Review Email" )
                     {
                         app_at_email(s);
                         return;

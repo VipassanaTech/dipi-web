@@ -59,6 +59,7 @@ function dh_manageapp_permission()
 	$perms['access application pdf'] = array('title' => t('Access PDF of applicant') ) ;
 	$perms['access application photos'] = array('title' => t('Access Photos of applicant') ) ;
 	$perms['change status'] = array('title' => t('Change Application Status') ) ;
+	$perms['add applicant review'] = array('title' => t('Add internal review note to an application') ) ;
 	$perms['transfer course'] = array('title' => t('Transfer to Course') ) ;
 	$perms['manage letters'] = array('title' => t('Manage Letters') ) ;
 	$perms['view letters'] = array('title' => t('View Letters (read-only)') ) ;
@@ -209,6 +210,16 @@ function dh_manageapp_menu()
 	$items['app-activity/%app_id'] = array( 'title' => t('Search'),
 	       'page callback' => '_get_activity',
 	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['applicant-reviews/%app_id'] = array( 'title' => t('Internal Reviews'),
+	       'page callback' => '_get_applicant_reviews',
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
+	$items['add-review/%app_id'] = array( 'title' => t('Add Review'),
+	       'page callback' => '_add_applicant_review',
+	       'access arguments' => array('add applicant review'),
 	       'type' => MENU_CALLBACK);
 
 	$items['change-status/%app_id'] = array( 'title' => t('Search'),
@@ -1841,6 +1852,112 @@ function _get_activity()
 	if (!empty($rows))
 		$out .= theme('table', array('header' => $header, 'rows' => $rows)) ;
 	print $out;
+	exit;
+}
+
+/* Tags allowed in an internal review note - enough to keep pasted formatting
+   (bold/italic/lists/links/colours via style, simple tables) while filter_xss
+   strips scripts, event handlers and javascript: protocols. */
+function _dh_review_allowed_tags()
+{
+	return array('a','b','strong','i','em','u','s','p','br','hr','ul','ol','li',
+		'h3','h4','h5','h6','span','div','blockquote','pre','code','font',
+		'table','thead','tbody','tr','td','th','sub','sup');
+}
+
+/* Sanitise a pasted/typed review note. HTMLPurifier (bundled in vendor/) keeps
+   safe formatting - including inline colours/font-size via style - while
+   stripping scripts, event handlers, iframes and dangerous protocols, so the
+   note shows "as pasted" without being an XSS vector. Falls back to filter_xss
+   (structural tags only, no inline styles) if HTMLPurifier is unavailable. */
+function _dh_review_sanitize($html)
+{
+	$html = (string) $html;
+	if (trim($html) === '') return '';
+	if (class_exists('HTMLPurifier'))
+	{
+		$config = HTMLPurifier_Config::createDefault();
+		$config->set('Core.Encoding', 'UTF-8');
+		$config->set('HTML.Allowed', 'p[style],br,b,strong,i,em,u,s,sub,sup,ul,ol,'.
+			'li[style],blockquote[style],pre,code,h3[style],h4[style],h5[style],'.
+			'h6[style],hr,span[style],div[style],font[color|face|size],'.
+			'a[href|title|target],table,thead,tbody,tr,'.
+			'td[style|colspan|rowspan],th[style|colspan|rowspan]');
+		$config->set('CSS.AllowedProperties', 'color,background-color,font-size,'.
+			'font-family,font-weight,font-style,text-align,text-decoration');
+		$config->set('Attr.AllowedFrameTargets', array('_blank'));
+		$config->set('Cache.DefinitionImpl', null);
+		$purifier = new HTMLPurifier($config);
+		return $purifier->purify($html);
+	}
+	return filter_xss($html, _dh_review_allowed_tags());
+}
+
+/* Render the Internal Reviews list for one application (lazy-loaded into the
+   applicant list's expand row). Mirrors _get_activity(). */
+function _get_applicant_reviews()
+{
+	$app_id = (int) arg(1);
+	$q = "select ar_review, ar_created, name from dh_applicant_reviews left join users on ar_user=uid where ar_applicant=:a order by ar_created desc";
+	$res = db_query($q, array(':a' => $app_id));
+	$rows = array();
+	while ($row = $res->fetchAssoc())
+	{
+		$r = array();
+		$r[] = check_plain($row['ar_created']);
+		/* stored value was sanitised on the way in; re-filter on output too so a
+		   row that predates the filter (or was inserted another way) is still safe */
+		$r[] = _dh_review_sanitize($row['ar_review']);
+		$r[] = check_plain($row['name']);
+		$rows[] = $r;
+	}
+	$header = array('DateTime', 'Review', 'Reviewer');
+	$out = '<h4>Internal Reviews</h4>';
+	if (!empty($rows))
+		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('internal-reviews-table'))));
+	else
+		$out .= '<em>No reviews yet.</em>';
+	print $out;
+	exit;
+}
+
+/* Store a new internal review note against an application, stamped with the
+   current user and time. Returns JSON. */
+function _add_applicant_review()
+{
+	global $user;
+	$app_id = (int) arg(1);
+	$review = isset($_REQUEST['r']) ? $_REQUEST['r'] : '';
+	$out = array('status' => false);
+
+	if ($app_id <= 0 || trim(strip_tags($review)) === '')
+	{
+		$out['msg'] = 'Please enter a review note.';
+		drupal_json_output($out);
+		exit;
+	}
+
+	$centre = db_query("select a_center from dh_applicant where a_id=:a", array(':a' => $app_id))->fetchField();
+	if ($centre === false)
+	{
+		$out['msg'] = 'Application not found.';
+		drupal_json_output($out);
+		exit;
+	}
+
+	db_insert('dh_applicant_reviews')->fields(array(
+		'ar_applicant' => $app_id,
+		'ar_review'    => _dh_review_sanitize($review),
+		'ar_user'      => $user->uid,
+		'ar_created'   => date('Y-m-d H:i:s'),
+		'ar_center'    => $centre,
+	))->execute();
+
+	logit($centre, 'Review', $app_id, 'Internal review note added', $user->uid);
+
+	$out['status'] = true;
+	$out['msg'] = 'Review added.';
+	drupal_json_output($out);
 	exit;
 }
 
