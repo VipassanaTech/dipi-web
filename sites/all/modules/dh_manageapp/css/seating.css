@@ -22,7 +22,16 @@ ul {
 	text-align: center;
 	vertical-align: middle;
 	width: 140px;
-	height: 130px;
+	/* The cells become floated <li> items (the JS rewrites the table to a ul/li
+	   list), so a cell is a fixed-height box and its content simply overflows if
+	   it is taller than the box - there is no row stretching. The backrest bar is
+	   the last line, so the box height must exceed the fullest cell's content or
+	   the bar lands on the bottom border. A fully-loaded cell (seat, acco, cell,
+	   name, course counts, age, backrest) measures ~90px; the chowky cell is ~1px
+	   taller for its CW-/CH- prefix. 88px content-box (95px rendered) clears even
+	   that with a few px to spare. Padding-bottom does NOT help here - overflowing
+	   content spills straight through it - so the gap has to be box slack. */
+	height: 88px;
 	border: 1px solid #000000;
 	font-weight: bold;
 	padding-top: 5px;
@@ -80,6 +89,10 @@ ul {
 .s-seat-no {
 	width: 45px;
 	float: left;
+	/* Keep CW-/CH- (chowky/chair) seat numbers on one line so those cells stay
+	   the same height as plain cells and the backrest bar does not get pushed
+	   onto the bottom border. */
+	white-space: nowrap;
 }
 
 .s-acco {
@@ -94,17 +107,27 @@ ul {
   float: right;
   text-align: right;
   padding-right: 7px;
+  /* Always reserve the dormitory-cell line's height, even when a seat has no
+     cell number, so the name/age/backrest below it stay at the same position in
+     every cell (an empty div would otherwise collapse and shift everything up). */
+  min-height: 20px;
 }
 
 
 .s-name {
-    height: 50px;
+    height: 20px;
+    line-height: 20px;
     text-align: center;
-    padding-top: 10px;
+    padding-top: 0px;
+    padding-bottom: 2px;
     clear: both;
-	display: flex;
-	justify-content: center;
-	flex-direction: column;    
+	/* Keep a long name on one line so it can never wrap and overflow the short
+	   cell. Over-long names are shortened in JS with a single trailing dot (see
+	   the seating-plan script); text-overflow:clip means no built-in "..." shows.
+	   A custom single-dot text-overflow string is Firefox-only, hence the JS. */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: clip;
 }
 
 .s-old-student {
@@ -125,6 +148,9 @@ ul {
 .s-backrest {
 	clear: both;
 	height: 3px;
+	/* Inset the bar from the side borders so a filled (backrest) bar reads as a
+	   mark inside the cell, not as another cell border. */
+	margin: 0 25px;
 }
 
 .s-backrest-yes {
@@ -162,11 +188,17 @@ ul {
 
 
 @media print
-{    
+{
     .no-print, .no-print *
     {
         display: none !important;
     }
+
+    /* Remove the side page margins so the plan can use the full sheet width
+       (keep a small top/bottom margin so the title is not clipped at the edge).
+       Lets the operator scale the plan up further before it runs onto more pages. */
+    @page { margin: 6mm 0; }
+    html, body { margin: 0 !important; padding: 0 !important; }
 }
 
 .drag-img img

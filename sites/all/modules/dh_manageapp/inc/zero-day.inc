@@ -1263,7 +1263,7 @@ function dh_seat_config_error_output($centre, $errors, $pdf = '')
 {
 	global $base_url;
 	$out = '<html><head>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '</head><body>';
 	$out .= '<div class="helptext">';
 	$out .= '<h2>Seating settings are not correct</h2>';
@@ -1327,15 +1327,21 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$(".bg-table-f .drag-img").empty();
 
 
-	var a = $(".main-div .sortable-m").innerWidth();
-	var b = $(".chowky-div .sortable-m").innerWidth();	
-	var c = $(".main-div .sortable-f").innerWidth();
-	var d = $(".chowky-div .sortable-f").innerWidth();
-
-	$(".main-div .sortable-m").width(a);
-	$(".chowky-div .sortable-m").width(b);
-	$(".main-div .sortable-f").width(c);
-	$(".chowky-div .sortable-f").width(d);
+	/* Pin each grid to (columns x cell width), read from the DOM. Do NOT use the
+	   whole grid\'s measured width: when the window is narrower than the plan
+	   (e.g. the page was zoomed in), that measurement comes back short and the
+	   floated cells then wrap into too few columns, breaking the layout. A single
+	   cell keeps its fixed width regardless of the viewport, so columns x cell
+	   width is a stable target. */
+	function dhGridWidth(sel){
+	  var $t = $(sel), $td = $t.find("td").first();
+	  if (!$td.length) return 0;
+	  return $t.find("tr").first().children("td").length * $td.outerWidth(true);
+	}
+	$(".main-div .sortable-m").width(dhGridWidth(".main-div .sortable-m"));
+	$(".chowky-div .sortable-m").width(dhGridWidth(".chowky-div .sortable-m"));
+	$(".main-div .sortable-f").width(dhGridWidth(".main-div .sortable-f"));
+	$(".chowky-div .sortable-f").width(dhGridWidth(".chowky-div .sortable-f"));
 
     $(".sortable-m td, .sortable-f td").replaceWith(function(){
       return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
@@ -1350,15 +1356,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
       return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
     });
 
-    var e = $(".main-div .bg-table-m").innerWidth();
-	var f = $(".chowky-div .bg-table-m").innerWidth();	
-	var g = $(".main-div .bg-table-f").innerWidth();
-	var h = $(".chowky-div .bg-table-f").innerWidth();
-
-	$(".main-div .bg-table-m").width(e);
-	$(".chowky-div .bg-table-m").width(f);
-	$(".main-div .bg-table-f").width(g);
-	$(".chowky-div .bg-table-f").width(h);
+	$(".main-div .bg-table-m").width(dhGridWidth(".main-div .bg-table-m"));
+	$(".chowky-div .bg-table-m").width(dhGridWidth(".chowky-div .bg-table-m"));
+	$(".main-div .bg-table-f").width(dhGridWidth(".main-div .bg-table-f"));
+	$(".chowky-div .bg-table-f").width(dhGridWidth(".chowky-div .bg-table-f"));
 
     $(".bg-table-m td, .bg-table-f td").replaceWith(function(){
       return this.outerHTML.replace("<td", "<li").replace("</td", "</li")
@@ -1371,6 +1372,30 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
     });     
     $(".bg-table-m, .bg-table-f").replaceWith(function(){
       return this.outerHTML.replace("<table", "<ul").replace("</table", "<ul")
+    });
+
+    /* Shorten an over-long name at a word boundary: keep as many whole leading
+       words as fit, then show the first word that does not fit as just its
+       initial + "." (e.g. "Abhimanyu Singh Gaikwad Deshmukh" -> "Abhimanyu
+       Singh G."). Chrome has no custom text-overflow string (it would show
+       "..."), hence doing it in JS. Full name stays on hover. Run after the grid
+       is built so the cell width is final. */
+    $(".sortable-m .s-name, .sortable-f .s-name").each(function(){
+      var el = this;
+      if (el.scrollWidth <= el.clientWidth) return;
+      var full = el.textContent.replace(/\s+/g, " ").replace(/^ | $/g, "");
+      el.title = full;
+      var words = full.split(" "), kept = [];
+      for (var i = 0; i < words.length; i++) {
+        el.textContent = kept.concat([words[i]]).join(" ");
+        if (el.scrollWidth <= el.clientWidth) { kept.push(words[i]); continue; }
+        el.textContent = kept.concat([words[i].charAt(0) + "."]).join(" ");
+        while (el.scrollWidth > el.clientWidth && kept.length) {
+          kept.pop();
+          el.textContent = kept.concat([words[i].charAt(0) + "."]).join(" ");
+        }
+        break;
+      }
     });
 
     $(document).on("click", ".add-row", function(){
@@ -1524,7 +1549,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	if (!isset($ini['RIGHT']['gender']))
 		$ini['RIGHT']['gender'] = 'M';
 
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style></head><body>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style></head><body>';
 	$out .= '<div class="helptext no-print">
 		<h2>Editing Seating Plan:</h2>
 		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
@@ -2228,7 +2253,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 
 	$out = '<html><head>';
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script><script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '<style>.group-page{page-break-before: always;} .group-title{width:1000px;text-align:center;font-weight:bold;font-size:22px;margin-top:15px;} .group-empty{color:#888;padding:10px;}
 		/* Keep CW-/CH- seat numbers on one line so chowky cells do not overflow. */
 		.s-seat-no{white-space:nowrap;} .s-seat-no .cwch{font-size:13px;}
