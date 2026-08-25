@@ -307,6 +307,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['aid'] = $r['a_id'];
 		$rs['changestatus'] = '' ;
 		$rs['name'] = _ma_make_link($r['Full Name'],'app/'.$r['a_id'].'/edit').$pdf_link;
+		$rs['name'] .= '&nbsp;('.l("View", "application-view/".$r['a_id'], array('attributes' => array("target" => "_blank"))).')';
 		if ($rs['type'] == 'sevak')
 			$rs['name'] .= ' (Sevak)';
 		if ($r['ac_teacher'] == 1)
@@ -1930,4 +1931,247 @@ function dh_manageapp_search_show_app()
   $out = '<h3>'.l("Back to Bulk-Mail-Log", "bulk-mail/$center_id/$bulk_mail_id/show-log").' | '.l("Back to Bulk-Mail-Schedule", "centre/$center_id/bulk-mail-schedule").' | '.l("Back to Dashboard", "centre/$center_id").'</h3>';
   $out .= dh_manageapp_search_results( 'applicant', $where, $center_id );
   return $out;
+}
+
+/**
+ * Read-only full view of one application. Shows all applicant details plus the
+ * same sub-sections as the applicant-list expand ("+") panel - applied courses,
+ * clarifications, activity log and internal review comments - which are pulled
+ * in client-side from their existing endpoints. No edit controls.
+ */
+function dh_application_view($app_id)
+{
+	global $user;
+	$app_id = (int) $app_id;
+
+	$q = "select
+		a_id, a_conf_no as ConfNo, concat(a_f_name,' ',a_m_name,' ',a_l_name) as fullname,
+		a_gender, a_status, a_dob, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age, a_old, a_monk, a_alist, a_photo,
+		a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile,
+		a_passport, a_voter_id, a_pancard, a_aadhar,
+		a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department,
+		a_emergency_name, a_emergency_relation, a_emergency_num,
+		a_friend_family_details, a_internal_note, a_willing_to_serve, a_extra,
+		a_lang_1, a_lang_2, a_lang_3, a_langs, a_lang_discourse, a_created,
+		ci.c_name as City, a_city_str, s.s_name as StateName, co.c_name as Country,
+		c.c_name as course_name,
+		ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_service,
+		CONCAT(IFNULL(ac_first_year,''),'-',IFNULL(ac_first_month,''),'-',IFNULL(ac_first_day,''),', ',IFNULL(ac_first_location_str,'')) as first_course,
+		CONCAT(IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day,''),', ',IFNULL(ac_last_location_str,'')) as last_course,
+		ac_practice_details,
+		aa_section, aa_acco, aa_left_comment,
+		ae_desc_physical, ae_desc_mental, ae_desc_medication,
+		CONCAT(IFNULL(ae_desc_other_technique,''),' ',IFNULL(ae_desc_other_technique_old,'')) as other_technique,
+		ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_id_issued, ae_id_issued_by, ae_nationality,
+		ae_father, ae_mother, ae_parent_course, ae_teen_std,
+		td.td_key as course_type_key, td.td_val1 as course_type_label, td.td_val2 as course_days,
+		al_id, al_at_year, al_committed, al_committed_details, al_exclusive_2yrs, al_exclusive_2yrs_details,
+		al_daily_practice_yrs, al_daily_practice_details, al_5_precepts, al_5_precepts_details,
+		al_intoxicants, al_sexual_misconduct, al_recent_sat_type,
+		al_last_lc_type, al_last_lc_date, al_last_lc_location, al_last_lc_teacher, al_served_other,
+		al_relationship, al_relationship_lifelong, al_spouse_name, al_relation_harmonious,
+		al_spouse_approve, al_spouse_meditator, al_spouse_other_technique,
+		al_left_course, al_left_course_details, al_reduce_practice, al_reduce_practice_details,
+		al_personal_tragedy, al_personal_tragedy_details, al_difficulty, al_difficulty_details,
+		al_special_req, al_special_req_details, al_additional_info, al_arrival,
+		al_recommending, al_recommending_comments, al_recommending_approved,
+		al_area_at, al_area_at_comments, al_area_at_approved,
+		a_center
+		from dh_applicant
+		left join dh_applicant_course ac on (a_id=ac_applicant)
+		left join dh_applicant_attended aa on (a_id=aa_applicant)
+		left join dh_applicant_extra ae on (a_id=ae_applicant)
+		left join dh_applicant_lc al on (a_id=al_applicant)
+		left join dh_course c on (a_course=c.c_id)
+		left join dh_type_detail td on (c.c_course_type=td.td_id)
+		left join dh_country co on (a_country=co.c_code)
+		left join dh_city ci on (a_city=ci.c_id)
+		left join dh_state s on (a_state=s.s_code and a_country=s.s_country)
+		where a_id = :id";
+	$r = db_query($q, array(':id' => $app_id))->fetchAssoc();
+	if (!$r)
+		return '<div style="padding:20px">Application not found.</div>';
+
+	/* one labelled field; multi-line text kept readable */
+	$fld = function($label, $value) {
+		$value = trim((string)$value);
+		if ($value === '' || strtolower($value) === 'null') $value = '-';
+		else $value = nl2br(check_plain($value));
+		return '<div class="av-row"><span class="av-label">'.check_plain($label).'</span><span class="av-val">'.$value.'</span></div>';
+	};
+	$sec = function($title, $body) {
+		return '<div class="av-sec"><h3>'.check_plain($title).'</h3>'.$body.'</div>';
+	};
+	/* a yes/no flag with an optional free-text detail */
+	$yn = function($label, $flag, $detail = '') use ($fld) {
+		$v = $flag ? 'Yes' : 'No';
+		$detail = trim((string)$detail);
+		if ($detail !== '' && strtolower($detail) !== 'null' && $detail !== '-') $v .= ' - '.$detail;
+		return $fld($label, $v);
+	};
+
+	$city = $r['City'] ? $r['City'] : $r['a_city_str'];
+	$pregnant = $r['ae_pregnant'] ? 'Yes' : 'No';
+	if ($r['ae_pregnant'] && !in_array(strtolower(trim((string)$r['ae_pregnant_detail'])), array('', '-', 'no')))
+		$pregnant .= ' ('.check_plain($r['ae_pregnant_detail']).' months)';
+	$temp = explode(' / ', (string)$r['course_name']); unset($temp[0]);
+	$course = implode(' / ', $temp);
+
+	drupal_set_title('Application - '.$r['fullname']);
+
+	$css = '<style>
+		.app-view{max-width:1000px;margin:0 auto;padding:0 10px;font-size:14px;color:#222;box-sizing:border-box}
+		.app-view *{box-sizing:border-box}
+		.app-view h2{margin:0 0 4px}
+		.app-view .av-status{color:#555;margin-bottom:16px}
+		.av-sec{border:1px solid #ddd;border-radius:6px;margin:0 0 14px;padding:10px 14px;break-inside:avoid}
+		.av-sec h3{margin:0 0 8px;font-size:15px;border-bottom:1px solid #eee;padding-bottom:5px}
+		.av-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px}
+		.av-row{padding:3px 0;border-bottom:1px dotted #f0f0f0}
+		.av-label{display:inline-block;min-width:150px;color:#666;font-weight:bold;vertical-align:top}
+		.av-val{display:inline-block;max-width:100%;word-break:break-word}
+		.app-view img{max-width:140px;height:auto}
+		.app-view table{border-collapse:collapse;max-width:100%}
+		.no-print{margin-bottom:12px}
+		/* phones/small tablets: single column, tighter labels, smaller photo */
+		@media (max-width:700px){
+			.av-grid{grid-template-columns:1fr}
+			.av-label{min-width:0;display:block}
+			.app-view img{max-width:96px}
+		}
+		@media print{.no-print{display:none}}
+	</style>';
+	/* make sure phones scale to device width even if the theme has no viewport meta */
+	drupal_add_html_head(array(
+		"#tag" => "meta",
+		"#attributes" => array("name" => "viewport", "content" => "width=device-width, initial-scale=1"),
+	), "dh_app_view_viewport");
+
+	$out  = $css.'<div class="app-view">';
+	$out .= '<div class="no-print"><button type="button" onclick="window.print()">Print</button></div>';
+	if ($r['a_photo'] != '')
+		$out .= '<img src="'.check_plain(file_create_url("show-photo/".$app_id)).'" alt="photo" style="float:right;max-width:140px;max-height:180px;border:1px solid #ccc;margin-left:12px" />';
+	$out .= '<h2>'.check_plain($r['fullname']).($r['ConfNo']?' ('.check_plain($r['ConfNo']).')':'').'</h2>';
+	$out .= '<div class="av-status">'.check_plain($r['a_status']).' &middot; '.check_plain($course).'</div>';
+
+	$out .= $sec('Personal', '<div class="av-grid">'.
+		$fld('Gender', $r['a_gender']).$fld('Date of Birth', $r['a_dob']).
+		$fld('Age', $r['age']).$fld('Nationality', $r['ae_nationality']).
+		$fld('Old / New', $r['a_old'] ? 'Old Student' : 'New Student').$fld('Monk / Nun', $r['a_monk'] ? 'Yes' : 'No').
+		$fld('A-List', $r['a_alist'] ? 'Yes' : 'No').$fld('Applied On', $r['a_created']).'</div>');
+
+	$out .= $sec('Contact', '<div class="av-grid">'.
+		$fld('Address', $r['a_address']).$fld('City / State / Country', trim($city.', '.$r['StateName'].', '.$r['Country'], ', ')).
+		$fld('Pin', $r['a_zip']).$fld('Email', $r['a_email']).
+		$fld('Mobile', $r['a_phone_mobile']).$fld('Home Phone', $r['a_phone_home']).
+		$fld('Office Phone', $r['a_phone_office']).'</div>');
+
+	$out .= $sec('Identification', '<div class="av-grid">'.
+		$fld('Passport', $r['a_passport']).$fld('Voter ID', $r['a_voter_id']).
+		$fld('PAN', $r['a_pancard']).$fld('Aadhaar', $r['a_aadhar']).
+		$fld('ID Issued Date', $r['ae_id_issued']).$fld('ID Issued By', $r['ae_id_issued_by']).'</div>');
+
+	$out .= $sec('Background', '<div class="av-grid">'.
+		$fld('Education', $r['a_education']).$fld('Occupation', $r['a_occupation']).
+		$fld('Past Occupation', $r['a_occupation_past']).$fld('Company', $r['a_company']).
+		$fld('Designation', $r['a_designation']).$fld('Department', $r['a_department']).'</div>');
+
+	$out .= $sec('Emergency Contact', '<div class="av-grid">'.
+		$fld('Name', $r['a_emergency_name']).$fld('Relation', $r['a_emergency_relation']).
+		$fld('Number', $r['a_emergency_num']).'</div>');
+
+	$out .= $sec('Course History', '<div class="av-grid">'.
+		$fld('10-Day', $r['ac_10d']).$fld('Teen', $r['ac_teen']).
+		$fld('STP', $r['ac_stp']).$fld('Special', $r['ac_spl']).
+		$fld('TSC', $r['ac_tsc']).$fld('20-Day', $r['ac_20d']).
+		$fld('30-Day', $r['ac_30d']).$fld('45-Day', $r['ac_45d']).
+		$fld('60-Day', $r['ac_60d']).$fld('Service', $r['ac_service']).
+		$fld('First Course', $r['first_course']).$fld('Last Course', $r['last_course']).
+		$fld('Practice Details', $r['ac_practice_details']).'</div>');
+
+	$out .= $sec('Health', '<div class="av-grid">'.
+		$fld('Physical', $r['ae_desc_physical']).$fld('Mental', $r['ae_desc_mental']).
+		$fld('Medication', $r['ae_desc_medication']).$fld('Intoxicants', $r['ae_desc_addiction_current']).
+		$fld('Other Techniques', $r['other_technique']).$fld('Pregnancy', $pregnant).'</div>');
+
+	$out .= $sec('Languages', '<div class="av-grid">'.
+		$fld('Discourse Language', $r['a_lang_discourse']).$fld('Languages', trim($r['a_lang_1'].' '.$r['a_lang_2'].' '.$r['a_lang_3'].' '.$r['a_langs'])).'</div>');
+
+	$out .= $sec('Other', '<div class="av-grid">'.
+		$fld('Willing to Serve', $r['a_willing_to_serve'] ? 'Yes' : 'No').$fld('Accommodation', trim($r['aa_section'].'-'.$r['aa_acco'], '-')).
+		$fld('Friend / Family', $r['a_friend_family_details']).$fld('Other Info', $r['a_extra']).
+		$fld('Internal Note', $r['a_internal_note']).$fld('Left Reason', $r['aa_left_comment']).'</div>');
+
+	/* ---- course-type-specific details ---- */
+
+	/* Children / Teen course: parent contacts, whether a parent has sat a course,
+	   and the child's school standard. */
+	if (in_array($r['course_type_key'], array('Child-Teen', '7-DayTeen')))
+	{
+		$out .= $sec('Children / Teen Details', '<div class="av-grid">'.
+			$fld('School Standard', $r['ae_teen_std']).
+			$yn('Parent has done a course', $r['ae_parent_course']).
+			$fld('Father Contact', $r['ae_father']).
+			$fld('Mother Contact', $r['ae_mother']).'</div>');
+	}
+
+	/* Long course (20-day and above): the LC questionnaire + AT recommendation. */
+	if ((int)$r['course_days'] >= 20)
+	{
+		if (!$r['al_id'])
+			$out .= $sec('Long Course Details', '<em>No long-course questionnaire on record.</em>');
+		else
+		{
+			$lc  = '<div class="av-grid">'.
+				$fld('AT Year', $r['al_at_year']).
+				$fld('Recent Sitting Type', $r['al_recent_sat_type']).
+				$yn('Committed to the path', $r['al_committed'], $r['al_committed_details']).
+				$yn('Exclusive to technique (2 yrs)', $r['al_exclusive_2yrs'], $r['al_exclusive_2yrs_details']).
+				$fld('Daily Practice', trim($r['al_daily_practice_yrs'].' '.$r['al_daily_practice_details'])).
+				$yn('Maintains 5 Precepts', $r['al_5_precepts'], $r['al_5_precepts_details']).
+				$yn('Avoids Intoxicants', $r['al_intoxicants']).
+				$yn('Abstains Sexual Misconduct', $r['al_sexual_misconduct']).
+				$fld('Served Other', $r['al_served_other']).
+				$fld('Arrival', $r['al_arrival']).'</div>';
+			$lc .= '<h4 style="margin:12px 0 4px">Last Long Course</h4><div class="av-grid">'.
+				$fld('Type', $r['al_last_lc_type']).$fld('Date', $r['al_last_lc_date']).
+				$fld('Location', $r['al_last_lc_location']).$fld('Teacher', $r['al_last_lc_teacher']).'</div>';
+			$lc .= '<h4 style="margin:12px 0 4px">Relationship</h4><div class="av-grid">'.
+				$yn('In a relationship', $r['al_relationship']).$yn('Lifelong', $r['al_relationship_lifelong']).
+				$fld('Spouse Name', $r['al_spouse_name']).$yn('Harmonious', $r['al_relation_harmonious']).
+				$yn('Spouse Approves', $r['al_spouse_approve']).$yn('Spouse Meditates', $r['al_spouse_meditator']).
+				$yn('Spouse Other Technique', $r['al_spouse_other_technique']).'</div>';
+			$lc .= '<h4 style="margin:12px 0 4px">History</h4><div class="av-grid">'.
+				$yn('Left a course before', $r['al_left_course'], $r['al_left_course_details']).
+				$yn('Reduced practice', $r['al_reduce_practice'], $r['al_reduce_practice_details']).
+				$yn('Personal tragedy', $r['al_personal_tragedy'], $r['al_personal_tragedy_details']).
+				$yn('Difficulty', $r['al_difficulty'], $r['al_difficulty_details']).
+				$yn('Special requirements', $r['al_special_req'], $r['al_special_req_details']).
+				$fld('Additional Info', $r['al_additional_info']).'</div>';
+			$lc .= '<h4 style="margin:12px 0 4px">AT Recommendation</h4><div class="av-grid">'.
+				$fld('Recommending AT', trim($r['al_recommending'].($r['al_recommending_approved'] ? ' ('.$r['al_recommending_approved'].')' : ''))).
+				$fld('Recommending Comments', $r['al_recommending_comments']).
+				$fld('Area AT', trim($r['al_area_at'].($r['al_area_at_approved'] ? ' ('.$r['al_area_at_approved'].')' : ''))).
+				$fld('Area AT Comments', $r['al_area_at_comments']).'</div>';
+			$out .= $sec('Long Course Details', $lc);
+		}
+	}
+
+	/* sub-sections reused from the "+" panel endpoints, loaded client-side */
+	$out .= $sec('Applied Courses', '<div class="applied-courses-'.$app_id.'">Loading...</div>');
+	$out .= $sec('Clarifications', '<div class="clarification-response-'.$app_id.'">Loading...</div>');
+	$out .= $sec('Internal Review Comments', '<div class="internal-reviews-'.$app_id.'">Loading...</div>');
+	$out .= $sec('Activity Log', '<div class="activity-log-'.$app_id.'">Loading...</div>');
+
+	$out .= '</div>';
+
+	$js = 'jQuery(function($){
+		$(".applied-courses-'.$app_id.'").load("/app-courses/'.$app_id.'");
+		$(".clarification-response-'.$app_id.'").load("/app-clarifications/'.$app_id.'");
+		$(".activity-log-'.$app_id.'").load("/app-activity/'.$app_id.'");
+		$(".internal-reviews-'.$app_id.'").load("/applicant-reviews/'.$app_id.'");
+	});';
+	drupal_add_js($js, 'inline');
+
+	return $out;
 }

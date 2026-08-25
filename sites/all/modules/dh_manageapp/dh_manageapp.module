@@ -217,6 +217,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access manageapp'),
 	       'type' => MENU_CALLBACK);
 
+	$items['application-view/%app_id'] = array( 'title' => t('Application'),
+	       'page callback' => 'dh_application_view',
+	       'page arguments' => array(1),
+	       'access arguments' => array('access manageapp'),
+	       'type' => MENU_CALLBACK);
+
 	$items['add-review/%app_id'] = array( 'title' => t('Add Review'),
 	       'page callback' => '_add_applicant_review',
 	       'access arguments' => array('add applicant review'),
