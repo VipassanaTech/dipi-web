@@ -1369,7 +1369,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	   slack lands on the left of the right-floated male grid and its left margin
 	   no longer matches the left-floated female grid. */
 	function dhSetW(sel, cols){ var ul = $(sel), li = ul.find("li.ui-state-default")[0];
-	  if (li && cols) ul.width(cols * li.getBoundingClientRect().width); }
+	  /* +1px per column: an exactly-fit width makes the last cell wrap when the
+	     browser rounds cell widths up a hair (notably on print), dropping a whole
+	     column - the small buffer keeps all columns on one row. */
+	  if (li && cols) ul.width(cols * (li.getBoundingClientRect().width + 1)); }
 	dhSetW(".main-div .sortable-m", dhColsMM);  dhSetW(".chowky-div .sortable-m", dhColsMC);
 	dhSetW(".main-div .sortable-f", dhColsFM);  dhSetW(".chowky-div .sortable-f", dhColsFC);
 	dhSetW(".main-div .bg-table-m", dhColsMM);  dhSetW(".chowky-div .bg-table-m", dhColsMC);
@@ -1400,14 +1403,17 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
     });
 
     $(document).on("click", ".add-row", function(){
-		var cols = $(this).val();
+		var $div = $(this).closest(".main-div, .chowky-div");
+		var $fg = $div.find("ul[class*=sortable]").first();
+		var $bg = $div.find("ul[class*=bg-table]").first();
+		var cols = parseInt($div.find(".s-app-id[data-cols]").first().attr("data-cols"),10) || parseInt($(this).val(),10);
 		for (var i=1 ; i <= cols ; i++)
 		{
-		    $(this).prev().prepend(\'<li class="ui-state-default"><div class="drag-img no-print"><img src="/sites/all/modules/dh_manageapp/imgs/drag.png" alt="drag"></div></li>\');
-	    	$(this).prev().prev().prepend(\'<li class="ui-state-default"></li>\');
-    		$(".sortable-m .drag-img").hide();
-			$(".sortable-f .drag-img").hide();
+		    $fg.prepend(\'<li class="ui-state-default"><div class="drag-img no-print"><img src="/sites/all/modules/dh_manageapp/imgs/drag.png" alt="drag"></div></li>\');
+	    	$bg.prepend(\'<li class="ui-state-default"></li>\');
 		}
+		$(".sortable-m .drag-img").hide();
+		$(".sortable-f .drag-img").hide();
 	});
 
     original_array = [];
@@ -1635,6 +1641,49 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '<div class="footer"></div>';
+
+	$out .= '<script>
+(function($){
+  var DH_CONV = '.(int)$alpha.';
+  function dhLetter(n){ n=parseInt(n,10); var s=""; do{ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; }while(n>=0); return s; }
+  function dhLabel(col,row){ return (DH_CONV==2) ? (dhLetter(row)+(col+1)) : (dhLetter(col)+(row+1)); }
+  function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
+  function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
+  function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
+  function dhBgCell(label){ return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\"><span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
+  function dhRelabelBg($bg,total,cols){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr)); } $bg[0].innerHTML=html; }
+  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
+  function dhReflow($div,newC){
+    if(newC<1) return;
+    var u=dhUls($div); if(!u.fg.length) return;
+    var cw=dhCellW(u.fg);
+    var apps=u.fg.children("li").filter(function(){ var a=this.querySelector(".s-app-id"); return a && a.getAttribute("data-s-app-id"); }).get();
+    var A=apps.length; if(!A) return;
+    var newR=Math.ceil(A/newC), total=newR*newC, numEmpty=total-A;
+    apps.forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
+    var frag=""; for(var e=0;e<numEmpty;e++) frag+="<li class=\"ui-state-default\"></li>"; u.fg[0].innerHTML=frag;
+    apps.forEach(function(el){ u.fg[0].appendChild(el); });
+    u.fg.find(".s-app-id").attr("data-cols",newC);
+    u.fg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRefreshSortable(u.fg);
+  }
+  function dhBlankCol($div){
+    var u=dhUls($div); if(!u.fg.length) return;
+    var C=dhCurCols($div), newC=C+1, cw=dhCellW(u.fg);
+    var cells=u.fg.children("li").get(); u.fg[0].innerHTML="";
+    for(var i=0;i<cells.length;i++){ if(i%C===0) u.fg.append("<li class=\"ui-state-default\"></li>"); u.fg[0].appendChild(cells[i]); }
+    var total=u.fg.children("li").length;
+    u.fg.find(".s-app-id").attr("data-cols",newC);
+    u.fg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRefreshSortable(u.fg);
+  }
+  $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
+  $(document).on("click",".dh-del-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); var C=dhCurCols($d); if(C>1) dhReflow($d,C-1); });
+  $(document).on("click",".dh-blank-col",function(){ dhBlankCol($(this).closest(".main-div,.chowky-div")); });
+})(jQuery);
+</script>';
 
 	$out .= '</body></html>';
 
@@ -1937,7 +1986,12 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 	$out .= '</table>';
 	$out = str_replace('class="sortable', 'class="bg-table', $out).$out;
 	$ret .= $out;
+	$ret .= '<div class="no-print" style="clear:both;padding-top:6px">';
 	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= ' <button type="button" class="no-print dh-add-col" title="Add a column and re-flow applicants into it">+ Col</button>';
+	$ret .= ' <button type="button" class="no-print dh-del-col" title="Remove a column and re-flow applicants">&minus; Col</button>';
+	$ret .= ' <button type="button" class="no-print dh-blank-col" title="Add an empty column to drag applicants into">+ Blank Col</button>';
+	$ret .= '</div>';
 	$ret .= '</div>';
 
 
@@ -2273,11 +2327,13 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		$(document).on("mouseenter", ".sortable-m .ui-state-default, .sortable-f .ui-state-default", function(){ $(this).css({"cursor":"move"}); });
 
 		$(document).on("click", ".add-row", function(){
-			var cols = parseInt($(this).val(), 10) || 1;
-			var uls = $(this).prevAll("ul");   // [0]=foreground sortable, [1]=background bg-table
+			var $div = $(this).closest(".main-div, .chowky-div");
+			var $fg = $div.find("ul[class*=sortable]").first();
+			var $bg = $div.find("ul[class*=bg-table]").first();
+			var cols = parseInt($div.find(".s-app-id[data-cols]").first().attr("data-cols"), 10) || parseInt($(this).val(), 10) || 1;
 			for (var i=0; i<cols; i++) {
-				uls.eq(0).prepend(\'<li class="ui-state-default"><div class="s-app-id" data-s-app-id=""></div></li>\');
-				uls.eq(1).prepend(\'<li class="ui-state-default"></li>\');
+				$fg.prepend(\'<li class="ui-state-default"><div class="s-app-id" data-s-app-id=""></div></li>\');
+				$bg.prepend(\'<li class="ui-state-default"></li>\');
 			}
 		});
 
@@ -2326,17 +2382,19 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	$first = true;
 	foreach ($group_labels as $g)
 	{
-		$page_class = $first ? '' : 'group-page';
-		$first = false;
-		$out .= '<div class="'.$page_class.'">';
-		$out .= '<div class="group-title">GROUP '.check_plain($g).'<br>'.$course_name.'</div>';
-
 		$rendered_any = false;
 		foreach (array('M' => 'MALE', 'F' => 'FEMALE') as $gender => $label)
 		{
 			if (!isset($groups[$g][$gender]['seats']) && !isset($groups[$g][$gender]['chowky']))
 				continue;
 			$rendered_any = true;
+
+			/* Each gender of each group prints on its own page. */
+			$page_class = $first ? '' : 'group-page';
+			$first = false;
+			$out .= '<div class="'.$page_class.'">';
+			$out .= '<div class="group-title">GROUP '.check_plain($g).' &ndash; '.$label.'<br>'.$course_name.'</div>';
+
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
 
 			$s_grid = isset($groups[$g][$gender]['seats'])  ? $groups[$g][$gender]['seats']  : array();
@@ -2350,19 +2408,64 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			$c_mr = isset($maxrow[$g][$gender]['chowky']) ? $maxrow[$g][$gender]['chowky'] : 0;
 
 			$gdir = dh_seat_direction($dims['seat_direction'], $dir[$gender]);
-			$out .= '<div class="teacher-seat">'.$label.'</div>';
 			$out_seats  = dh_print_group_seats($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha);
 			$out_chowky = dh_print_group_seats($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
 			$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $chowky_pos);
 			$out .= '<div style="clear:both"></div><div class="teacher-seat">TEACHER</div>';
+			$out .= '</div>';   /* close this gender's page */
 		}
 
 		if (!$rendered_any)
-			$out .= '<div class="group-empty">No students in this group.</div>';
-
-		$out .= '</div>';
+		{
+			$page_class = $first ? '' : 'group-page';
+			$first = false;
+			$out .= '<div class="'.$page_class.'"><div class="group-empty">No students in group '.check_plain($g).'.</div></div>';
+		}
 	}
+
+	$out .= '<script>
+(function($){
+  var DH_CONV = '.(int)$alpha.';
+  function dhLetter(n){ n=parseInt(n,10); var s=""; do{ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; }while(n>=0); return s; }
+  function dhLabel(col,row){ return (DH_CONV==2) ? (dhLetter(row)+(col+1)) : (dhLetter(col)+(row+1)); }
+  function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
+  function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
+  function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
+  function dhBgCell(label){ return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\"><span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
+  function dhRelabelBg($bg,total,cols){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr)); } $bg[0].innerHTML=html; }
+  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
+  function dhReflow($div,newC){
+    if(newC<1) return;
+    var u=dhUls($div); if(!u.fg.length) return;
+    var cw=dhCellW(u.fg);
+    var apps=u.fg.children("li").filter(function(){ var a=this.querySelector(".s-app-id"); return a && a.getAttribute("data-s-app-id"); }).get();
+    var A=apps.length; if(!A) return;
+    var newR=Math.ceil(A/newC), total=newR*newC, numEmpty=total-A;
+    apps.forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
+    var frag=""; for(var e=0;e<numEmpty;e++) frag+="<li class=\"ui-state-default\"></li>"; u.fg[0].innerHTML=frag;
+    apps.forEach(function(el){ u.fg[0].appendChild(el); });
+    u.fg.find(".s-app-id").attr("data-cols",newC);
+    u.fg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRefreshSortable(u.fg);
+  }
+  function dhBlankCol($div){
+    var u=dhUls($div); if(!u.fg.length) return;
+    var C=dhCurCols($div), newC=C+1, cw=dhCellW(u.fg);
+    var cells=u.fg.children("li").get(); u.fg[0].innerHTML="";
+    for(var i=0;i<cells.length;i++){ if(i%C===0) u.fg.append("<li class=\"ui-state-default\"></li>"); u.fg[0].appendChild(cells[i]); }
+    var total=u.fg.children("li").length;
+    u.fg.find(".s-app-id").attr("data-cols",newC);
+    u.fg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRefreshSortable(u.fg);
+  }
+  $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
+  $(document).on("click",".dh-del-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); var C=dhCurCols($d); if(C>1) dhReflow($d,C-1); });
+  $(document).on("click",".dh-blank-col",function(){ dhBlankCol($(this).closest(".main-div,.chowky-div")); });
+})(jQuery);
+</script>';
 
 	$out .= '</body></html>';
 
@@ -2454,7 +2557,12 @@ function dh_print_group_seats($seats, $cushion_cols, $max_row, $direction, $div,
 	// student cards). The layers are separated in JS; see the render script.
 	$out = str_replace('class="'.$cls.'"', 'class="'.$bg_cls.'"', $out).$out;
 	$ret .= $out;
+	$ret .= '<div class="no-print" style="clear:both;padding-top:6px">';
 	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= ' <button type="button" class="no-print dh-add-col" title="Add a column and re-flow applicants into it">+ Col</button>';
+	$ret .= ' <button type="button" class="no-print dh-del-col" title="Remove a column and re-flow applicants">&minus; Col</button>';
+	$ret .= ' <button type="button" class="no-print dh-blank-col" title="Add an empty column to drag applicants into">+ Blank Col</button>';
+	$ret .= '</div>';
 	$ret .= '</div>';
 	return $ret;
 }

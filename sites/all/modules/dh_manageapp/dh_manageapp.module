@@ -2314,15 +2314,25 @@ function dh_app_update_attended()
 		   first column of the new grid, exactly like a freshly-attended student, so
 		   the operator can drag them into place. A change that keeps them in the
 		   same grid leaves their manually-arranged position untouched. */
-		$prev = db_query("select aa_chowky, aa_chair from dh_applicant_attended where aa_applicant=$app_id")->fetchAssoc();
+		$prev = db_query("select aa_chowky, aa_chair, aa_group from dh_applicant_attended where aa_applicant=$app_id")->fetchAssoc();
 		$was_chowky = ($prev['aa_chowky'] || $prev['aa_chair']) ? 1 : 0;
 		$now_chowky = ($fields['aa_chowky'] || $fields['aa_chair']) ? 1 : 0;
+		$chowky_chair = $now_chowky ? " and (aa_chowky=1 or aa_chair=1) " : " and aa_chowky=0 and aa_chair=0 ";
 		if ($was_chowky != $now_chowky)
 		{
-			$chowky_chair = $now_chowky ? " and (aa_chowky=1 or aa_chair=1) " : " and aa_chowky=0 and aa_chair=0 ";
 			$max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' and a_type='Student' $chowky_chair")->fetchField();
 			$fields['aa_seat_row'] = $max_row + 1;
 			$fields['aa_seat_col'] = 0;
+		}
+		/* Same idea for the group-wise plan: if the student moved to a different
+		   group, or between that group's seats/chowky sub-grids, their stored
+		   group-seat position belongs to the old grid. Reset to the top of the
+		   first column of the new group grid. */
+		if ($was_chowky != $now_chowky || $prev['aa_group'] != $fields['aa_group'])
+		{
+			$max_grp_row = db_query("select max(aa_group_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' and a_type='Student' and aa_group=:g $chowky_chair", array(':g' => $fields['aa_group']))->fetchField();
+			$fields['aa_group_seat_row'] = $max_grp_row + 1;
+			$fields['aa_group_seat_col'] = 0;
 		}
 		db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', $app_id)->execute();
 	}
