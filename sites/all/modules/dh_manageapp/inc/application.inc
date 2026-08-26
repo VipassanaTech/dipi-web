@@ -178,8 +178,19 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
         'dateFormat' => date_popup_format_to_popup('Y-m-d'),
       ), '#date_label_position' => 'above',
     '#theme_wrappers' => array('date_popup'), '#suffix' => '');
-	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'textfield', '#size' => '25', '#weight' => 42.5, 
-		'#default_value' => isset($edit_data['ae_nationality'])?$edit_data['ae_nationality']:'', '#required' => 0, '#maxlength' => 100 );
+	// Nationality is picked from dh_country.c_nationality, the same list the
+	// application forms now offer, so entries match instead of adding more
+	// free-text spellings (Indian / India / IN / Indain were all in use).
+	$nationalities = db_query("select c_nationality, c_nationality from dh_country where c_nationality <> '' order by c_nationality")->fetchAllKeyed();
+	$current_nationality = isset($edit_data['ae_nationality']) ? trim($edit_data['ae_nationality']) : '';
+	// Applications entered before the list existed hold values that are not in
+	// it. Keep the stored value selectable, otherwise opening an old application
+	// would either reject it as an illegal choice or quietly blank the field.
+	if ( ($current_nationality <> '') && !isset($nationalities[$current_nationality]) )
+		$nationalities[$current_nationality] = $current_nationality.' (existing value)';
+	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'select', '#weight' => 42.5,
+		'#options' => array('' => 'Choose') + $nationalities, '#chosen' => TRUE,
+		'#default_value' => $current_nationality, '#required' => 0 );
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
 		'#default_value' => isset($edit_data['a_langs'])?$edit_data['a_langs']:'', '#required' => 0, '#maxlength' => 50 );
 	$form[$group]['a_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '25', '#weight' => 44, 
