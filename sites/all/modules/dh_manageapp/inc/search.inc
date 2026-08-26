@@ -1223,7 +1223,20 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						onContentReady: function () {
 							if (window.CKEDITOR) {
 								if (CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
-								CKEDITOR.replace(edId);
+								var cfg = {};
+								var w = window.innerWidth || document.documentElement.clientWidth || 0;
+								if (w > 0 && w <= 768) {
+									/* minimal toolbar on phones/small tablets */
+									cfg.toolbar = [
+										{ name: "basicstyles", items: ["Bold","Italic","Underline"] },
+										{ name: "paragraph", items: ["NumberedList","BulletedList"] },
+										{ name: "colors", items: ["TextColor"] },
+										{ name: "cleanup", items: ["RemoveFormat"] }
+									];
+									cfg.removePlugins = "elementspath";
+									cfg.resize_enabled = false;
+								}
+								CKEDITOR.replace(edId, cfg);
 							}
 						},
 						onClose: function () {
