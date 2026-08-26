@@ -1287,6 +1287,45 @@ function dh_seat_config_error_output($centre, $errors, $pdf = '')
 }
 
 
+/* The separator shown between the room and the dormitory cell (e.g. F-5 [home] 7):
+   a small filled-grey house icon. Inline SVG so it is self-contained and prints
+   crisply in black & white. */
+function dh_room_cell_sep()
+{
+	return ' <span class="rc-sep"><svg width="11" height="11" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
+		.'<g fill="none" stroke="#555" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round">'
+		.'<path d="M1.7 8.3 L8 2.8 L14.3 8.3"/><path d="M3.5 8 V13.5 H12.5 V8"/>'
+		.'<rect x="6.8" y="9.9" width="2.4" height="3.6"/></g></svg></span> ';
+}
+
+/* Page header for a seating-plan page: the centered title, flanked by a "field
+   key" that reuses the empty space on either side of the title. On the left, a
+   tinted sample cell (same classes as a real cell, so it looks identical) shows
+   what each position means; on the right, a short decoder for the codes. The
+   legend is outside any .sortable/.bg-table grid, so the plan JS never treats it
+   as a draggable/counted seat. $title_class is 'teacher-seat' (main plan) or
+   'group-title' (group plan). */
+function dh_seat_plan_header($title_html, $title_class = 'teacher-seat')
+{
+	$legend = '<div class="seat-legend">'
+		.'<div class="ui-state-default legend-cell">'
+		.'<div class="s-seat-no"><div class="seat-no"><span class="seatnumber">Seat</span></div></div>'
+		.'<div class="s-acco">Room'.dh_room_cell_sep().'Cell</div>'
+		.'<div class="s-cell"></div>'
+		.'<div class="s-name">Name</div>'
+		.'<div class="s-old-student">(O) s:_ L:_</div>'
+		.'<div class="s-age">Age</div>'
+		.'<div class="s-backrest s-backrest-yes"></div>'
+		.'</div></div>';
+	$sep = ' <span class="rc-sep">&bull;</span> ';
+	$note = '<div class="legend-note">(O) old student'.$sep.'s: short courses'.$sep.'L: long courses'.$sep.'<span class="legend-bar"></span> backrest'.$sep.'<span class="legend-swatch"></span> shaded name = teacher</div>';
+	return '<div class="plan-header">'
+		.$legend
+		.'<div class="'.$title_class.' plan-header-title">'.$title_html.'</div>'
+		.$note
+		.'</div><div style="clear:both"></div>';
+}
+
 function dh_generate_seating_plan($centre, $course, $pdf = '')
 {
 	global $base_url;
@@ -1311,7 +1350,6 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$(".bg-table-m .s-old-student").empty();
 	$(".bg-table-m .s-age").empty();
 	$(".bg-table-m .s-backrest").empty();
-	$(".bg-table-m .cwch").empty();
   $(".bg-table-m .s-cell").empty();
 
 	$(".sortable-f .seatnumber").empty();
@@ -1320,7 +1358,6 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$(".bg-table-f .s-old-student").empty();
 	$(".bg-table-f .s-age").empty();
 	$(".bg-table-f .s-backrest").empty();
-	$(".bg-table-f .cwch").empty();
   $(".bg-table-f .s-cell").empty();
 
 	$(".bg-table-m .drag-img").empty();
@@ -1559,12 +1596,14 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style></head><body>';
 	$out .= '<div class="helptext no-print">
 		<h2>Editing Seating Plan:</h2>
+		<p>Male and Female each on their own page, laid out from the hall dimensions in the centre\'s Seating Configuration (the [RIGHT] / [LEFT] section keys). "Regenerate" re-packs all seats from the configuration.</p>
 		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
-		<p>3- Create empty rows for a grid by clicking "Add Empty Row" button if needed.</p>
-    <p>4- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
-		<p>5- Print by clicking "Print Seating Plan" button or CTL-P.</p>
-		<p>6- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
+		<p>4- Adjust the columns of a grid: "+ Col" adds a column and re-flows the students to fill it; "&minus; Col" removes a column and re-flows; "+ Blank Col" inserts an empty column to drag students into. (Take effect after "Store Seat Changes".)</p>
+    <p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
+		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
+		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
@@ -1616,7 +1655,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 	$male_dir = dh_seat_direction(isset($ini[$male_section]['SeatDirection']) ? $ini[$male_section]['SeatDirection'] : '', $male_dir);
 	$male_chowky_pos = dh_chowky_position(isset($ini[$male_section]['ChowkyPosition']) ? $ini[$male_section]['ChowkyPosition'] : '', $male_dir);
 
-	$out .= '<div class="teacher-seat">Seating Plan - MALE<br>'.$course_name.'</div>';
+	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
+	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
 	$out_seats = dh_print_seats($seats['M']['seats'], $max_col['M']+1, $male_dir, 'main-div', $alpha);
 	$out_chowky = dh_print_seats($seats['M']['chowky'], $max_col_chowky['M']+1, $male_dir, 'chowky-div', $alpha);
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
@@ -1634,7 +1674,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 
 	$place = 'LEFT';
 
-	$out .= '<div class="teacher-seat">Seating Plan - FEMALE<br>'.$course_name.'</div>';
+	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
+	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
 	$out_chowky = dh_print_seats($seats['F']['chowky'], $max_col_chowky['F']+1, $female_dir, 'chowky-div', $alpha);
 	$out_seats = dh_print_seats($seats['F']['seats'], $max_col['F']+1, $female_dir, 'main-div', $alpha);
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
@@ -1650,12 +1691,12 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
   function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
-  function dhBgCell(label){ return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\"><span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr)); } $bg[0].innerHTML=html; }
+  function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
+  function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
   function dhReflow($div,newC){
     if(newC<1) return;
-    var u=dhUls($div); if(!u.fg.length) return;
+    var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
     var cw=dhCellW(u.fg);
     var apps=u.fg.children("li").filter(function(){ var a=this.querySelector(".s-app-id"); return a && a.getAttribute("data-s-app-id"); }).get();
     var A=apps.length; if(!A) return;
@@ -1665,18 +1706,18 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
     apps.forEach(function(el){ u.fg[0].appendChild(el); });
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   function dhBlankCol($div){
-    var u=dhUls($div); if(!u.fg.length) return;
+    var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
     var C=dhCurCols($div), newC=C+1, cw=dhCellW(u.fg);
     var cells=u.fg.children("li").get(); u.fg[0].innerHTML="";
     for(var i=0;i<cells.length;i++){ if(i%C===0) u.fg.append("<li class=\"ui-state-default\"></li>"); u.fg[0].appendChild(cells[i]); }
     var total=u.fg.children("li").length;
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
@@ -1964,11 +2005,11 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 				}
 				$info = '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
             '<div class="s-seat-no">'.$seat_no.'</div>'.
-						'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].'</div>'.
-            '<div class="s-cell">'.($r['aa_cell'] ? "Cell: {$r['aa_cell']}" : "").'</div>'.
+						'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].($r['aa_cell'] ? dh_room_cell_sep().$r['aa_cell'] : '').'</div>'.
+            '<div class="s-cell"></div>'.
 						'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
 						'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.						
-						'<div class="s-age">Age: '.$age_info.'</div>'.
+						'<div class="s-age">'.(($r['Age'] !== null && $r['Age'] !== '') ? $r['Age'].'y' : '').'</div>'.
 						'<div class="s-backrest '.$br.'"></div>';
 
 				$out .= $info;
@@ -1987,7 +2028,7 @@ function dh_print_seats($seats, $cushion_cols, $direction, $div, $alpha)
 	$out = str_replace('class="sortable', 'class="bg-table', $out).$out;
 	$ret .= $out;
 	$ret .= '<div class="no-print" style="clear:both;padding-top:6px">';
-	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">+ Blank Row</button>';
 	$ret .= ' <button type="button" class="no-print dh-add-col" title="Add a column and re-flow applicants into it">+ Col</button>';
 	$ret .= ' <button type="button" class="no-print dh-del-col" title="Remove a column and re-flow applicants">&minus; Col</button>';
 	$ret .= ' <button type="button" class="no-print dh-blank-col" title="Add an empty column to drag applicants into">+ Blank Col</button>';
@@ -2320,8 +2361,10 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script><script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '<style>.group-page{page-break-before: always;} .group-title{width:1000px;text-align:center;font-weight:bold;font-size:22px;margin-top:15px;} .group-empty{color:#888;padding:10px;}
-		/* Keep CW-/CH- seat numbers on one line so chowky cells do not overflow. */
-		.s-seat-no{white-space:nowrap;} .s-seat-no .cwch{font-size:13px;}
+		/* Keep CW-/CH- seat numbers on one line so chowky cells do not overflow.
+		   (cwch is NOT shrunk here: a smaller prefix than the number would make the
+		   foreground prefix and the background number misalign vertically.) */
+		.s-seat-no{white-space:nowrap;}
 		/* Clip any residual overflow so a cell can never bleed into the next one. */
 		.ui-state-default{overflow:hidden;}</style>';
 	$out .= '<script>
@@ -2330,7 +2373,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		// only in the draggable layer. This way seat numbers stay put at their
 		// location while students are dragged between them.
 		$(".sortable-m .seatnumber, .sortable-f .seatnumber").empty();
-		$(".bg-table-m, .bg-table-f").find(".s-acco, .s-cell, .s-name, .s-old-student, .s-age, .s-backrest, .cwch").empty();
+		$(".bg-table-m, .bg-table-f").find(".s-acco, .s-cell, .s-name, .s-old-student, .s-age, .s-backrest").empty();
 
 		$(".sortable-m, .sortable-f").sortable();
 		$(".sortable-m, .sortable-f").disableSelection();
@@ -2378,10 +2421,16 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	</script>';
 	$out .= '</head><body>';
 	$out .= '<div class="helptext no-print">
-		<h2>Group-wise Seating Plan</h2>
-		<p>One page per group, laid out using each group\'s own dimensions from the centre\'s Seating Configuration (GROUP&lt;n&gt;- keys; falls back to the hall dimensions).</p>
-		<p>Rearrange seats by dragging. Click "Store Seat Changes" to save, or "Add Empty Row" to make space. "Regenerate" re-packs all groups from the configuration.</p>
-		<p>Print by clicking "Print Seating Plan" or CTRL-P. Help text and buttons are ignored on print.</p>
+		<h2>Editing Group-wise Seating Plan:</h2>
+		<p>One page per group, laid out using each group\'s own dimensions from the centre\'s Seating Configuration (GROUP&lt;n&gt;- keys; falls back to the hall dimensions). "Regenerate" re-packs all groups from the configuration.</p>
+		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
+		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
+		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
+		<p>4- Adjust the columns of a grid: "+ Col" adds a column and re-flows the students to fill it; "&minus; Col" removes a column and re-flows; "+ Blank Col" inserts an empty column to drag students into. (Take effect after "Store Seat Changes".)</p>
+		<p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
+		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
+		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
 		<button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
@@ -2401,11 +2450,12 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 
 			/* Each gender of each group prints on its own page. */
 			$page_class = $first ? '' : 'group-page';
+			$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before every group page
 			$first = false;
 			$out .= '<div class="'.$page_class.'">';
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
-			$out .= '<div class="group-title">GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name.'</div>';
+			$out .= dh_seat_plan_header('GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
 
@@ -2431,6 +2481,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		if (!$rendered_any)
 		{
 			$page_class = $first ? '' : 'group-page';
+			$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before every group page
 			$first = false;
 			$out .= '<div class="'.$page_class.'"><div class="group-empty">No students in group '.check_plain($g).'.</div></div>';
 		}
@@ -2444,12 +2495,12 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
   function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
-  function dhBgCell(label){ return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\"><span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr)); } $bg[0].innerHTML=html; }
+  function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
+  function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
   function dhReflow($div,newC){
     if(newC<1) return;
-    var u=dhUls($div); if(!u.fg.length) return;
+    var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
     var cw=dhCellW(u.fg);
     var apps=u.fg.children("li").filter(function(){ var a=this.querySelector(".s-app-id"); return a && a.getAttribute("data-s-app-id"); }).get();
     var A=apps.length; if(!A) return;
@@ -2459,18 +2510,18 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
     apps.forEach(function(el){ u.fg[0].appendChild(el); });
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   function dhBlankCol($div){
-    var u=dhUls($div); if(!u.fg.length) return;
+    var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
     var C=dhCurCols($div), newC=C+1, cw=dhCellW(u.fg);
     var cells=u.fg.children("li").get(); u.fg[0].innerHTML="";
     for(var i=0;i<cells.length;i++){ if(i%C===0) u.fg.append("<li class=\"ui-state-default\"></li>"); u.fg[0].appendChild(cells[i]); }
     var total=u.fg.children("li").length;
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
@@ -2494,7 +2545,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 /**
  * Grid renderer for the group-wise seating plan. Renders a single <ul> of
  * fixed-width <li> cells (which jQuery UI sortable turns into a drag grid) and
- * an "Add Empty Row" button. Does NOT write to the DB - saving is handled by
+ * a "+ Blank Row" button. Does NOT write to the DB - saving is handled by
  * the Store Seat Changes flow (dh_update_group_seating). $max_row is the last
  * row index of the grid; $cushion_cols its width. Seat numbers are local to
  * this grid.
@@ -2548,11 +2599,11 @@ function dh_print_group_seats($seats, $cushion_cols, $max_row, $direction, $div,
 				}
 				$out .= '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
 					'<div class="s-seat-no">'.$seat_no.'</div>'.
-					'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].'</div>'.
-					'<div class="s-cell">'.($r['aa_cell'] ? "Cell: {$r['aa_cell']}" : "").'</div>'.
+					'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].($r['aa_cell'] ? dh_room_cell_sep().$r['aa_cell'] : '').'</div>'.
+					'<div class="s-cell"></div>'.
 					'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
 					'<div class="s-old-student">'.$t.' '.$short_courses.'&nbsp;'.$long_courses.'</div>'.
-					'<div class="s-age">Age: '.$age_info.'</div>'.
+					'<div class="s-age">'.(($r['Age'] !== null && $r['Age'] !== '') ? $r['Age'].'y' : '').'</div>'.
 					'<div class="s-backrest '.$br.'"></div>';
 			}
 			else
@@ -2570,7 +2621,7 @@ function dh_print_group_seats($seats, $cushion_cols, $max_row, $direction, $div,
 	$out = str_replace('class="'.$cls.'"', 'class="'.$bg_cls.'"', $out).$out;
 	$ret .= $out;
 	$ret .= '<div class="no-print" style="clear:both;padding-top:6px">';
-	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">Add Empty Row</button>';
+	$ret .= '<button type="button" class="no-print add-row" value="'.$cushion_cols.'">+ Blank Row</button>';
 	$ret .= ' <button type="button" class="no-print dh-add-col" title="Add a column and re-flow applicants into it">+ Col</button>';
 	$ret .= ' <button type="button" class="no-print dh-del-col" title="Remove a column and re-flow applicants">&minus; Col</button>';
 	$ret .= ' <button type="button" class="no-print dh-blank-col" title="Add an empty column to drag applicants into">+ Blank Col</button>';

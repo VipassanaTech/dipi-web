@@ -26,12 +26,14 @@ ul {
 	   list), so a cell is a fixed-height box and its content simply overflows if
 	   it is taller than the box - there is no row stretching. The backrest bar is
 	   the last line, so the box height must exceed the fullest cell's content or
-	   the bar lands on the bottom border. A fully-loaded cell (seat, acco, cell,
-	   name, course counts, age, backrest) measures ~90px; the chowky cell is ~1px
-	   taller for its CW-/CH- prefix. 88px content-box (95px rendered) clears even
-	   that with a few px to spare. Padding-bottom does NOT help here - overflowing
-	   content spills straight through it - so the gap has to be box slack. */
-	height: 88px;
+	   the bar lands on the bottom border. The room/cell now share one line (room |
+	   cell), so there is no separate cell line: a fully-loaded cell is
+	   header(seat + room|cell) + name + course-counts/age + backrest ~= 68px; the
+	   chowky cell is ~1px taller for its CW-/CH- prefix. 76px content-box clears
+	   that (with the extra name padding) and still leaves a few px to spare.
+	   Padding-bottom does NOT help here - overflowing content spills straight
+	   through it - so the gap has to be box slack. */
+	height: 76px;
 	border: 1px solid #000000;
 	font-weight: bold;
 	padding-top: 5px;
@@ -57,7 +59,10 @@ ul {
 
 
 .seat-no {
-	font-size: 16px;
+	/* A touch smaller than the name so the name reads as the primary line.
+	   Both layers (foreground prefix + background number) inherit this, so they
+	   stay the same size and aligned. */
+	font-size: 12px;
 }
 
 .teacher-seat {
@@ -66,6 +71,103 @@ ul {
 	text-align: center;
 	font-weight: bold;
 	font-size: 18px;
+}
+
+/* Page header: full-width centered title, with the field-key legend tucked into
+   the empty space on either side (sample cell absolute top-left, decoder absolute
+   top-right) so the legend costs almost no extra vertical space and the title
+   keeps its full width (a long group title stays on one line). The decoder is a
+   single line sitting at the very top, above where the title text starts, so it
+   never touches the title. */
+.plan-header {
+	position: relative;
+	width: 1000px;
+	min-height: 96px;
+}
+/* On-screen separator between seating-plan pages: a gap plus a light dashed rule
+   so the male/female pages (and each group page) are easy to tell apart. It is a
+   .no-print element, so it vanishes at print time - the real page breaks handle
+   the separation there and the printout is unchanged. */
+.dh-page-sep {
+	margin-top: 44px;
+	border-top: 2px dashed #cfcfcf;
+}
+
+.plan-header-title {
+	box-sizing: border-box;
+	margin: 0 !important;
+	/* Top: start below the one-line decoder. Left: clear the sample cell so a
+	   long (group) title never runs under it. Right pad is small - the decoder
+	   sits ABOVE the title, not beside it, so the title may use the full width. */
+	padding: 26px 15px 0 150px;
+}
+.plan-header .seat-legend {
+	position: absolute;
+	left: 0;
+	top: 0;
+	float: none;
+	clear: none;
+	margin: 0;
+}
+.plan-header .legend-note {
+	position: absolute;
+	right: 0;
+	top: 4px;
+	width: auto;
+	max-width: none;
+	margin: 0;
+	white-space: nowrap;   /* one line, at the top-right, above the title */
+	text-align: right;
+}
+
+/* A sample cell showing what each position in a cell means. Same shape/classes
+   as a real cell, and never part of the sortable grid (so it is not
+   draggable/counted). No tint - plans print on black & white printers. The field
+   labels + the fact it sits in the title band make it clearly the key. */
+.seat-legend {
+	float: left;
+	clear: both;
+	margin: 0 0 12px 0;
+}
+.seat-legend .ui-state-default {
+	float: none;
+}
+.seat-legend .s-name {
+	background-color: transparent;
+}
+
+/* Separator between the room and cell (and between decoder items). A bullet, not
+   a pipe: a "|" is easily misread as an "I"/"l". Normal weight is enough - the
+   glyph shape alone separates the values, so no bold needed. */
+.rc-sep {
+	color: #333;
+	font-weight: normal;
+	margin: 0 1px;
+}
+.legend-note {
+	clear: both;
+	max-width: 520px;
+	margin-top: 5px;
+	font-size: 11px;
+	font-weight: normal;
+	color: #555;
+	line-height: 1.5;
+}
+.legend-bar {
+	display: inline-block;
+	width: 22px;
+	height: 3px;
+	background-color: #555;
+	border-radius: 2px;
+	vertical-align: middle;
+}
+.legend-swatch {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	background-color: #ececec;
+	border: 1px solid #ccc;
+	vertical-align: middle;
 }
 
 .main-div,.chowky-div {
@@ -89,6 +191,15 @@ ul {
 .s-seat-no {
 	width: 45px;
 	float: left;
+	/* Small left inset so the seat number does not touch the cell border.
+	   (45 + 2 + acco 85 + acco padding 7 = 139, still within the 140px cell.) */
+	padding-left: 2px;
+	/* Left-align the seat number. The cell inherits text-align:center, which would
+	   centre a short foreground "CW-"/"CH-" prefix inside the 45px box and shift it
+	   right, while the background (full label, fills the box) stays put - so the
+	   two layers of a chowky seat number drift apart. Left-aligning both makes the
+	   background number sit exactly after the foreground prefix at any font size. */
+	text-align: left;
 	/* Keep CW-/CH- (chowky/chair) seat numbers on one line so those cells stay
 	   the same height as plain cells and the backrest bar does not get pushed
 	   onto the bottom border. */
@@ -97,26 +208,23 @@ ul {
 
 .s-acco {
 	float: right;
-	width: 80px;
+	/* seat-no (45px) + this width + padding-right must stay <= the 140px content
+	   width, or the room/cell line wraps below the seat number. 85 + 4 + 47 = 136. */
+	width: 85px;
 	text-align: right;
-	padding-right: 7px;
-	/* Secondary info: demote to normal weight + muted grey so the seat number and
-	   name carry the visual weight and the cell reads calmly (screen + print). */
+	padding-right: 4px;
+	/* Room and dormitory-cell now share this one line as "room | cell" (the old
+	   separate cell line is gone). Secondary info: normal weight + muted grey so
+	   the seat number and name carry the visual weight (screen + print). */
 	font-weight: normal;
 	color: #555;
 }
 
 .s-cell {
+  /* Cell number moved up into .s-acco (room | cell); this div is now empty and
+     collapses to nothing - its height was reclaimed to shrink the cell. */
   clear: both;
-  float: right;
-  text-align: right;
-  padding-right: 7px;
-  font-weight: normal;
-  color: #555;
-  /* Always reserve the dormitory-cell line's height, even when a seat has no
-     cell number, so the name/age/backrest below it stay at the same position in
-     every cell (an empty div would otherwise collapse and shift everything up). */
-  min-height: 20px;
+  min-height: 0;
 }
 
 
@@ -124,8 +232,10 @@ ul {
     height: 20px;
     line-height: 20px;
     text-align: center;
-    padding-top: 0px;
-    padding-bottom: 2px;
+    /* Extra breathing room above and below the name (cell height is bumped to
+       match, below). */
+    padding-top: 4px;
+    padding-bottom: 6px;
     clear: both;
 	/* Keep a long name on one line so it can never wrap and overflow the short
 	   cell. Over-long names are shortened in JS with a single trailing dot (see
@@ -149,7 +259,11 @@ ul {
 .s-age {
 	width: 55px;
 	float: right;
-	padding-right: 2px;
+	/* Same right inset as the room/cell line above, so age lines up under it. */
+	padding-right: 4px;
+	/* Flush right - the short "73y" would otherwise sit centred in the 55px box
+	   (the cell inherits text-align:center) and look adrift in the middle. */
+	text-align: right;
 	font-size: 12px;
 	font-weight: normal;
 	color: #555;
@@ -196,7 +310,15 @@ ul {
 
 
 .bg-table-m .cwch, .bg-table-f .cwch {
-	margin-left: 40px;
+	/* Keep the CW-/CH- prefix in the background layer but hidden: it still takes
+	   the exact same width as the foreground prefix, so the background seat number
+	   lines up under the foreground one at any font size (a fixed margin here used
+	   to be tuned to one font size and drifted when the size changed). The small
+	   margin-right adds a clean 2px gap after the prefix (CW- D1), so the number
+	   does not butt right up against the hyphen. Only chowky/chair cells have a
+	   cwch span, so regular seats are unaffected. */
+	visibility: hidden;
+	margin-right: 2px;
 }
 
 
