@@ -99,7 +99,11 @@ ul {
 	float: right;
 	width: 80px;
 	text-align: right;
-	padding-right: 7px;	
+	padding-right: 7px;
+	/* Secondary info: demote to normal weight + muted grey so the seat number and
+	   name carry the visual weight and the cell reads calmly (screen + print). */
+	font-weight: normal;
+	color: #555;
 }
 
 .s-cell {
@@ -107,6 +111,8 @@ ul {
   float: right;
   text-align: right;
   padding-right: 7px;
+  font-weight: normal;
+  color: #555;
   /* Always reserve the dormitory-cell line's height, even when a seat has no
      cell number, so the name/age/backrest below it stay at the same position in
      every cell (an empty div would otherwise collapse and shift everything up). */
@@ -135,7 +141,9 @@ ul {
 	float: left;
 	text-align: left;
 	margin-left: 5px;
-	font-size: 12px;	
+	font-size: 12px;
+	font-weight: normal;
+	color: #555;
 }
 
 .s-age {
@@ -143,18 +151,23 @@ ul {
 	float: right;
 	padding-right: 2px;
 	font-size: 12px;
+	font-weight: normal;
+	color: #555;
 }
 
 .s-backrest {
 	clear: both;
 	height: 3px;
-	/* Inset the bar from the side borders so a filled (backrest) bar reads as a
-	   mark inside the cell, not as another cell border. */
-	margin: 0 25px;
+	/* A short, centered mark (not a full/near-full width bar). At the old width it
+	   sat directly under the meta text and read like an underline; a centered
+	   ~44px tick clearly reads as a seat marker inside the cell instead. */
+	width: 44px;
+	margin: 1px auto 0;
+	border-radius: 2px;
 }
 
 .s-backrest-yes {
-	background-color: #000000;
+	background-color: #555555;
 }
 
 .bg-table-m .s-backrest-yes, .bg-table-f .s-backrest-yes {
@@ -162,7 +175,7 @@ ul {
 }
 
 .s-teacher {
-	background-color: #c6c6c6;
+	background-color: #ececec;
 }
 
 
