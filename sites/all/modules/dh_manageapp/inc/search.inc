@@ -1216,10 +1216,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					var id = row.data().aid;
 					var nm = row.data().name;
 					var edId = "review-editor-" + id;
+					var reviewEmojis = ["😀","😃","😄","😁","😊","🙂","😉","😍","😎","🤔","😐","😴","😢","😭","😡","👍","👎","👏","🙏","🙌","💪","✅","❌","⚠️","❗","❓","⭐","🔥","💯","🎉","❤️","🕉️"];
+					var emojiBar = "<div class=\"review-emoji-bar\" style=\"margin:0 0 6px;max-height:60px;overflow:auto;border:1px solid #eee;border-radius:4px;padding:3px;line-height:1.6\">";
+					for (var ei = 0; ei < reviewEmojis.length; ei++)
+						emojiBar += "<span class=\"review-emoji\" title=\"Insert emoji\" style=\"cursor:pointer;font-size:20px;padding:1px 3px;display:inline-block\">" + reviewEmojis[ei] + "</span>";
+					emojiBar += "</div>";
 					$.confirm({
 						title: "Add Internal Review Comment",
 						columnClass: "large",
-						content: "<div style=\"margin-bottom:8px\"><b>" + nm + "</b></div><form class=\"formName\"><textarea id=\"" + edId + "\" name=\"review\" rows=\"10\" style=\"width:100%\"></textarea></form>",
+						content: "<div style=\"margin-bottom:8px\"><b>" + nm + "</b></div>" + emojiBar + "<form class=\"formName\"><textarea id=\"" + edId + "\" name=\"review\" rows=\"10\" style=\"width:100%\"></textarea></form>",
 						onContentReady: function () {
 							if (window.CKEDITOR) {
 								if (CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
@@ -1246,8 +1251,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 								}
 								CKEDITOR.replace(edId, cfg);
 							}
+							/* click an emoji to insert it at the cursor */
+							$(document).off("click.rvemoji").on("click.rvemoji", ".review-emoji", function () {
+								var em = $(this).text();
+								if (window.CKEDITOR && CKEDITOR.instances[edId]) CKEDITOR.instances[edId].insertText(em);
+								else $("#" + edId).val($("#" + edId).val() + em);
+							});
 						},
 						onClose: function () {
+							$(document).off("click.rvemoji");
 							if (window.CKEDITOR && CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
 						},
 						buttons: {
