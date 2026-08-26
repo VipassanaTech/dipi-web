@@ -188,7 +188,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	// would either reject it as an illegal choice or quietly blank the field.
 	if ( ($current_nationality <> '') && !isset($nationalities[$current_nationality]) )
 		$nationalities[$current_nationality] = $current_nationality.' (existing value)';
-	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'select', '#weight' => 42.5,
+	$form[$group]['ae_nationality'] = array('#title' => 'Nationality', '#type' => 'select', '#weight' => 19.5,
 		'#options' => array('' => 'Choose') + $nationalities, '#chosen' => TRUE,
 		'#default_value' => $current_nationality, '#required' => 0 );
 	$form[$group]['a_langs'] = array('#title' => 'Languages Known', '#type' => 'textfield', '#size' => '25', '#weight' => 43, 
