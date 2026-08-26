@@ -2379,6 +2379,28 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		$(".sortable-m, .sortable-f").disableSelection();
 		$(document).on("mouseenter", ".sortable-m .ui-state-default, .sortable-f .ui-state-default", function(){ $(this).css({"cursor":"move"}); });
 
+		/* Shorten an over-long name at a word boundary (same as the main plan):
+		   keep whole leading words, then the first word that does not fit as just
+		   its initial + "." (e.g. "Abhimanyu Singh Gaikwad Deshmukh" -> "Abhimanyu
+		   Singh G."). Full name stays on hover. */
+		$(".sortable-m .s-name, .sortable-f .s-name").each(function(){
+		  var el = this;
+		  if (el.scrollWidth <= el.clientWidth) return;
+		  var full = el.textContent.replace(/\s+/g, " ").replace(/^ | $/g, "");
+		  el.title = full;
+		  var words = full.split(" "), kept = [];
+		  for (var i = 0; i < words.length; i++) {
+		    el.textContent = kept.concat([words[i]]).join(" ");
+		    if (el.scrollWidth <= el.clientWidth) { kept.push(words[i]); continue; }
+		    el.textContent = kept.concat([words[i].charAt(0) + "."]).join(" ");
+		    while (el.scrollWidth > el.clientWidth && kept.length) {
+		      kept.pop();
+		      el.textContent = kept.concat([words[i].charAt(0) + "."]).join(" ");
+		    }
+		    break;
+		  }
+		});
+
 		$(document).on("click", ".add-row", function(){
 			var $div = $(this).closest(".main-div, .chowky-div");
 			var $fg = $div.find("ul[class*=sortable]").first();
