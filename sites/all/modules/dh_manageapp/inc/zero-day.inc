@@ -2270,6 +2270,16 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	while($r = $h->fetchAssoc())
 		$course_name .= $r['c_name']." / ";
 
+	// Teachers per group (same source/format as the Day-0 teacher table).
+	$group_teachers = array();
+	$gt = db_query(
+		"select ct_group, GROUP_CONCAT(concat(t_f_name, ' ', t_l_name) SEPARATOR ' | ') as tnames
+		 from dh_course_teacher left join dh_teacher on t_id=ct_teacher
+		 where ct_course in (".implode(",", $course).") and ct_status='Confirmed'
+		 group by ct_group");
+	while($tr = $gt->fetchAssoc())
+		$group_teachers[trim($tr['ct_group'])] = $tr['tnames'];
+
 	// Read the (already allocated) group seat positions.
 	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
@@ -2393,7 +2403,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			$page_class = $first ? '' : 'group-page';
 			$first = false;
 			$out .= '<div class="'.$page_class.'">';
-			$out .= '<div class="group-title">GROUP '.check_plain($g).' &ndash; '.$label.'<br>'.$course_name.'</div>';
+			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
+			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
+			$out .= '<div class="group-title">GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name.'</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
 
