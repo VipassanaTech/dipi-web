@@ -1223,7 +1223,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						onContentReady: function () {
 							if (window.CKEDITOR) {
 								if (CKEDITOR.instances[edId]) { CKEDITOR.instances[edId].destroy(true); }
-								var cfg = {};
+								var cfg = { removePlugins: "elementspath", resize_enabled: false };
 								var w = window.innerWidth || document.documentElement.clientWidth || 0;
 								if (w > 0 && w <= 768) {
 									/* minimal toolbar on phones/small tablets */
@@ -1233,8 +1233,16 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 										{ name: "colors", items: ["TextColor"] },
 										{ name: "cleanup", items: ["RemoveFormat"] }
 									];
-									cfg.removePlugins = "elementspath";
-									cfg.resize_enabled = false;
+								} else {
+									/* curated (not full) toolbar on desktop */
+									cfg.toolbar = [
+										{ name: "basicstyles", items: ["Bold","Italic","Underline","Strike"] },
+										{ name: "colors", items: ["TextColor","BGColor"] },
+										{ name: "paragraph", items: ["NumberedList","BulletedList","Blockquote","JustifyLeft","JustifyCenter","JustifyRight"] },
+										{ name: "links", items: ["Link","Unlink"] },
+										{ name: "clipboard", items: ["Undo","Redo"] },
+										{ name: "cleanup", items: ["RemoveFormat"] }
+									];
 								}
 								CKEDITOR.replace(edId, cfg);
 							}
