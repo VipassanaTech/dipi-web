@@ -58,6 +58,8 @@ table.table-day0-list td, table.table-day0-list th {
 /* ---- Block (one gender x type) ---- */
 .day0-block { margin: 0 0 24px; }
 .day0-scroll { overflow-x: auto; }
+/* The female roster starts on its own printed page. */
+.day0-break { page-break-before: always; }
 
 /* ---- Table ---- */
 table.table-day0-list {
@@ -137,13 +139,8 @@ col.l-city{width:90px} col.l-age{width:36px} col.l-langs{width:130px} col.l-heal
 col.l-special{width:150px} col.l-10d{width:34px} col.l-stp{width:34px} col.l-tsc{width:34px}
 col.l-20d{width:34px} col.l-30d{width:34px} col.l-45d{width:34px} col.l-60d{width:34px} col.l-contact{width:120px}
 
-/* Column hide/show: JS toggles a body class; the matching column collapses. */
-body.hide-occ      th.c-occ,      body.hide-occ      td.c-occ      { display: none; }
-body.hide-occ      col.c-occ      { width: 0; }
-body.hide-contact  th.c-contact,  body.hide-contact  td.c-contact  { display: none; }
-body.hide-contact  col.c-contact  { width: 0; }
-body.hide-comments th.c-comments, body.hide-comments td.c-comments { display: none; }
-body.hide-comments col.c-comments { width: 0; }
+/* Column hide/show is handled in JS (it sets display/width on the .d0-<key>
+   col/th/td cells directly), so it works for both the normal and LC layouts. */
 
 @media print {
 	/* Only set margins - do NOT force `size`/orientation, or the browser greys

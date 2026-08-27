@@ -2708,6 +2708,38 @@ function dh_day0_name($r)
 	return dh_day0_case($name);
 }
 
+/* Sentence-case a free-text value that is stored fully upper-case (long health /
+   special-requirement notes), leaving already mixed-case text untouched. */
+function dh_day0_sentence($s)
+{
+	$s = trim($s);
+	if ($s === '' || mb_strtoupper($s, 'UTF-8') !== $s)
+		return $s;
+	$s = mb_strtolower($s, 'UTF-8');
+	$s = preg_replace_callback('/(^|[.!?]\s+)(\p{L})/u',
+		function ($m) { return $m[1].mb_strtoupper($m[2], 'UTF-8'); }, $s);
+	return preg_replace('/\bi\b/', 'I', $s);   // keep the pronoun "I" capitalised
+}
+
+/* Clean a comma-joined language list: trim, drop blanks, de-dup (case-insensitive),
+   title-case shouty tokens. */
+function dh_day0_langs($raw)
+{
+	$seen = array();
+	$out = array();
+	foreach (explode(',', $raw) as $p)
+	{
+		$p = trim($p);
+		$k = strtolower($p);
+		if ($p !== '' && !isset($seen[$k]))
+		{
+			$seen[$k] = 1;
+			$out[] = dh_day0_case($p);
+		}
+	}
+	return implode(', ', $out);
+}
+
 /* Occupation (designation), dropping placeholder designations like None/NA/00. */
 function dh_day0_occupation($r)
 {
@@ -2812,6 +2844,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 
 	$gender = array('M', 'F');
 	$type = array('old', 'new');
+	$female_started = false;
 
 	foreach($gender as $g)
 	{
@@ -2821,17 +2854,30 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 			if ($total == 0)
 				continue;
 
-			$out .= '<div class="day0-block"><div class="day0-scroll"><table class="table-day0-list"><colgroup>';
-			foreach ($cols as $c)
-				$out .= '<col class="'.$c[1].'">';
+			// Start the female roster on a fresh printed page.
+			$brk = '';
+			if ($g == 'F' && !$female_started)
+			{
+				$brk = ' day0-break';
+				$female_started = true;
+			}
+
+			$out .= '<div class="day0-block'.$brk.'"><div class="day0-scroll"><table class="table-day0-list"><colgroup>';
+			foreach ($cols as $key => $c)
+				$out .= '<col class="'.$c[1].' d0-'.$key.'">';
 			$out .= '</colgroup><thead>';
 			// Block-info row (repeats on print), then the column-header row.
 			$out .= '<tr><th class="day0-blockinfo" colspan="'.$ncol.'">'
 				.(($g=='M')?'Male':'Female').'<span class="sep">|</span>'.ucfirst($t).' students'
 				.'<span class="sep">|</span><span class="cnt">'.$total.' total</span></th></tr>';
 			$out .= '<tr>';
-			foreach ($cols as $c)
-				$out .= '<th class="'.$c[1].'">'.check_plain($c[0]).'</th>';
+			foreach ($cols as $key => $c)
+			{
+				$lbl = check_plain($c[0]);
+				if (isset($toggle[$key]))          // wrap so JS can hide the content (not the cell)
+					$lbl = '<span class="d0c">'.$lbl.'</span>';
+				$out .= '<th class="'.$c[1].' d0-'.$key.'">'.$lbl.'</th>';
+			}
 			$out .= '</tr></thead><tbody>';
 
 			$i = 1;
@@ -2887,12 +2933,12 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 					$cell['age'] = check_plain($r['Age']);
 
 					if ($r['a_source'] == 'ExtApp')
-						$langs = $r['a_lang_discourse'];
+						$langs = dh_day0_langs($r['a_lang_discourse']);
 					else
-						$langs = trim($r['a_lang_discourse'].', '.$r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'], ', ');
+						$langs = dh_day0_langs($r['a_lang_discourse'].','.$r['a_lang_1'].','.$r['a_lang_2'].','.$r['a_langs']);
 					$cell['langs'] = check_plain($langs);
-					$cell['health'] = check_plain(trim($r['ae_desc_physical'].' '.$r['ae_desc_mental']));
-					$cell['special'] = check_plain($r['al_special_req_details']);
+					$cell['health'] = check_plain(dh_day0_sentence(trim($r['ae_desc_physical'].' '.$r['ae_desc_mental'])));
+					$cell['special'] = check_plain(dh_day0_sentence($r['al_special_req_details']));
 					$cell['10d'] = check_plain($r['ac_10d']);
 					$cell['stp'] = check_plain($r['ac_stp']);
 					$cell['tsc'] = check_plain($r['ac_tsc']);
@@ -2907,7 +2953,12 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 
 				$out .= '<tr>';
 				foreach ($cols as $key => $c)
-					$out .= '<td class="'.$c[1].'">'.(isset($cell[$key]) ? $cell[$key] : '').'</td>';
+				{
+					$v = isset($cell[$key]) ? $cell[$key] : '';
+					if (isset($toggle[$key]))      // wrap so JS can hide the content (not the cell)
+						$v = '<span class="d0c">'.$v.'</span>';
+					$out .= '<td class="'.$c[1].' d0-'.$key.'">'.$v.'</td>';
+				}
 				$out .= '</tr>';
 			}
 			$out .= '</tbody></table></div></div>';
@@ -2920,13 +2971,25 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 		return;
 	}
 
-	// Self-contained column hide/show (no jQuery): toggle a body class.
+	// Self-contained column hide/show (no jQuery). Columns carry a d0-<key> class
+	// on col/th/td. To hide a column we keep the <td> in place (so later cells do
+	// NOT shift into the wrong <col> widths), collapse the <col> width to 0, zero
+	// the cell padding, and display:none the content wrapper - the last part is
+	// what stops the hidden text from still reserving row height (visibility:
+	// collapse leaves that height behind, which bloated the print to 1-2 rows/page).
 	$out .= '<script>
 document.addEventListener("click", function(e){
 	var b = e.target.closest ? e.target.closest("[data-toggle-col]") : null;
 	if (!b) return;
-	document.body.classList.toggle("hide-" + b.getAttribute("data-toggle-col"));
-	b.classList.toggle("off");
+	var hide = b.classList.toggle("off");
+	var els = document.querySelectorAll(".d0-" + b.getAttribute("data-toggle-col"));
+	for (var i = 0; i < els.length; i++) {
+		var el = els[i];
+		if (el.tagName === "COL") { el.style.width = hide ? "0" : ""; continue; }
+		el.style.paddingLeft = el.style.paddingRight = hide ? "0" : "";
+		var w = el.querySelector(".d0c");
+		if (w) w.style.display = hide ? "none" : "";
+	}
 });
 </script>';
 	print $out;
