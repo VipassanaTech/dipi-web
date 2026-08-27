@@ -1,0 +1,116 @@
+/* Teacher List (redesign) - per-AT-group student roster the Assistant Teacher
+   prints. Screen-first and wide; readable mixed case; each AT group starts on a
+   fresh printed page. Column hide/show (Languages / Comments) is JS-driven, no
+   jQuery. Kept separate from the legacy teacher-list.css so the Manager List
+   (which still uses that file) is unaffected. */
+
+body, .header-teacher, .tl-toolbar,
+table.table-teacher-list td, table.table-teacher-list th {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #222;
+}
+
+/* ---- Page title ---- */
+.header-teacher { margin: 0 0 4px; }
+.header-teacher .title {
+	text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 1px; text-decoration: none;
+}
+.header-teacher .title-head {
+	text-align: center; font-size: 13px; color: #555; font-weight: normal; text-decoration: none;
+}
+
+/* ---- Screen-only toolbar: sort toggle + column hide/show ---- */
+.tl-toolbar {
+	margin: 10px 0 16px; font-size: 13px; color: #666;
+	display: flex; gap: 26px; align-items: center; flex-wrap: wrap;
+}
+.tl-toolbar .grp b { color: #222; }
+.tl-toolbar a { color: #06c; text-decoration: none; }
+.tl-toolbar a:hover { text-decoration: underline; }
+.tl-toolbar a.active { color: #222; font-weight: bold; text-decoration: none; cursor: default; }
+.tl-toolbar .col-toggle {
+	font-size: 12px; padding: 3px 11px; margin-left: 6px;
+	border: 1px solid #bcc4c8; border-radius: 14px; background: #eef4ff; color: #1565c0; cursor: pointer;
+}
+.tl-toolbar .col-toggle.off { background: #fff; color: #9aa0a6; text-decoration: line-through; }
+
+/* ---- Block (one AT group) ---- */
+.tl-block { margin: 0 0 22px; }
+.tl-scroll { overflow-x: auto; }
+/* Each AT group starts on its own printed page. */
+.tl-break { page-break-before: always; }
+
+/* ---- Table ---- */
+table.table-teacher-list {
+	/* Fixed layout sized from the <col> widths; hiding a column collapses its
+	   <col> to reclaim the space. */
+	width: auto;
+	table-layout: fixed;
+	border-collapse: collapse;
+	margin: 0 0 4px;
+}
+table.table-teacher-list thead { display: table-header-group; }   /* group info + column head repeat on print */
+table.table-teacher-list tr { page-break-inside: avoid; }
+
+/* Group-info row (AT / Gender / Type / Group / Total), inside the thead. */
+table.table-teacher-list th.tl-groupinfo {
+	text-align: left; font-size: 15px; font-weight: bold; text-transform: none; letter-spacing: 0;
+	color: #222; border-bottom: none; padding: 12px 4px 5px;
+}
+th.tl-groupinfo .sep { color: #bbb; font-weight: normal; margin: 0 8px; }
+th.tl-groupinfo .at  { color: #222; }
+th.tl-groupinfo .cnt { color: #555; font-weight: normal; }
+
+/* Column headers. */
+table.table-teacher-list th {
+	font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; color: #777;
+	text-align: left; padding: 5px 6px; border-bottom: 2px solid #333; vertical-align: bottom; word-wrap: break-word;
+}
+table.table-teacher-list td {
+	font-size: 13px; color: #222; padding: 7px 6px; border-bottom: 1px solid #e4e4e4;
+	vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere;
+}
+
+/* Per-column look. */
+.tl-sn      { color: #999; text-align: right; }
+.tl-age     { text-align: right; }
+.tl-cell    { text-align: center; }
+.tl-seat    { text-align: center; font-weight: bold; }
+.tl-comments { color: #555; }
+.tl-courses b { color: #333; }
+/* "Backrest" marker under the seat number - small outlined pill, prints B&W. */
+.tl-br {
+	display: inline-block;
+	margin-top: 3px;
+	font-size: 9px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	color: #444;
+	border: 1px solid #999;
+	border-radius: 3px;
+	padding: 0 3px;
+	line-height: 1.45;
+}
+
+/* Column widths (fixed layout). Screen-first wide. */
+col.tl-sn       { width: 32px; }
+col.tl-student  { width: 165px; }
+col.tl-room     { width: 58px; }
+col.tl-age      { width: 34px; }
+col.tl-city     { width: 88px; }
+col.tl-courses  { width: 150px; }
+col.tl-cell     { width: 52px; }
+col.tl-seat     { width: 60px; }
+col.tl-occ      { width: 118px; }
+col.tl-edu      { width: 108px; }
+col.tl-langs    { width: 108px; }
+col.tl-comments { width: 200px; }
+
+@media print {
+	/* Only set margins - do NOT force size/orientation, so the operator can pick
+	   portrait/landscape and scale in the print dialog. */
+	@page { margin: 8mm; }
+	html, body { margin: 0 !important; }
+	.no-print, .no-print * { display: none !important; }
+	.tl-scroll { overflow-x: visible; }
+}

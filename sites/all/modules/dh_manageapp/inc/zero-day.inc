@@ -876,176 +876,207 @@ function dh_manageapp_attended( $centre, $course_id )
 
 function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
-	//drupal_add_css();
 	global $base_url;
-	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list.css");</style>';
-  $out .= '<button type="button" class="no-print remove-column">Click to remove Languages and Comments Columns</button>';
-  $teacher_list_as_seating = $base_url."/teacher-list/$centre/$course?seating=1";
-  $out .= ' <a class="no-print" href="'.$teacher_list_as_seating.'/">Click to Generate Teacher list in order of sitting plan.</a>';
+	$is_pdf = ($pdf <> '');
+	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
+	$teacher = array();
 	while($t_r = $t_hand->fetchAssoc())
-	{
 		$teacher[strtoupper($t_r['t_gender'])][$t_r['ct_group']] = $t_r;
-		//$teacher[strtoupper($t_r['ct_type'])][$t_r['ct_group']] = $t_r;
-	}
-	if (! isset($teacher['M']) )
-	{
-		if ( isset( $teacher['F']) )
-			$teacher['M'][1] = $teacher['F'][1];
-		else
-			$teacher['M'][1] = '';
-	}
-
-	if( !isset($teacher['F']))
+	if (!isset($teacher['M']))
+		$teacher['M'][1] = isset($teacher['F']) ? $teacher['F'][1] : array('t_name' => '', 't_code' => '');
+	if (!isset($teacher['F']))
 		$teacher['F'][1] = $teacher['M'][1];
 
-  $orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_bhante,0) desc, IFNULL(t_full_t,0) desc, IFNULL(t_sat,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
-  if($seating)
-    $orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+	$orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_bhante,0) desc, IFNULL(t_full_t,0) desc, IFNULL(t_sat,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
+	if ($seating)
+		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by a_gender, ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-	$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
-	{
 		$data[strtoupper($r['a_gender'])][$r['a_old']?'old':'new'][$r['aa_group']][] = $r;
-	}
 
-	$header = array('S/N', 'Student', 'RoomNo', 'Age', 'City', 'Courses', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
-  // $header = array('SrNo', 'Student', 'RoomNo', 'Age', 'City', 'Teen', '10D', 'STP', 'SPL', 'TSC', '20D', '30D', '45D', '60D', 'LongCourses', '10Day', 'Cell', 'Seat', 'Occupation', 'Education', 'Languages', 'Comments');
-	$attributes = array('class' => array('table-teacher-list') );
-	$title = '<div class="header-teacher"><div align="center" class="title"><b>Teacher List</b></div>'.
-			'<div align="center" class="title-head">'.$course_name.'</div></div>';
+	// Column spec: key => [label, class]. Languages / Comments are hide-able.
+	$cols = array(
+		'sn'       => array('S/N', 'tl-sn'),
+		'student'  => array('Student', 'tl-student'),
+		'room'     => array('Room', 'tl-room'),
+		'age'      => array('Age', 'tl-age'),
+		'city'     => array('City', 'tl-city'),
+		'courses'  => array('Courses', 'tl-courses'),
+		'cell'     => array('Cell', 'tl-cell'),
+		'seat'     => array('Seat', 'tl-seat'),
+		'occ'      => array('Occupation', 'tl-occ'),
+		'edu'      => array('Education', 'tl-edu'),
+		'langs'    => array('Languages', 'tl-langs'),
+		'comments' => array('Comments', 'tl-comments'),
+	);
+	$toggle = array('langs' => 'Languages', 'comments' => 'Comments');
+	$ncol = count($cols);
+
+	$out .= '<div class="header-teacher"><div class="title">Teacher List</div>'.
+		'<div class="title-head">'.check_plain($course_name).'</div></div>';
+
+	// Screen-only toolbar: seniority/seating sort toggle + column hide/show.
+	if (!$is_pdf)
+	{
+		$base = $base_url."/teacher-list/$centre/$course";
+		$out .= '<div class="tl-toolbar no-print">';
+		$out .= '<span class="grp"><b>Order:</b> '
+			.'<a class="'.($seating?'':'active').'" href="'.$base.'">Seniority</a> &middot; '
+			.'<a class="'.($seating?'active':'').'" href="'.$base.'?seating=1">Seating plan</a></span>';
+		$out .= '<span class="grp"><b>Columns:</b>';
+		foreach ($toggle as $key => $lbl)
+			$out .= ' <button type="button" class="col-toggle" data-toggle-col="'.$key.'">'.check_plain($lbl).'</button>';
+		$out .= '</span></div>';
+	}
 
 	$gender = array('M', 'F');
 	$type = array('old', 'new');
-	$i = 1;
+	$first_block = true;
+
 	foreach($gender as $g)
 	{
-		foreach ($type as $t) 
+		foreach ($type as $t)
 		{
-			if (!isset($data[$g][$g]))
-				$data[$g][$t][] = array();
+			if (!isset($data[$g][$t]))
+				continue;
 
-			foreach ($data[$g][$t] as $group => $group_data) 
+			foreach ($data[$g][$t] as $group => $group_data)
 			{
-				unset($rows); $total =0 ; $i=1;
-				foreach( $group_data as $r)
+				if (empty($group_data))
+					continue;
+				$total = count($group_data);
+
+				// Each AT group starts on its own printed page.
+				$brk = $first_block ? '' : ' tl-break';
+				$first_block = false;
+
+				$at = isset($teacher[$g][$group]) ? $teacher[$g][$group] : array('t_name' => '', 't_code' => '');
+				$at_name = trim($at['t_name']) !== '' ? check_plain(dh_day0_case($at['t_name'])).' ['.check_plain($at['t_code']).']' : '(unassigned)';
+
+				$out .= '<div class="tl-block'.$brk.'"><div class="tl-scroll"><table class="table-teacher-list"><colgroup>';
+				foreach ($cols as $c)
+					$out .= '<col class="'.$c[1].'">';
+				$out .= '</colgroup><thead>';
+				$out .= '<tr><th class="tl-groupinfo" colspan="'.$ncol.'">'
+					.'<span class="at">AT: '.$at_name.'</span><span class="sep">|</span>'
+					.(($g=='M')?'Male':'Female').'<span class="sep">|</span>'.ucfirst($t)
+					.'<span class="sep">|</span>Group '.check_plain($group)
+					.'<span class="sep">|</span><span class="cnt">'.$total.' total</span></th></tr>';
+				$out .= '<tr>';
+				foreach ($cols as $key => $c)
 				{
-					unset($row);
-					$row[] = $i++;
-
-
-        if($r['ac_teacher'])
-        {
-            if($r['t_bhante'])
-                $r['Full Name'] = $r['Full Name']." <b>(BT-".$r['t_year_appointed'].")</b>";
-            elseif($r['t_full_t'])
-                $r['Full Name'] = $r['Full Name']." <b>(T-".$r['t_year_appointed'].")</b>";
-            elseif($r['t_sat'])
-                $r['Full Name'] = $r['Full Name']." <b>(SAT-".$r['t_year_appointed'].")</b>";
-            else
-                $r['Full Name'] = $r['Full Name']." <b>(AT-".$r['t_year_appointed'].")</b>";
-        }
-
-
-          if(strtolower($r['a_type']) == "sevak")
-					 $row[] = $r['Full Name']." <b>(Sevak)</b>";
-          else
-            $row[] = $r['Full Name'];
-					$row[] = $r['aa_section'].'-'.$r['aa_acco'];
-					$row[] = $r['Age'];
-					$row[] = $r['City'];
-
-          $courses = "";
-          if($r['ac_10d'])
-            $courses .= "<b>10D:</b>".$r['ac_10d'];
-        if($r['ac_stp'])
-            $courses .= " <b>STP:</b>".$r['ac_stp'];
-        if($r['ac_spl'])
-            $courses .= " <b>SPL:</b>".$r['ac_spl'];
-        if($r['ac_tsc'])
-            $courses .= " <b>TSC:</b>".$r['ac_tsc'];
-        if($r['ac_20d'])
-            $courses .= " <b>20D:</b>".$r['ac_20d'];
-        if($r['ac_30d'])
-            $courses .= " <b>30D:</b>".$r['ac_30d'];
-        if($r['ac_45d'])
-            $courses .= " <b>45D:</b>".$r['ac_45d'];
-        if($r['ac_60d'])
-            $courses .= " <b>60D:</b>".$r['ac_60d'];
-          $row[] = $courses;
-					//$row[] = $r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
-					//$row[] = $r['ac_teen']+$r['ac_10d']+$r['ac_stp'];
-                    if($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
-                        $row[] = $r['aa_cell']. " (" . ($r['aa_cell_group']+1) . ")";
-                    else
-                        $row[] = $r['aa_cell'];
-          $row[] = "<b>".$r['aa_seat']."</b>";
-					$row[] = $r['a_occupation'];
-					$row[] = $r['a_education'];
-					$row[] = $r['a_lang_discourse'].', '.$r['a_langs'];
-					$comment = '';
-					if ($r['ae_nationality'] <> '')
-						$comment .= 'Nationality: '.$r['ae_nationality'].'<br />';
-					if (($g == 'F') && ($r['ae_pregnant']))
-						$comment .= 'Pregnant: '.$r['ae_pregnant_detail']." ";
-					if ($r['ae_desc_physical'] <> '')
-						$comment .= ' '.$r['ae_desc_physical'];
-					if ($r['ae_desc_mental'] <> '')
-						$comment .= ' '.$r['ae_desc_mental'];
-					if ($r['ae_desc_addiction_past'] <> '')
-						$comment .= $r['ae_desc_addiction_past'];
-					if ($r['ae_desc_addiction_current'] <> '')
-						$comment .= ' '.$r['ae_desc_addiction_current'];
-					if ($r['ae_desc_medication'] <> '')
-						$comment .= ' '.$r['ae_desc_medication'];
-					if ($r['ae_desc_other_technique'] <> '')
-						$comment .= ' '.$r['ae_desc_other_technique'];
-
-					$comment .= $r['aa_comment'];
-					$row[] = $comment;
-					$rows[] = $row;
-					$total++;					
+					$lbl = check_plain($c[0]);
+					if (isset($toggle[$key]))
+						$lbl = '<span class="tlc">'.$lbl.'</span>';
+					$out .= '<th class="'.$c[1].'">'.$lbl.'</th>';
 				}
-				if ($total > 0 )
+				$out .= '</tr></thead><tbody>';
+
+				$i = 1;
+				foreach ($group_data as $r)
 				{
-					$out .= $title.'<br /><div class="title-info">AT: '.$teacher[$g][$group]['t_name'].'['.$teacher[$g][$group]['t_code'].'] | Gender: '.(($g=='M')?'MALE':'FEMALE').' | Type: '.strtoupper($t).' | Group: '.$group.' | Total: '.$total.'</div><br>';
-					$out .= theme('table',array('header' => $header, 'rows' => $rows, 'attributes' => $attributes) );
-					$out .= '<div id="footer">&nbsp;</div>';				
-				}
+					// Student name (title-cased, NULL-safe) + teacher/sevak suffix.
+					$name = check_plain(dh_day0_name($r));
+					if ($r['ac_teacher'])
+					{
+						if ($r['t_bhante'])       $code = 'BT';
+						elseif ($r['t_full_t'])   $code = 'T';
+						elseif ($r['t_sat'])      $code = 'SAT';
+						else                      $code = 'AT';
+						$yr = trim($r['t_year_appointed']);
+						$sfx = $code.($yr !== '' ? '-'.$yr : '');   // no dangling dash when year is blank
+						$name .= ' <b>('.check_plain($sfx).')</b>';
+					}
+					if (strtolower($r['a_type']) == 'sevak')
+						$name .= ' <b>(Sevak)</b>';
 
+					$courses = '';
+					foreach (array('ac_10d'=>'10D','ac_stp'=>'STP','ac_spl'=>'SPL','ac_tsc'=>'TSC','ac_20d'=>'20D','ac_30d'=>'30D','ac_45d'=>'45D','ac_60d'=>'60D') as $f => $cl)
+						if (!empty($r[$f]))
+							$courses .= '<b>'.$cl.':</b>'.check_plain($r[$f]).' ';
+
+					if ($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
+						$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_group']+1).')');
+					else
+						$cellno = check_plain($r['aa_cell']);
+
+					// Comments: keep labels, sentence-case the shouty free-text pieces.
+					$cm = '';
+					if (trim($r['ae_nationality']) !== '')
+						$cm .= 'Nationality: '.check_plain(dh_day0_case(trim($r['ae_nationality']))).'<br>';
+					if ($g == 'F' && $r['ae_pregnant'])
+						$cm .= 'Pregnant: '.check_plain($r['ae_pregnant_detail']).' ';
+					$pieces = array();
+					foreach (array('ae_desc_physical','ae_desc_mental','ae_desc_addiction_past','ae_desc_addiction_current','ae_desc_medication','ae_desc_other_technique') as $f)
+						if (trim($r[$f]) !== '')
+							$pieces[] = check_plain(dh_day0_sentence(trim($r[$f])));
+					if (trim($r['aa_comment']) !== '')
+						$pieces[] = check_plain(dh_day0_sentence(trim($r['aa_comment'])));
+					$cm .= implode(' ', $pieces);
+
+					$cell = array(
+						'sn'       => $i++,
+						'student'  => $name,
+						'room'     => check_plain(trim($r['aa_section'].'-'.$r['aa_acco'], '-')),
+						'age'      => check_plain($r['Age']),
+						'city'     => check_plain(dh_day0_case($r['City'])),
+						'courses'  => trim($courses),
+						'cell'     => $cellno,
+						'seat'     => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="tl-br" title="Backrest">BR</span>' : ''),
+						'occ'      => check_plain(dh_day0_case($r['a_occupation'])),
+						'edu'      => check_plain(trim($r['a_education'])),
+						'langs'    => check_plain(dh_day0_langs($r['a_lang_discourse'].','.$r['a_langs'])),
+						'comments' => $cm,
+					);
+
+					$out .= '<tr>';
+					foreach ($cols as $key => $c)
+					{
+						$v = isset($cell[$key]) ? $cell[$key] : '';
+						if (isset($toggle[$key]))
+							$v = '<span class="tlc">'.$v.'</span>';
+						$out .= '<td class="'.$c[1].'">'.$v.'</td>';
+					}
+					$out .= '</tr>';
+				}
+				$out .= '</tbody></table></div></div>';
 			}
 		}
 	}
-	if ($pdf <> '')
-		create_pdf_from_html($out, $pdf);
-	else
+
+	if ($is_pdf)
 	{
-    $out .= '
-    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-    <script>
-    (function ($) {
-    $(document).ready(function(){
-
-     $(document).on("click", ".remove-column", function(){
-        $("table tr").find("td:eq(10),th:eq(10)").remove();
-        $("table tr").find("td:eq(10),th:eq(10)").remove();
-    });
-
-    });
-    })(jQuery);
-    </script>
-    ';
-
-		print $out;
-		exit;		
+		create_pdf_from_html($out, $pdf);
+		return;
 	}
+
+	// Self-contained column hide/show (no jQuery). Collapses the <col> width and
+	// hides the cell-content wrapper so no width or row-height is reserved.
+	$out .= '<script>
+document.addEventListener("click", function(e){
+	var b = e.target.closest ? e.target.closest("[data-toggle-col]") : null;
+	if (!b) return;
+	var hide = b.classList.toggle("off");
+	var els = document.querySelectorAll(".tl-" + b.getAttribute("data-toggle-col"));
+	for (var i = 0; i < els.length; i++) {
+		var el = els[i];
+		if (el.tagName === "COL") { el.style.width = hide ? "0" : ""; continue; }
+		el.style.paddingLeft = el.style.paddingRight = hide ? "0" : "";
+		var w = el.querySelector(".tlc");
+		if (w) w.style.display = hide ? "none" : "";
+	}
+});
+</script>';
+	print $out;
+	exit;
 }
 
 
