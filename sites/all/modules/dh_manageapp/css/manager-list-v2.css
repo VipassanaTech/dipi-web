@@ -1,0 +1,85 @@
+/* Manager List (redesign) - per-gender logistics/emergency roster the course
+   manager prints. Screen-first and wide; readable mixed case; each gender
+   starts on a fresh printed page. Sibling of teacher-list-v2.css. */
+
+body, .header-manager, table.table-manager-list td, table.table-manager-list th {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #222;
+}
+
+/* ---- Page title ---- */
+.header-manager { margin: 0 0 4px; }
+.header-manager .title {
+	text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 1px; text-decoration: none;
+}
+.header-manager .title-head {
+	text-align: center; font-size: 13px; color: #555; font-weight: normal; text-decoration: none;
+}
+
+/* ---- Block (one gender) ---- */
+.ml-block { margin: 0 0 22px; }
+.ml-scroll { overflow-x: auto; }
+.ml-break { page-break-before: always; }
+
+/* AT names listed above the table for this gender. */
+.ml-teachers { width: 100%; margin: 2px 0 8px; font-size: 13px; color: #444; }
+.ml-teachers .lbl { color: #777; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; margin-right: 6px; }
+.ml-teachers .at { display: inline-block; margin-right: 14px; }
+.ml-teachers .code { color: #777; }
+
+/* ---- Table ---- */
+table.table-manager-list {
+	width: auto; table-layout: fixed; border-collapse: collapse; margin: 0 0 4px;
+}
+table.table-manager-list thead { display: table-header-group; }   /* gender info + column head repeat on print */
+table.table-manager-list tr { page-break-inside: avoid; }
+
+/* Gender-info row inside the thead. */
+table.table-manager-list th.ml-groupinfo {
+	text-align: left; font-size: 15px; font-weight: bold; text-transform: none; letter-spacing: 0;
+	color: #222; border-bottom: none; padding: 12px 4px 5px;
+}
+th.ml-groupinfo .sep { color: #bbb; font-weight: normal; margin: 0 8px; }
+th.ml-groupinfo .cnt { color: #555; font-weight: normal; }
+
+table.table-manager-list th {
+	font-size: 11px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; color: #777;
+	text-align: left; padding: 5px 6px; border-bottom: 2px solid #333; vertical-align: bottom; word-wrap: break-word;
+}
+table.table-manager-list td {
+	font-size: 13px; color: #222; padding: 7px 6px; border-bottom: 1px solid #e4e4e4;
+	vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere;
+}
+
+/* Per-column look. */
+.ml-sn   { color: #999; text-align: right; }
+.ml-age  { text-align: right; }
+.ml-cell { text-align: center; }
+.ml-seat { text-align: center; font-weight: bold; }
+.ml-conf { font-weight: bold; }
+.ml-set  { text-align: center; color: #555; }
+.ml-enum { white-space: nowrap; }
+/* "Backrest" marker next to the seat - small outlined pill, prints B&W. */
+.ml-br {
+	display: inline-block; margin-top: 3px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;
+	color: #444; border: 1px solid #999; border-radius: 3px; padding: 0 3px; line-height: 1.45;
+}
+
+/* Column widths (fixed layout). */
+col.ml-sn      { width: 32px; }
+col.ml-student { width: 180px; }
+col.ml-age     { width: 34px; }
+col.ml-room    { width: 60px; }
+col.ml-ename   { width: 195px; }
+col.ml-enum    { width: 128px; }
+col.ml-cell    { width: 52px; }
+col.ml-seat    { width: 60px; }
+col.ml-conf    { width: 60px; }
+col.ml-set     { width: 54px; }
+
+@media print {
+	@page { margin: 8mm; }
+	html, body { margin: 0 !important; }
+	.no-print, .no-print * { display: none !important; }
+	.ml-scroll { overflow-x: visible; }
+}

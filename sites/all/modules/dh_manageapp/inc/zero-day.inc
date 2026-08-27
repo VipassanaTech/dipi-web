@@ -1083,98 +1083,122 @@ document.addEventListener("click", function(e){
 function dh_generate_manager_list($centre, $course, $pdf = '')
 {
 	global $base_url;
-	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list.css");</style>';
-	
+	$is_pdf = ($pdf <> '');
+	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css");</style>';
+
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
+	$teacher_m = array();
 	while($t_r = $t_hand->fetchAssoc())
-	{
-		//$teacher[strtoupper($t_r['t_gender'])][$t_r['ct_group']] = $t_r;
-		$teacher[strtoupper($t_r['ct_type'])][$t_r['ct_group']] = $t_r;
 		$teacher_m[strtoupper($t_r['t_gender'])][$t_r['ct_group']] = $t_r;
-	}
-	if( !isset($teacher_m['F']))
+	if (!isset($teacher_m['F']) && isset($teacher_m['M']))
 		$teacher_m['F'][1] = $teacher_m['M'][1];
 
-	$gender = array('M', 'F');
-	foreach($gender as $g)
+	// Per-gender AT list (shown above each block).
+	$t_info = array();
+	foreach (array('M', 'F') as $g)
 	{
-		if ( !isset($teacher_m[$g]))
+		if (!isset($teacher_m[$g]))
 			continue;
-		//if ( !isset($teacher[($g=='M')?'CONDUCTING':'ASSISTING']) )
-		//	continue;
-		$t_info[$g] = '<div class="teachers-title"> ';
-		//foreach ($teacher[($g=='M')?'CONDUCTING':'ASSISTING'] as $key => $value)
-		foreach ($teacher_m[$g] as $key => $value) 
-		{
-			$t_info[$g] .= $value['t_name'].' - ['.$value['t_code'].']<br />';
-		}
-		$t_info[$g] .= '</div>';
+		$parts = array();
+		foreach ($teacher_m[$g] as $value)
+			$parts[] = '<span class="at">'.check_plain(dh_day0_case($value['t_name'])).' <span class="code">['.check_plain($value['t_code']).']</span></span>';
+		$t_info[$g] = '<div class="ml-teachers"><span class="lbl">Teachers</span>'.implode('', $parts).'</div>';
 	}
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	//$q = "select a_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell, c_name from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and aa_acco IS NOT NULL order by aa_group, a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
-	{
 		$data[strtoupper($r['a_gender'])][] = $r;
-	}
 
-	$header = array('SrNo', 'Student', 'Age', 'Room', 'EmergencyName', 'EmergencyNum',  'Cell', 'Seat', 'ConfNo', 'Set' );
-	$attributes = array('class' => array('table-manager-list') );
-	$title = '<div class="header-manager"><div align="center" class="title"><b>Manager List</b></div>'.
-			'<div align="center" class="title-head">'.$course_name.'</div></div>';
+	$cols = array(
+		'sn'      => array('S/N', 'ml-sn'),
+		'student' => array('Student', 'ml-student'),
+		'age'     => array('Age', 'ml-age'),
+		'room'    => array('Room', 'ml-room'),
+		'ename'   => array('Emergency Contact', 'ml-ename'),
+		'enum'    => array('Emergency No.', 'ml-enum'),
+		'cell'    => array('Cell', 'ml-cell'),
+		'seat'    => array('Seat', 'ml-seat'),
+		'conf'    => array('Conf No', 'ml-conf'),
+		'set'     => array('Set', 'ml-set'),
+	);
+	$ncol = count($cols);
 
-	$i = 1;
+	$out .= '<div class="header-manager"><div class="title">Manager List</div>'.
+		'<div class="title-head">'.check_plain($course_name).'</div></div>';
 
-	foreach($gender as $g)
+	$first_block = true;
+	foreach (array('M', 'F') as $g)
 	{
-		unset($rows); $total =0 ; $i=1; $rows = array();
-		if (isset($data[$g]))
-			foreach ($data[$g] as $r) 
-			{
-				if (!isset($teacher_m[$g][$r['aa_group']]['t_code']))
-					$teacher_m[$g][$r['aa_group']]['t_code'] = '';
-				unset($row);
-				$group = 'N';
-				if ($r['a_old'])
-					$group = 'O';
-				$group .= $g;
-				$row[] = $i++;
-				$sevak = '';
-				if ($r['a_type'] == 'Sevak')
-			      $sevak .= ' (Sevak)';
-				$row[] = $r['Full Name'].$sevak;
-				//$row[] = $r['c_name'];
-				$row[] = $r['Age'];
-				$row[] = $r['aa_section'].'-'.$r['aa_acco'];
-				$row[] = $r['a_emergency_name'].' ('.$r['a_emergency_relation'].')';
-				$row[] = $r['a_emergency_num'];
-				if($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
-                    $row[] = $r['aa_cell']. " (" . ($r['aa_cell_group']+1) . ")";
-                else
-                    $row[] = $r['aa_cell'];
-        $row[] = $r['aa_seat'];
-				// $row[] = $group;
-                $row[] = $r['a_conf_no'];
-				$row[] = '['.$teacher_m[$g][$r['aa_group']]['t_code'].']';
-				$rows[] = $row;
-				$total++;
-			}
-		$out .= $title.'<br /><div class="title-info">Gender: '.(($g=='M')?'MALE':'FEMALE').'  | Total: '.$total.'</div><br>';
-		$out .= $t_info[$g].theme('table',array('header' => $header, 'rows' => $rows, 'attributes' => $attributes) );
-		$out .= '<div id="footer">&nbsp;</div>';
+		if (empty($data[$g]))
+			continue;
+		$total = count($data[$g]);
+		$brk = $first_block ? '' : ' ml-break';
+		$first_block = false;
+
+		$out .= '<div class="ml-block'.$brk.'"><div class="ml-scroll"><table class="table-manager-list"><colgroup>';
+		foreach ($cols as $c)
+			$out .= '<col class="'.$c[1].'">';
+		$out .= '</colgroup><thead>';
+		$out .= '<tr><th class="ml-groupinfo" colspan="'.$ncol.'">'
+			.(($g=='M')?'Male':'Female').'<span class="sep">|</span><span class="cnt">'.$total.' total</span></th></tr>';
+		if (!empty($t_info[$g]))
+			$out .= '<tr><th class="ml-groupinfo" colspan="'.$ncol.'" style="padding-top:0;font-weight:normal">'.$t_info[$g].'</th></tr>';
+		$out .= '<tr>';
+		foreach ($cols as $c)
+			$out .= '<th class="'.$c[1].'">'.check_plain($c[0]).'</th>';
+		$out .= '</tr></thead><tbody>';
+
+		$i = 1;
+		foreach ($data[$g] as $r)
+		{
+			$name = check_plain(dh_day0_name($r));
+			if ($r['a_type'] == 'Sevak')
+				$name .= ' <b>(Sevak)</b>';
+
+			$en = trim($r['a_emergency_name']);
+			$er = trim($r['a_emergency_relation']);
+			// Relation words (Son/Wife/Brother...) are always safe to title-case.
+			$ename = ($en !== '') ? check_plain(dh_day0_case($en)).($er !== '' ? ' ('.check_plain(mb_convert_case($er, MB_CASE_TITLE, 'UTF-8')).')' : '') : '';
+
+			if ($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
+				$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_group']+1).')');
+			else
+				$cellno = check_plain($r['aa_cell']);
+
+			$code = isset($teacher_m[$g][$r['aa_group']]['t_code']) ? trim($teacher_m[$g][$r['aa_group']]['t_code']) : '';
+
+			$cell = array(
+				'sn'      => $i++,
+				'student' => $name,
+				'age'     => check_plain($r['Age']),
+				'room'    => check_plain(trim($r['aa_section'].'-'.$r['aa_acco'], '-')),
+				'ename'   => $ename,
+				'enum'    => check_plain($r['a_emergency_num']),
+				'cell'    => $cellno,
+				'seat'    => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="ml-br" title="Backrest">BR</span>' : ''),
+				'conf'    => check_plain($r['a_conf_no']),
+				'set'     => $code !== '' ? check_plain($code) : '',
+			);
+
+			$out .= '<tr>';
+			foreach ($cols as $key => $c)
+				$out .= '<td class="'.$c[1].'">'.(isset($cell[$key]) ? $cell[$key] : '').'</td>';
+			$out .= '</tr>';
+		}
+		$out .= '</tbody></table></div></div>';
 	}
 
-	if ($pdf <> '')
+	if ($is_pdf)
+	{
 		create_pdf_from_html($out, $pdf);
-	else
-	{
-		print $out;
-		exit;
+		return;
 	}
+	print $out;
+	exit;
 }
 
 /**
