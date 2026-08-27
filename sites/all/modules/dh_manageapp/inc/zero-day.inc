@@ -2824,20 +2824,45 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 }
 
 
+/* One #|Name|Room|Cell group for the cell list. $idx is the position in the
+   sorted batch; $keys are its cell numbers. Blank cells for an empty slot. */
+function dh_cell_list_pair($cd, $keys, $idx)
+{
+	if (!isset($keys[$idx]))
+		return '<td class="cl-idx"></td><td class="cl-name"></td><td class="cl-room"></td><td class="cl-cell"></td>';
+	$k = $keys[$idx];
+	return '<td class="cl-idx">'.($idx + 1).'</td>'
+		.'<td class="cl-name">'.check_plain($cd[$k]['name']).'</td>'
+		.'<td class="cl-room">'.check_plain($cd[$k]['room']).'</td>'
+		.'<td class="cl-cell">'.check_plain($cd[$k]['cell'])
+			.(!empty($cd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="Fixed cell - kept when the list is regenerated">&#9679;</span>' : '')
+			.'</td>';
+}
+
 function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 {
 	global $base_url;
 	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
+	// Sort order within each batch: 'name' (default) or 'cell' (natural cell order).
+	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'cell') ? 'cell' : 'name';
+	// Layout: 1 column (default, full names) or 2 columns (denser).
+	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_cell, aa_cell_fixed, IFNULL(aa_cell_group,0) as 'aa_cell_group' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, aa_cell, aa_cell_fixed, IFNULL(aa_cell_group,0) as 'aa_cell_group' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
+	$has_fixed = false;
 	while($r = $result->fetchAssoc())
 	{
+		if ($r['aa_cell_fixed']) $has_fixed = true;
 		$name = $r['Full Name'];
 		if ($debug) $name .= ' ('.$r['Age'].')';
-		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']][$r['aa_cell']] = $name;
+		$room = $r['aa_section'].'-'.$r['aa_acco'];
+		if ($room === '-') $room = '';
+		// Key by the unique applicant id, NOT aa_cell: several students can share a
+		// cell value (or have a blank cell), which would collapse them to one entry.
+		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
 		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]) )
 		{
 			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
@@ -2853,51 +2878,95 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	$out = '<html><head>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
 	$out .= '</head><body>';
-	$title = '<div class="header-day0"><div align="center" class="title"><b>Cell List</b></div>'.
+	// Screen-only document title (in print, each table's repeating <thead> carries
+	// the title onto every page - see the batch loop below).
+	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>Cell List</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
-	$out .= $title;
+	$sort_base = 'cell-list/'.$centre.'/'.$course;
+	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
+	$keep_sort = ($sort == 'cell') ? array('sort' => 'cell') : array(); // preserve sort choice on column links
+	$out .= '<div class="cl-sort no-print">Sort by: '.
+		($sort=='name' ? '<b>Name</b>' : l('Name', $sort_base, array('query'=>array('sort'=>'name') + $keep_cols))).
+		' &middot; '.
+		($sort=='cell' ? '<b>Cell</b>' : l('Cell', $sort_base, array('query'=>array('sort'=>'cell') + $keep_cols))).
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
+		($cols==1 ? '<b>1</b>' : l('1', $sort_base, array('query'=>$keep_sort))).
+		' &middot; '.
+		($cols==2 ? '<b>2</b>' : l('2', $sort_base, array('query'=>array('cols'=>2) + $keep_sort))).
+		'</div>';
+	if ($has_fixed)
+		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the cell is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';
+	// Outer table: its <thead> is the document title, which browsers reprint at the
+	// top of every page (the reliable running-header technique). All the batches go
+	// in its single body cell.
+	$out .= '<table class="cl-doc"><thead><tr><td class="cl-doc-cell">'.
+		'<div class="cl-dt-main">Cell List</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
+		'</td></tr></thead><tbody><tr><td class="cl-doc-body">';
 	$out .= '<div class="main-div">';
-	$c = 0;
+	$first = true;
 	foreach( $gender as $g )
 	{
 		for($i=1; $i>=0 ; $i--)
 		{
+			if (empty($data[$g][$i]))
+				continue;
+			$num_batches = count($data[$g][$i]);   // only label "Batch N" when there is more than one
+			$cat_first = true;                     // first batch of this category starts a new page
 			foreach( $data[$g][$i] as $cell_group => $cell_data )
 			{
 				//$out .= '<div class="title-info">'.$g.' Batch '.$cell_group.'</div>';
 				if ( ! $debug )
-					asort($cell_data);
-				$keys = array_keys($cell_data);
-				$loop = floor(count($cell_data)/($ROWS_PER_PAGE*2));
-				if ( (count($cell_data)%($ROWS_PER_PAGE*2)) > 0 )
-					$loop++;
-				for($t=0; $t< $loop ; $t++ )
 				{
-					$c = 0;
-					$out .= '<div class="title-info">'.($i?'Old':'new').' '.($g=='M'?'Male':'Female').' Batch '.($cell_group+1).
-					' ('.$age_range[$g][$i][$cell_group]['lower'].' - '.$age_range[$g][$i][$cell_group]['upper'].')</div>';
-					$out .= '<table cellspacing="0" class="table-cell-list">';
-					$out .= '<tr><th>Name</th><th>Cell</th><th>&nbsp;</th><th>Name</th><th>Cell</th></tr>';
+					if ($sort == 'cell')
+						uasort($cell_data, function($a, $b){ return strnatcasecmp($a['cell'], $b['cell']); });  // natural cell order
+					else
+						uasort($cell_data, function($a, $b){ return strcasecmp($a['name'], $b['name']); });      // by name
+				}
+				$keys = array_keys($cell_data);
+				$n = count($keys);
+				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($num_batches > 1 ? ' Batch '.($cell_group+1) : '').
+					' ('.$age_range[$g][$i][$cell_group]['lower'].'&ndash;'.$age_range[$g][$i][$cell_group]['upper'].' yrs)';
+				if ($cols == 2) { $rows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
+				else            { $rows = $n;                 $colspan = 4; }  // one entry per row
+				{
+					// Each batch starts on its own page; the table's <thead> (doc title +
+					// batch title + column header) repeats on every page it spans.
+					// Page break before the first batch of each category; batches within a
+					// category flow together (they just must not split across pages - see CSS).
+					$out .= '<div class="cl-batch'.((!$first && $cat_first) ? ' cl-break' : '').'">';
+					$first = false; $cat_first = false;
+					$out .= '<table cellspacing="0" class="table-cell-list'.($cols==2 ? ' cl-2col' : '').'">';
+					if ($cols == 2)
+						$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
+					else
+						$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
+					$out .= '<thead>';
+					$out .= '<tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$batch_label.'</th></tr>';
+					if ($cols == 2)
+						$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th></tr>';
+					else
+						$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th></tr>';
+					$out .= '</thead><tbody>';
 
-					for($a=0; $a<$ROWS_PER_PAGE; $a++ )
+					for($a=0; $a<$rows; $a++ )
 					{
-						$c1 = $a + ($t * $ROWS_PER_PAGE * 2);
-						$c2 = $a + ($t * $ROWS_PER_PAGE * 2) + $ROWS_PER_PAGE;
-						$out .= '<tr>';
-						$out .= '<td>'.(isset($keys[$c1])?$cell_data[$keys[$c1]]:'').'</td><td align="center"><b>'.(isset($keys[$c1])?$keys[$c1]:'').'</b></td><td>&nbsp;&nbsp;</td>';
-						$out .= '<td>'.(isset($keys[$c2])?$cell_data[$keys[$c2]]:'').'</td><td align="center"><b>'.(isset($keys[$c2])?$keys[$c2]:'').'</b></td>';
-						$out .= '</tr>';
-						$c++;				
+						if ($cols == 2)
+							// Row-major: left = 2a, right = 2a+1, so the running number stays
+							// sequential down the rows and does not break when a batch spans pages.
+							$out .= '<tr>'.dh_cell_list_pair($cell_data, $keys, 2 * $a).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($cell_data, $keys, 2 * $a + 1).'</tr>';
+						else
+							$out .= '<tr>'.dh_cell_list_pair($cell_data, $keys, $a).'</tr>';
 					}
-					if ($t <= ($loop - 1))
-						$out .= '</table><div class="footer"></div><br>'.$title;
+					$out .= '</tbody></table>';
+					$out .= '</div>';
 				}
 			}
 
 		}
 	}
-	$out .= '</table>';
-	$out .= '</div></html>';
+	$out .= '</div>';                              // .main-div
+	$out .= '</td></tr></tbody></table>';          // .cl-doc outer running-header table
+	$out .= '</html>';
 
 	if ($pdf <> '')
 		create_pdf_from_html($out, $pdf);
@@ -3043,7 +3112,9 @@ function generate_cell_list($centre, $course)
 		$keys = array_keys($cell_alloc['Old'][$g]);
 		foreach($data[$g]['old'] as $r)
 		{
-			if ( $count >= $batch_size[$g] )
+			// Only roll into a new batch when cells exist; batch_size 0 (no cells for
+			// this group) would otherwise start a fresh batch on every student.
+			if ( $batch_size[$g] > 0 && $count >= $batch_size[$g] )
 			{
 				$batch++; $count= 0;
 			}
@@ -3070,7 +3141,9 @@ function generate_cell_list($centre, $course)
 		$keys = array_keys($cell_alloc['New'][$g]);
 		foreach($data[$g]['new'] as $r)
 		{
-			if ( $count >= $batch_size[$g] )
+			// Only roll into a new batch when cells exist; batch_size 0 (no cells for
+			// this group) would otherwise start a fresh batch on every student.
+			if ( $batch_size[$g] > 0 && $count >= $batch_size[$g] )
 			{
 				$batch++; $count= 0;
 			}
@@ -3080,10 +3153,6 @@ function generate_cell_list($centre, $course)
 				continue;
 			}			
 			$cells[$batch][$g][$cell_alloc['New'][$g][$keys[$count]]] = $r['Full Name']." - ".$r['a_old'];
-			if ( $cell_alloc['New'][$g][$keys[$count]] == '' )
-			{
-				print "Count - $count - ".$r['Full Name']."<br>";
-			}
 			db_update('dh_applicant_attended')->fields(array('aa_cell_group' => $batch, 'aa_cell' => $cell_alloc['New'][$g][$keys[$count]] ))->condition('aa_id', $r['aa_id'])->execute();
 			$count++;
 		}

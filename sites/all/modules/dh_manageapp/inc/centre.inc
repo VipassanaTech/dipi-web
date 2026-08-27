@@ -280,10 +280,34 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 
 
 	$group = 'Cell Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
-	$form[$group]['cs_cells_config'] = array('#title' => 'Cells Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
-		'#default_value' => $add?"[MALE]\nCells = \nReserved = \n\n[FEMALE]\nCells = \nReserved = \n":$edit_data['cs_cells_config'], '#required' => 1,
-		'#description' => 'Keywords: Reserverd, Cells, Old, New. If "Cells" is defined then cells will fill up available space, If "Old" or "New" is defined then cells will be blocked as per allocation' );
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false,
+		'#description' => 'Tell us which meditation cells your centre has - the technical configuration is built for you.');
+	// Pre-fill the friendly fields by parsing any existing config (edit mode).
+	$cini = (!$add && !empty($edit_data['cs_cells_config'])) ? parse_ini_string($edit_data['cs_cells_config'], true, INI_SCANNER_RAW) : array();
+	if (!is_array($cini)) $cini = array();
+	$range_help = 'Separate cell numbers with commas, and use a hyphen for a range. Example: 1-40, 55, 60-65 (letters are fine too, e.g. A1-A20, B1-B10).';
+	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+	{
+		$v_cells = isset($cini[$sec]['Cells'])    ? $cini[$sec]['Cells']    : '';
+		$v_res   = isset($cini[$sec]['Reserved']) ? $cini[$sec]['Reserved'] : '';
+		$v_old   = isset($cini[$sec]['Old'])      ? $cini[$sec]['Old']      : '';
+		$v_new   = isset($cini[$sec]['New'])      ? $cini[$sec]['New']      : '';
+		$sep     = ($v_old !== '' || $v_new !== '');   // separate old/new pools were used
+		$sub = 'cell_'.$gk;
+		$form[$group][$sub] = array('#type' => 'fieldset', '#title' => ($gk == 'male' ? 'Male' : 'Female'));
+		$form[$group][$sub]['cellcfg_'.$gk.'_cells'] = array('#type' => 'textfield', '#title' => 'Which cells are available?',
+			'#description' => $range_help, '#default_value' => $v_cells,
+			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => FALSE))));
+		$form[$group][$sub]['cellcfg_'.$gk.'_reserved'] = array('#type' => 'textfield', '#title' => 'Any cells to keep aside?',
+			'#description' => 'Held back, never auto-assigned. '.$range_help.' Leave blank if none.', '#default_value' => $v_res);
+		$form[$group][$sub]['cellcfg_'.$gk.'_sep'] = array('#type' => 'checkbox', '#title' => 'Use separate cells for old & new students', '#default_value' => $sep);
+		$form[$group][$sub]['cellcfg_'.$gk.'_old'] = array('#type' => 'textfield', '#title' => 'Cells for OLD students',
+			'#description' => $range_help, '#default_value' => $v_old,
+			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => TRUE))));
+		$form[$group][$sub]['cellcfg_'.$gk.'_new'] = array('#type' => 'textfield', '#title' => 'Cells for NEW students',
+			'#description' => $range_help, '#default_value' => $v_new,
+			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => TRUE))));
+	}
 
 
 	if ($add)
@@ -419,8 +443,13 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	if (arg(1) <> 'add')
 		$centre_id = arg(1);
 
+	// Build the Cells Configuration INI from the friendly per-gender fields. The
+	// cellcfg_* fields are not cs_* columns; the assembled string is stored in
+	// cs_cells_config (picked up by the loop below).
+	$form_state['input']['cs_cells_config'] = _dh_ma_cellcfg_ini($form_state['input']);
+
 	$centre = array(); $centre_setting = array();
-	foreach ($form_state['input'] as $key => $value) 
+	foreach ($form_state['input'] as $key => $value)
 	{
 		if ( substr($key,0,2) == 'c_')
 			$centre[$key] = $value;
@@ -455,6 +484,46 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		copy_letters_to_centre($centre_id);		
 	}
 	drupal_goto("centre/$centre_id");
+}
+
+/* Assemble the Cells Configuration INI from the friendly per-gender fields. When
+   "separate old/new" is ticked, write Old/New pools; otherwise a combined Cells
+   pool. Reserved is always written. */
+function _dh_ma_cellcfg_ini($input)
+{
+	$get = function($k) use ($input) { return isset($input[$k]) ? trim($input[$k]) : ''; };
+	$out = '';
+	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+	{
+		$out .= "[$sec]\n";
+		if (!empty($input['cellcfg_'.$gk.'_sep']))
+		{
+			$out .= "Old = ".$get('cellcfg_'.$gk.'_old')."\n";
+			$out .= "New = ".$get('cellcfg_'.$gk.'_new')."\n";
+		}
+		else
+			$out .= "Cells = ".$get('cellcfg_'.$gk.'_cells')."\n";
+		$out .= "Reserved = ".$get('cellcfg_'.$gk.'_reserved')."\n\n";
+	}
+	return rtrim($out)."\n";
+}
+
+/* Validate the Cell Settings: each gender needs cells defined (combined, or old
+   and/or new when the separate option is on). */
+function dh_ma_centre_form_validate($form, &$form_state)
+{
+	$in = $form_state['input'];
+	foreach (array('male' => 'Male', 'female' => 'Female') as $gk => $lbl)
+	{
+		if (!empty($in['cellcfg_'.$gk.'_sep']))
+		{
+			if (trim(isset($in['cellcfg_'.$gk.'_old']) ? $in['cellcfg_'.$gk.'_old'] : '') === ''
+			 && trim(isset($in['cellcfg_'.$gk.'_new']) ? $in['cellcfg_'.$gk.'_new'] : '') === '')
+				form_set_error('cellcfg_'.$gk.'_old', "$lbl cell settings: enter the cells for old and/or new students.");
+		}
+		else if (trim(isset($in['cellcfg_'.$gk.'_cells']) ? $in['cellcfg_'.$gk.'_cells'] : '') === '')
+			form_set_error('cellcfg_'.$gk.'_cells', "$lbl cell settings: enter which cells are available.");
+	}
 }
 
 

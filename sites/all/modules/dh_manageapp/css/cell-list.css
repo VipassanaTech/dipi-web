@@ -1,92 +1,211 @@
-table.table-cell-list {
-	width: 650px;
-	table-layout:fixed;
-	border: 1px solid;
+/* Cell List — clean, print-first (black & white) roster of dormitory-cell
+   allocations, sized to fill A4. Two #|Name|Room|Cell pairs per row; each
+   old/new x gender group starts on its own page (>= 4 pages). Big font. */
+
+body, table, td, th, div {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #222;
 }
 
-.multi-column{
-		-webkit-column-count: 2; /* Chrome, Safari, Opera */
-		-moz-column-count: 2; /* Firefox */
-		column-count: 2;
+.main-div {
+	width: 700px;
+	margin: 0 auto;
 }
 
+/* ---- Page title ---- */
 .header-day0 {
-	width: 650px;
+	width: 700px;
+	margin: 0 auto 6px;
 }
-
-table.table-cell-list tr th:nth-child(1) { width: 39%; }
-table.table-cell-list tr th:nth-child(2) { width: 9%; }
-table.table-cell-list tr th:nth-child(3) { width: 2%; }
-table.table-cell-list tr th:nth-child(4) { width: 39%; }
-table.table-cell-list tr th:nth-child(5) { width: 9%; }
-
-table.table-cell-list th {
-    font-weight: bold;
-    font-size: 10pt;
-    text-transform: uppercase;
-    color: black;
-    font-style: normal;
-    font-family: Verdana, Arial;
-    font-variant: normal;
-    text-decoration: none;
-    border: 1px solid;
-    border-style: solid;    
-    padding: 6px;
-}
-
-table.table-cell-list td {
-    font-weight: normal;
-    font-size: 10pt;
-    text-transform: uppercase;
-    color: black;
-    font-style: normal;
-    font-family: Verdana, Arial;
-    text-decoration: none;
-    border: 1px solid;
-    border-style: solid;
-    padding: 6px;
-}
-
-
 .title {
-	font-weight: bold;
-	font-size: 8pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	text-decoration: underline;
-	margin-bottom: 5px;
-}
-
-.title-head {
-	font-weight: bold;
-	font-size: 8pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	font-variant: normal;
-	text-decoration: none;
-}
-
-.title-info {
 	text-align: center;
-	width: 650px;
 	font-weight: bold;
-	font-size: 8pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	font-variant: normal;
-	text-decoration: underline;
-	margin-top: 10px;
-	margin-bottom: 10px;
+	font-size: 22px;
+	letter-spacing: 0.3px;
+	text-decoration: none;
+	margin-bottom: 1px;
+}
+.title-head {
+	text-align: center;
+	font-size: 15px;
+	color: #555;
+	font-weight: normal;
+	text-decoration: none;
+	margin-bottom: 2px;
 }
 
+/* ---- Outer running-header table (doc title repeats on every printed page) ---- */
+table.cl-doc {
+	width: 700px;
+	margin: 0 auto;
+	border-collapse: collapse;
+}
+table.cl-doc > thead { display: none; }              /* screen: the top title shows instead */
+td.cl-doc-cell { text-align: center; padding: 0 0 6px; }
+td.cl-doc-body { padding: 0; }
 
+/* ---- Batch ---- */
+.cl-batch {
+	margin-bottom: 18px;
+	page-break-inside: avoid;   /* keep a batch whole on one page when it fits */
+}
+.title-info {
+	width: 700px;
+	box-sizing: border-box;
+	margin: 14px auto 6px;
+	font-weight: bold;
+	font-size: 17px;
+	color: #222;
+	text-transform: none;
+	text-decoration: none;
+	border-bottom: 2px solid #333;
+	padding: 0 2px 5px;
+	page-break-after: avoid;   /* keep the batch header with its table */
+}
 
-.footer {
-	page-break-after: always;
+/* Each old/new x gender group starts on a fresh page. */
+.cl-pagebreak {
+	page-break-before: always;
+}
+
+/* ---- Roster table ---- */
+table.table-cell-list {
+	width: 700px;
+	margin: 0 auto;
+	table-layout: fixed;
+	border-collapse: collapse;
+}
+table.table-cell-list th {
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 0.6px;
+	text-transform: uppercase;
+	color: #777;
+	text-align: left;
+	padding: 4px 8px 6px;
+	border-bottom: 1.5px solid #333;
+}
+table.table-cell-list td {
+	font-size: 18px;
+	color: #222;
+	padding: 9px 8px;
+	border-bottom: 1px solid #dcdcdc;
+	white-space: nowrap;   /* nothing wraps to a second line */
+}
+thead { display: table-header-group; }   /* repeat the whole header (title + batch + columns) on every page */
+tr    { page-break-inside: avoid; }      /* never split a row across a page */
+
+/* Each batch starts on its own page. */
+.cl-break { page-break-before: always; }
+
+/* The doc-title thead row is print-only (on screen the single top title suffices);
+   in print it repeats via the <thead> onto every page. */
+.cl-doc-row { display: none; }
+
+/* Title rows inside the repeating <thead>. Selectors are specific enough to beat
+   the base `table.table-cell-list th` rule (else they'd inherit its uppercase/grey). */
+table.table-cell-list th.cl-doc-title {
+	text-transform: none;
+	letter-spacing: 0;
+	color: #222;
+	border-bottom: none;
+	padding: 2px 0 2px;
+}
+.cl-dt-main { font-size: 20px; font-weight: bold; color: #222; text-align: center; }
+.cl-dt-sub  { font-size: 13px; font-weight: normal; color: #555; text-align: center; margin-bottom: 4px; }
+table.table-cell-list th.cl-batch-title {
+	text-transform: none;
+	letter-spacing: 0;
+	color: #222;
+	font-size: 16px;
+	font-weight: bold;
+	text-align: left;
+	border-bottom: 2px solid #333;
+	padding: 6px 2px 5px;
+}
+
+/* Index column: small, muted, right-aligned running number. */
+.cl-idx {
+	color: #999;
+	font-size: 14px;
+	text-align: right;
+	padding-right: 4px;
+}
+th.cl-idx { color: #aaa; }
+/* Name = label; room = short secondary code (muted, centered); cell = key (bold, centered). */
+.cl-name {
+	/* Only the name trims (with an ellipsis) when it does not fit; room/cell never do. */
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.cl-room {
+	text-align: center;
+	color: #666;
+	font-size: 16px;
+	/* Never trim the room code - show it in full (the name column trims instead).
+	   Tight side padding gives the code the most room before it could ever spill. */
+	padding-left: 2px;
+	padding-right: 2px;
+	overflow: visible;
+	text-overflow: clip;
+}
+.cl-cell {
+	font-weight: bold;
+	text-align: center;
+}
+/* Screen-only marker for a manually fixed cell (from Zero Day) - easy to spot,
+   never printed. */
+.cl-fixed {
+	color: #d32f2f;
+	font-size: 12px;
+	margin-left: 5px;
+	vertical-align: 1px;
+}
+/* Screen-only note explaining the red fixed-cell dot. */
+.cl-fixed-note {
+	width: 700px;
+	margin: 0 auto 12px;
+	font-size: 12px;
+	color: #555;
+}
+.cl-fixed-note .cl-fixed { margin: 0 3px 0 0; }
+/* Thin gap column between the two #|Name|Room|Cell groups: no rules. */
+.cl-gap {
+	border: none !important;
+}
+
+/* Column widths via <colgroup> (reliable with table-layout:fixed + colspan title
+   rows in the thead): # Name Room Cell (single column, full-width name). */
+col.c-idx  { width: 6%; }
+col.c-name { width: 64%; }
+col.c-room { width: 18%; }
+col.c-cell { width: 12%; }
+
+/* Two-column layout: [# Name Room Cell] gap [# Name Room Cell] - denser, names
+   trim to fit; a slightly smaller font packs more per page. */
+col.c2-idx  { width: 4%; }
+col.c2-name { width: 25%; }
+col.c2-room { width: 11%; }
+col.c2-cell { width: 7%; }
+col.c2-gap  { width: 6%; }
+table.cl-2col td { font-size: 15px; padding: 6px 6px; }
+table.cl-2col .cl-room { font-size: 14px; }
+
+/* Screen-only "Sort by" toggle. */
+.cl-sort {
+	width: 700px;
+	margin: 2px auto 10px;
+	text-align: right;
+	font-size: 12px;
+	color: #666;
+}
+.cl-sort a { color: #06c; text-decoration: none; }
+.cl-sort a:hover { text-decoration: underline; }
+.cl-sort b { color: #222; }
+
+@media print {
+	@page { size: A4 portrait; margin: 10mm; }
+	html, body { margin: 0 !important; }
+	.no-print { display: none !important; }
+	table.cl-doc > thead { display: table-header-group; }   /* running doc title, every page */
 }
