@@ -1494,6 +1494,14 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
       }
     });
 
+    /* Room|cell (.s-acco) keeps the normal font when it fits; only a long
+       combination (e.g. FF-6A [home] TAMIL) shrinks just enough to stay on one
+       line, instead of wrapping to a second line and breaking the cell height. */
+    $(".sortable-m .s-acco, .sortable-f .s-acco").each(function(){
+      var el = this, fs = 14;
+      while (el.scrollWidth > el.clientWidth && fs > 9) { fs -= 0.5; el.style.fontSize = fs + "px"; }
+    });
+
     $(document).on("click", ".add-row", function(){
 		var $div = $(this).closest(".main-div, .chowky-div");
 		var $fg = $div.find("ul[class*=sortable]").first();
@@ -2454,6 +2462,12 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		    }
 		    break;
 		  }
+		});
+
+		/* Room|cell (.s-acco): full font when it fits, shrink long ones to one line. */
+		$(".sortable-m .s-acco, .sortable-f .s-acco").each(function(){
+		  var el = this, fs = 14;
+		  while (el.scrollWidth > el.clientWidth && fs > 9) { fs -= 0.5; el.style.fontSize = fs + "px"; }
 		});
 
 		$(document).on("click", ".add-row", function(){

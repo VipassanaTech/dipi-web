@@ -213,9 +213,15 @@ ul {
 	width: 85px;
 	text-align: right;
 	padding-right: 4px;
-	/* Room and dormitory-cell now share this one line as "room | cell" (the old
-	   separate cell line is gone). Secondary info: normal weight + muted grey so
-	   the seat number and name carry the visual weight (screen + print). */
+	/* Room and dormitory-cell share this one line as "room | cell". Keep it on a
+	   SINGLE line: a long room+cell (e.g. FF-6A [home] TAMIL) must never wrap - a
+	   second line makes the cell taller than its fixed 76px box and spills into
+	   the next cell, breaking the grid. It stays right-aligned, so a slightly
+	   long value extends left into the gap before the seat number rather than
+	   dropping to a new line. Font size is unchanged. */
+	white-space: nowrap;
+	/* Secondary info: normal weight + muted grey so the seat number and name
+	   carry the visual weight (screen + print). */
 	font-weight: normal;
 	color: #555;
 }
