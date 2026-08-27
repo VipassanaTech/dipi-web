@@ -285,6 +285,15 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	// Pre-fill the friendly fields by parsing any existing config (edit mode).
 	$cini = (!$add && !empty($edit_data['cs_cells_config'])) ? parse_ini_string($edit_data['cs_cells_config'], true, INI_SCANNER_RAW) : array();
 	if (!is_array($cini)) $cini = array();
+	// Some centres have no meditation cells at all. When unticked, the cell
+	// configuration below is hidden and its validation is skipped.
+	$has_cells = $add ? 1 : (isset($edit_data['cs_has_cells']) ? $edit_data['cs_has_cells'] : 1);
+	$form[$group]['cs_has_cells'] = array('#type' => 'checkbox', '#title' => 'This centre has meditation cells',
+		'#default_value' => $has_cells, '#weight' => -10,
+		'#description' => 'Untick if this centre has no meditation cells - the cell configuration below is then not needed.',
+		// The theme floats this form-item, so the Male fieldset wraps up beside it.
+		// Clear the float so the cell fieldsets sit on their own rows below.
+		'#suffix' => '<div style="clear:both"></div>');
 	$range_help = 'Separate cell numbers with commas, and use a hyphen for a range. Example: 1-40, 55, 60-65 (letters are fine too, e.g. A1-A20, B1-B10).';
 	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
 	{
@@ -294,7 +303,8 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		$v_new   = isset($cini[$sec]['New'])      ? $cini[$sec]['New']      : '';
 		$sep     = ($v_old !== '' || $v_new !== '');   // separate old/new pools were used
 		$sub = 'cell_'.$gk;
-		$form[$group][$sub] = array('#type' => 'fieldset', '#title' => ($gk == 'male' ? 'Male' : 'Female'));
+		$form[$group][$sub] = array('#type' => 'fieldset', '#title' => ($gk == 'male' ? 'Male' : 'Female'),
+			'#states' => array('visible' => array(':input[name="cs_has_cells"]' => array('checked' => TRUE))));
 		$form[$group][$sub]['cellcfg_'.$gk.'_cells'] = array('#type' => 'textfield', '#title' => 'Which cells are available?',
 			'#description' => $range_help, '#default_value' => $v_cells,
 			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => FALSE))));
@@ -443,10 +453,13 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	if (arg(1) <> 'add')
 		$centre_id = arg(1);
 
-	// Build the Cells Configuration INI from the friendly per-gender fields. The
-	// cellcfg_* fields are not cs_* columns; the assembled string is stored in
-	// cs_cells_config (picked up by the loop below).
-	$form_state['input']['cs_cells_config'] = _dh_ma_cellcfg_ini($form_state['input']);
+	// Normalise the "has cells" checkbox to 0/1 (an unticked checkbox is absent
+	// from the POST) so it always persists. Only build the Cells Configuration
+	// INI when the centre actually has cells; otherwise store an empty config.
+	$form_state['input']['cs_has_cells'] = empty($form_state['input']['cs_has_cells']) ? 0 : 1;
+	$form_state['input']['cs_cells_config'] = $form_state['input']['cs_has_cells']
+		? _dh_ma_cellcfg_ini($form_state['input'])   // cellcfg_* fields -> cs_cells_config (loop below)
+		: '';
 
 	$centre = array(); $centre_setting = array();
 	foreach ($form_state['input'] as $key => $value)
@@ -513,6 +526,8 @@ function _dh_ma_cellcfg_ini($input)
 function dh_ma_centre_form_validate($form, &$form_state)
 {
 	$in = $form_state['input'];
+	if (empty($in['cs_has_cells']))   // centre has no cells: nothing to validate
+		return;
 	foreach (array('male' => 'Male', 'female' => 'Female') as $gk => $lbl)
 	{
 		if (!empty($in['cellcfg_'.$gk.'_sep']))
