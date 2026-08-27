@@ -204,7 +204,10 @@ table.cl-2col .cl-room { font-size: 14px; }
 .cl-sort b { color: #222; }
 
 @media print {
-	@page { size: A4 portrait; margin: 10mm; }
+	/* Only set margins - do NOT force `size`/orientation, or the browser greys
+	   out the portrait/landscape and scaling controls in the print dialog. The
+	   operator picks orientation and scale (portrait suits this narrow list). */
+	@page { margin: 10mm; }
 	html, body { margin: 0 !important; }
 	.no-print { display: none !important; }
 	table.cl-doc > thead { display: table-header-group; }   /* running doc title, every page */
