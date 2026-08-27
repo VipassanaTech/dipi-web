@@ -1,106 +1,156 @@
-table.table-day0-list {
-	width: 1100px;
-	table-layout:fixed;
+/* Zero Day List - arrival-day student roster (/day0-list/{centre}/{course}).
+   Screen-first and wide; readable mixed case; prints whatever fits. Column
+   hide/show is driven by body.hide-* classes (self-contained JS, no jQuery). */
+
+body, .header-day0, .day0-toolbar,
+table.table-day0-list td, table.table-day0-list th {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #222;
 }
 
-.header-day0 {
-	width: 1100px;
-}
-
-table.table-day0-list tr th:nth-child(1) { width: 30px; }
-table.table-day0-list tr th:nth-child(2) { width: 65px; }
-table.table-day0-list tr th:nth-child(3) { width: 200px; }
-table.table-day0-list tr th:nth-child(4) { width: 30px; }
-table.table-day0-list tr th:nth-child(5) { width: 85px; }
-table.table-day0-list tr th:nth-child(6) { width: 35px; }
-table.table-day0-list tr th:nth-child(7) { width: 75px; }
-table.table-day0-list tr th:nth-child(8) { width: 100px; }
-table.table-day0-list tr th:nth-child(9) { width: 210px; }
-table.table-day0-list tr th:nth-child(10) { width: 100px; }
-table.table-day0-list tr th:nth-child(11) { width: 25px; }
-table.table-day0-list tr th:nth-child(12) { width: 25px; }
-table.table-day0-list tr th:nth-child(13) { width: 25px; }
-table.table-day0-list tr th:nth-child(14) { width: 25px; }
-table.table-day0-list tr th:nth-child(15) { width: 25px; }
-table.table-day0-list tr th:nth-child(16) { width: 25px; }
-table.table-day0-list tr th:nth-child(17) { width: 100px; }
-
-table.table-day0-list th {
+/* ---- Page title ---- */
+.header-day0 { margin: 0 0 4px; }
+.header-day0 .title {
+	text-align: center;
 	font-weight: bold;
-	font-size: 11pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	font-variant: normal;
+	font-size: 20px;
 	text-decoration: none;
-	text-align: left;
-	word-wrap:break-word;
-	vertical-align: top;
+	margin-bottom: 1px;
 }
-
-table.table-day0-list td {
+.header-day0 .title-head {
+	text-align: center;
+	font-size: 13px;
+	color: #555;
 	font-weight: normal;
-	font-size: 11pt;
-	text-transform: uppercase;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
 	text-decoration: none;
-	border-width: 1px;
-	border-bottom-style: dashed;
-	border-color: gray;
-	background-color: white;
-	padding: 6px;
-	word-wrap:break-word;
+}
+
+/* ---- Screen-only toolbar: sort toggle + column hide/show ---- */
+.day0-toolbar {
+	margin: 10px 0 16px;
+	font-size: 13px;
+	color: #666;
+	display: flex;
+	gap: 26px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.day0-toolbar .grp b { color: #222; }
+.day0-toolbar a { color: #06c; text-decoration: none; }
+.day0-toolbar a:hover { text-decoration: underline; }
+.day0-toolbar a.active { color: #222; font-weight: bold; text-decoration: none; cursor: default; }
+.day0-toolbar .col-toggle {
+	font-size: 12px;
+	padding: 3px 11px;
+	margin-left: 6px;
+	border: 1px solid #bcc4c8;
+	border-radius: 14px;
+	background: #eef4ff;
+	color: #1565c0;
+	cursor: pointer;
+}
+.day0-toolbar .col-toggle.off {
+	background: #fff;
+	color: #9aa0a6;
+	text-decoration: line-through;
+}
+
+/* ---- Block (one gender x type) ---- */
+.day0-block { margin: 0 0 24px; }
+.day0-scroll { overflow-x: auto; }
+
+/* ---- Table ---- */
+table.table-day0-list {
+	/* Width is left to the fixed-layout algorithm so it sums the <col> widths.
+	   Hiding a column (col width:0 + cells display:none) then shrinks the table
+	   and the freed space is truly reclaimed - an explicit table width would
+	   instead leave the zeroed column as a blank gap. */
+	width: auto;
+	table-layout: fixed;
+	border-collapse: collapse;
+	margin: 0 0 4px;
+}
+table.table-day0-list thead { display: table-header-group; }   /* block info + column head repeat on print */
+table.table-day0-list tr { page-break-inside: avoid; }
+
+/* Block-info row (Gender / Type / Total), inside the thead so it repeats. */
+table.table-day0-list th.day0-blockinfo {
 	text-align: left;
+	font-size: 15px;
+	font-weight: bold;
+	text-transform: none;
+	letter-spacing: 0;
+	color: #222;
+	border-bottom: none;
+	padding: 12px 4px 5px;
+}
+th.day0-blockinfo .sep { color: #bbb; font-weight: normal; margin: 0 8px; }
+th.day0-blockinfo .cnt { color: #555; font-weight: normal; }
+
+/* Column headers. */
+table.table-day0-list th {
+	font-size: 11px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	color: #777;
+	text-align: left;
+	padding: 5px 6px;
+	border-bottom: 2px solid #333;
+	vertical-align: bottom;
+	word-wrap: break-word;
+}
+table.table-day0-list td {
+	font-size: 13px;
+	color: #222;
+	padding: 7px 6px;
+	border-bottom: 1px solid #e4e4e4;
 	vertical-align: top;
+	word-wrap: break-word;
+	overflow-wrap: anywhere;
 }
 
+/* Per-column look. */
+.c-sr      { color: #999; text-align: right; }
+.c-conf    { font-weight: bold; }
+.c-courses { text-align: right; }
+.c-age     { text-align: right; }
+.c-contact .ph { white-space: nowrap; }
+.c-contact .em { color: #555; font-size: 12px; word-break: break-all; }
+.c-comments { color: #555; }
 
-.title {
-	font-weight: bold;
-	font-size: 13pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	text-decoration: underline;
-	margin-bottom: 5px;
-}
+/* Column widths (fixed layout). Sum matches the table width above. */
+col.c-sr       { width: 34px; }
+col.c-conf     { width: 58px; }
+col.c-student  { width: 190px; }
+col.c-courses  { width: 46px; }
+col.c-edu      { width: 122px; }
+col.c-age      { width: 36px; }
+col.c-city     { width: 126px; }
+col.c-occ      { width: 142px; }
+col.c-contact  { width: 230px; }
+col.c-comments { width: 140px; }
 
-.title-head {
-	font-weight: bold;
-	font-size: 11pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	font-variant: normal;
-	text-decoration: none;
-}
+/* LC variant column widths. */
+col.l-sr{width:30px} col.l-conf{width:56px} col.l-student{width:170px} col.l-courses{width:40px}
+col.l-city{width:90px} col.l-age{width:36px} col.l-langs{width:130px} col.l-health{width:150px}
+col.l-special{width:150px} col.l-10d{width:34px} col.l-stp{width:34px} col.l-tsc{width:34px}
+col.l-20d{width:34px} col.l-30d{width:34px} col.l-45d{width:34px} col.l-60d{width:34px} col.l-contact{width:120px}
 
-.title-info {
-	font-weight: bold;
-	font-size: 13pt;
-	text-transform: capitalize;
-	color: black;
-	font-style: normal;
-	font-family: Verdana, Arial;
-	font-variant: normal;
-	text-decoration: underline;
-}
+/* Column hide/show: JS toggles a body class; the matching column collapses. */
+body.hide-occ      th.c-occ,      body.hide-occ      td.c-occ      { display: none; }
+body.hide-occ      col.c-occ      { width: 0; }
+body.hide-contact  th.c-contact,  body.hide-contact  td.c-contact  { display: none; }
+body.hide-contact  col.c-contact  { width: 0; }
+body.hide-comments th.c-comments, body.hide-comments td.c-comments { display: none; }
+body.hide-comments col.c-comments { width: 0; }
 
-
-
-#footer {
-	page-break-after: always;
-}
-
-@media print
-{
-    .no-print, .no-print *
-    {
-        display: none !important;
-    }
+@media print {
+	/* Only set margins - do NOT force `size`/orientation, or the browser greys
+	   out the portrait/landscape choice in the print dialog. The operator picks
+	   orientation (landscape suits this wide table). */
+	@page { margin: 8mm; }
+	html, body { margin: 0 !important; }
+	.no-print, .no-print * { display: none !important; }
+	.day0-scroll { overflow-x: visible; }
 }

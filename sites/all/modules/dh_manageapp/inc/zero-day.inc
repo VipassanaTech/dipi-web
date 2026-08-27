@@ -2686,141 +2686,251 @@ function dh_update_seating($centre, $course)
 
 
 
+/* Title-case a value only when it is stored fully upper-case (fixes shouty
+   entries like "RETIRED POWER ENGINEER") while leaving already mixed-case and
+   acronym-heavy values (M.Sc, BCOM) untouched. Blank/junk stay blank. */
+function dh_day0_case($s)
+{
+	$s = trim($s);
+	if ($s === '')
+		return '';
+	if (mb_strtoupper($s, 'UTF-8') === $s)
+		return mb_convert_case($s, MB_CASE_TITLE, 'UTF-8');
+	return $s;
+}
+
+/* Full name from parts (avoids the NULL-concat gap when a middle name is null);
+   collapses the double space left by a missing middle name. */
+function dh_day0_name($r)
+{
+	$name = trim($r['a_f_name'].' '.$r['a_m_name'].' '.$r['a_l_name']);
+	$name = preg_replace('/\s+/', ' ', $name);
+	return dh_day0_case($name);
+}
+
+/* Occupation (designation), dropping placeholder designations like None/NA/00. */
+function dh_day0_occupation($r)
+{
+	$occ = dh_day0_case($r['a_occupation']);
+	$des = trim($r['a_designation']);
+	$junk = array('', 'none', 'na', 'n/a', 'nil', '-', '--', '.', '()', '00', '0');
+	$is_junk = in_array(strtolower(trim($des, ' ()')), $junk);
+	// Skip a designation that just repeats the occupation.
+	$dup = strtolower($des) === strtolower(trim($r['a_occupation']));
+	if ($des !== '' && !$is_junk && !$dup)
+	{
+		$des = dh_day0_case($des);
+		return $occ !== '' ? $occ.' ('.$des.')' : $des;
+	}
+	return $occ;
+}
+
 function dh_zero_day_list($centre, $course, $pdf = '')
 {
 	global $base_url;
+	$is_pdf = ($pdf <> '');
+
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/day0-list.css");</style>';
-    $zero_day_list_conf = $base_url."/day0-list/$centre/$course?conf=1";
-    $out .= '<button type="button" class="no-print remove-column">Click to remove ContactDetails column</button>';
-    $out .= ' <a class="no-print" href="'.$zero_day_list_conf.'/">Click to Generate Zero-Day-List in order of confirmation number.</a>';
 
 	$temp = db_query("select c_name,td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
 	$course_name = $temp['c_name'];
 	$c_type = strtolower($temp['td_val3']);
+	$is_lc = ($c_type == 'lc');
 
-    $orderby = " order by a_type desc, a_gender, a_old DESC, a_f_name, a_l_name, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
-    if (isset($_REQUEST['conf']) && ($_REQUEST['conf'] == 1))
-        $orderby = " order by LEFT(a_conf_no, 2), CAST(SUBSTRING(a_conf_no, 3) AS UNSIGNED)";
+	$by_conf = (isset($_REQUEST['conf']) && ($_REQUEST['conf'] == 1));
+	$orderby = " order by a_type desc, a_gender, a_old DESC, a_f_name, a_l_name, IFNULL(ac_teacher,0) desc, IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	if ($by_conf)
+		$orderby = " order by LEFT(a_conf_no, 2), CAST(SUBSTRING(a_conf_no, 3) AS UNSIGNED)";
 
-	$q = "select a_id, a_gender, a_type, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no , a_mob_country, a_phone_mobile, a_email,a_learn_about_vip, a_willing_to_serve, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_designation, a_education, a_lang_1, a_lang_2, a_langs, a_lang_discourse, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, ae_pregnant, ae_pregnant_detail, co.c_name as 'Country', a_source from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected', 'ReConfirmation', 'Attended') $orderby";
-	$result = db_query($q); 
+	$q = "select a_id, a_gender, a_type, a_old, a_f_name, a_m_name, a_l_name, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_city_str, a_conf_no , a_mob_country, a_phone_mobile, a_email,a_learn_about_vip, a_willing_to_serve, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, a_occupation, a_designation, a_education, a_lang_1, a_lang_2, a_langs, a_lang_discourse, ci.c_name as 'City', al_special_req_details, al_at_year, ae_desc_physical, ae_desc_mental, ae_pregnant, ae_pregnant_detail, co.c_name as 'Country', a_source from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_applicant_lc on a_id=al_applicant left join dh_city ci on a_city=ci.c_id left join dh_country co on (a_country=co.c_code) where a_course='$course' and a_status in ('Confirmed', 'Expected', 'ReConfirmation', 'Attended') $orderby";
+	$result = db_query($q);
 	$data['M']['old'] = $data['M']['new'] = $data['F']['old'] = $data['F']['new'] = array();
 	while($r = $result->fetchAssoc())
-	{
 		$data[strtoupper($r['a_gender'])][$r['a_old']?'old':'new'][] = $r;
-	}
 
-	$header = array('Sr.', 'ConfNo', 'Student', 'Courses', 'Education', 'Age', 'City', 'Occupation', 'ContactDetails' , 'Recom. By / Comments');
-    $contact_col = 8;
-	if ($c_type == 'lc')
-    {
-		$header = array('Sr', 'ConfNo', 'Student', 'Courses', 'City/Country', 'Age' , 'Languages', 'Health Problems', 'Special Requirement', '10d', 'STP', 'TSC', '20d', '30d', '45d', '60d', 'Contact' );
-        $contact_col = 16;
-    }
-	$attributes = array('class' => array('table-day0-list') );
-	$title = '<div class="header-day0"><div align="center" class="title"><b>Day 0 List</b></div>'.
-			'<div align="center" class="title-head">'.$course_name.'</div></div>';
+	// Column spec: key => [label, colgroup-class]. Toggleable columns are named
+	// in $toggle. One spec for a normal course, one for a long course.
+	if (!$is_lc)
+	{
+		$cols = array(
+			'sr'       => array('Sr', 'c-sr'),
+			'conf'     => array('Conf No', 'c-conf'),
+			'student'  => array('Student', 'c-student'),
+			'courses'  => array('Crs', 'c-courses'),
+			'edu'      => array('Education', 'c-edu'),
+			'age'      => array('Age', 'c-age'),
+			'city'     => array('City', 'c-city'),
+			'occ'      => array('Occupation', 'c-occ'),
+			'contact'  => array('Contact Details', 'c-contact'),
+			'comments' => array('Recom. / Comments', 'c-comments'),
+		);
+		$toggle = array('occ' => 'Occupation', 'contact' => 'Contact', 'comments' => 'Comments');
+	}
+	else
+	{
+		$cols = array(
+			'sr'      => array('Sr', 'l-sr'),
+			'conf'    => array('Conf No', 'l-conf'),
+			'student' => array('Student', 'l-student'),
+			'courses' => array('Crs', 'l-courses'),
+			'city'    => array('City / Country', 'l-city'),
+			'age'     => array('Age', 'l-age'),
+			'langs'   => array('Languages', 'l-langs'),
+			'health'  => array('Health Problems', 'l-health'),
+			'special' => array('Special Requirement', 'l-special'),
+			'10d'     => array('10d', 'l-10d'),
+			'stp'     => array('STP', 'l-stp'),
+			'tsc'     => array('TSC', 'l-tsc'),
+			'20d'     => array('20d', 'l-20d'),
+			'30d'     => array('30d', 'l-30d'),
+			'45d'     => array('45d', 'l-45d'),
+			'60d'     => array('60d', 'l-60d'),
+			'contact' => array('Contact', 'l-contact'),
+		);
+		$toggle = array('health' => 'Health', 'special' => 'Special Req', 'contact' => 'Contact');
+	}
+	$ncol = count($cols);
+
+	$title = '<div class="header-day0"><div class="title">Day 0 List</div>'.
+			'<div class="title-head">'.check_plain($course_name).'</div></div>';
+	$out .= $title;
+
+	// Screen-only toolbar: sort toggle + column hide/show (skipped for PDF).
+	if (!$is_pdf)
+	{
+		$base = $base_url."/day0-list/$centre/$course";
+		$out .= '<div class="day0-toolbar no-print">';
+		$out .= '<span class="grp"><b>Sort:</b> '
+			.'<a class="'.($by_conf?'':'active').'" href="'.$base.'">Name</a> &middot; '
+			.'<a class="'.($by_conf?'active':'').'" href="'.$base.'?conf=1">Confirmation no.</a></span>';
+		$out .= '<span class="grp"><b>Columns:</b>';
+		foreach ($toggle as $key => $lbl)
+			$out .= ' <button type="button" class="col-toggle" data-toggle-col="'.$key.'">'.check_plain($lbl).'</button>';
+		$out .= '</span>';
+		$out .= '</div>';
+	}
 
 	$gender = array('M', 'F');
 	$type = array('old', 'new');
-	$i = 1;
 
 	foreach($gender as $g)
 	{
-		foreach ($type as $t) 
+		foreach ($type as $t)
 		{
-			unset($rows); $total =0 ; $i=1;
-			$i = 1;
-			foreach ($data[$g][$t] as $r) 
-			{
-				unset($row);
-				$row[] = $i++;
-				$row[] = $r['a_conf_no'];
-				if ($r['ac_teacher'])
-					$row[] = $r['Full Name']." (AT-".$r['al_at_year'].")";
-				elseif ($r['a_type'] == 'Sevak')
-			    	$row[] = $r['Full Name']." (Sevak)";
-				else 
-					$row[] = $r['Full Name'];
-					$row[] = $r['ac_10d']+$r['ac_stp']+$r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
-				if ($c_type <> 'lc')
-				{
-					$row[] = $r['a_education'];
-					$row[] = $r['Age'];
-					if ( $r['City'] <> '')
-						$row[] = $r['City'];
-					else
-						$row[] = $r['a_city_str'];					
+			$total = count($data[$g][$t]);
+			if ($total == 0)
+				continue;
 
-					$row[] = "{$r['a_occupation']} ({$r['a_designation']})";
-					$row[] = 'M: '.'('.$r['a_mob_country'].') '.$r['a_phone_mobile'].' Email:'.$r['a_email'];
-					$row[] = $r['a_learn_about_vip'].($r['a_willing_to_serve']?'Can Serve':'').($r['a_lang_discourse']?'<br>'.$r['a_lang_discourse']:'').($r['ae_pregnant']?'<br>'."Pregnant (Month: {$r['ae_pregnant_detail']})":'');
+			$out .= '<div class="day0-block"><div class="day0-scroll"><table class="table-day0-list"><colgroup>';
+			foreach ($cols as $c)
+				$out .= '<col class="'.$c[1].'">';
+			$out .= '</colgroup><thead>';
+			// Block-info row (repeats on print), then the column-header row.
+			$out .= '<tr><th class="day0-blockinfo" colspan="'.$ncol.'">'
+				.(($g=='M')?'Male':'Female').'<span class="sep">|</span>'.ucfirst($t).' students'
+				.'<span class="sep">|</span><span class="cnt">'.$total.' total</span></th></tr>';
+			$out .= '<tr>';
+			foreach ($cols as $c)
+				$out .= '<th class="'.$c[1].'">'.check_plain($c[0]).'</th>';
+			$out .= '</tr></thead><tbody>';
+
+			$i = 1;
+			foreach ($data[$g][$t] as $r)
+			{
+				$cell = array();
+				$cell['sr'] = $i++;
+				$cell['conf'] = check_plain($r['a_conf_no']);
+
+				$name = check_plain(dh_day0_name($r));
+				if ($r['ac_teacher'])
+					$name .= ' <span style="color:#888">(AT-'.check_plain($r['al_at_year']).')</span>';
+				elseif ($r['a_type'] == 'Sevak')
+					$name .= ' <span style="color:#888">(Sevak)</span>';
+				$cell['student'] = $name;
+
+				$cell['courses'] = $r['ac_10d']+$r['ac_stp']+$r['ac_spl']+$r['ac_20d']+$r['ac_30d']+$r['ac_45d']+$r['ac_60d']+$r['ac_tsc'];
+
+				$city = ($r['City'] <> '') ? $r['City'] : $r['a_city_str'];
+
+				if (!$is_lc)
+				{
+					$cell['edu'] = check_plain(trim($r['a_education']));
+					$cell['age'] = check_plain($r['Age']);
+					$cell['city'] = check_plain(dh_day0_case($city));
+					$cell['occ'] = check_plain(dh_day0_occupation($r));
+
+					$cc = trim($r['a_mob_country']);
+					$ph = trim($r['a_phone_mobile']);
+					$em = trim($r['a_email']);
+					$contact = '';
+					if ($ph !== '')
+						$contact .= '<div class="ph">M: '.($cc!==''?'('.check_plain($cc).') ':'').check_plain($ph).'</div>';
+					if ($em !== '')
+						$contact .= '<div class="em">'.check_plain(strtolower($em)).'</div>';
+					$cell['contact'] = $contact;
+
+					$comments = check_plain(trim($r['a_learn_about_vip']));
+					if ($r['a_willing_to_serve'])
+						$comments .= ($comments!==''?' ':'').'<em>Can serve</em>';
+					if ($r['a_lang_discourse'])
+						$comments .= '<div>'.check_plain($r['a_lang_discourse']).'</div>';
+					if ($r['ae_pregnant'])
+						$comments .= '<div>Pregnant (month: '.check_plain($r['ae_pregnant_detail']).')</div>';
+					$cell['comments'] = $comments;
 				}
 				else
 				{
-					if ( strtoupper($r['Country']) == 'INDIA') 
-					{
-						if ($r['City'] <> '')
-							$row[] = $r['City'];
-						else
-							$row[] = $r['a_city_str'];
-					}
+					if (strtoupper($r['Country']) == 'INDIA')
+						$cell['city'] = check_plain(dh_day0_case($city));
 					else
-						$row[] = $r['Country'];					
-					$row[] = $r['Age'];
+						$cell['city'] = check_plain(dh_day0_case($r['Country']));
+					$cell['age'] = check_plain($r['Age']);
 
-                    if($r['a_source'] == 'ExtApp')
-                        $row[] = $r['a_lang_discourse'];
-                    else
-                        $row[] = $r['a_lang_discourse'].', '.$r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'];
-
-					$row[] = $r['ae_desc_physical'].' '.$r['ae_desc_mental'];
-					$row[] = $r['al_special_req_details'];
-					$row[] = $r['ac_10d'];
-					$row[] = $r['ac_stp'];
-					$row[] = $r['ac_tsc'];
-					$row[] = $r['ac_20d'];
-					$row[] = $r['ac_30d'];
-					$row[] = $r['ac_45d'];
-					$row[] = $r['ac_60d'];
-                    $row[] = 'M: '.'('.$r['a_mob_country'].') '.$r['a_phone_mobile'];
-
-
+					if ($r['a_source'] == 'ExtApp')
+						$langs = $r['a_lang_discourse'];
+					else
+						$langs = trim($r['a_lang_discourse'].', '.$r['a_lang_1'].', '.$r['a_lang_2'].', '.$r['a_langs'], ', ');
+					$cell['langs'] = check_plain($langs);
+					$cell['health'] = check_plain(trim($r['ae_desc_physical'].' '.$r['ae_desc_mental']));
+					$cell['special'] = check_plain($r['al_special_req_details']);
+					$cell['10d'] = check_plain($r['ac_10d']);
+					$cell['stp'] = check_plain($r['ac_stp']);
+					$cell['tsc'] = check_plain($r['ac_tsc']);
+					$cell['20d'] = check_plain($r['ac_20d']);
+					$cell['30d'] = check_plain($r['ac_30d']);
+					$cell['45d'] = check_plain($r['ac_45d']);
+					$cell['60d'] = check_plain($r['ac_60d']);
+					$cc = trim($r['a_mob_country']);
+					$ph = trim($r['a_phone_mobile']);
+					$cell['contact'] = $ph!=='' ? '<div class="ph">M: '.($cc!==''?'('.check_plain($cc).') ':'').check_plain($ph).'</div>' : '';
 				}
-				$rows[] = $row;
-				$total++;
-			}
-			if ($total > 0 )
-			{
-				$out .= $title.'<br /><div class="title-info">Gender: '.(($g=='M')?'MALE':'FEMALE').' | Type: '.strtoupper($t).' | Total: '.$total.'</div><br>';
-				$out .= theme('table',array('header' => $header, 'rows' => $rows, 'attributes' => $attributes) );
-				$out .= '<div id="footer">&nbsp;</div>';				
-			}
 
+				$out .= '<tr>';
+				foreach ($cols as $key => $c)
+					$out .= '<td class="'.$c[1].'">'.(isset($cell[$key]) ? $cell[$key] : '').'</td>';
+				$out .= '</tr>';
+			}
+			$out .= '</tbody></table></div></div>';
 		}
 	}
 
-	if ($pdf <> '')
-		create_pdf_from_html($out, $pdf);
-	else
+	if ($is_pdf)
 	{
-    $out .= '
-        <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-        <script>
-        (function ($) {
-        $(document).ready(function(){
+		create_pdf_from_html($out, $pdf);
+		return;
+	}
 
-         $(document).on("click", ".remove-column", function(){
-            $("table tr").find("td:eq('.$contact_col.'),th:eq('.$contact_col.')").remove();
-        });
-
-        });
-        })(jQuery);
-        </script>
-    ';
-		print $out;
-		exit;
-	}	
+	// Self-contained column hide/show (no jQuery): toggle a body class.
+	$out .= '<script>
+document.addEventListener("click", function(e){
+	var b = e.target.closest ? e.target.closest("[data-toggle-col]") : null;
+	if (!b) return;
+	document.body.classList.toggle("hide-" + b.getAttribute("data-toggle-col"));
+	b.classList.toggle("off");
+});
+</script>';
+	print $out;
+	exit;
 }
 
 
