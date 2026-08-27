@@ -2705,7 +2705,9 @@ function dh_day0_name($r)
 {
 	$name = trim($r['a_f_name'].' '.$r['a_m_name'].' '.$r['a_l_name']);
 	$name = preg_replace('/\s+/', ' ', $name);
-	return dh_day0_case($name);
+	// Title-case every word so mixed/shouty parts normalise (e.g. "Aagam KUSHAIL
+	// Jain" -> "Aagam Kushail Jain", "Akash surendra ..." -> "Akash Surendra ...").
+	return mb_convert_case($name, MB_CASE_TITLE, 'UTF-8');
 }
 
 /* Sentence-case a free-text value that is stored fully upper-case (long health /
