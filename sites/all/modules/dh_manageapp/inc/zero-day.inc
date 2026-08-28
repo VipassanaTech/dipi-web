@@ -878,6 +878,10 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
 	global $base_url;
 	$is_pdf = ($pdf <> '');
+	// Screen only: start the Cell column hidden when the centre is marked as having
+	// no meditation cells (cs_has_cells explicitly 0). Operators can toggle it back.
+	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
+	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
@@ -917,7 +921,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		'langs'    => array('Languages', 'tl-langs'),
 		'comments' => array('Comments', 'tl-comments'),
 	);
-	$toggle = array('langs' => 'Languages', 'comments' => 'Comments');
+	$toggle = array('cell' => 'Cell', 'langs' => 'Languages', 'comments' => 'Comments');
 	$ncol = count($cols);
 
 	$out .= '<div class="header-teacher"><div class="title">Teacher List</div>'.
@@ -928,6 +932,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	{
 		$base = $base_url."/teacher-list/$centre/$course";
 		$out .= '<div class="tl-toolbar no-print">';
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Order:</b> '
 			.'<a class="'.($seating?'':'active').'" href="'.$base.'">Seniority</a> &middot; '
 			.'<a class="'.($seating?'active':'').'" href="'.$base.'?seating=1">Seating plan</a></span>';
@@ -1075,6 +1081,8 @@ document.addEventListener("click", function(e){
 	}
 });
 </script>';
+	if ($hide_cell)
+		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
 	print $out;
 	exit;
 }
@@ -1084,6 +1092,10 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 {
 	global $base_url;
 	$is_pdf = ($pdf <> '');
+	// Screen only: start the Cell column hidden when the centre has no meditation
+	// cells (cs_has_cells explicitly 0). Operators can toggle it back on.
+	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
+	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
 	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
@@ -1125,10 +1137,23 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		'conf'    => array('Conf No', 'ml-conf'),
 		'set'     => array('Set', 'ml-set'),
 	);
+	$toggle = array('cell' => 'Cell');   // hide-able columns (screen only)
 	$ncol = count($cols);
 
 	$out .= '<div class="header-manager"><div class="title">Manager List</div>'.
 		'<div class="title-head">'.check_plain($course_name).'</div></div>';
+
+	// Screen-only toolbar: column hide/show (e.g. Cell, for centres without cells).
+	if (!$is_pdf)
+	{
+		$out .= '<div class="ml-toolbar no-print">';
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
+		$out .= '<span class="grp"><b>Columns:</b>';
+		foreach ($toggle as $key => $lbl)
+			$out .= ' <button type="button" class="col-toggle" data-toggle-col="'.$key.'">'.check_plain($lbl).'</button>';
+		$out .= '</span></div>';
+	}
 
 	$first_block = true;
 	foreach (array('M', 'F') as $g)
@@ -1148,8 +1173,13 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		if (!empty($t_info[$g]))
 			$out .= '<tr><th class="ml-groupinfo" colspan="'.$ncol.'" style="padding-top:0;font-weight:normal">'.$t_info[$g].'</th></tr>';
 		$out .= '<tr>';
-		foreach ($cols as $c)
-			$out .= '<th class="'.$c[1].'">'.check_plain($c[0]).'</th>';
+		foreach ($cols as $key => $c)
+		{
+			$lbl = check_plain($c[0]);
+			if (isset($toggle[$key]))
+				$lbl = '<span class="mlc">'.$lbl.'</span>';
+			$out .= '<th class="'.$c[1].'">'.$lbl.'</th>';
+		}
 		$out .= '</tr></thead><tbody>';
 
 		$i = 1;
@@ -1186,7 +1216,12 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 
 			$out .= '<tr>';
 			foreach ($cols as $key => $c)
-				$out .= '<td class="'.$c[1].'">'.(isset($cell[$key]) ? $cell[$key] : '').'</td>';
+			{
+				$v = isset($cell[$key]) ? $cell[$key] : '';
+				if (isset($toggle[$key]))
+					$v = '<span class="mlc">'.$v.'</span>';
+				$out .= '<td class="'.$c[1].'">'.$v.'</td>';
+			}
 			$out .= '</tr>';
 		}
 		$out .= '</tbody></table></div></div>';
@@ -1197,6 +1232,26 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		create_pdf_from_html($out, $pdf);
 		return;
 	}
+
+	// Self-contained column hide/show (no jQuery): collapse the <col> width and
+	// hide the cell-content wrapper so no width or row-height is reserved.
+	$out .= '<script>
+document.addEventListener("click", function(e){
+	var b = e.target.closest ? e.target.closest("[data-toggle-col]") : null;
+	if (!b) return;
+	var hide = b.classList.toggle("off");
+	var els = document.querySelectorAll(".ml-" + b.getAttribute("data-toggle-col"));
+	for (var i = 0; i < els.length; i++) {
+		var el = els[i];
+		if (el.tagName === "COL") { el.style.width = hide ? "0" : ""; continue; }
+		el.style.paddingLeft = el.style.paddingRight = hide ? "0" : "";
+		var w = el.querySelector(".mlc");
+		if (w) w.style.display = hide ? "none" : "";
+	}
+});
+</script>';
+	if ($hide_cell)
+		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
 	print $out;
 	exit;
 }
@@ -2839,6 +2894,8 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	{
 		$base = $base_url."/day0-list/$centre/$course";
 		$out .= '<div class="day0-toolbar no-print">';
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Sort:</b> '
 			.'<a class="'.($by_conf?'':'active').'" href="'.$base.'">Name</a> &middot; '
 			.'<a class="'.($by_conf?'active':'').'" href="'.$base.'?conf=1">Confirmation no.</a></span>';

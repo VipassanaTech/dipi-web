@@ -16,6 +16,20 @@ body, .header-manager, table.table-manager-list td, table.table-manager-list th 
 	text-align: center; font-size: 13px; color: #555; font-weight: normal; text-decoration: none;
 }
 
+/* ---- Screen-only column hide/show toolbar ---- */
+.ml-toolbar {
+	margin: 10px 0 16px; font-size: 13px; color: #666;
+	display: flex; gap: 26px; align-items: center; flex-wrap: wrap;
+}
+.ml-toolbar .grp b { color: #222; }
+.ml-toolbar a { color: #06c; text-decoration: none; }
+.ml-toolbar a:hover { text-decoration: underline; }
+.ml-toolbar .col-toggle {
+	font-size: 12px; padding: 3px 11px; margin-left: 6px;
+	border: 1px solid #bcc4c8; border-radius: 14px; background: #eef4ff; color: #1565c0; cursor: pointer;
+}
+.ml-toolbar .col-toggle.off { background: #fff; color: #9aa0a6; text-decoration: line-through; }
+
 /* ---- Block (one gender) ---- */
 .ml-block { margin: 0 0 22px; }
 .ml-scroll { overflow-x: auto; }
