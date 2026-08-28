@@ -1067,6 +1067,11 @@ function dh_referral_results()
 	
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
+	// Optional deep-link: /referral/{c}?ref=N (or /center-referral/{c}?ref=N) shows
+	// just that one referral - used by the "Referral-List" flag in search results.
+	$ref_filter = (isset($_REQUEST['ref']) && ctype_digit((string) $_REQUEST['ref'])) ? (int) $_REQUEST['ref'] : 0;
+	$ref_clause = $ref_filter ? " and r_id=$ref_filter" : "";
+
 
 	$q = "select r_special, r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
 		r_course_center, r_course_type, r_course_start,
@@ -1081,7 +1086,7 @@ function dh_referral_results()
     left join dh_city ci on (s_city=ci.c_id)
     where  (a.s_id=r_student) and
     (r_deleted = 0) and
-    r_center={$center_id}
+    r_center={$center_id} {$ref_clause}
     group by a.s_id
     order by r.r_created";
 

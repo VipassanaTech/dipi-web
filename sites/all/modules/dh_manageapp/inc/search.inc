@@ -372,7 +372,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$rs['pregnant'] .= '&nbsp;( '.$r['ae_pregnant_detail'].' months )';
 
 		$temp = "";
-		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>&nbsp;|&nbsp;':"").($r['a_monk']?'<div class="ochre">Monk</div>&nbsp;|&nbsp;':"").($r['a_referral']?'<div class="red">Referral-List</div>':"");
+		$rs['eocd'] = $r['a_education']." / ".$r['a_occupation']." / ".$r['a_designation']." / ".$r['a_company'].'<div class="amcha-small">'.$rs['course'].'</div><br>'.($rs['physical']?'<div class="blue">Phy</div>&nbsp;|&nbsp;':"").($rs['mental']?'<div class="red">Mental</div>&nbsp;|&nbsp;':"").($rs['addiction']?'<div class="green">Intox</div>&nbsp;|&nbsp;':"").($rs['othertechnique']?'<div class="purple">Oth-Med</div>&nbsp;|&nbsp;':"").($r['ae_pregnant']?'<div class="pink">Preg</div>&nbsp;|&nbsp;':"").($r['a_alist']?'<div class="black">A-List</div>&nbsp;|&nbsp;':"").($r['a_monk']?'<div class="ochre">Monk</div>&nbsp;|&nbsp;':"");
 
 
 		$rs['course_teen'] = $r['ac_teen']?$r['ac_teen']:"0";
@@ -439,6 +439,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
         from dh_referral r left join dh_teacher t on r.r_teacher=t.t_id where r_id=".$r['a_referral'];
 
 			$r_ref = db_query($q)->fetchAssoc();
+
+			// "Referral-List" flag: shown only while the referral is still valid
+			// (today <= r_end), independent of course-level match. Links to the
+			// matching referral list (center or AT), pre-filtered to this referral.
+			if (empty($r_ref['r_end']) || date_create() <= date_create($r_ref['r_end']))
+			{
+				$ref_path = $r_ref['r_center'] ? 'center-referral/'.$r_ref['r_center'] : 'referral/'.$centre;
+				$rs['eocd'] .= '<div class="red">'.l('Referral-List', $ref_path, array('query' => array('ref' => $r['a_referral']), 'attributes' => array('target' => '_blank', 'style' => 'color:inherit'))).'</div>';
+			}
 
       $show_referral = 0;
 
