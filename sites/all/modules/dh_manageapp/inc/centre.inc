@@ -259,24 +259,84 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'1':$edit_data['cs_chowky_per_row_female'], '#required' => 1,  );
 
 	*/
-	$seat_config_template = ";Male side\n[RIGHT]\nSeatsPerRow = 5\nSeatsPerRowChowky = 1\nSeatDirection = right\nChowkyPosition = right\nRow-2 = 6\nGROUP1-SeatsPerRow = 4\nGROUP1-ChowkyPosition = back\nGROUP2-SeatsPerRow = 5\n\n;Female side\n[LEFT]\nSeatsPerRow = 4\nSeatsPerRowChowky = 1\nSeatDirection = left\nChowkyPosition = left\nGROUP1-SeatsPerRow = 3\nGROUP2-SeatsPerRow = 2\n";
-	$seat_config_help =
-		'<p>Describes the hall as two sides: <b>[RIGHT]</b> = Male, <b>[LEFT]</b> = Female. Put these keys under each side (only SeatsPerRow is required):</p>'.
-		'<ul style="margin:4px 0 4px 18px;">'.
-		'<li><b>SeatsPerRow</b> &mdash; number of cushion seats in each row.</li>'.
-		'<li><b>SeatsPerRowChowky</b> &mdash; number of chowky (low seats) in each row.</li>'.
-		'<li><b>Row-&lt;n&gt;</b> &mdash; make one row a different width, e.g. <code>Row-2 = 8</code>. <b>ChowkyRow-&lt;n&gt;</b> does the same for chowky.</li>'.
-		'<li><b>SeatDirection</b> &mdash; <code>left</code> or <code>right</code>: which side these seats align to.</li>'.
-		'<li><b>ChowkyPosition</b> &mdash; <code>left</code>, <code>right</code> or <code>back</code>: chowky as a side column, or a full-width row at the back (behind the seats).</li>'.
-		'</ul>'.
-		'<p>SeatDirection and ChowkyPosition are optional; if omitted they use the natural side for that half of the hall.</p>'.
-		'<p><b>Different sizes per group</b> (Group-wise Seating Plan only): repeat any key with a <b>GROUP&lt;n&gt;-</b> prefix to change it for just that group &mdash; e.g. <code>GROUP1-SeatsPerRow = 4</code>, <code>GROUP1-Row-2 = 6</code>, <code>GROUP1-ChowkyPosition = back</code>. The main Seating Plan ignores every GROUP&lt;n&gt;- key.</p>'.
-		'<p><b>If a group has no GROUP&lt;n&gt;- key, it uses the plain [RIGHT]/[LEFT] hall settings.</b> So if you add no GROUP&lt;n&gt;- keys at all, every group is laid out with the same main hall settings; add them only for the groups that need a different layout.</p>'.
-		'<p>Lines starting with <code>;</code> are comments. Example:</p>'.
-		'<pre style="background:#f5f5f5;border:1px solid #ddd;padding:8px;">'.check_plain($seat_config_template).'</pre>';
-	$form[$group]['cs_seat_config'] = array('#title' => 'Seating Configuration', '#type' => 'textarea', '#weight' => 8,
-		'#default_value' => $add?"#Female\n[LEFT]\nSeatsPerRow = 4\nSeatsPerRowChowky = 1\n\n#Male\n[RIGHT]\nSeatsPerRow = 5\nSeatsPerRowChowky = 1\n":$edit_data['cs_seat_config'], '#required' => 1, '#rows'  => 16,
-		'#description' => $seat_config_help );
+	// Friendly Seating Layout editor -> assembled to the [RIGHT] (Male) / [LEFT]
+	// (Female) INI in cs_seat_config by _dh_ma_seatcfg_ini() on submit. Up to 20
+	// sections: Male/Female (Main Plan) - always present - plus Male/Female (Group
+	// 1..9), created on demand. Each section is one .dh-seatviz editor bound (via
+	// data-prefix) to its own seatcfg_* fields; seat-visual.js drives them all and
+	// handles creating/deleting the group sections.
+	$scfg = (!$add && !empty($edit_data['cs_seat_config'])) ? dh_parse_group_seat_config($edit_data['cs_seat_config']) : array();
+	if (!is_array($scfg)) $scfg = array();
+	$dir_opts = array('' => 'Default (natural side)', 'right' => 'Left to right', 'left' => 'Right to left');
+	$pos_opts = array('' => 'Default (natural side)', 'left' => 'Left', 'right' => 'Right', 'back' => 'Back (row behind the seats)');
+	$g = function($k, $arr) { if (is_array($arr)) foreach ($arr as $kk => $vv) if (strcasecmp($kk, $k) === 0) return $vv; return ''; };
+
+	$form[$group]['seatlayout'] = array('#type' => 'fieldset', '#title' => 'Seating Layout', '#weight' => 8);
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/seat-visual.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/seat-visual.js');
+
+	// Shared instructions + legend - the same for every section, so shown once here
+	// (above the sections) rather than repeated inside each editor. A short lead
+	// line then scannable bullets, so it does not read as one dense paragraph.
+	$seat_help = '<div class="dhv-help">'
+		. '<p class="dhv-help-lead">Male and Female (Main Plan) are always here. <b>Add a group plan</b> for any group that seats differently &ndash; groups without their own plan use the Main Plan. Each plan is collapsed: <b>click the green + on a heading to expand it</b> (red &minus; to collapse).</p>'
+		. '<ul>'
+		. '<li>Set each section with the <b>&minus;/+ steppers</b>; the diagram redraws live.</li>'
+		. '<li><b>Number of columns</b> is the width of the main block &ndash; students fill it row by row, so the rows shown are just a preview.</li>'
+		. '<li>The <b>front row (row 1) is at the bottom</b>, nearest the teacher &ndash; exactly as the plan prints.</li>'
+		. '<li>The <b>chowky grid</b> seats anyone marked chowky (low seat) or chair; they go there instead of the main grid. It appears in the plan only when at least one person is marked.</li>'
+		. '<li><b>Click any seat</b> (main or chowky) to leave it empty (a gap); click it again to restore.</li>'
+		. '<li>With <b>Chowky position = Back</b>, the chowky band spans the full width and its columns follow the main grid.</li>'
+		. '</ul>'
+		. '<div class="dhv-legend"><span class="dhv-sw"></span> chowky block (separate, low seats) &nbsp;&middot;&nbsp; '
+		. '<span class="dhv-sw dhv-se"></span> empty seat (click a seat to toggle) &nbsp;&middot;&nbsp; plain = cushion seat</div>'
+		. '</div>';
+	$form[$group]['seatlayout']['help'] = array('#markup' => $seat_help, '#weight' => -5);
+
+	// Builds one section: a collapsible fieldset with the visual editor container
+	// and the raw seatcfg_* fields it owns. $prefix e.g. "seatcfg_male_" (Main) or
+	// "seatcfg_male_g1_" (Group 1). All start collapsed.
+	$mk_section = function($title, $prefix, $nat, $c, $plan_kind, $gender, $gn, $label) use ($dir_opts, $pos_opts, $g) {
+		$data = 'data-prefix="'.$prefix.'" data-nat="'.$nat.'" data-plan="'.$plan_kind.'" data-gender="'.$gender.'" data-group="'.$gn.'" data-label="'.check_plain($label).'"';
+		$sec = array('#type' => 'fieldset', '#collapsible' => true, '#collapsed' => true, '#title' => $title,
+			'#attributes' => array('class' => array('dh-plan-section')));
+		$sec['visual'] = array('#markup' => '<div class="dh-seatviz no-print" '.$data.'></div>', '#weight' => -3);
+		$sec[$prefix.'spr']       = array('#type' => 'textfield', '#title' => 'Number of columns', '#size' => 6, '#default_value' => $g('SeatsPerRow', $c));
+		$sec[$prefix.'sprc']      = array('#type' => 'textfield', '#title' => 'Number of chowky columns', '#size' => 6, '#default_value' => $g('SeatsPerRowChowky', $c));
+		$sec[$prefix.'dir']       = array('#type' => 'select', '#title' => 'Seat direction', '#options' => $dir_opts, '#default_value' => strtolower(trim($g('SeatDirection', $c))));
+		$sec[$prefix.'pos']       = array('#type' => 'select', '#title' => 'Chowky position', '#options' => $pos_opts, '#default_value' => strtolower(trim($g('ChowkyPosition', $c))));
+		$sec[$prefix.'empty']     = array('#type' => 'textfield', '#title' => 'Empty seats', '#default_value' => $g('EmptySeats', $c),
+			'#description' => 'Row-col pairs (row 1 = front), e.g. 2-3, 4-1. Usually set by clicking seats above.');
+		$sec[$prefix.'empty_cho'] = array('#type' => 'textfield', '#title' => 'Empty chowky seats', '#default_value' => $g('EmptyChowky', $c),
+			'#description' => 'Row-col pairs, e.g. 1-2. Usually set by clicking chowky seats above.');
+		return $sec;
+	};
+
+	$note_main = ' <span class="dhv-sec-note">&mdash; also used by any group without its own plan</span>';
+	// Two mandatory Main Plan sections ([RIGHT] = Male, [LEFT] = Female).
+	$form[$group]['seatlayout']['sec_male_main'] = $mk_section('Male (Main Plan)'.$note_main, 'seatcfg_male_', 'right',
+		isset($scfg['RIGHT']['']) ? $scfg['RIGHT'][''] : array(), 'main', 'male', 0, 'Male (Main Plan)');
+	$form[$group]['seatlayout']['sec_male_main']['#weight'] = -4;
+	$form[$group]['seatlayout']['sec_female_main'] = $mk_section('Female (Main Plan)'.$note_main, 'seatcfg_female_', 'left',
+		isset($scfg['LEFT']['']) ? $scfg['LEFT'][''] : array(), 'main', 'female', 0, 'Female (Main Plan)');
+	$form[$group]['seatlayout']['sec_female_main']['#weight'] = -3;
+
+	// Add-a-group-plan control (built by seat-visual.js from the group sections below).
+	$form[$group]['seatlayout']['plan_add'] = array('#markup' => '<div id="dh-plan-add" class="no-print"></div>', '#weight' => -2);
+
+	// 18 group sections (Male/Female x Group 1..9). All are rendered; seat-visual.js
+	// hides the empty ones and lets the operator create/delete them (collapsed).
+	$gw = 0;
+	for ($n = 1; $n <= 9; $n++)
+		foreach (array('male' => array('RIGHT', 'right'), 'female' => array('LEFT', 'left')) as $gender => $meta)
+		{
+			list($sec_ini, $nat) = $meta;
+			$prefix = 'seatcfg_'.$gender.'_g'.$n.'_';
+			$gc = isset($scfg[$sec_ini][$n]) ? $scfg[$sec_ini][$n] : array();
+			$lbl = ($gender == 'male' ? 'Male' : 'Female').' (Group '.$n.')';
+			$form[$group]['seatlayout']['sec_'.$gender.'_g'.$n] = $mk_section($lbl, $prefix, $nat, $gc, 'group', $gender, $n, $lbl);
+			$form[$group]['seatlayout']['sec_'.$gender.'_g'.$n]['#weight'] = $gw++;
+		}
 
 
 	$group = 'Cell Settings';
@@ -461,6 +521,9 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		? _dh_ma_cellcfg_ini($form_state['input'])   // cellcfg_* fields -> cs_cells_config (loop below)
 		: '';
 
+	// Assemble the Seating Configuration INI from the friendly seatcfg_* fields.
+	$form_state['input']['cs_seat_config'] = _dh_ma_seatcfg_ini($form_state['input']);
+
 	$centre = array(); $centre_setting = array();
 	foreach ($form_state['input'] as $key => $value)
 	{
@@ -521,12 +584,65 @@ function _dh_ma_cellcfg_ini($input)
 	return rtrim($out)."\n";
 }
 
-/* Validate the Cell Settings: each gender needs cells defined (combined, or old
-   and/or new when the separate option is on). */
+/* Assemble the Seating Configuration INI ([RIGHT] = Male, [LEFT] = Female) from
+   the friendly seatcfg_* fields. A side is written only when it has a seats-per-
+   row value; per-group GROUP<n>- blocks are written for any group slot with data. */
+function _dh_ma_seatcfg_ini($input)
+{
+	$get = function($k) use ($input) { return isset($input[$k]) ? trim((string)$input[$k]) : ''; };
+	$out = '';
+	foreach (array('male' => 'RIGHT', 'female' => 'LEFT') as $gk => $sec)
+	{
+		$spr = $get('seatcfg_'.$gk.'_spr');
+		if ($spr === '') continue;   // this side is not defined
+		$out .= "[$sec]\n";
+		$out .= "SeatsPerRow = $spr\n";
+		if ($get('seatcfg_'.$gk.'_sprc') !== '') $out .= 'SeatsPerRowChowky = '.$get('seatcfg_'.$gk.'_sprc')."\n";
+		if ($get('seatcfg_'.$gk.'_dir') !== '')  $out .= 'SeatDirection = '.$get('seatcfg_'.$gk.'_dir')."\n";
+		if ($get('seatcfg_'.$gk.'_pos') !== '')  $out .= 'ChowkyPosition = '.$get('seatcfg_'.$gk.'_pos')."\n";
+		// Empty seats (row-col pairs). Stored as-is; the plan allocator will honour
+		// these in a later change - for now it is saved config only.
+		if ($get('seatcfg_'.$gk.'_empty') !== '') $out .= 'EmptySeats = '.$get('seatcfg_'.$gk.'_empty')."\n";
+		if ($get('seatcfg_'.$gk.'_empty_cho') !== '') $out .= 'EmptyChowky = '.$get('seatcfg_'.$gk.'_empty_cho')."\n";
+		for ($n = 1; $n <= 30; $n++)   // scan every rendered per-group slot
+		{
+			$gspr  = $get('seatcfg_'.$gk.'_g'.$n.'_spr');
+			$gsprc = $get('seatcfg_'.$gk.'_g'.$n.'_sprc');
+			$gdir  = $get('seatcfg_'.$gk.'_g'.$n.'_dir');
+			$gpos  = $get('seatcfg_'.$gk.'_g'.$n.'_pos');
+			$gempty     = $get('seatcfg_'.$gk.'_g'.$n.'_empty');
+			$gempty_cho = $get('seatcfg_'.$gk.'_g'.$n.'_empty_cho');
+			if ($gspr === '' && $gsprc === '' && $gdir === '' && $gpos === '') continue;
+			$p = 'GROUP'.$n.'-';
+			if ($gspr  !== '') $out .= $p.'SeatsPerRow = '.$gspr."\n";
+			if ($gsprc !== '') $out .= $p.'SeatsPerRowChowky = '.$gsprc."\n";
+			if ($gdir  !== '') $out .= $p.'SeatDirection = '.$gdir."\n";
+			if ($gpos  !== '') $out .= $p.'ChowkyPosition = '.$gpos."\n";
+			if ($gempty     !== '') $out .= $p.'EmptySeats = '.$gempty."\n";
+			if ($gempty_cho !== '') $out .= $p.'EmptyChowky = '.$gempty_cho."\n";
+		}
+		$out .= "\n";
+	}
+	return rtrim($out)."\n";
+}
+
+/* Validate the Seating Layout (always) and the Cell Settings (only when the
+   centre has cells). */
 function dh_ma_centre_form_validate($form, &$form_state)
 {
 	$in = $form_state['input'];
-	if (empty($in['cs_has_cells']))   // centre has no cells: nothing to validate
+
+	// --- Seating Layout: need at least one side, then run the INI validator. ---
+	$m_spr = trim(isset($in['seatcfg_male_spr'])   ? $in['seatcfg_male_spr']   : '');
+	$f_spr = trim(isset($in['seatcfg_female_spr']) ? $in['seatcfg_female_spr'] : '');
+	if ($m_spr === '' && $f_spr === '')
+		form_set_error('seatcfg_male_spr', 'Seating Layout: enter the number of columns for Male (Main).');
+	else
+		foreach (dh_validate_seat_config(_dh_ma_seatcfg_ini($in)) as $err)
+			form_set_error('seatcfg_male_spr', 'Seating Layout: '.$err);
+
+	// --- Cell Settings: each gender needs cells defined (skipped for no-cell centres). ---
+	if (empty($in['cs_has_cells']))
 		return;
 	foreach (array('male' => 'Male', 'female' => 'Female') as $gk => $lbl)
 	{

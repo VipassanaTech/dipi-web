@@ -1,0 +1,94 @@
+/* Visual hall-diagram editor for one seating section (centre form). Paired with
+   js/seat-visual.js. The hall is drawn front-at-the-bottom: row 1 sits at the
+   bottom, the teacher's dais below it, matching dh_generate_seating_plan. */
+.dh-seatviz { max-width: 760px; overflow-x: auto; }
+/* Muted note inside a section legend (visible even when the section is collapsed). */
+.dhv-sec-note { font-weight: normal; color: #777; font-size: 12px; }
+/* Add-a-group-plan bar and the per-section delete link. */
+.dhv-planadd { display: flex; align-items: center; gap: 8px; margin: 6px 0; padding: 8px 10px; background: #eef4fb; border: 1px solid #d6e2f0; border-radius: 6px; }
+.dhv-planadd-lbl { font-size: 13px; font-weight: bold; color: #37474f; }
+.dhv-planadd select { padding: 3px 6px; border: 1px solid #bcc4c8; border-radius: 5px; font-size: 13px; }
+/* Delete link sits in the section heading (top-right), visible even when collapsed.
+   Positioned against the section (full-width panel), not the shrink-to-fit legend,
+   so it lands at the true right edge. */
+.dh-plan-section { position: relative; }
+.dhv-plan-del { position: absolute; right: 14px; top: 9px; z-index: 3; font-size: 12px; color: #c0392b; white-space: nowrap; }
+.dhv-plan-del:hover { color: #922b21; text-decoration: underline; }
+/* Expand/collapse affordance on every section heading: the same green + / red -
+   icons used in the applications list. Collapsed = green + (click to open),
+   expanded = red - (click to close). */
+.dh-plan-section .panel-title:before {
+  content: ""; display: inline-block; width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;
+  background: url('/sites/all/modules/dh_manageapp/imgs/details_open.png') no-repeat center center; background-size: 18px 18px;
+}
+.dh-plan-section .panel-title:not(.collapsed):before {
+  background-image: url('/sites/all/modules/dh_manageapp/imgs/details_close.png');
+}
+/* Shared help block above the sections: readable size + scannable bullets. */
+.dhv-help { font-size: 14px; color: #37424a; line-height: 1.6; margin: 6px 0 18px; max-width: 940px; }
+.dhv-help-lead { margin: 0 0 12px; }
+.dhv-help ul { margin: 0 0 12px; padding-left: 22px; list-style: disc; }
+.dhv-help li { margin: 6px 0; }
+.dhv-help b { color: #21323b; }
+.dhv-hall { border: 1px solid #d0d0d0; border-radius: 8px; padding: 14px 14px 18px; background: #fafafa; }
+
+/* Hall area = main block plus an optional chowky block. dhv-lr places them side
+   by side (chowky left/right), dhv-stack places the chowky band above (back).
+   Both bottom-align so the front row lines up. */
+.dhv-area { display: flex; justify-content: center; }
+.dhv-area.dhv-lr { flex-direction: row; align-items: flex-end; gap: 14px; }
+.dhv-area.dhv-stack { flex-direction: column; align-items: center; gap: 10px; }
+
+/* Main block: column-reverse so row 1 (first child) paints at the BOTTOM. */
+.dhv-rows { display: flex; flex-direction: column-reverse; gap: 7px; }
+.dhv-rowline { display: flex; align-items: center; gap: 9px; }
+.dhv-rowline.dhv-left { flex-direction: row-reverse; }
+.dhv-rlabel { font-size: 11px; color: #aaa; width: 36px; text-align: center; flex: none; }
+.dhv-row { display: flex; gap: 6px; flex: 1; }
+.dhv-rowline.dhv-right .dhv-row { justify-content: flex-end; }
+.dhv-rowline.dhv-left .dhv-row { justify-content: flex-start; }
+.dhv-seat { width: 30px; height: 30px; border: 1px solid #90a4ae; border-radius: 4px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
+.dhv-seat.dhv-chowky { background: #cfe8d6; border-color: #7cb992; }
+.dhv-seat.dhv-click { cursor: pointer; }
+/* Front-row seat numbers - muted so they read as labels not content. */
+.dhv-seat.dhv-num { font-size: 12px; color: #607d8b; font-weight: normal; }
+.dhv-seat.dhv-click:hover { border-color: #5b7c8a; box-shadow: 0 0 0 2px rgba(120,144,156,.25); }
+/* An empty seat: hollow, dashed, with a full corner-to-corner red cross drawn in
+   CSS (two diagonals) so the gap reads clearly at any seat size. */
+.dhv-seat.dhv-empty {
+  border-style: dashed; border-color: #c0392b; background-color: #fff; color: transparent;
+  background-image:
+    linear-gradient(45deg,  transparent calc(50% - 1.2px), #c0392b calc(50% - 1.2px), #c0392b calc(50% + 1.2px), transparent calc(50% + 1.2px)),
+    linear-gradient(135deg, transparent calc(50% - 1.2px), #c0392b calc(50% - 1.2px), #c0392b calc(50% + 1.2px), transparent calc(50% + 1.2px));
+}
+
+/* Chowky block: header (label + "+ row") on top, rows at the bottom with 0 bottom
+   padding so the rows line up with the bottom-anchored main rows (same 5px gap). */
+.dhv-cho { border: 1px dashed #a9cdb5; border-radius: 6px; padding: 5px 6px 0; background: #f2faf4; display: flex; flex-direction: column; }
+.dhv-cho-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.dhv-cho-cap { font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: #5c9a72; }
+.dhv-cho-rows { display: flex; flex-direction: column-reverse; gap: 7px; }
+.dhv-cho-add { font-size: 10px; color: #5c9a72; background: none; border: 1px dashed #a9cdb5; border-radius: 4px; padding: 0 6px; line-height: 15px; cursor: pointer; }
+/* Chowky at the back: a full-width band above the seats, columns aligned to the
+   main grid. Background tint only (no border/padding) so nothing shifts the
+   columns out of line. */
+.dhv-choback { background: #f4fbf6; border-radius: 6px; }
+.dhv-choback-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; padding: 3px 2px 0; }
+
+.dhv-addrow { display: block; margin: 10px auto 0; font-size: 12px; color: #1565c0; background: none; border: 1px dashed #b0c4de; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+/* Teacher's dais: the front of the hall, at the bottom. */
+.dhv-front { margin-top: 10px; text-align: center; font-size: 12px; font-weight: bold; letter-spacing: .5px; color: #555; background: #eceff1; border: 1px solid #dcdfe2; border-radius: 6px; padding: 6px; }
+
+.dhv-ctrls { margin-top: 16px; }
+.dhv-ctrl { font-size: 13px; max-width: 340px; }
+.dhv-fld { display: flex; align-items: center; justify-content: space-between; margin: 7px 0; }
+.dhv-step button { width: 24px; height: 24px; border: 1px solid #b0bec5; background: #fff; border-radius: 5px; font-size: 15px; cursor: pointer; line-height: 1; }
+.dhv-step .dhv-v { display: inline-block; width: 26px; text-align: center; font-weight: bold; }
+.dhv-ctrl select { padding: 3px 6px; border: 1px solid #bcc4c8; border-radius: 5px; font-size: 13px; }
+.dhv-empty-info { display: inline-flex; align-items: center; gap: 8px; }
+.dhv-empty-n { min-width: 18px; text-align: center; font-weight: bold; }
+.dhv-empty-clr { font-size: 11.5px; color: #06c; }
+.dhv-legend { font-size: 13px; color: #667; margin-top: 14px; line-height: 1.7; }
+.dhv-legend .dhv-sw { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border: 1px solid #7cb992; background: #cfe8d6; border-radius: 2px; vertical-align: -2px; margin: 0 3px; font-size: 9px; }
+.dhv-legend .dhv-se { border-style: dashed; border-color: #c0392b; background-color: #fff;
+  background-image: linear-gradient(45deg, transparent 40%, #c0392b 40%, #c0392b 60%, transparent 60%), linear-gradient(135deg, transparent 40%, #c0392b 40%, #c0392b 60%, transparent 60%); }
