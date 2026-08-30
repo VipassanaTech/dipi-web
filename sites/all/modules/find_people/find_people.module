@@ -18,6 +18,17 @@ function find_people_menu() {
     'file' => 'find_people.admin.inc',
     'type' => MENU_CALLBACK,
   );
+  // "Clone a role" action link on the Roles admin page: create a new role
+  // pre-filled with an existing role's permissions.
+  $items['admin/people/permissions/roles/clone'] = array(
+    'title' => 'Clone a role',
+    'description' => "Create a new role pre-filled with another role's permissions.",
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('find_people_role_clone_form'),
+    'access arguments' => array('administer permissions'),
+    'file' => 'find_people.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
   return $items;
 }
 
