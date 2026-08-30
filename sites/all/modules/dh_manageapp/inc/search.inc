@@ -22,6 +22,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+
+	// Searchable (type-to-filter) centre/course dropdowns in the Transfer/Add popup.
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/select2.min.css");
+	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/select2.min.js");
+	// Dropdown attaches to <body>; keep it above the jquery-confirm modal (z-index 99999999).
+	drupal_add_css('.select2-container{z-index:999999999}', array('type' => 'inline'));
 	
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
@@ -1305,12 +1311,15 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					  ///alert("I am called");
 					$.getJSON( "/get-courses/"+$(this).val(), {} )
 					  .done(function( courses ) {
-					        $(".course-select").empty();
+					        var $cs = $(".course-select");
+					        if ($cs.hasClass("select2-hidden-accessible")) $cs.select2("destroy");
+					        $cs.empty();
 					        var i = 0;
-					        for(l = courses.length; i < l; i++) 
+					        for(l = courses.length; i < l; i++)
 					        {
-					        	$(".course-select").append($("<option>", { value : courses[i].id }).text( courses[i].name ));
+					        	$cs.append($("<option>", { value : courses[i].id }).text( courses[i].name ));
 					        }
+					        $cs.select2({ width: "100%" });
 
 					  })
 					  .fail(function( jqxhr, textStatus, error ) {
@@ -1440,6 +1449,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				     	 		$(".centre-select").append($("<option>", { value : centres[i].id }).text( centres[i].name ));
 					     	}		
 					        $(".centre-select").val(centre_id);
+					        // Type-to-filter dropdowns. Attach to body (not the modal) so the
+					        // list is not clipped by modal overflow; a high z-index (CSS) keeps
+					        // it above jquery-confirm, and select2:open keeps the search box
+					        // focusable inside the jquery-confirm focus trap.
+					        this.$content.find(".centre-select, .course-select").select2({ width: "100%" });
+					        $(document).off("select2:open.dhsel").on("select2:open.dhsel", function(){ var f = document.querySelector(".select2-container--open .select2-search__field"); if (f) f.focus(); });
 					        this.$content.find("form").on("submit", function (e) {
 					            // if the user submits the form by pressing enter in the field.
 					            e.preventDefault();
