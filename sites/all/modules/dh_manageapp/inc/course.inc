@@ -406,7 +406,10 @@ function dh_manage_course_handler()
             ))
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Please select a course Type' )
-            ) ),
+            ) )
+   	        ->validator( function ( $val, $data, $field, $host ) {
+                return ( $host['action'] === 'edit' ) ? _course_lc_boundary_check( $host['id'], $val ) : true;
+            } ),
         \DataTables\Editor\Field::inst( 'ctype.td_val1' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_start' )
 	 	    ->getFormatter( 'Format::datetime', array(
@@ -605,6 +608,38 @@ function dh_manage_course_handler()
 
 //	_get_datatable_json('dh_course', 'c_id', $fields);
 	exit;
+}
+
+/**
+ * Block switching a course between Long Course (LC) and non-LC once it already
+ * has applications. LC and regular courses use different application flows, so
+ * flipping the type on a populated course corrupts the existing applications.
+ * Same-side type changes (LC->LC or non-LC->non-LC) stay allowed, and a brand
+ * new course (no id / no applications) is unaffected. Used as a c_course_type
+ * field validator: returns TRUE when allowed, or an error string (shown under
+ * the Course Type field) when blocked.
+ */
+function _course_lc_boundary_check( $id, $new_type )
+{
+	if ( !$id || $new_type === '' || $new_type === null )
+		return true; // create / no value: nothing to protect
+
+	$old_type = db_query("SELECT c_course_type FROM dh_course WHERE c_id = :id", array(':id' => $id))->fetchField();
+	if ( $old_type == $new_type )
+		return true; // type unchanged
+
+	$is_lc = function ( $type ) {
+		$v = db_query("SELECT td_val3 FROM dh_type_detail WHERE td_id = :t", array(':t' => $type))->fetchField();
+		return strtoupper(trim((string) $v)) === 'LC';
+	};
+	if ( $is_lc($old_type) === $is_lc($new_type) )
+		return true; // both LC or both non-LC: allowed
+
+	$apps = (int) db_query("SELECT COUNT(*) FROM dh_applicant WHERE a_course = :id", array(':id' => $id))->fetchField();
+	if ( $apps > 0 )
+		return "This course has $apps application(s); its type can't be switched between Long Course (LC) and a regular course. Please create a new course of the required type instead.";
+
+	return true;
 }
 
 function _course_set_default( &$editor, $id, &$values)
