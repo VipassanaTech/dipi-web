@@ -216,6 +216,10 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 {
 	$out = '<h2>'.l("Back to Manage Letters", "letters/".arg(1)).'</h2>';
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	// Load CKEditor directly (like the Search "review comment" editor) instead of
+	// binding the body to a filtered text format. This gives us a real WYSIWYG with
+	// ACF off (allowedContent:true), so pasted formatting is retained as-is.
+	drupal_add_js( libraries_get_path("ckeditor")."/ckeditor.js" );
 	$add = 0;
 	if (count($edit_data) == 0)
 		$add = 1;
@@ -275,7 +279,8 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'0':$edit_data['l_course_type'], '#options' => $course_types, '#required' => 0,  );
 	$form['l_subject'] = array('#title' => 'Subject', '#type' => 'textfield', '#size' => 120,  '#weight' => 3, 
 		'#default_value' => $add?'':$edit_data['l_subject'], '#required' => 1,  );
-	$form['l_body'] = array('#title' => 'Letter Body', '#type' => 'text_format', '#format' => 'filtered_html',  '#mutliple' => 1 , '#rows' => '20', '#cols' => 125, '#weight' => 4, 
+	// Plain textarea; CKEditor is attached to it manually in the inline JS below.
+	$form['l_body'] = array('#title' => 'Letter Body', '#type' => 'textarea', '#rows' => '20', '#cols' => 125, '#weight' => 4,
 		'#default_value' => $add?'':$edit_data['l_body'], '#required' => 1,  );
 	$form['l_sms'] = array('#title' => 'SMS Text', '#type' => 'textarea', '#mutliple' => 1 , '#rows' => '3', '#cols' => 125, '#weight' => 5, 
 		'#default_value' => $add?'':$edit_data['l_sms'], '#required' => 0,  );
@@ -300,13 +305,50 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		(function ($) {
 			$(document).ready(function(){
 
-				$(".merge-field-link").click(function(){
-			        var $txt = $("#edit-l-body");
-			        var caretPos = $txt[0].selectionStart;
-			        var textAreaTxt = $txt.val();
-			        var txtToAdd = $(this).text();
-			        $txt.val(textAreaTxt.substring(0, caretPos) + txtToAdd + textAreaTxt.substring(caretPos) );
+				// Manually attach CKEditor to the letter body textarea. allowedContent:true
+				// disables the Advanced Content Filter, so pasted formatting is kept as-is
+				// (nothing stripped). CKEditor syncs back to the textarea on form submit.
+				if (window.CKEDITOR) {
+					if (CKEDITOR.instances["edit-l-body"]) { CKEDITOR.instances["edit-l-body"].destroy(true); }
+					CKEDITOR.replace("edit-l-body", {
+						allowedContent: true,
+						height: 380,
+						resize_enabled: true,
+						pasteFromWordRemoveFontStyles: false,
+						pasteFromWordRemoveStyles: false,
+						// Enable "Upload" tab in the Image dialog + drag-drop/paste image upload.
+						filebrowserImageUploadUrl: "/letters/'.arg(1).'/image-upload",
+						uploadUrl: "/letters/'.arg(1).'/image-upload",
+						filebrowserUploadMethod: "xhr",
+						// Full toolbar: every document-editing button this CKEditor build ships.
+						toolbar: [
+							{ name: "document", items: ["Source","-","Preview","Print","-","Templates"] },
+							{ name: "clipboard", items: ["Cut","Copy","Paste","PasteText","PasteFromWord","-","Undo","Redo"] },
+							{ name: "editing", items: ["Find","Replace","-","SelectAll"] },
+							{ name: "basicstyles", items: ["Bold","Italic","Underline","Strike","Subscript","Superscript","-","CopyFormatting","RemoveFormat"] },
+							{ name: "paragraph", items: ["NumberedList","BulletedList","-","Outdent","Indent","-","Blockquote","CreateDiv","-","JustifyLeft","JustifyCenter","JustifyRight","JustifyBlock","-","BidiLtr","BidiRtl","Language"] },
+							{ name: "links", items: ["Link","Unlink","Anchor"] },
+							{ name: "insert", items: ["Image","Table","HorizontalRule","PageBreak","SpecialChar","Smiley"] },
+							"/",
+							{ name: "styles", items: ["Styles","Format","Font","FontSize"] },
+							{ name: "colors", items: ["TextColor","BGColor"] },
+							{ name: "tools", items: ["Maximize","ShowBlocks","-","About"] }
+						]
+					});
+				}
 
+				// Insert a merge field at the cursor inside the WYSIWYG (falls back to the
+				// raw textarea if CKEditor is not active).
+				$(".merge-field-link").click(function(){
+					var txtToAdd = $(this).text();
+					if (window.CKEDITOR && CKEDITOR.instances["edit-l-body"]) {
+						CKEDITOR.instances["edit-l-body"].insertText(txtToAdd);
+					} else {
+						var $txt = $("#edit-l-body");
+						var caretPos = $txt[0].selectionStart;
+						var textAreaTxt = $txt.val();
+						$txt.val(textAreaTxt.substring(0, caretPos) + txtToAdd + textAreaTxt.substring(caretPos) );
+					}
 					return false;
 				});
 				$("#delete-letter-attachment").click(function () {
@@ -325,24 +367,61 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	return $form;
 }
 
-function dh_letters_form_validate($form, &$form_state) 
+/**
+ * Sanitise an uploaded file's base name (without extension) for safe on-disk
+ * storage: strip any path parts, replace anything outside [A-Za-z0-9_-] with
+ * "_", cap the length, and trim stray separators. Returns $fallback when nothing
+ * usable remains (e.g. a name made entirely of spaces or unicode). Shared by the
+ * letter-body image upload and the letter attachment.
+ */
+function _dh_letter_safe_basename($name, $fallback = 'file', $maxlen = 60)
+{
+	$base = preg_replace('/[^A-Za-z0-9_-]/', '_', pathinfo($name, PATHINFO_FILENAME));
+	$base = trim(substr($base, 0, $maxlen), '_-');
+	return $base === '' ? $fallback : $base;
+}
+
+function dh_letters_form_validate($form, &$form_state)
 {
 	$centre_id = arg(1);
-	$validators = array('file_validate_extensions' => array('pdf docx xls jpg'));
+	// Accept the common document + image types people actually attach. Modern
+	// formats (jpeg, png, xlsx, doc) were missing before, which caused most of
+	// the "failed" uploads.
+	$validators = array('file_validate_extensions' => array('pdf doc docx xls xlsx jpg jpeg png gif'));
 
-  	$file = file_save_upload('l_attachment', $validators);
-	if (isset($file)) 
+	$file = file_save_upload('l_attachment', $validators);
+
+	// file_save_upload() returns: a file object on success; FALSE when a file was
+	// sent but failed validation (it has already set a specific error, e.g. wrong
+	// extension / too large); NULL when no file was chosen. Only proceed on a real
+	// object -- the old isset() check let FALSE through and masked the real error
+	// with a generic "Failed to write" message.
+	if ($file)
 	{
 		$dir = 'private:///letters/'.$centre_id;
-		file_prepare_directory( $dir , FILE_CREATE_DIRECTORY);
-        if ($file = file_move($file, $dir.'/'.$form_state['input']['l_event'].'-'.$file->filename )) 
+		if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY))
 		{
-	        $form_state['storage']['file'] = $file;
+			form_set_error('l_attachment', t('Could not prepare the attachment folder.'));
+			return;
 		}
-        else 
-        {
-            form_set_error('l_attachment', t('Failed to write the uploaded file'));
-        }
+
+		// Build a safe destination: sanitised status prefix + sanitised base name +
+		// the original (already validated) extension. Avoids spaces/unicode/special
+		// chars breaking the stored path or the download URL.
+		$info  = pathinfo($file->filename);
+		$ext   = isset($info['extension']) ? strtolower($info['extension']) : '';
+		$event = _dh_letter_safe_basename($form_state['input']['l_event'], 'letter');
+		$base  = _dh_letter_safe_basename($file->filename, 'attachment');
+		$dest  = $dir.'/'.$event.'-'.$base.($ext !== '' ? '.'.$ext : '');
+
+		if ($file = file_move($file, $dest, FILE_EXISTS_RENAME))
+		{
+			$form_state['storage']['file'] = $file;
+		}
+		else
+		{
+			form_set_error('l_attachment', t('Failed to write the uploaded file.'));
+		}
 	}
 }
 
@@ -361,7 +440,7 @@ function dh_letters_form_submit($form, &$form_state)
 	//if ( $input['l_course_type'])
 	$fields['l_course_type'] = $input['l_course_type'];
 	$fields['l_subject'] = $input['l_subject'];
-	$fields['l_body'] = $input['l_body']['value'];
+	$fields['l_body'] = $input['l_body'];
 	$fields['l_sms'] = $input['l_sms'];
 
 	$fields['l_updated'] = date('Y-m-d H:i:s'); 
@@ -403,6 +482,141 @@ function dh_letters_form_submit($form, &$form_state)
 	drupal_goto("letters/$centre_id");
 }
 
+/**
+ * CKEditor image-upload endpoint for the letter body.
+ *
+ * Receives an XHR upload from CKEditor's uploadimage/filebrowser plugins,
+ * validates it is a real image, stores it under the public files dir, and
+ * returns the JSON CKEditor expects: {uploaded:1, fileName, url} on success,
+ * {uploaded:0, error:{message}} on failure.
+ */
+function dh_letter_image_upload()
+{
+	drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+
+	$fail = function ($msg) {
+		print drupal_json_encode(array('uploaded' => 0, 'error' => array('message' => $msg)));
+		drupal_exit();
+	};
+
+	if ( empty($_FILES['upload']) || !isset($_FILES['upload']['tmp_name']) || $_FILES['upload']['error'] != UPLOAD_ERR_OK )
+		$fail(t('No file was uploaded.'));
+
+	// Make sure tmp_name is a genuine PHP upload, not a crafted local path.
+	if ( !drupal_is_cli() && !is_uploaded_file($_FILES['upload']['tmp_name']) )
+		$fail(t('Invalid upload.'));
+
+	$upload = $_FILES['upload'];
+
+	// Validate by CONTENT, not the client-supplied name: the real image type
+	// decides both acceptance and the stored extension. This keeps odd names
+	// (spaces, no extension, unicode, path parts) safe and the stored file type
+	// honest (a script disguised with an image name can never be saved runnable).
+	$info = @getimagesize($upload['tmp_name']);
+	if ( $info === FALSE )
+		$fail(t('The uploaded file is not a valid image.'));
+
+	$type_ext = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif');
+	if ( !isset($type_ext[$info[2]]) )
+		$fail(t('Only JPG, PNG and GIF images are allowed.'));
+	$ext = $type_ext[$info[2]];
+
+	if ( $upload['size'] > 5 * 1024 * 1024 )
+		$fail(t('Image is too large (max 5 MB).'));
+
+	$dir = 'public://letters/images';
+	if ( !file_prepare_directory($dir, FILE_CREATE_DIRECTORY) )
+		$fail(t('Could not prepare the upload directory.'));
+
+	// Readable display name (see _dh_letter_safe_basename); falls back to "image".
+	$base = _dh_letter_safe_basename($upload['name'], 'image');
+	$dest = $dir . '/' . $base . '-' . uniqid() . '.' . $ext;
+	$saved = file_unmanaged_save_data(file_get_contents($upload['tmp_name']), $dest, FILE_EXISTS_RENAME);
+	if ( !$saved )
+		$fail(t('Failed to save the uploaded image.'));
+
+	print drupal_json_encode(array(
+		'uploaded' => 1,
+		'fileName' => drupal_basename($saved),
+		'url' => file_create_url($saved),
+	));
+	drupal_exit();
+}
+
+/**
+ * Delete letter-body images that no letter references any more (janitor).
+ *
+ * Images uploaded via the letter WYSIWYG are stored, unmanaged, under
+ * public://letters/images and are referenced only by <img src> URLs inside
+ * dh_letter.l_body. When an image is removed from a letter (or the letter row
+ * is hard-deleted) the file is left behind. This scans that directory and
+ * removes any file whose name appears in no letter body. Files modified within
+ * the last $grace_hours are skipped, so a freshly-uploaded image whose letter
+ * has not been saved yet is never swept away. Soft-deleted letters (l_deleted=1)
+ * still keep their row, so their images are preserved (safe for restore).
+ *
+ * @return array ('scanned','deleted','kept','files')
+ */
+function dh_letter_cleanup_orphan_images($grace_hours = 24, $verbose = FALSE)
+{
+	$stats = array('scanned' => 0, 'deleted' => 0, 'kept' => 0, 'files' => array());
+	$dir = 'public://letters/images';
+	$realdir = drupal_realpath($dir);
+	if ( !$realdir || !is_dir($realdir) )
+		return $stats;
+
+	$handle = opendir($realdir);
+	if ( !$handle )
+		return $stats;
+
+	$cutoff = REQUEST_TIME - ($grace_hours * 3600);
+
+	while ( ($entry = readdir($handle)) !== FALSE )
+	{
+		if ( $entry === '.' || $entry === '..' || $entry === '.htaccess' )
+			continue;
+		$path = $realdir . '/' . $entry;
+		if ( !is_file($path) )
+			continue;
+
+		$stats['scanned']++;
+
+		// Grace period: leave a just-uploaded file whose letter may not be saved yet.
+		if ( filemtime($path) > $cutoff )
+		{
+			$stats['kept']++;
+			continue;
+		}
+
+		// Referenced by any letter body? db_like() escapes _ and % in the name.
+		$referenced = (bool) db_query_range(
+			"SELECT 1 FROM dh_letter WHERE l_body LIKE :pat",
+			0, 1,
+			array(':pat' => '%' . db_like($entry) . '%')
+		)->fetchField();
+
+		if ( $referenced )
+		{
+			$stats['kept']++;
+			continue;
+		}
+
+		if ( file_unmanaged_delete($dir . '/' . $entry) )
+		{
+			$stats['deleted']++;
+			$stats['files'][] = $entry;
+			if ( $verbose )
+				echo "Deleted orphan image: $entry\n";
+		}
+	}
+	closedir($handle);
+
+	if ( $stats['deleted'] > 0 )
+		watchdog('LetterImageCleanup', 'Removed @d orphan letter image(s); kept @k, scanned @s.',
+			array('@d' => $stats['deleted'], '@k' => $stats['kept'], '@s' => $stats['scanned']), WATCHDOG_NOTICE);
+
+	return $stats;
+}
 
 function dh_manage_letter_fields()
 {
@@ -710,6 +924,60 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	return $out;
 }
 
+/**
+ * Turn <img> tags that point to letter-uploaded images (public://letters/images)
+ * into CID inline attachments, so the image is embedded in the email itself
+ * instead of linked by URL. This keeps the internal DIPI URL out of applicant
+ * emails and makes the image render without "show images".
+ *
+ * Externally-hosted images (http/https on other hosts), data: URIs, and letters
+ * with no such images are returned unchanged. If a referenced file is missing on
+ * disk, that tag is left exactly as-is -- it never breaks the body or the send.
+ *
+ * @param string $html Letter body HTML.
+ * @return array ('html' => string, 'inline' => array of array('filePath','filename'))
+ */
+function _dh_letter_embed_inline_images($html)
+{
+	$inline = array();
+	if ($html === '' || stripos($html, '<img') === FALSE)
+		return array('html' => $html, 'inline' => $inline);
+
+	$marker = '/' . trim(variable_get('file_public_path', 'sites/default/files'), '/') . '/letters/images/';
+	$seen = array();
+
+	$new = preg_replace_callback(
+		'/(<img\b[^>]*?\bsrc\s*=\s*)(["\'])(.*?)\2/i',
+		function ($m) use (&$inline, &$seen, $marker) {
+			$path = parse_url(html_entity_decode($m[3]), PHP_URL_PATH);
+			if (!$path || strpos($path, $marker) === FALSE)
+				return $m[0]; // external / unrelated -> leave untouched
+
+			$name = rawurldecode(basename($path));
+			if ($name === '' || strpos($name, '..') !== FALSE)
+				return $m[0];
+
+			$real = drupal_realpath('public://letters/images/' . $name);
+			if (!$real || !is_file($real))
+				return $m[0]; // file gone -> don't break the tag
+
+			if (!isset($seen[$name])) {
+				$inline[] = array('filePath' => $real, 'filename' => $name);
+				$seen[$name] = TRUE;
+			}
+			return $m[1] . $m[2] . 'cid:' . $name . $m[2];
+		},
+		$html
+	);
+
+	// preg_replace_callback() returns NULL on failure (e.g. backtrack limit on a
+	// very large body); fall back to the original body with no inline images so a
+	// send is never broken by this step.
+	if ($new === NULL)
+		return array('html' => $html, 'inline' => array());
+
+	return array('html' => $new, 'inline' => $inline);
+}
 
 function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0, $footer = '')
 {
@@ -793,6 +1061,13 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 
 		if ( $test_mode )
 			$to = variable_get('mode_test_emails', '');
+
+		// Embed letter-uploaded images as CID inline attachments so they travel
+		// inside the email (no DIPI URL exposed; renders without "show images").
+		// External images / letters with no uploaded images are unaffected.
+		$embedded = _dh_letter_embed_inline_images($body);
+		$body = $embedded['html'];
+
 		$options = array(
 		  'from'    => $from,
 		  'to'      => $to,  //info@dhamma.net.in
@@ -809,6 +1084,11 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			foreach( $attachment as $a )
 				$options['attachment'][] = array('filePath' => $a);
 		}
+
+		// Inline (CID) images referenced as cid: in the body above.
+		if ( !empty($embedded['inline']) )
+			foreach ( $embedded['inline'] as $img )
+				$options['inline'][] = $img;
 
     $mailgun_domain = get_mailgun_domain($from);
 

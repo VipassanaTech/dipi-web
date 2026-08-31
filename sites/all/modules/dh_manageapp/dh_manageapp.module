@@ -272,6 +272,13 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage letters'),
 	       'type' => MENU_CALLBACK);
 
+	/* CKEditor image-upload endpoint for the letter body WYSIWYG. Same access as
+	   editing a letter ('manage letters'). Returns JSON. */
+	$items['letters/%centre_id/image-upload'] = array( 'title' => t('Letter Image Upload'),
+	       'page callback' => 'dh_letter_image_upload',
+	       'access arguments' => array('manage letters'),
+	       'type' => MENU_CALLBACK);
+
 	$items['letter-fields/%centre_id'] = array( 'title' => t('Manage Letter Fields'),
 	       'page callback' => 'dh_manage_letter_fields',
 	       'access arguments' => array('manage letters'),
