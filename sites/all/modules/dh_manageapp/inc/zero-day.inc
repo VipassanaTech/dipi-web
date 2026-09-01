@@ -2908,7 +2908,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 
 	$gender = array('M', 'F');
 	$type = array('old', 'new');
-	$female_started = false;
+	$first_block = true;
 
 	foreach($gender as $g)
 	{
@@ -2918,13 +2918,11 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 			if ($total == 0)
 				continue;
 
-			// Start the female roster on a fresh printed page.
-			$brk = '';
-			if ($g == 'F' && !$female_started)
-			{
-				$brk = ' day0-break';
-				$female_started = true;
-			}
+			// Each gender/type block (Male-Old, Male-New, Female-Old, Female-New)
+			// starts on its own printed page; the first non-empty block stays on
+			// page 1 (page-break-before on it would leave a blank first page).
+			$brk = $first_block ? '' : ' day0-break';
+			$first_block = false;
 
 			$out .= '<div class="day0-block'.$brk.'"><div class="day0-scroll"><table class="table-day0-list"><colgroup>';
 			foreach ($cols as $key => $c)
