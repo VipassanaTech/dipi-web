@@ -978,7 +978,15 @@ function app_id_load( $id )
 		return $id;
 	$count = db_query("select count(uc_id) from dh_user_center where uc_center='$centre_id' and uc_user='".$user->uid."'  and uc_deleted=0")->fetchField();
 	if ( $count <= 0  )
-		return false;
+	{
+		// Fallback for Assistant Teachers: an AT may access applicants of the
+		// courses they are confirmed to serve (dh_atportal read-only course
+		// viewing + Add Review). ATs are scoped by dh_course_teacher, not
+		// dh_user_center, so this branch runs ONLY when the centre check above
+		// did not grant access — registrar/view-only behaviour is unchanged.
+		if ( ! (function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($id)) )
+			return false;
+	}
 
 	$gender = db_query("select a_gender from dh_applicant where a_id=$id")->fetchField();
 	$gender = strtoupper($gender);
@@ -1998,6 +2006,13 @@ function _add_applicant_review()
 	))->execute();
 
 	logit($centre, 'Review', $app_id, 'Internal review note added', $user->uid);
+
+	// If the reviewer is a conducting/assisting Assistant Teacher of this
+	// application's course, mark it with the fixed "AT Comments" system tag.
+	if (function_exists('_at_view_applicant_in_my_courses') && function_exists('_dh_tag_mark_at_comment')
+		&& _at_view_applicant_in_my_courses($app_id)) {
+		_dh_tag_mark_at_comment($app_id, $centre, $user->uid);
+	}
 
 	$out['status'] = true;
 	$out['msg'] = 'Review added.';

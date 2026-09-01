@@ -85,7 +85,7 @@ function _dh_tag_palette()
 function _dh_tag_center_tags($centre_id)
 {
 	return db_query(
-		"SELECT t_id, t_name, t_color, t_created_by FROM dh_tag WHERE t_center = :c AND t_deleted = 0 ORDER BY t_name",
+		"SELECT t_id, t_name, t_color, t_created_by, t_system FROM dh_tag WHERE t_center = :c AND t_deleted = 0 ORDER BY t_name",
 		array(':c' => $centre_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -109,7 +109,7 @@ function _dh_tag_name_exists($centre_id, $name, $exclude_id = 0)
 function _dh_tag_for_application($application_id)
 {
 	return db_query(
-		"SELECT t.t_id, t.t_name, t.t_color
+		"SELECT t.t_id, t.t_name, t.t_color, t.t_system
 		 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
 		 WHERE at.at_application = :a AND at.at_deleted = 0 AND t.t_deleted = 0
 		 ORDER BY t.t_name",
@@ -137,6 +137,56 @@ function _dh_tag_pinned($uid, $centre_id)
 		 ORDER BY t.t_name",
 		array(':u' => $uid, ':c' => $centre_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/* ---------------------------------------------------------------------------
+ * "AT Comments" system tag
+ *
+ * A fixed, per-centre system tag (t_system = 1) auto-applied to an application
+ * when a conducting/assisting Assistant Teacher of that application's course
+ * leaves a review comment. System tags cannot be edited, deleted, manually
+ * assigned or unassigned by anyone (enforced in the CRUD/assign handlers).
+ * ------------------------------------------------------------------------- */
+
+define('DH_AT_COMMENTS_TAG', 'AT Comments');
+
+/**
+ * Find (or lazily create) the centre's "AT Comments" system tag; returns t_id.
+ */
+function _dh_tag_at_comments_id($centre_id)
+{
+	$id = db_query(
+		"SELECT t_id FROM dh_tag WHERE t_center = :c AND t_system = 1 AND t_name = :n AND t_deleted = 0",
+		array(':c' => $centre_id, ':n' => DH_AT_COMMENTS_TAG)
+	)->fetchField();
+	if ($id) {
+		return $id;
+	}
+	return db_insert('dh_tag')->fields(array(
+		't_center' => $centre_id,
+		't_name' => DH_AT_COMMENTS_TAG,
+		't_color' => '#16a085',
+		't_system' => 1,
+		't_created_by' => 0,
+		't_updated_by' => 0,
+	))->execute();
+}
+
+/**
+ * Mark an application with its centre's "AT Comments" system tag (idempotent).
+ * Called from _add_applicant_review() when the reviewer is a conducting/assisting
+ * AT of the application's course.
+ */
+function _dh_tag_mark_at_comment($application_id, $centre_id, $uid = 0)
+{
+	$tag_id = _dh_tag_at_comments_id($centre_id);
+	// Upsert: re-activate a soft-deleted assignment, else insert (UNIQUE at_tag,at_application).
+	db_query(
+		"INSERT INTO dh_application_tag (at_tag, at_application, at_created_by, at_created)
+		 VALUES (:t, :a, :u, NOW())
+		 ON DUPLICATE KEY UPDATE at_deleted = 0",
+		array(':t' => $tag_id, ':a' => (int) $application_id, ':u' => (int) $uid)
+	);
 }
 
 /* ---------------------------------------------------------------------------
@@ -189,6 +239,9 @@ function dh_tags_handler($centre_id)
 		if (!$tag) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found.')));
 		}
+		if (!empty($tag['t_system'])) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be edited.')));
+		}
 		if (!_dh_tag_can_modify($tag, 'edit')) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to edit this tag.')));
 		}
@@ -211,6 +264,9 @@ function dh_tags_handler($centre_id)
 			array(':id' => $_POST['t_id'], ':c' => $centre_id))->fetchAssoc();
 		if (!$tag) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found.')));
+		}
+		if (!empty($tag['t_system'])) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be deleted.')));
 		}
 		if (!_dh_tag_can_modify($tag, 'delete')) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to delete this tag.')));
@@ -242,10 +298,15 @@ function dh_app_tag_handler($centre_id)
 	// Validate the tag exists in this centre for the mutating ops.
 	if (in_array($op, array('assign', 'unassign', 'bulk', 'pin', 'unpin'))) {
 		$tag_id = (int) $_POST['tag'];
-		$tag_ok = db_query("SELECT 1 FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
-			array(':id' => $tag_id, ':c' => $centre_id))->fetchField();
-		if (!$tag_ok) {
+		$tag_row = db_query("SELECT t_system FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
+			array(':id' => $tag_id, ':c' => $centre_id))->fetchAssoc();
+		if (!$tag_row) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found in this centre.')));
+		}
+		// System tags (e.g. "AT Comments") are managed automatically: they cannot
+		// be manually assigned or removed by anyone. Pinning them is still allowed.
+		if (!empty($tag_row['t_system']) && in_array($op, array('assign', 'unassign', 'bulk'))) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be added or removed manually.')));
 		}
 	}
 
@@ -325,13 +386,18 @@ function _dh_tag_widget($app_id, $centre_id)
 	$chips = '';
 	foreach ($assigned as $t) {
 		$assigned_ids[$t['t_id']] = 1;
-		$chips .= '<span class="tag-chip" data-tid="' . $t['t_id'] . '" style="background:' . check_plain($t['t_color']) . '">'
-			. check_plain($t['t_name']) . '<span class="tag-x" title="Remove">&times;</span></span>';
+		$sys = !empty($t['t_system']);
+		$x = $sys ? '' : '<span class="tag-x" title="Remove">&times;</span>';
+		$chips .= '<span class="tag-chip' . ($sys ? ' tag-system' : '') . '" data-tid="' . $t['t_id']
+			. '"' . ($sys ? ' title="' . check_plain(t('System tag (auto-applied)')) . '"' : '')
+			. ' style="background:' . check_plain($t['t_color']) . '">'
+			. check_plain($t['t_name']) . $x . '</span>';
 	}
 	$all = _dh_tag_center_tags($centre_id);
 	$opts = '<option value="">+ ' . t('add tag') . '&hellip;</option>';
 	foreach ($all as $t) {
-		if (!isset($assigned_ids[$t['t_id']])) {
+		// System tags are auto-managed: never offer them for manual assignment.
+		if (!isset($assigned_ids[$t['t_id']]) && empty($t['t_system'])) {
 			$opts .= '<option value="' . $t['t_id'] . '">' . check_plain($t['t_name']) . '</option>';
 		}
 	}
@@ -460,9 +526,10 @@ function dh_tags_admin($centre_id)
 
 	$rows = '';
 	foreach ($tags as $t) {
-		$can_edit = _dh_tag_can_modify($t, 'edit') ? 1 : 0;
-		$can_del = _dh_tag_can_modify($t, 'delete') ? 1 : 0;
-		$actions = '';
+		$is_system = !empty($t['t_system']);
+		$can_edit = (!$is_system && _dh_tag_can_modify($t, 'edit')) ? 1 : 0;
+		$can_del = (!$is_system && _dh_tag_can_modify($t, 'delete')) ? 1 : 0;
+		$actions = $is_system ? '<em title="' . check_plain(t('Auto-applied when an Assistant Teacher comments; cannot be edited or deleted.')) . '">' . t('system') . '</em> ' : '';
 		if ($can_edit) {
 			$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '">Edit</a> ';
 		}

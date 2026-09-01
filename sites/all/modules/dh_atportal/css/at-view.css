@@ -1,0 +1,287 @@
+/* ---------------------------------------------------------------------------
+ * AT read-only course viewing — presentation.
+ * Everything is scoped under .at-view so it never affects the rest of the app.
+ * Calm, utilitarian, light-only (matches the Drupal admin environment).
+ * ------------------------------------------------------------------------- */
+
+.at-view {
+  /* Accent matches the AT-Portal home page link colour (#337ab7). */
+  --at-ground: #f5f7fa;
+  --at-card: #ffffff;
+  --at-ink: #232f3b;
+  --at-muted: #667382;
+  --at-accent: #337ab7;
+  --at-accent-dark: #23527c;
+  --at-wash: #e8f1f9;
+  --at-border: #d8e3ee;
+  --at-shadow: 0 1px 2px rgba(30, 60, 100, 0.05), 0 2px 8px rgba(30, 60, 100, 0.05);
+
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 8px 16px 40px;
+  color: var(--at-ink);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.at-view *,
+.at-view *::before,
+.at-view *::after { box-sizing: border-box; }
+
+/* Page header ------------------------------------------------------------- */
+.at-page-head { margin: 6px 0 20px; }
+.at-page-head h1 {
+  margin: 0 0 4px;
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--at-ink);
+  text-wrap: balance;
+}
+.at-page-head .at-sub {
+  margin: 0;
+  color: var(--at-muted);
+  font-size: 16px;
+  max-width: 62ch;
+}
+
+/* Accordion cards --------------------------------------------------------- */
+.at-acc {
+  background: var(--at-card);
+  border: 1px solid var(--at-border);
+  border-radius: 10px;
+  box-shadow: var(--at-shadow);
+  margin: 0 0 14px;
+  overflow: hidden;
+}
+.at-acc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 13px 16px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--at-ink);
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+.at-acc-head:hover { background: #f7f9fb; }
+.at-acc.is-open .at-acc-head { border-bottom-color: var(--at-border); }
+.at-acc-head .at-caret {
+  flex: 0 0 auto;
+  width: 16px; height: 16px;
+  color: var(--at-accent);
+  transition: transform 0.15s ease;
+}
+.at-acc:not(.is-open) .at-acc-head .at-caret { transform: rotate(-90deg); }
+.at-acc-head .at-count {
+  margin-left: auto;
+  min-width: 26px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--at-wash);
+  color: var(--at-accent-dark);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.at-acc-body { padding: 4px 16px 14px; }
+
+/* Tables (also wraps DataTables) ------------------------------------------ */
+.at-tablewrap { overflow-x: auto; }
+.at-view table.at-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.at-view table.at-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--at-muted);
+  border-bottom: 1.5px solid var(--at-border);
+  white-space: nowrap;
+}
+.at-view table.at-table tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #eef1f5;
+  vertical-align: middle;
+}
+.at-view table.at-table tbody tr:last-child td { border-bottom: 0; }
+.at-view table.at-table tbody tr:hover td { background: #f6f9fc; }
+.at-view table.at-table td.at-col-date { font-variant-numeric: tabular-nums; white-space: nowrap; color: #465563; }
+
+/* DataTables chrome, scoped so it matches the cards -------------------------*/
+.at-view .dataTables_wrapper { padding-top: 4px; }
+.at-view .dataTables_filter,
+.at-view .dataTables_length,
+.at-view .dataTables_info,
+.at-view .dataTables_paginate { font-size: 13.5px; color: var(--at-muted); }
+.at-view .dataTables_filter { text-align: right; margin-bottom: 8px; }
+.at-view .dataTables_filter input,
+.at-view .dataTables_length select {
+  border: 1px solid var(--at-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--at-ink);
+  background: #fff;
+  outline: none;
+}
+.at-view .dataTables_filter input:focus,
+.at-view .dataTables_length select:focus { border-color: var(--at-accent); box-shadow: 0 0 0 3px var(--at-wash); }
+.at-view .dataTables_paginate { margin-top: 10px; }
+.at-view .dataTables_paginate .paginate_button {
+  padding: 4px 10px !important;
+  margin: 0 2px;
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+  color: var(--at-accent-dark) !important;
+  background: none !important;
+  cursor: pointer;
+}
+.at-view .dataTables_paginate .paginate_button:hover { background: var(--at-wash) !important; border-color: var(--at-border) !important; }
+.at-view .dataTables_paginate .paginate_button.current {
+  background: var(--at-accent) !important;
+  border-color: var(--at-accent) !important;
+  color: #fff !important;
+}
+.at-view .dataTables_paginate .paginate_button.disabled { color: #b7c2ce !important; cursor: default; }
+.at-view table.dataTable thead th { cursor: pointer; }
+
+.at-empty { padding: 24px 4px; color: var(--at-muted); font-style: italic; }
+
+/* Role badges & pills ----------------------------------------------------- */
+.at-role {
+  display: inline-block;
+  padding: 2px 11px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.at-role-conducting { background: var(--at-accent); color: #fff; }
+.at-role-assisting  { background: #f3ecd9; color: #8a6d1f; border: 1px solid #e6d8ae; }
+.at-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef2f6;
+  color: #5a6675;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Buttons / links --------------------------------------------------------- */
+.at-view .at-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  background: var(--at-wash);
+  color: var(--at-accent-dark);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  border: 1px solid var(--at-border);
+  white-space: nowrap;
+}
+.at-view .at-btn:hover { background: var(--at-accent); color: #fff; border-color: var(--at-accent); }
+.at-view a.at-back {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--at-muted);
+  text-decoration: none;
+  font-size: 15px;
+}
+.at-view a.at-back:hover { color: var(--at-accent-dark); text-decoration: underline; }
+
+/* Course-identity card (hub + list headers) ------------------------------- */
+.at-course-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  background: var(--at-card);
+  border: 1px solid var(--at-border);
+  border-left: 4px solid var(--at-accent);
+  border-radius: 10px;
+  box-shadow: var(--at-shadow);
+  padding: 14px 18px;
+  margin: 0 0 18px;
+}
+.at-course-card .at-cc-centre { font-size: 21px; font-weight: 650; letter-spacing: -0.01em; }
+.at-course-card .at-cc-type { color: var(--at-accent-dark); font-weight: 600; }
+.at-course-card .at-cc-dates { color: var(--at-muted); font-variant-numeric: tabular-nums; }
+.at-course-card .at-cc-tags { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+
+/* Link tiles (hub) -------------------------------------------------------- */
+.at-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+}
+.at-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 16px;
+  background: var(--at-card);
+  border: 1px solid var(--at-border);
+  border-radius: 10px;
+  box-shadow: var(--at-shadow);
+  color: var(--at-ink);
+  text-decoration: none;
+  transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+.at-tile:hover {
+  border-color: var(--at-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(30, 80, 150, 0.13);
+  color: var(--at-ink);
+}
+.at-tile .at-tile-ico {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--at-wash);
+  color: var(--at-accent-dark);
+}
+.at-tile .at-tile-ico svg { width: 20px; height: 20px; }
+.at-tile .at-tile-label { font-weight: 600; font-size: 16.5px; line-height: 1.25; }
+.at-tile .at-tile-sub { display: block; font-weight: 400; font-size: 13.5px; color: var(--at-muted); }
+
+@media (max-width: 560px) {
+  .at-view { padding: 8px 12px 32px; }
+  .at-course-card .at-cc-tags { margin-left: 0; width: 100%; }
+}
+
+/* The application list is the registrar's search table, left as-is — but the
+   stock theme renders the ACTIVE pagination number dark-on-blue (unreadable).
+   This rule (only loaded on AT-view pages) makes just that button legible;
+   the table itself is untouched. Literal colour: the --at-* vars are scoped to
+   .at-view and this wrapper sits outside it. */
+#table-applicants_wrapper .dataTables_paginate .paginate_button.current,
+#table-applicants_wrapper .dataTables_paginate .paginate_button.current:hover {
+  color: #fff !important;
+  background: #337ab7 !important;
+  background-image: none !important;
+  border: 1px solid #337ab7 !important;
+}

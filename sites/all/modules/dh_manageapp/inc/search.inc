@@ -551,7 +551,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		if ($aids)
 		{
 			$res = db_query(
-				"SELECT at.at_application, t.t_id, t.t_name, t.t_color
+				"SELECT at.at_application, t.t_id, t.t_name, t.t_color, t.t_system
 				 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
 				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND at.at_application IN (:aids)",
 				array(':aids' => $aids)
@@ -573,8 +573,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			{
 				foreach ($app_tags[$aid] as $tg)
 				{
-					$chips .= '<span class="tag-chip" data-tid="' . $tg->t_id . '" style="background:' . check_plain($tg->t_color) . '">'
-						. check_plain($tg->t_name) . '<span class="tag-x" title="Remove">&times;</span></span>';
+					$sys = !empty($tg->t_system);
+					$x = $sys ? '' : '<span class="tag-x" title="Remove">&times;</span>';
+					$chips .= '<span class="tag-chip' . ($sys ? ' tag-system' : '') . '" data-tid="' . $tg->t_id
+						. '"' . ($sys ? ' title="' . check_plain(t('System tag (auto-applied)')) . '"' : '')
+						. ' style="background:' . check_plain($tg->t_color) . '">'
+						. check_plain($tg->t_name) . $x . '</span>';
 				}
 			}
 			$block = '<div class="app-tags" data-aid="' . $aid . '">' . $chips
@@ -645,7 +649,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							if (j.status) { box.find(".tag-add-btn").before(chipHtml(t)); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 						}, "json");
 					}
-					var avail = centreTags.filter(function (t) { return !assigned[t.t_id]; });
+					var avail = centreTags.filter(function (t) { return !assigned[t.t_id] && !(+t.t_system); });
 					var chips = avail.map(function (t) {
 						return "<span class=\"tag-chip tag-pick-opt\" data-tid=\"" + t.t_id + "\" data-name=\"" + esc(t.t_name) + "\" data-color=\"" + t.t_color + "\" style=\"background:" + t.t_color + ";cursor:pointer\">" + esc(t.t_name) + "</span>";
 					}).join(" ");

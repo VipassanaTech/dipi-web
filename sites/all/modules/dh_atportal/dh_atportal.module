@@ -2,6 +2,7 @@
 
 include_once(dirname(__FILE__)."/address-book.inc");
 include_once(dirname(__FILE__)."/schedule.inc");
+include_once(dirname(__FILE__)."/view-courses.inc");
 
 
 /**
@@ -19,6 +20,8 @@ function dh_atportal_permission()
 	$perms['approve applications'] = array('title' => t('Center LC Admin Approve/Reject Apps'));
 	$perms['approve applications on behalf of at'] = array('title' => t('Teacher LC Admin Approve/Reject Apps'));
     $perms['access area cluster'] = array('title' => t('Access Area Cluster') ) ;
+	$perms['at view courses'] = array('title' => t('AT View Own Courses (read-only)'),
+		'description' => t('Let an Assistant Teacher view (read-only) the centre courses they are Confirmed to serve, including all applicants.'));
 	return $perms;
 }
 
@@ -176,6 +179,66 @@ function dh_atportal_menu()
     $items['at-portal/area-cluster-list'] = array( 'title' => t('Area Cluster List'),
            'page callback' => 'dh_atportal_area_cluster_list',
            'access arguments' => array('access area cluster'),
+           'type' => MENU_CALLBACK);
+
+    /* --- AT read-only course viewing (view-courses.inc) --- */
+    $items['at-portal/my-courses'] = array( 'title' => t('My Courses (View)'),
+           'page callback' => 'at_view_my_courses',
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course'] = array( 'title' => t('View Course'),
+           'page callback' => 'at_view_course_hub',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/applicants'] = array( 'title' => t('Applicants'),
+           'page callback' => 'at_view_course_applicants',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/seating'] = array( 'title' => t('Seating Plan'),
+           'page callback' => 'at_view_course_seating',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/teachers'] = array( 'title' => t('Teacher List'),
+           'page callback' => 'at_view_course_teachers',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/cells'] = array( 'title' => t('Cell List'),
+           'page callback' => 'at_view_course_cells',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/report'] = array( 'title' => t('Course Summary Report'),
+           'page callback' => 'at_view_course_report',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/pdf-m'] = array( 'title' => t('Male List PDF'),
+           'page callback' => 'at_view_course_pdf',
+           'page arguments' => array(2, 'M'),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-course/%at_view_course/pdf-f'] = array( 'title' => t('Female List PDF'),
+           'page callback' => 'at_view_course_pdf',
+           'page arguments' => array(2, 'F'),
+           'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/my-applicant/%at_view_app'] = array( 'title' => t('Applicant'),
+           'page callback' => 'at_view_applicant_detail',
+           'page arguments' => array(2),
+           'access arguments' => array('at view courses'),
            'type' => MENU_CALLBACK);
 
     return $items;
@@ -422,6 +485,7 @@ function dh_atportal_dashboard()
 		'AT Address Book' => 'at-portal/address-book',
 		'Apply for AT-Seva in a Course' => 'at-portal/course-list',
 		'Courses Allotted-to-me / Applied-by-me for AT-Seva' => 'at-portal/applied-courses-list',
+		'My Courses — View Applicants (read-only)' => 'at-portal/my-courses',
     // 'Apply to Sit/Serve in a Course' => 'at-portal/course-sit-list',
     'Add Referral' => 'at-portal/referral/add',
 		'Referral List' => 'referral',

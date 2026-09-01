@@ -17,6 +17,14 @@
 }
 .tag-chip .tag-x:hover { opacity: 1; }
 
+/* System tag (e.g. "AT Comments"): fixed, no remove control; small lock cue. */
+.tag-chip.tag-system::before {
+  content: "\1F512";
+  margin-right: 4px;
+  font-size: 9px;
+  opacity: 0.9;
+}
+
 .tag-swatch {
   display: inline-block;
   position: relative;
