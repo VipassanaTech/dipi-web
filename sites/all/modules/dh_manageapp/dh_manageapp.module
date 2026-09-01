@@ -20,6 +20,7 @@ include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
 include_once dirname(__FILE__) . "/inc/seating.inc";
 include_once dirname(__FILE__) . "/inc/bulk-mail.inc";
+include_once dirname(__FILE__) . "/inc/tags.inc";
 
 
 
@@ -91,6 +92,14 @@ function dh_manageapp_permission()
 	
  	$perms['access center dashboard'] = array('title' => t('Access Center Dashboard'));
     $perms['access all center dashboard'] = array('title' => t('Access All Center Dashboard'));
+
+	// Application tags
+	$perms['create tag'] = array('title' => t('Create application tag'));
+	$perms['edit own tag'] = array('title' => t('Edit own application tag (rename/recolor)'));
+	$perms['edit all tag'] = array('title' => t('Edit any application tag (rename/recolor)'));
+	$perms['delete own tag'] = array('title' => t('Delete own application tag'));
+	$perms['delete all tag'] = array('title' => t('Delete any application tag'));
+	$perms['use tag'] = array('title' => t('Use application tags (assign/unassign, view tagged)'));
 
 	return $perms;
 }
@@ -722,6 +731,28 @@ function dh_manageapp_menu()
            'page callback' => 'dh_manageapp_home',
            'access arguments' => array('access content'),
            'type' => MENU_CALLBACK);
+
+	/* Application tags */
+	$items['tags/%centre_id'] = array( 'title' => t('Application Tags'),
+	       'page callback' => 'dh_tags_admin',
+	       'page arguments' => array(1),
+	       'access callback' => '_dh_tag_admin_access',
+	       'type' => MENU_CALLBACK);
+	$items['tags/%centre_id/handler'] = array( 'title' => t('Application Tags'),
+	       'page callback' => 'dh_tags_handler',
+	       'page arguments' => array(1),
+	       'access callback' => '_dh_tag_admin_access',
+	       'type' => MENU_CALLBACK);
+	$items['app-tag/%centre_id/handler'] = array( 'title' => t('Application Tags'),
+	       'page callback' => 'dh_app_tag_handler',
+	       'page arguments' => array(1),
+	       'access callback' => '_dh_tag_use_access',
+	       'type' => MENU_CALLBACK);
+	// Tagged applications, split present/past (dashboard links).
+	$items['search-tag/%centre_id/%/%'] = array( 'title' => t('Tagged Applications'),
+	       'page callback' => '_search_tag',
+	       'access callback' => '_dh_tag_use_access',
+	       'type' => MENU_CALLBACK);
 
 	return $items;
 }

@@ -36,6 +36,7 @@ function dh_manage_centre()
 		'Manage Courses' => 'manage-course/'.arg(1) ,
 		'Manage Letters' => 'letters/'.arg(1), 
 		'Search' => 'search-app/'.arg(1),
+		'Manage Tags' => 'tags/'.arg(1),
 		'Daily Activity' => 'daily-activity/'.arg(1),
 		'AT Schedule' => 'at-schedule/'.arg(1),
 		'Referral List' => 'referral/'.arg(1),
@@ -51,6 +52,119 @@ function dh_manage_centre()
 			$out .= '<h2><li>'.l($key, $val).'</li></h2>';
 	}
 	$out .= '</ul>';
+
+	// Application tags: pinned quick-access + a searchable (select2) picker, each
+	// linking to the tag's Upcoming / All / Past applications (by course start date).
+	if ( user_access('use tag') )
+	{
+		global $user;
+		drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+		drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/select2.min.css');
+		drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/select2.min.js');
+
+		$centre_arg = arg(1);
+		$base = url('search-tag/' . $centre_arg);
+		$pinned = _dh_tag_pinned($user->uid, $centre_arg);
+		$all_tags = _dh_tag_center_tags($centre_arg);
+
+		// Per-tag counts (one grouped query) split by course start date, scoped to
+		// the viewer's gender access, so the size is visible before opening a view.
+		$gfilter = '';
+		if ( !(user_access('access male') && user_access('access female')) )
+			$gfilter = " AND a.a_gender = '" . (user_access('access male') ? 'M' : 'F') . "'";
+		$counts = array();
+		$cres = db_query("SELECT at.at_tag AS tid, COUNT(*) AS c_all,
+				SUM(c.c_start >= CURDATE()) AS c_up, SUM(c.c_start < CURDATE()) AS c_past
+			FROM dh_application_tag at
+			JOIN dh_applicant a ON at.at_application = a.a_id
+			JOIN dh_course c ON a.a_course = c.c_id
+			WHERE at.at_deleted = 0 AND a.a_center = :c $gfilter
+			GROUP BY at.at_tag", array(':c' => $centre_arg));
+		foreach ($cres as $cr)
+			$counts[$cr->tid] = array('up' => (int) $cr->c_up, 'all' => (int) $cr->c_all, 'past' => (int) $cr->c_past);
+
+		$period_links = function ($tid) use ($base, $counts) {
+			$c = isset($counts[$tid]) ? $counts[$tid] : array('up' => 0, 'all' => 0, 'past' => 0);
+			return '<a class="button tag-period" href="' . $base . '/' . $tid . '/upcoming">' . t('Upcoming') . ' (' . $c['up'] . ')</a> '
+				. '<a class="button tag-period" href="' . $base . '/' . $tid . '/all">' . t('All') . ' (' . $c['all'] . ')</a> '
+				. '<a class="button tag-period" href="' . $base . '/' . $tid . '/past">' . t('Past') . ' (' . $c['past'] . ')</a>';
+		};
+
+		$out .= '<div class="tag-dash-block"><h3>' . t('Tagged Applications')
+			. ' <a href="' . url('tags/' . $centre_arg) . '" class="tag-manage-link" style="font-size:13px;font-weight:normal">' . t('Manage tags') . '</a></h3>';
+
+		if ($pinned) {
+			$out .= '<div class="tag-pinned">';
+			foreach ($pinned as $t) {
+				$out .= '<div class="tag-pinned-row">'
+					. '<a href="#" class="tag-unpin" data-tid="' . $t['t_id'] . '" title="' . t('Unpin') . '">&#9733;</a> '
+					. '<span class="tag-chip" style="background:' . check_plain($t['t_color']) . '">' . check_plain($t['t_name']) . '</span> '
+					. $period_links($t['t_id'])
+					. '</div>';
+			}
+			$out .= '</div>';
+		}
+
+		$opts = '<option value="">' . t('Choose a tag') . '</option>';
+		foreach ($all_tags as $t) {
+			$opts .= '<option value="' . $t['t_id'] . '" data-color="' . check_plain($t['t_color']) . '">' . check_plain($t['t_name']) . '</option>';
+		}
+		$out .= '<div class="tag-choose">'
+			. '<select id="dash-tag-select">' . $opts . '</select> '
+			. '<a href="#" id="dash-tag-pin" title="' . t('Pin this tag') . '" style="display:none">&#9734;</a> &nbsp;'
+			. '<a id="dash-tag-upcoming" class="button tag-period" href="#">' . t('Upcoming') . '</a> '
+			. '<a id="dash-tag-all" class="button tag-period" href="#">' . t('All') . '</a> '
+			. '<a id="dash-tag-past" class="button tag-period" href="#">' . t('Past') . '</a>'
+			. '</div></div>';
+
+		$app_tag_url = url('app-tag/' . $centre_arg . '/handler');
+		$pinned_ids_json = json_encode(array_values(array_map(function ($t) { return (string) $t['t_id']; }, $pinned)));
+		drupal_add_js('
+		(function ($) {
+			$(document).ready(function () {
+				var base = "' . $base . '/";
+				var tagUrl = "' . $app_tag_url . '";
+				var pinnedIds = ' . $pinned_ids_json . ';
+				var tagCounts = ' . json_encode($counts) . ';
+				var $sel = $("#dash-tag-select");
+				function fmtTag(opt) {
+					if (!opt.id) { return opt.text; }
+					var color = $(opt.element).data("color") || "#607d8b";
+					return $("<span class=\"tag-opt\"><span class=\"tag-dot\" style=\"background:" + color + "\"></span></span>").append(document.createTextNode(opt.text));
+				}
+				if ($.fn.select2) { $sel.select2({ width: "240px", allowClear: true, placeholder: "' . t('Choose a tag') . '", templateResult: fmtTag, templateSelection: fmtTag }); }
+				var up = $("#dash-tag-upcoming"), al = $("#dash-tag-all"), pa = $("#dash-tag-past"), pin = $("#dash-tag-pin");
+				function setEnabled(on) { [up, al, pa].forEach(function (a) { a.css({ pointerEvents: on ? "" : "none", opacity: on ? 1 : 0.4 }); }); }
+				setEnabled(false);
+				$sel.on("change", function () {
+					var tid = $(this).val();
+					if (tid) {
+						var c = tagCounts[tid] || { up: 0, all: 0, past: 0 };
+						up.attr("href", base + tid + "/upcoming").text("Upcoming (" + c.up + ")");
+						al.attr("href", base + tid + "/all").text("All (" + c.all + ")");
+						pa.attr("href", base + tid + "/past").text("Past (" + c.past + ")");
+						setEnabled(true);
+						pin.show().html(pinnedIds.indexOf(String(tid)) >= 0 ? "&#9733;" : "&#9734;").data("tid", tid);
+					} else {
+						up.text("Upcoming"); al.text("All"); pa.text("Past");
+						setEnabled(false); pin.hide();
+					}
+				});
+				pin.on("click", function (e) {
+					e.preventDefault();
+					var tid = String($(this).data("tid")); if (!tid) { return; }
+					var op = pinnedIds.indexOf(tid) >= 0 ? "unpin" : "pin";
+					$.post(tagUrl, { op: op, tag: tid }, function (j) { if (j.status) { location.reload(); } else { alert(j.msg); } }, "json");
+				});
+				$(".tag-unpin").on("click", function (e) {
+					e.preventDefault();
+					$.post(tagUrl, { op: "unpin", tag: String($(this).data("tid")) }, function (j) { if (j.status) { location.reload(); } else { alert(j.msg); } }, "json");
+				});
+			});
+		})(jQuery);
+		', 'inline');
+	}
+
 	$with_header = false;
 	$temp = drupal_get_form('dh_zero_select_course', $with_header);
 	$out .= drupal_render($temp);

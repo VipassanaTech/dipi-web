@@ -538,6 +538,165 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		//$rows[] = array_values($rs);
 		$rows[] = $rs;
 	}
+
+	// Application tags: append tag chips + an inline picker to the flags column
+	// (eocd), where the referral flag also lives. No new column, so the Excel
+	// export column mapping is untouched. Gated by 'use tag'.
+	if ( user_access('use tag') && !empty($rows) )
+	{
+		drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+		$aids = array();
+		foreach ($rows as $row) { if (isset($row['aid'])) $aids[] = $row['aid']; }
+		$app_tags = array();
+		if ($aids)
+		{
+			$res = db_query(
+				"SELECT at.at_application, t.t_id, t.t_name, t.t_color
+				 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
+				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND at.at_application IN (:aids)",
+				array(':aids' => $aids)
+			);
+			foreach ($res as $tr) { $app_tags[$tr->at_application][] = $tr; }
+		}
+		// Distinct tags actually present on this result set (for the filter dropdown).
+		$present_tags = array();
+		foreach ($app_tags as $tgs)
+			foreach ($tgs as $tg)
+				$present_tags[$tg->t_id] = array('t_id' => $tg->t_id, 't_name' => $tg->t_name, 't_color' => $tg->t_color);
+		$present_tags = array_values($present_tags);
+		usort($present_tags, function ($a, $b) { return strcasecmp($a['t_name'], $b['t_name']); });
+		foreach ($rows as $i => $row)
+		{
+			$aid = $row['aid'];
+			$chips = '';
+			if (isset($app_tags[$aid]))
+			{
+				foreach ($app_tags[$aid] as $tg)
+				{
+					$chips .= '<span class="tag-chip" data-tid="' . $tg->t_id . '" style="background:' . check_plain($tg->t_color) . '">'
+						. check_plain($tg->t_name) . '<span class="tag-x" title="Remove">&times;</span></span>';
+				}
+			}
+			$block = '<div class="app-tags" data-aid="' . $aid . '">' . $chips
+				. '<span class="tag-add-btn" title="Add tag">+ tag</span></div>';
+			$rows[$i]['eocd'] = (isset($rows[$i]['eocd']) ? $rows[$i]['eocd'] : '') . $block;
+			// Hidden data field (not a column) used by the client-side tag filter.
+			$rows[$i]['tag_ids'] = isset($app_tags[$aid]) ? implode(',', array_map(function ($tg) { return $tg->t_id; }, $app_tags[$aid])) : '';
+		}
+
+		$centre_tags_json = json_encode(_dh_tag_center_tags($centre));
+		$present_tags_json = json_encode($present_tags);
+		$app_tag_url = url('app-tag/' . $centre . '/handler');
+		$tags_page_url = url('tags/' . $centre);
+		$tags_handler_url = url('tags/' . $centre . '/handler');
+		$can_create_tag = user_access('create tag') ? 1 : 0;
+		$palette_json = json_encode(_dh_tag_palette());
+		drupal_add_js('
+		(function ($) {
+			$(document).ready(function () {
+				var centreTags = ' . $centre_tags_json . ';
+				var tagUrl = "' . $app_tag_url . '";
+				var tagsPageUrl = "' . $tags_page_url . '";
+				var tagsHandlerUrl = "' . $tags_handler_url . '";
+				var canCreateTag = ' . $can_create_tag . ';
+				var palette = ' . $palette_json . ';
+				// Client-side "Filter by tag": hide rows lacking the chosen tag via a
+				// DataTables custom filter (no server round-trip, no new column). Only
+				// tags actually present on a row are offered, each shown with its colour.
+				function fmtTag(opt) {
+					if (!opt.id) { return opt.text; }
+					var color = $(opt.element).data("color") || "#607d8b";
+					return $("<span class=\"tag-opt\"><span class=\"tag-dot\" style=\"background:" + color + "\"></span></span>").append(document.createTextNode(opt.text));
+				}
+				var filterTags = ' . $present_tags_json . ';
+				if (filterTags.length) {
+					var $ff = $("<select id=\"tag-filter-select\" class=\"tag-filter-select no-print\"></select>");
+					$ff.append("<option value=\"\">All applications</option>");
+					filterTags.forEach(function (t) { $ff.append($("<option>").attr("value", t.t_id).attr("data-color", t.t_color).text(t.t_name)); });
+					$("#table-applicants").before($("<div class=\"tag-filter-bar no-print\">").append("<b>Filter by tag:</b> ").append($ff));
+					if ($.fn.select2) { $ff.select2({ width: "220px", templateResult: fmtTag, templateSelection: fmtTag }); }
+				}
+				$.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+					if (settings.nTable.id !== "table-applicants") { return true; }
+					var val = $("#tag-filter-select").val();
+					if (!val) { return true; }
+					var row = settings.aoData[dataIndex]._aData;
+					var ids = (row && row.tag_ids) ? String(row.tag_ids).split(",") : [];
+					return ids.indexOf(String(val)) >= 0;
+				});
+				$(document).on("change", "#tag-filter-select", function () {
+					if ($.fn.dataTable.isDataTable("#table-applicants")) { $("#table-applicants").DataTable().draw(); }
+				});
+				function esc(s){ return $("<span>").text(s).html(); }
+				function chipHtml(t){ return "<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"background:" + t.t_color + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"; }
+				$(document).on("click", ".app-tags .tag-x", function (e) {
+					e.stopPropagation();
+					var chip = $(this).closest(".tag-chip"), box = chip.closest(".app-tags");
+					$.post(tagUrl, { op: "unassign", tag: chip.data("tid"), application: box.data("aid") }, function (j) {
+						if (j.status) { chip.remove(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+					}, "json");
+				});
+				$(document).on("click", ".app-tags .tag-add-btn", function (e) {
+					e.stopPropagation();
+					var box = $(this).closest(".app-tags"), aid = box.data("aid"), assigned = {};
+					box.find(".tag-chip").each(function () { assigned[$(this).data("tid")] = 1; });
+					function assignTag(t) {
+						$.post(tagUrl, { op: "assign", tag: t.t_id, application: aid }, function (j) {
+							if (j.status) { box.find(".tag-add-btn").before(chipHtml(t)); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+						}, "json");
+					}
+					var avail = centreTags.filter(function (t) { return !assigned[t.t_id]; });
+					var chips = avail.map(function (t) {
+						return "<span class=\"tag-chip tag-pick-opt\" data-tid=\"" + t.t_id + "\" data-name=\"" + esc(t.t_name) + "\" data-color=\"" + t.t_color + "\" style=\"background:" + t.t_color + ";cursor:pointer\">" + esc(t.t_name) + "</span>";
+					}).join(" ");
+					var content = "<div class=\"tag-pick\">" + (chips || "<em>No unused tags.</em>") + "</div>"
+						+ (canCreateTag ? "<div class=\"tag-new-wrap\"><button type=\"button\" class=\"tag-new-btn\">+ New tag</button></div>" : "");
+					if (!$.confirm) { return; }
+					$.confirm({
+						title: "Add tag",
+						content: content,
+						buttons: { cancel: function () {} },
+						onContentReady: function () {
+							var self = this;
+							self.$content.on("click", ".tag-pick-opt", function () {
+								assignTag({ t_id: $(this).data("tid"), t_name: $(this).data("name"), t_color: $(this).data("color") });
+								self.close();
+							});
+							self.$content.on("click", ".tag-new-btn", function () {
+								var sw = palette.map(function (c) { return "<span class=\"tag-swatch\" data-color=\"" + c + "\" style=\"background:" + c + "\"></span>"; }).join("");
+								var selColor = palette[0];
+								$.confirm({
+									title: "New tag",
+									content: "<input type=\"text\" id=\"new-tag-name\" placeholder=\"Tag name\" maxlength=\"100\" style=\"width:100%;padding:4px 6px\"><div class=\"tag-swatches\" style=\"margin-top:12px\">" + sw + "</div>",
+									buttons: {
+										create: { text: "Create", btnClass: "btn-blue", action: function () {
+											var d2 = this, name = $.trim(d2.$content.find("#new-tag-name").val());
+											if (!name) { d2.$content.find("#new-tag-name").focus(); return false; }
+											var cc = d2.$content.find(".tag-swatch.sel").data("color") || selColor;
+											$.post(tagsHandlerUrl, { op: "create", name: name, color: cc }, function (j) {
+												if (j.status) { var t = { t_id: j.tag.t_id, t_name: j.tag.t_name, t_color: j.tag.t_color }; centreTags.push(t); assignTag(t); d2.close(); self.close(); }
+												else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+											}, "json");
+											return false;
+										} },
+										cancel: function () {}
+									},
+									onContentReady: function () {
+										var d = this;
+										d.$content.find(".tag-swatch").first().addClass("sel");
+										d.$content.on("click", ".tag-swatch", function () { d.$content.find(".tag-swatch").removeClass("sel"); $(this).addClass("sel"); selColor = $(this).data("color"); });
+										d.$content.find("#new-tag-name").focus();
+									}
+								});
+							});
+						}
+					});
+				});
+			});
+		})(jQuery);
+		', 'inline');
+	}
+
 	//$header = array('Detail', 'Applicant Name', 'Course Name', 'Status', 'ConfNo' , 'Gender', 'Country/State/City', 'Age');
 	$header = array();
 	$attributes = array('id' => 'table-applicants');
@@ -2098,6 +2257,7 @@ function dh_application_view($app_id)
 		$out .= '<img src="'.check_plain(file_create_url("show-photo/".$app_id)).'" alt="photo" style="float:right;max-width:140px;max-height:180px;border:1px solid #ccc;margin-left:12px" />';
 	$out .= '<h2>'.check_plain($r['fullname']).($r['ConfNo']?' ('.check_plain($r['ConfNo']).')':'').'</h2>';
 	$out .= '<div class="av-status">'.check_plain($r['a_status']).' &middot; '.check_plain($course).'</div>';
+	$out .= _dh_tag_widget($app_id, $r['a_center']);
 
 	$out .= $sec('Personal', '<div class="av-grid">'.
 		$fld('Gender', $r['a_gender']).$fld('Date of Birth', $r['a_dob']).

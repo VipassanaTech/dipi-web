@@ -1,0 +1,104 @@
+/* Application tags */
+.tag-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 1px 3px 1px 0;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.tag-chip .tag-x {
+  margin-left: 5px;
+  cursor: pointer;
+  opacity: 0.75;
+  font-weight: bold;
+}
+.tag-chip .tag-x:hover { opacity: 1; }
+
+.tag-swatch {
+  display: inline-block;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin: 0 6px;
+  cursor: pointer;
+  vertical-align: middle;
+  border: 2px solid transparent;
+  transition: transform 0.08s ease;
+}
+/* Selected swatch: white gap + dark ring halo, slight zoom, and a check mark
+   so it is clearly identifiable on any colour. */
+.tag-swatch.sel {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #333;
+}
+.tag-swatch.sel::after {
+  content: "\2713";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+.tag-swatches { display: inline-block; margin: 0 8px; vertical-align: middle; }
+
+.tag-create { margin: 10px 0 16px; }
+.tag-create input[type="text"] { padding: 4px 8px; width: 220px; vertical-align: middle; }
+.tag-table td { vertical-align: middle; }
+.tag-table a { margin-right: 8px; }
+
+/* small "+" adder used in search rows / detail */
+.tag-add-btn {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px dashed #999;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #666;
+  cursor: pointer;
+}
+.tag-add-btn:hover { border-color: #333; color: #333; }
+
+/* Dashboard tag block */
+.tag-dash-block {
+  margin: 12px 0 18px;
+  padding: 10px 14px;
+  background: #f6f6f6;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+.tag-dash-block h3 { margin: 0 0 8px; }
+.tag-dash-block .button { margin-left: 4px; }
+.tag-dash-preview { vertical-align: middle; }
+
+/* Pins */
+.tag-pinned { margin: 6px 0 10px; }
+.tag-pinned-row { margin: 4px 0; line-height: 24px; }
+.tag-choose { margin-top: 6px; }
+.tag-period { margin: 0 2px; }
+.tag-unpin, #dash-tag-pin, .tag-admin-pin {
+  color: #f5a623;
+  text-decoration: none;
+  font-size: 17px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.tag-unpin:hover, #dash-tag-pin:hover, .tag-admin-pin:hover { color: #e0900a; }
+.tag-admin-pin.off { color: #bbb; }
+
+/* Client-side tag filter on search results */
+.tag-filter-bar { margin: 8px 0; }
+.tag-filter-select { min-width: 170px; padding: 2px 4px; vertical-align: middle; }
+.tag-opt { display: inline-flex; align-items: center; }
+.tag-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: middle; flex: 0 0 auto; }
+.tag-new-wrap { margin-top: 12px; }
+.tag-new-btn { padding: 4px 12px; cursor: pointer; border: 1px solid #999; border-radius: 4px; background: #fff; }
+.tag-new-btn:hover { border-color: #333; }
