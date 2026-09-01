@@ -260,7 +260,6 @@ function at_view_course_hub($c) {
     'teacher' => '<svg ' . $sv . '><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     'cell'    => '<svg ' . $sv . '><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M15 12h.01"/></svg>',
     'report'  => '<svg ' . $sv . '><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>',
-    'file'    => '<svg ' . $sv . '><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
   );
   $tiles = array(
     array('applicants', 'users',   t('Applicants'),     t('all applicants')),
@@ -268,8 +267,6 @@ function at_view_course_hub($c) {
     array('teachers',   'teacher', t('Teacher List'),   ''),
     array('cells',      'cell',    t('Cell List'),      ''),
     array('report',     'report',  t('Course Summary'), t('Day-11 report')),
-    array('pdf-m',      'file',    t('Male List'),      t('PDF')),
-    array('pdf-f',      'file',    t('Female List'),    t('PDF')),
   );
 
   $out  = '<div class="at-view">';
@@ -433,30 +430,6 @@ function at_view_course_report($c) {
   header("Content-type: application/pdf");
   header("Content-Disposition: inline; filename=Day11-Report.pdf");
   $ret = s3_get_file(variable_get('s3_bucket_name', ''), $pdf, 'stream');
-  if (!$ret['success']) {
-    watchdog('S3PDF', $ret['message']);
-  }
-  print($ret['data']);
-  exit();
-}
-
-
-/**
- * Page: Male/Female course-list PDF. Reuses the dh_manageapp worker + S3 stream.
- */
-function at_view_course_pdf($c, $type) {
-  if (!function_exists('generate_course_pdf')) {
-    return t('PDF is unavailable.');
-  }
-  $type = ($type === 'F') ? 'F' : 'M';
-  $seating = (isset($_REQUEST['seating']) && $_REQUEST['seating'] == 1) ? 1 : 0;
-
-  generate_course_pdf($c['course'], $seating, $type);
-
-  header("Content-type: application/pdf");
-  header("Content-Disposition: inline; filename=course-" . $type . ".pdf");
-  $uri = "applications/" . $c['center'] . "/" . $c['course'] . "/course-" . $type . ".pdf";
-  $ret = s3_get_file(variable_get('s3_bucket_name', ''), $uri, 'stream');
   if (!$ret['success']) {
     watchdog('S3PDF', $ret['message']);
   }

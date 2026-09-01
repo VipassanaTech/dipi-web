@@ -223,18 +223,6 @@ function dh_atportal_menu()
            'access arguments' => array('at view courses'),
            'type' => MENU_CALLBACK);
 
-    $items['at-portal/my-course/%at_view_course/pdf-m'] = array( 'title' => t('Male List PDF'),
-           'page callback' => 'at_view_course_pdf',
-           'page arguments' => array(2, 'M'),
-           'access arguments' => array('at view courses'),
-           'type' => MENU_CALLBACK);
-
-    $items['at-portal/my-course/%at_view_course/pdf-f'] = array( 'title' => t('Female List PDF'),
-           'page callback' => 'at_view_course_pdf',
-           'page arguments' => array(2, 'F'),
-           'access arguments' => array('at view courses'),
-           'type' => MENU_CALLBACK);
-
     $items['at-portal/my-applicant/%at_view_app'] = array( 'title' => t('Applicant'),
            'page callback' => 'at_view_applicant_detail',
            'page arguments' => array(2),
