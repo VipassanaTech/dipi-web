@@ -448,7 +448,7 @@ function dh_manage_course_handler()
                 }
                 // A brand-new course must never be created already-finalized.
                 if ( $host['action'] === 'create' ) {
-                    return t('A new course cannot be created as finalized.');
+                    return _course_finalize_log_block( 0, t('A new course cannot be created as finalized.') );
                 }
                 if ( $host['action'] !== 'edit' ) {
                     return true;
@@ -457,7 +457,11 @@ function dh_manage_course_handler()
                 if ( $already ) {
                     return true; // already finalized: not a new transition
                 }
-                return _course_finalize_check( $host['id'] );
+                $check = _course_finalize_check( $host['id'] );
+                if ( $check !== true ) {
+                    return _course_finalize_log_block( $host['id'], $check );
+                }
+                return true;
             } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_enrol_date' )
 	 	    ->getFormatter( 'Format::datetime', array(
@@ -672,6 +676,23 @@ function _course_lc_boundary_check( $id, $new_type )
  * Backstop so no edit can finalize an upcoming or empty course, even if the
  * client's guard is bypassed.
  */
+/**
+ * Log a blocked finalize attempt to watchdog (type "CourseFinalizeGuard") and
+ * return the reason string so the editor still shows it as the field error.
+ * Review these periodically: entries should only ever be genuine mistakes
+ * (finalizing an upcoming/empty course, or create-as-finalized). A block on a
+ * properly ended+attended course would be a false positive to investigate.
+ */
+function _course_finalize_log_block( $course_id, $reason )
+{
+	global $user;
+	watchdog('CourseFinalizeGuard',
+		'Blocked finalize on course @cid by uid @uid: @reason',
+		array('@cid' => $course_id, '@uid' => isset($user->uid) ? $user->uid : 0, '@reason' => $reason),
+		WATCHDOG_WARNING);
+	return $reason;
+}
+
 function _course_finalize_check( $id )
 {
 	$r = db_query("SELECT td_key, c_list_only, IF(c_end <= CURDATE(), 1, 0) AS completed
