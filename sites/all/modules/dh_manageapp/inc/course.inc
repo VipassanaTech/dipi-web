@@ -437,7 +437,28 @@ function dh_manage_course_handler()
             ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Course End date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_cancelled' ),
-	    \DataTables\Editor\Field::inst( 'dh_course.c_finalized' ),
+	    \DataTables\Editor\Field::inst( 'dh_course.c_finalized' )
+   	        ->validator( function ( $val, $data, $field, $host ) {
+                // Only guard the transition to finalized (c_finalized = 1). A course
+                // can be finalized only once it has ended and is complete (same rule as
+                // _get_student_finalize). Server-side backstop against a client bug or
+                // crafted request finalizing many/upcoming courses.
+                if ( (string) $val !== '1' ) {
+                    return true;
+                }
+                // A brand-new course must never be created already-finalized.
+                if ( $host['action'] === 'create' ) {
+                    return t('A new course cannot be created as finalized.');
+                }
+                if ( $host['action'] !== 'edit' ) {
+                    return true;
+                }
+                $already = db_query("SELECT c_finalized FROM dh_course WHERE c_id = :id", array(':id' => $host['id']))->fetchField();
+                if ( $already ) {
+                    return true; // already finalized: not a new transition
+                }
+                return _course_finalize_check( $host['id'] );
+            } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_enrol_date' )
 	 	    ->getFormatter( 'Format::datetime', array(
 					'from' => 'Y-m-d',
@@ -639,6 +660,31 @@ function _course_lc_boundary_check( $id, $new_type )
 	if ( $apps > 0 )
 		return "This course has $apps application(s); its type can't be switched between Long Course (LC) and a regular course. Please create a new course of the required type instead.";
 
+	return true;
+}
+
+/**
+ * Server-side finalize eligibility (mirrors _get_student_finalize, the check the
+ * Finalize button runs client-side). A course may be finalized only once it has
+ * ended AND is "complete": a 1-Day OSC / list-only course qualifies as soon as it
+ * ends; any other course needs at least one attended student. Returns TRUE when
+ * finalizing is allowed, or an error string (shown under the field) otherwise.
+ * Backstop so no edit can finalize an upcoming or empty course, even if the
+ * client's guard is bypassed.
+ */
+function _course_finalize_check( $id )
+{
+	$r = db_query("SELECT td_key, c_list_only, IF(c_end <= CURDATE(), 1, 0) AS completed
+		FROM dh_course LEFT JOIN dh_type_detail ON c_course_type = td_id WHERE c_id = :id", array(':id' => $id))->fetchAssoc();
+	if ( !$r )
+		return t('Course not found.');
+	if ( !$r['completed'] )
+		return t('This course has not ended yet, so it cannot be finalized. Finalize only after the course end date.');
+	if ( $r['td_key'] == '1-DayOSC' || $r['c_list_only'] )
+		return true; // 1-day / list-only courses do not need attended students
+	$attended = (int) db_query("SELECT COUNT(a_id) FROM dh_applicant WHERE a_attended = 1 AND a_course = :id", array(':id' => $id))->fetchField();
+	if ( $attended < 1 )
+		return t('This course has no students marked as attended, so it cannot be finalized. Update attendance in the Zero Day section first.');
 	return true;
 }
 
