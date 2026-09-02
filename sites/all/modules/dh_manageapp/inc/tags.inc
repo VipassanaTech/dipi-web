@@ -37,21 +37,54 @@ function _dh_tag_center_access($centre_id)
 }
 
 /**
- * Menu access: the tag admin page / CRUD handler. Any tag permission + centre access.
+ * Is the current user an active AT confirmed to serve a live course in this
+ * centre? Such an AT may manage their OWN private tags (t_owner = their uid)
+ * without holding centre access. Uses the dh_atportal helper when available.
+ */
+function _dh_tag_at_serves_centre($centre_id)
+{
+	if (!function_exists('_at_view_teacher_id')) {
+		return FALSE;
+	}
+	$tid = _at_view_teacher_id();
+	if (!$tid) {
+		return FALSE;
+	}
+	return (bool) db_query_range(
+		"SELECT 1 FROM dh_course_teacher ct JOIN dh_course co ON co.c_id = ct.ct_course
+		 WHERE ct.ct_teacher = :t AND co.c_center = :c AND ct.ct_status = 'Confirmed'
+		   AND ct.ct_type IN ('Conducting','Assisting') AND co.c_deleted = 0 AND co.c_cancelled = 0",
+		0, 1, array(':t' => $tid, ':c' => $centre_id)
+	)->fetchField();
+}
+
+/**
+ * Menu access: the tag admin page / CRUD handler. Centre staff (any tag perm +
+ * centre access) OR an AT who serves this centre (for creating private tags).
  */
 function _dh_tag_admin_access()
 {
 	$centre = arg(1);
-	return $centre !== NULL && _dh_tag_has_any_perm() && _dh_tag_center_access($centre);
+	if ($centre === NULL) {
+		return FALSE;
+	}
+	if (_dh_tag_has_any_perm() && _dh_tag_center_access($centre)) {
+		return TRUE;
+	}
+	return user_access('use tag') && _dh_tag_at_serves_centre($centre);
 }
 
 /**
- * Menu access: assign/unassign endpoints. 'use tag' + centre access.
+ * Menu access: assign/unassign endpoints. 'use tag' + (centre access OR the
+ * user is an AT serving this centre, for their own private tags).
  */
 function _dh_tag_use_access()
 {
 	$centre = arg(1);
-	return $centre !== NULL && user_access('use tag') && _dh_tag_center_access($centre);
+	if ($centre === NULL || !user_access('use tag')) {
+		return FALSE;
+	}
+	return _dh_tag_center_access($centre) || _dh_tag_at_serves_centre($centre);
 }
 
 /**
@@ -80,12 +113,92 @@ function _dh_tag_palette()
 }
 
 /**
- * All non-deleted tags for a centre, ordered by name.
+ * Readable chip text colour (dark on light backgrounds, white on dark) using
+ * WCAG relative luminance. Returns '#222' or '#fff'.
  */
-function _dh_tag_center_tags($centre_id)
+function _dh_tag_text_color($hex)
 {
+	$hex = ltrim((string) $hex, '#');
+	if (strlen($hex) === 3) {
+		$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+	}
+	if (strlen($hex) !== 6) {
+		return '#fff';
+	}
+	$lin = function ($h) {
+		$c = hexdec($h) / 255;
+		return $c <= 0.03928 ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4);
+	};
+	$l = 0.2126 * $lin(substr($hex, 0, 2)) + 0.7152 * $lin(substr($hex, 2, 2)) + 0.0722 * $lin(substr($hex, 4, 2));
+	return $l > 0.179 ? '#222' : '#fff';
+}
+
+/**
+ * "Soft tint" chip style for a tag colour: a pale fill (colour mixed toward
+ * white), text in a dark shade of the same hue, and a light same-hue border.
+ * Reads well for any picked colour. Returns a CSS declaration fragment
+ * (background/color/border) with no leading/trailing semicolon.
+ */
+function _dh_tag_chip_style($hex)
+{
+	$hex = ltrim((string) $hex, '#');
+	if (strlen($hex) === 3) {
+		$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+	}
+	if (strlen($hex) !== 6) {
+		$hex = '607d8b';
+	}
+	$r = hexdec(substr($hex, 0, 2));
+	$g = hexdec(substr($hex, 2, 2));
+	$b = hexdec(substr($hex, 4, 2));
+	$mix = function ($a, $t) {
+		return round($a + (255 - $a) * $t);
+	};
+	$bg = sprintf('#%02x%02x%02x', $mix($r, 0.85), $mix($g, 0.85), $mix($b, 0.85));
+	$bd = sprintf('#%02x%02x%02x', $mix($r, 0.45), $mix($g, 0.45), $mix($b, 0.45));
+	$lin = function ($v) {
+		$v = $v / 255;
+		return $v <= 0.03928 ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
+	};
+	$tr = $r;
+	$tg = $g;
+	$tb = $b;
+	for ($i = 0; $i < 40; $i++) {
+		$l = 0.2126 * $lin($tr) + 0.7152 * $lin($tg) + 0.0722 * $lin($tb);
+		if ($l <= 0.10) {
+			break;
+		}
+		$tr *= 0.92;
+		$tg *= 0.92;
+		$tb *= 0.92;
+	}
+	$fg = sprintf('#%02x%02x%02x', round($tr), round($tg), round($tb));
+	return 'background:' . $bg . ';color:' . $fg . ';border:1px solid ' . $bd;
+}
+
+/**
+ * Visibility filter for the tag scope. Centre context ($at_uid = 0) sees centre
+ * tags (t_owner = 0) plus system tags; an AT context ($at_uid > 0) sees only
+ * that AT's own private tags (t_owner = uid) plus system tags. $at_uid is an
+ * int, inlined safely.
+ */
+function _dh_tag_scope_where($col, $at_uid)
+{
+	$at_uid = (int) $at_uid;
+	if ($at_uid > 0) {
+		return "({$col}t_owner = {$at_uid} OR {$col}t_system = 1)";
+	}
+	return "({$col}t_owner = 0 OR {$col}t_system = 1)";
+}
+
+/**
+ * Tags for a centre visible in the given context, ordered by name.
+ */
+function _dh_tag_center_tags($centre_id, $at_uid = 0)
+{
+	$scope = _dh_tag_scope_where('', $at_uid);
 	return db_query(
-		"SELECT t_id, t_name, t_color, t_created_by, t_system FROM dh_tag WHERE t_center = :c AND t_deleted = 0 ORDER BY t_name",
+		"SELECT t_id, t_name, t_color, t_created_by, t_system, t_owner FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND $scope ORDER BY t_name",
 		array(':c' => $centre_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -94,24 +207,25 @@ function _dh_tag_center_tags($centre_id)
  * Is a tag name already taken in this centre (case-insensitive, non-deleted)?
  * $exclude_id lets an edit keep its own name.
  */
-function _dh_tag_name_exists($centre_id, $name, $exclude_id = 0)
+function _dh_tag_name_exists($centre_id, $name, $exclude_id = 0, $owner = 0)
 {
 	return (bool) db_query_range(
-		"SELECT 1 FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND t_name = :n AND t_id <> :x",
+		"SELECT 1 FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND t_name = :n AND t_id <> :x AND t_owner = :o",
 		0, 1,
-		array(':c' => $centre_id, ':n' => trim($name), ':x' => $exclude_id)
+		array(':c' => $centre_id, ':n' => trim($name), ':x' => $exclude_id, ':o' => (int) $owner)
 	)->fetchField();
 }
 
 /**
  * Tags currently on an application (non-deleted), for row/detail rendering.
  */
-function _dh_tag_for_application($application_id)
+function _dh_tag_for_application($application_id, $at_uid = 0)
 {
+	$scope = _dh_tag_scope_where('t.', $at_uid);
 	return db_query(
-		"SELECT t.t_id, t.t_name, t.t_color, t.t_system
+		"SELECT t.t_id, t.t_name, t.t_color, t.t_system, t.t_owner
 		 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
-		 WHERE at.at_application = :a AND at.at_deleted = 0 AND t.t_deleted = 0
+		 WHERE at.at_application = :a AND at.at_deleted = 0 AND t.t_deleted = 0 AND $scope
 		 ORDER BY t.t_name",
 		array(':a' => $application_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
@@ -140,46 +254,77 @@ function _dh_tag_pinned($uid, $centre_id)
 }
 
 /* ---------------------------------------------------------------------------
- * "AT Comments" system tag
+ * System tags ("AT Comments" / "Center Comment")
  *
- * A fixed, per-centre system tag (t_system = 1) auto-applied to an application
- * when a conducting/assisting Assistant Teacher of that application's course
- * leaves a review comment. System tags cannot be edited, deleted, manually
- * assigned or unassigned by anyone (enforced in the CRUD/assign handlers).
+ * Fixed per-centre system tags (t_system = 1, t_owner = 0) auto-applied to an
+ * application when a review comment is added:
+ *   - "AT Comments"    when the reviewer is a conducting/assisting AT of the
+ *                       application's course.
+ *   - "Center Comment" when the reviewer is centre team (anyone who is NOT the
+ *                       course's AT).
+ * Both are visible to everyone (centre + AT) and cannot be edited, deleted, or
+ * manually (un)assigned by anyone (enforced in the CRUD/assign handlers).
  * ------------------------------------------------------------------------- */
 
 define('DH_AT_COMMENTS_TAG', 'AT Comments');
+define('DH_CENTER_COMMENT_TAG', 'Center Comment');
 
 /**
- * Find (or lazily create) the centre's "AT Comments" system tag; returns t_id.
+ * Find (or lazily create) a per-centre system tag by name; returns t_id.
  */
-function _dh_tag_at_comments_id($centre_id)
+function _dh_tag_system_id($centre_id, $name, $color)
 {
 	$id = db_query(
 		"SELECT t_id FROM dh_tag WHERE t_center = :c AND t_system = 1 AND t_name = :n AND t_deleted = 0",
-		array(':c' => $centre_id, ':n' => DH_AT_COMMENTS_TAG)
+		array(':c' => $centre_id, ':n' => $name)
 	)->fetchField();
 	if ($id) {
 		return $id;
 	}
 	return db_insert('dh_tag')->fields(array(
 		't_center' => $centre_id,
-		't_name' => DH_AT_COMMENTS_TAG,
-		't_color' => '#16a085',
+		't_name' => $name,
+		't_color' => $color,
 		't_system' => 1,
+		't_owner' => 0,
 		't_created_by' => 0,
 		't_updated_by' => 0,
 	))->execute();
 }
 
 /**
- * Mark an application with its centre's "AT Comments" system tag (idempotent).
- * Called from _add_applicant_review() when the reviewer is a conducting/assisting
- * AT of the application's course.
+ * Append a row to the tag-activity log (Phase 2). $action is 'add' | 'remove'.
  */
-function _dh_tag_mark_at_comment($application_id, $centre_id, $uid = 0)
+function _dh_tag_log($tag_id, $application_id, $action, $uid)
 {
-	$tag_id = _dh_tag_at_comments_id($centre_id);
+	db_insert('dh_application_tag_log')->fields(array(
+		'atl_tag' => (int) $tag_id,
+		'atl_application' => (int) $application_id,
+		'atl_action' => $action,
+		'atl_by' => (int) $uid,
+		'atl_at' => date('Y-m-d H:i:s'),
+	))->execute();
+}
+
+/**
+ * Is a tag currently (non-deleted) assigned to an application?
+ */
+function _dh_tag_is_active($tag_id, $application_id)
+{
+	return (bool) db_query_range(
+		"SELECT 1 FROM dh_application_tag WHERE at_tag = :t AND at_application = :a AND at_deleted = 0",
+		0, 1, array(':t' => (int) $tag_id, ':a' => (int) $application_id)
+	)->fetchField();
+}
+
+/**
+ * Mark an application with a per-centre system tag (idempotent upsert). Logs an
+ * 'add' only on a genuine new/reactivated assignment (not on a no-op re-apply).
+ */
+function _dh_tag_mark_system($application_id, $centre_id, $name, $color, $uid = 0)
+{
+	$tag_id = _dh_tag_system_id($centre_id, $name, $color);
+	$was_active = _dh_tag_is_active($tag_id, $application_id);
 	// Upsert: re-activate a soft-deleted assignment, else insert (UNIQUE at_tag,at_application).
 	db_query(
 		"INSERT INTO dh_application_tag (at_tag, at_application, at_created_by, at_created)
@@ -187,6 +332,21 @@ function _dh_tag_mark_at_comment($application_id, $centre_id, $uid = 0)
 		 ON DUPLICATE KEY UPDATE at_deleted = 0",
 		array(':t' => $tag_id, ':a' => (int) $application_id, ':u' => (int) $uid)
 	);
+	if (!$was_active) {
+		_dh_tag_log($tag_id, $application_id, 'add', $uid);
+	}
+}
+
+/** "AT Comments": reviewer is a conducting/assisting AT of the course. */
+function _dh_tag_mark_at_comment($application_id, $centre_id, $uid = 0)
+{
+	_dh_tag_mark_system($application_id, $centre_id, DH_AT_COMMENTS_TAG, '#16a085', $uid);
+}
+
+/** "Center Comment": reviewer is centre team (not the course's AT). */
+function _dh_tag_mark_center_comment($application_id, $centre_id, $uid = 0)
+{
+	_dh_tag_mark_system($application_id, $centre_id, DH_CENTER_COMMENT_TAG, '#8e44ad', $uid);
 }
 
 /* ---------------------------------------------------------------------------
@@ -207,13 +367,25 @@ function dh_tags_handler($centre_id)
 	$op = isset($_POST['op']) ? $_POST['op'] : (isset($_GET['op']) ? $_GET['op'] : 'list');
 	global $user;
 
+	// AT context: an AT serving this centre works only with their OWN private
+	// tags (t_owner = uid). The client passes scope=at. Centre staff omit it and
+	// work with centre tags (t_owner = 0).
+	$at_uid = _dh_tag_at_serves_centre($centre_id) ? $user->uid : 0;
+	$at_mode = (isset($_POST['scope']) && $_POST['scope'] === 'at') && $at_uid > 0;
+
 	if ($op === 'list') {
-		_dh_tag_json(array('status' => 1, 'tags' => _dh_tag_center_tags($centre_id)));
+		_dh_tag_json(array('status' => 1, 'tags' => _dh_tag_center_tags($centre_id, $at_mode ? $at_uid : 0)));
 	}
 
 	if ($op === 'create') {
-		if (!user_access('create tag')) {
-			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to create tags.')));
+		if ($at_mode) {
+			$owner = $at_uid; // AT creates a private tag
+		}
+		else {
+			if (!user_access('create tag')) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to create tags.')));
+			}
+			$owner = 0;
 		}
 		$name = trim($_POST['name']);
 		$color = in_array($_POST['color'], _dh_tag_palette()) ? $_POST['color'] : '#607d8b';
@@ -223,14 +395,14 @@ function dh_tags_handler($centre_id)
 		if (drupal_strlen($name) > 100) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag name is too long (max 100).')));
 		}
-		if (_dh_tag_name_exists($centre_id, $name)) {
+		if (_dh_tag_name_exists($centre_id, $name, 0, $owner)) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('A tag with that name already exists.')));
 		}
 		$id = db_insert('dh_tag')->fields(array(
-			't_center' => $centre_id, 't_name' => $name, 't_color' => $color,
+			't_center' => $centre_id, 't_name' => $name, 't_color' => $color, 't_owner' => $owner,
 			't_created_by' => $user->uid, 't_updated_by' => $user->uid,
 		))->execute();
-		_dh_tag_json(array('status' => 1, 'tag' => array('t_id' => $id, 't_name' => $name, 't_color' => $color, 't_created_by' => $user->uid)));
+		_dh_tag_json(array('status' => 1, 'tag' => array('t_id' => $id, 't_name' => $name, 't_color' => $color, 't_owner' => $owner, 't_created_by' => $user->uid)));
 	}
 
 	if ($op === 'update') {
@@ -242,15 +414,25 @@ function dh_tags_handler($centre_id)
 		if (!empty($tag['t_system'])) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be edited.')));
 		}
-		if (!_dh_tag_can_modify($tag, 'edit')) {
-			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to edit this tag.')));
+		if ($at_mode) {
+			if ($tag['t_owner'] != $at_uid) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You can only edit your own tags.')));
+			}
+		}
+		else {
+			if ($tag['t_owner'] != 0) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('This tag is private and cannot be edited here.')));
+			}
+			if (!_dh_tag_can_modify($tag, 'edit')) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to edit this tag.')));
+			}
 		}
 		$name = trim($_POST['name']);
 		$color = in_array($_POST['color'], _dh_tag_palette()) ? $_POST['color'] : $tag['t_color'];
 		if ($name === '') {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag name is required.')));
 		}
-		if (_dh_tag_name_exists($centre_id, $name, $tag['t_id'])) {
+		if (_dh_tag_name_exists($centre_id, $name, $tag['t_id'], $tag['t_owner'])) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('A tag with that name already exists.')));
 		}
 		db_update('dh_tag')->fields(array(
@@ -268,8 +450,18 @@ function dh_tags_handler($centre_id)
 		if (!empty($tag['t_system'])) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be deleted.')));
 		}
-		if (!_dh_tag_can_modify($tag, 'delete')) {
-			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to delete this tag.')));
+		if ($at_mode) {
+			if ($tag['t_owner'] != $at_uid) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You can only delete your own tags.')));
+			}
+		}
+		else {
+			if ($tag['t_owner'] != 0) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('This tag is private and cannot be deleted here.')));
+			}
+			if (!_dh_tag_can_modify($tag, 'delete')) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to delete this tag.')));
+			}
 		}
 		// Soft-delete the tag; its assignments are hidden by the join filters.
 		db_update('dh_tag')->fields(array('t_deleted' => 1, 't_updated' => date('Y-m-d H:i:s'), 't_updated_by' => $user->uid))
@@ -290,23 +482,38 @@ function dh_app_tag_handler($centre_id)
 	global $user;
 	$op = isset($_POST['op']) ? $_POST['op'] : (isset($_GET['op']) ? $_GET['op'] : '');
 
+	// AT context (scope=at): operate only on the AT's own private tags and only
+	// on applications in their confirmed courses. Centre staff omit scope.
+	$scope = isset($_POST['scope']) ? $_POST['scope'] : (isset($_GET['scope']) ? $_GET['scope'] : '');
+	$at_uid = _dh_tag_at_serves_centre($centre_id) ? $user->uid : 0;
+	$at_mode = ($scope === 'at') && $at_uid > 0;
+
 	if ($op === 'for_app') {
 		$aid = (int) (isset($_GET['aid']) ? $_GET['aid'] : $_POST['aid']);
-		_dh_tag_json(array('status' => 1, 'tags' => _dh_tag_for_application($aid), 'all' => _dh_tag_center_tags($centre_id)));
+		_dh_tag_json(array('status' => 1, 'tags' => _dh_tag_for_application($aid, $at_mode ? $at_uid : 0), 'all' => _dh_tag_center_tags($centre_id, $at_mode ? $at_uid : 0)));
 	}
 
 	// Validate the tag exists in this centre for the mutating ops.
 	if (in_array($op, array('assign', 'unassign', 'bulk', 'pin', 'unpin'))) {
 		$tag_id = (int) $_POST['tag'];
-		$tag_row = db_query("SELECT t_system FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
+		$tag_row = db_query("SELECT t_system, t_owner FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
 			array(':id' => $tag_id, ':c' => $centre_id))->fetchAssoc();
 		if (!$tag_row) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found in this centre.')));
 		}
-		// System tags (e.g. "AT Comments") are managed automatically: they cannot
-		// be manually assigned or removed by anyone. Pinning them is still allowed.
+		// System tags cannot be manually assigned or removed by anyone.
 		if (!empty($tag_row['t_system']) && in_array($op, array('assign', 'unassign', 'bulk'))) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('This is a system tag and cannot be added or removed manually.')));
+		}
+		// Scope: an AT may only touch their OWN private tag; centre staff may only
+		// touch centre tags (never another user's private tag).
+		if (in_array($op, array('assign', 'unassign', 'bulk'))) {
+			if ($at_mode && $tag_row['t_owner'] != $at_uid) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You can only apply your own tags.')));
+			}
+			if (!$at_mode && $tag_row['t_owner'] != 0) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('That is a private tag and cannot be changed here.')));
+			}
 		}
 	}
 
@@ -325,9 +532,15 @@ function dh_app_tag_handler($centre_id)
 		$apps = $op === 'bulk' ? array_map('intval', (array) $_POST['applications']) : array((int) $_POST['application']);
 		$done = 0;
 		foreach ($apps as $aid) {
-			if ($aid <= 0 || !_dh_tag_application_in_centre($aid, $centre_id)) {
-				continue; // silently skip apps outside this centre
+			// AT: app must be in one of their confirmed courses. Centre: app must
+			// belong to this centre.
+			$ok = $at_mode
+				? (function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($aid))
+				: _dh_tag_application_in_centre($aid, $centre_id);
+			if ($aid <= 0 || !$ok) {
+				continue; // silently skip apps outside scope
 			}
+			$was_active = _dh_tag_is_active($tag_id, $aid);
 			// Upsert: re-activate a soft-deleted assignment, else insert.
 			db_query(
 				"INSERT INTO dh_application_tag (at_tag, at_application, at_created_by, at_created)
@@ -335,6 +548,9 @@ function dh_app_tag_handler($centre_id)
 				 ON DUPLICATE KEY UPDATE at_deleted = 0, at_created_by = :u, at_created = NOW()",
 				array(':t' => $tag_id, ':a' => $aid, ':u' => $user->uid)
 			);
+			if (!$was_active) {
+				_dh_tag_log($tag_id, $aid, 'add', $user->uid);
+			}
 			$done++;
 		}
 		_dh_tag_json(array('status' => 1, 'count' => $done));
@@ -342,8 +558,18 @@ function dh_app_tag_handler($centre_id)
 
 	if ($op === 'unassign') {
 		$aid = (int) $_POST['application'];
+		$ok = $at_mode
+			? (function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($aid))
+			: _dh_tag_application_in_centre($aid, $centre_id);
+		if (!$ok) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('No access to this application.')));
+		}
+		$was_active = _dh_tag_is_active($tag_id, $aid);
 		db_update('dh_application_tag')->fields(array('at_deleted' => 1))
 			->condition('at_tag', $tag_id)->condition('at_application', $aid)->execute();
+		if ($was_active) {
+			_dh_tag_log($tag_id, $aid, 'remove', $user->uid);
+		}
 		_dh_tag_json(array('status' => 1));
 	}
 
@@ -374,14 +600,23 @@ function _dh_tag_application_in_centre($application_id, $centre_id)
  * tags. Uses a plain <select> (no modal dependency). Returns '' if the user
  * can't use tags or lacks access to the application's centre.
  */
-function _dh_tag_widget($app_id, $centre_id)
+function _dh_tag_widget($app_id, $centre_id, $at_uid = 0)
 {
-	if (!user_access('use tag') || !_dh_tag_center_access($centre_id)) {
+	$at_uid = (int) $at_uid;
+	if (!user_access('use tag')) {
+		return '';
+	}
+	if ($at_uid > 0) {
+		if (!_dh_tag_at_serves_centre($centre_id)) {
+			return '';
+		}
+	}
+	elseif (!_dh_tag_center_access($centre_id)) {
 		return '';
 	}
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
 
-	$assigned = _dh_tag_for_application($app_id);
+	$assigned = _dh_tag_for_application($app_id, $at_uid);
 	$assigned_ids = array();
 	$chips = '';
 	foreach ($assigned as $t) {
@@ -390,10 +625,10 @@ function _dh_tag_widget($app_id, $centre_id)
 		$x = $sys ? '' : '<span class="tag-x" title="Remove">&times;</span>';
 		$chips .= '<span class="tag-chip' . ($sys ? ' tag-system' : '') . '" data-tid="' . $t['t_id']
 			. '"' . ($sys ? ' title="' . check_plain(t('System tag (auto-applied)')) . '"' : '')
-			. ' style="background:' . check_plain($t['t_color']) . '">'
+			. ' style="' . _dh_tag_chip_style($t['t_color']) . '">'
 			. check_plain($t['t_name']) . $x . '</span>';
 	}
-	$all = _dh_tag_center_tags($centre_id);
+	$all = _dh_tag_center_tags($centre_id, $at_uid);
 	$opts = '<option value="">+ ' . t('add tag') . '&hellip;</option>';
 	foreach ($all as $t) {
 		// System tags are auto-managed: never offer them for manual assignment.
@@ -401,40 +636,134 @@ function _dh_tag_widget($app_id, $centre_id)
 			$opts .= '<option value="' . $t['t_id'] . '">' . check_plain($t['t_name']) . '</option>';
 		}
 	}
+	// AT context manages private tags on the AT portal, not the centre tag admin.
+	$manage = $at_uid > 0 ? '' : ' <a href="' . url('tags/' . $centre_id) . '" target="_blank" class="tag-manage-link">' . t('manage') . '</a>';
 	$html = '<div class="app-tags app-tags-widget" data-aid="' . (int) $app_id . '">'
 		. '<strong>' . t('Tags:') . '</strong> ' . $chips
-		. '<select class="tag-add-select">' . $opts . '</select> '
-		. '<a href="' . url('tags/' . $centre_id) . '" target="_blank" class="tag-manage-link">' . t('manage') . '</a></div>';
+		. '<select class="tag-add-select">' . $opts . '</select>' . $manage . '</div>';
 
-	$centre_tags_json = json_encode(_dh_tag_center_tags($centre_id));
+	$centre_tags_json = json_encode(_dh_tag_center_tags($centre_id, $at_uid));
 	$app_tag_url = url('app-tag/' . $centre_id . '/handler');
+	$scope_js = $at_uid > 0 ? '"at"' : '""';
 	drupal_add_js('
 	(function ($) {
 		$(document).ready(function () {
 			var byId = {}; (' . $centre_tags_json . ').forEach(function (t) { byId[t.t_id] = t; });
 			var tagUrl = "' . $app_tag_url . '";
+			var tagScope = ' . $scope_js . ';
 			function esc(s) { return $("<span>").text(s).html(); }
-			function chip(t) { return $("<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"background:" + t.t_color + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"); }
+			function chipStyle(bg){ bg=(bg||"").replace("#",""); if(bg.length===3){bg=bg[0]+bg[0]+bg[1]+bg[1]+bg[2]+bg[2];} if(bg.length!==6){bg="607d8b";} var r=parseInt(bg.substr(0,2),16),g=parseInt(bg.substr(2,2),16),b=parseInt(bg.substr(4,2),16); function hx(x){x=Math.max(0,Math.min(255,Math.round(x)));var s=x.toString(16);return s.length<2?"0"+s:s;} function mix(a,t){return a+(255-a)*t;} function lin(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);} var back="#"+hx(mix(r,0.85))+hx(mix(g,0.85))+hx(mix(b,0.85)); var bord="#"+hx(mix(r,0.45))+hx(mix(g,0.45))+hx(mix(b,0.45)); var tr=r,tg=g,tb=b; for(var i=0;i<40;i++){var L=0.2126*lin(tr)+0.7152*lin(tg)+0.0722*lin(tb);if(L<=0.10)break;tr*=0.92;tg*=0.92;tb*=0.92;} var fore="#"+hx(tr)+hx(tg)+hx(tb); return "background:"+back+";color:"+fore+";border:1px solid "+bord; }
+				function chip(t) { return $("<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"" + chipStyle(t.t_color) + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"); }
 			$(document).on("change", ".app-tags-widget .tag-add-select", function () {
 				var sel = $(this), box = sel.closest(".app-tags-widget"), aid = box.data("aid"), tid = String(sel.val());
 				if (!tid) { return; }
-				$.post(tagUrl, { op: "assign", tag: tid, application: aid }, function (j) {
+				$.post(tagUrl, { op: "assign", tag: tid, application: aid, scope: tagScope }, function (j) {
 					if (j.status) { sel.before(chip(byId[tid])); sel.find("option[value=\"" + tid + "\"]").remove(); sel.val(""); }
 					else { alert(j.msg); }
 				}, "json");
 			});
 			$(document).on("click", ".app-tags-widget .tag-x", function () {
 				var c = $(this).closest(".tag-chip"), box = c.closest(".app-tags-widget"), aid = box.data("aid"), tid = String(c.data("tid"));
-				$.post(tagUrl, { op: "unassign", tag: tid, application: aid }, function (j) {
-					if (j.status) { c.remove(); var t = byId[tid]; if (t) { box.find(".tag-add-select").append($("<option>").attr("value", tid).text(t.t_name)); } }
-					else { alert(j.msg); }
-				}, "json");
+				var t0 = byId[tid], name = t0 ? t0.t_name : "";
+				var doRemove = function () {
+					$.post(tagUrl, { op: "unassign", tag: tid, application: aid, scope: tagScope }, function (j) {
+						if (j.status) { c.remove(); var t = byId[tid]; if (t) { box.find(".tag-add-select").append($("<option>").attr("value", tid).text(t.t_name)); } }
+						else { alert(j.msg); }
+					}, "json");
+				};
+				if ($.confirm) { $.confirm({ title: "Remove tag", content: "Remove tag \"" + name + "\" from this applicant?", buttons: { remove: { text: "Remove", btnClass: "btn-red", action: doRemove }, cancel: function () {} } }); }
+				else if (confirm("Remove tag \"" + name + "\" from this applicant?")) { doRemove(); }
 			});
 		});
 	})(jQuery);
 	', 'inline');
 
 	return $html;
+}
+
+/**
+ * Collapsed "Tag activity" panel for the application detail page: who applied or
+ * removed each tag, and when. Scoped to the tags visible in this context
+ * (centre context: centre + system; AT context: own private + system). Returns
+ * '' when there is no activity. Uses a native <details> element (no JS).
+ */
+function _dh_tag_activity($app_id, $at_uid = 0)
+{
+	$app_id = (int) $app_id;
+	$scope = _dh_tag_scope_where('t.', $at_uid);
+	$rows = db_query(
+		"SELECT l.atl_action, l.atl_at, l.atl_by, t.t_name, t.t_color, u.name AS uname
+		 FROM dh_application_tag_log l
+		 JOIN dh_tag t ON t.t_id = l.atl_tag
+		 LEFT JOIN users u ON u.uid = l.atl_by
+		 WHERE l.atl_application = :a AND t.t_deleted = 0 AND $scope
+		 ORDER BY l.atl_at DESC, l.atl_id DESC",
+		array(':a' => $app_id)
+	)->fetchAll(PDO::FETCH_ASSOC);
+	return _dh_tag_activity_render($rows);
+}
+
+/**
+ * Batched activity panels for a set of applications (search results list): one
+ * query for all app ids, grouped and rendered per app. Returns an array keyed
+ * by application id => collapsed <details> HTML (apps with no activity are
+ * absent). Avoids the N+1 of calling _dh_tag_activity() per row.
+ */
+function _dh_tag_activity_bulk(array $app_ids, $at_uid = 0)
+{
+	$app_ids = array_values(array_unique(array_map('intval', $app_ids)));
+	if (!$app_ids) {
+		return array();
+	}
+	$scope = _dh_tag_scope_where('t.', $at_uid);
+	$res = db_query(
+		"SELECT l.atl_application, l.atl_action, l.atl_at, l.atl_by, t.t_name, t.t_color, u.name AS uname
+		 FROM dh_application_tag_log l
+		 JOIN dh_tag t ON t.t_id = l.atl_tag
+		 LEFT JOIN users u ON u.uid = l.atl_by
+		 WHERE l.atl_application IN (:aids) AND t.t_deleted = 0 AND $scope
+		 ORDER BY l.atl_at DESC, l.atl_id DESC",
+		array(':aids' => $app_ids)
+	)->fetchAll(PDO::FETCH_ASSOC);
+	$grouped = array();
+	foreach ($res as $r) {
+		$grouped[$r['atl_application']][] = $r;
+	}
+	$out = array();
+	foreach ($grouped as $aid => $rows) {
+		$out[$aid] = _dh_tag_activity_render($rows);
+	}
+	return $out;
+}
+
+/**
+ * Render one application's log rows into the collapsed "Tag activity" panel.
+ * Shared by the detail view (single fetch) and the list (bulk fetch). Rows are
+ * already scope-filtered and newest-first. Returns '' for an empty set.
+ */
+function _dh_tag_activity_render($rows)
+{
+	if (!$rows) {
+		return '';
+	}
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+
+	$body = '';
+	foreach ($rows as $r) {
+		$who = ($r['atl_by'] == 0) ? t('System') : ($r['uname'] !== NULL && $r['uname'] !== '' ? $r['uname'] : t('User #@u', array('@u' => $r['atl_by'])));
+		$act = ($r['atl_action'] === 'remove') ? t('removed') : t('added');
+		$cls = ($r['atl_action'] === 'remove') ? 'tal-remove' : 'tal-add';
+		$body .= '<tr>'
+			. '<td class="tal-tag"><span class="tag-dot" style="background:' . check_plain($r['t_color']) . '"></span>' . check_plain($r['t_name']) . '</td>'
+			. '<td class="tal-act ' . $cls . '">' . $act . '</td>'
+			. '<td class="tal-who">' . check_plain($who) . '</td>'
+			. '<td class="tal-when">' . check_plain($r['atl_at']) . '</td>'
+			. '</tr>';
+	}
+	return '<details class="tag-activity"><summary>' . t('Tag activity (@n)', array('@n' => count($rows))) . '</summary>'
+		. '<table class="tal-table"><thead><tr>'
+		. '<th>' . t('Tag') . '</th><th>' . t('Action') . '</th><th>' . t('By') . '</th><th>' . t('When') . '</th>'
+		. '</tr></thead><tbody>' . $body . '</tbody></table></details>';
 }
 
 /* ---------------------------------------------------------------------------
@@ -542,7 +871,7 @@ function dh_tags_admin($centre_id)
 			$pin = '<a href="#" class="tag-admin-pin' . ($is_pinned ? '' : ' off') . '" data-id="' . $t['t_id'] . '" title="' . t('Pin for me') . '">' . ($is_pinned ? '&#9733;' : '&#9734;') . '</a> ';
 		}
 		$rows .= '<tr data-id="' . $t['t_id'] . '">'
-			. '<td>' . $pin . '<span class="tag-chip" style="background:' . check_plain($t['t_color']) . '">' . check_plain($t['t_name']) . '</span></td>'
+			. '<td>' . $pin . '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span></td>'
 			. '<td>' . $actions . '</td></tr>';
 	}
 

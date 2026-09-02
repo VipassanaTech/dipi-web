@@ -98,7 +98,7 @@ function dh_manage_centre()
 			foreach ($pinned as $t) {
 				$out .= '<div class="tag-pinned-row">'
 					. '<a href="#" class="tag-unpin" data-tid="' . $t['t_id'] . '" title="' . t('Unpin') . '">&#9733;</a> '
-					. '<span class="tag-chip" style="background:' . check_plain($t['t_color']) . '">' . check_plain($t['t_name']) . '</span> '
+					. '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span> '
 					. $period_links($t['t_id'])
 					. '</div>';
 			}

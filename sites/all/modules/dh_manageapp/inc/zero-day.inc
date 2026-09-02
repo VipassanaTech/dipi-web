@@ -1436,7 +1436,7 @@ function dh_seat_plan_header($title_html, $title_class = 'teacher-seat')
 		.'</div><div style="clear:both"></div>';
 }
 
-function dh_generate_seating_plan($centre, $course, $pdf = '')
+function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALSE)
 {
 	global $base_url;
 	if (!is_array($course))
@@ -1729,7 +1729,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '')
 
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
-	$mopts = array('write_seat' => true, 'drag' => true);
+	// Read-only surface (AT view): never persist seat labels or enable drag.
+	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts);
 	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts);
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);

@@ -1,6 +1,6 @@
 <?php
 
-function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False, $excel_file_name = null, $read_only = FALSE )
+function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False, $excel_file_name = null, $read_only = FALSE, $at_uid = 0 )
 {
 	global $user;
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
@@ -550,10 +550,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$app_tags = array();
 		if ($aids)
 		{
+			$tscope = _dh_tag_scope_where('t.', $at_uid);
 			$res = db_query(
 				"SELECT at.at_application, t.t_id, t.t_name, t.t_color, t.t_system
 				 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
-				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND at.at_application IN (:aids)",
+				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND $tscope AND at.at_application IN (:aids)",
 				array(':aids' => $aids)
 			);
 			foreach ($res as $tr) { $app_tags[$tr->at_application][] = $tr; }
@@ -565,6 +566,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				$present_tags[$tg->t_id] = array('t_id' => $tg->t_id, 't_name' => $tg->t_name, 't_color' => $tg->t_color);
 		$present_tags = array_values($present_tags);
 		usort($present_tags, function ($a, $b) { return strcasecmp($a['t_name'], $b['t_name']); });
+		// Collapsed per-row tag activity panels, fetched in one batched query.
+		$act_map = _dh_tag_activity_bulk($aids, $at_uid);
 		foreach ($rows as $i => $row)
 		{
 			$aid = $row['aid'];
@@ -577,28 +580,33 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					$x = $sys ? '' : '<span class="tag-x" title="Remove">&times;</span>';
 					$chips .= '<span class="tag-chip' . ($sys ? ' tag-system' : '') . '" data-tid="' . $tg->t_id
 						. '"' . ($sys ? ' title="' . check_plain(t('System tag (auto-applied)')) . '"' : '')
-						. ' style="background:' . check_plain($tg->t_color) . '">'
+						. ' style="' . _dh_tag_chip_style($tg->t_color) . '">'
 						. check_plain($tg->t_name) . $x . '</span>';
 				}
 			}
-			$block = '<div class="app-tags" data-aid="' . $aid . '">' . $chips
-				. '<span class="tag-add-btn" title="Add tag">+ tag</span></div>';
-			$rows[$i]['eocd'] = (isset($rows[$i]['eocd']) ? $rows[$i]['eocd'] : '') . $block;
+			$activity = isset($act_map[$aid]) ? $act_map[$aid] : '';
+			// Full-width strip injected under the row by the DataTable drawCallback,
+			// so tags use the whole row width instead of the narrow eocd column.
+			$rows[$i]['tag_block'] = '<div class="app-tags" data-aid="' . $aid . '">' . $chips
+				. '<span class="tag-add-btn" title="Add tag">+ tag</span>' . $activity . '</div>';
 			// Hidden data field (not a column) used by the client-side tag filter.
 			$rows[$i]['tag_ids'] = isset($app_tags[$aid]) ? implode(',', array_map(function ($tg) { return $tg->t_id; }, $app_tags[$aid])) : '';
 		}
 
-		$centre_tags_json = json_encode(_dh_tag_center_tags($centre));
+		$centre_tags_json = json_encode(_dh_tag_center_tags($centre, $at_uid));
 		$present_tags_json = json_encode($present_tags);
 		$app_tag_url = url('app-tag/' . $centre . '/handler');
 		$tags_page_url = url('tags/' . $centre);
 		$tags_handler_url = url('tags/' . $centre . '/handler');
-		$can_create_tag = user_access('create tag') ? 1 : 0;
+		// In AT context an AT may create their own private tags (use tag + serves
+		// centre); centre staff need 'create tag'.
+		$can_create_tag = ($at_uid > 0) ? 1 : (user_access('create tag') ? 1 : 0);
 		$palette_json = json_encode(_dh_tag_palette());
 		drupal_add_js('
 		(function ($) {
 			$(document).ready(function () {
 				var centreTags = ' . $centre_tags_json . ';
+				var tagScope = "' . ($at_uid > 0 ? 'at' : '') . '";
 				var tagUrl = "' . $app_tag_url . '";
 				var tagsPageUrl = "' . $tags_page_url . '";
 				var tagsHandlerUrl = "' . $tags_handler_url . '";
@@ -632,26 +640,32 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					if ($.fn.dataTable.isDataTable("#table-applicants")) { $("#table-applicants").DataTable().draw(); }
 				});
 				function esc(s){ return $("<span>").text(s).html(); }
-				function chipHtml(t){ return "<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"background:" + t.t_color + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"; }
+				function chipStyle(bg){ bg=(bg||"").replace("#",""); if(bg.length===3){bg=bg[0]+bg[0]+bg[1]+bg[1]+bg[2]+bg[2];} if(bg.length!==6){bg="607d8b";} var r=parseInt(bg.substr(0,2),16),g=parseInt(bg.substr(2,2),16),b=parseInt(bg.substr(4,2),16); function hx(x){x=Math.max(0,Math.min(255,Math.round(x)));var s=x.toString(16);return s.length<2?"0"+s:s;} function mix(a,t){return a+(255-a)*t;} function lin(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);} var back="#"+hx(mix(r,0.85))+hx(mix(g,0.85))+hx(mix(b,0.85)); var bord="#"+hx(mix(r,0.45))+hx(mix(g,0.45))+hx(mix(b,0.45)); var tr=r,tg=g,tb=b; for(var i=0;i<40;i++){var L=0.2126*lin(tr)+0.7152*lin(tg)+0.0722*lin(tb);if(L<=0.10)break;tr*=0.92;tg*=0.92;tb*=0.92;} var fore="#"+hx(tr)+hx(tg)+hx(tb); return "background:"+back+";color:"+fore+";border:1px solid "+bord; }
+				function chipHtml(t){ return "<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"" + chipStyle(t.t_color) + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"; }
 				$(document).on("click", ".app-tags .tag-x", function (e) {
 					e.stopPropagation();
 					var chip = $(this).closest(".tag-chip"), box = chip.closest(".app-tags");
-					$.post(tagUrl, { op: "unassign", tag: chip.data("tid"), application: box.data("aid") }, function (j) {
-						if (j.status) { chip.remove(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
-					}, "json");
+					var name = chip.clone().children().remove().end().text().replace(/×/g, "").trim();
+					var doRemove = function () {
+						$.post(tagUrl, { op: "unassign", tag: chip.data("tid"), application: box.data("aid"), scope: tagScope }, function (j) {
+							if (j.status) { chip.remove(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+						}, "json");
+					};
+					if ($.confirm) { $.confirm({ title: "Remove tag", content: "Remove tag \"" + name + "\" from this applicant?", buttons: { remove: { text: "Remove", btnClass: "btn-red", action: doRemove }, cancel: function () {} } }); }
+					else if (confirm("Remove tag \"" + name + "\" from this applicant?")) { doRemove(); }
 				});
 				$(document).on("click", ".app-tags .tag-add-btn", function (e) {
 					e.stopPropagation();
 					var box = $(this).closest(".app-tags"), aid = box.data("aid"), assigned = {};
 					box.find(".tag-chip").each(function () { assigned[$(this).data("tid")] = 1; });
 					function assignTag(t) {
-						$.post(tagUrl, { op: "assign", tag: t.t_id, application: aid }, function (j) {
+						$.post(tagUrl, { op: "assign", tag: t.t_id, application: aid, scope: tagScope }, function (j) {
 							if (j.status) { box.find(".tag-add-btn").before(chipHtml(t)); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 						}, "json");
 					}
 					var avail = centreTags.filter(function (t) { return !assigned[t.t_id] && !(+t.t_system); });
 					var chips = avail.map(function (t) {
-						return "<span class=\"tag-chip tag-pick-opt\" data-tid=\"" + t.t_id + "\" data-name=\"" + esc(t.t_name) + "\" data-color=\"" + t.t_color + "\" style=\"background:" + t.t_color + ";cursor:pointer\">" + esc(t.t_name) + "</span>";
+						return "<span class=\"tag-chip tag-pick-opt\" data-tid=\"" + t.t_id + "\" data-name=\"" + esc(t.t_name) + "\" data-color=\"" + t.t_color + "\" style=\"" + chipStyle(t.t_color) + ";cursor:pointer\">" + esc(t.t_name) + "</span>";
 					}).join(" ");
 					var content = "<div class=\"tag-pick\">" + (chips || "<em>No unused tags.</em>") + "</div>"
 						+ (canCreateTag ? "<div class=\"tag-new-wrap\"><button type=\"button\" class=\"tag-new-btn\">+ New tag</button></div>" : "");
@@ -677,7 +691,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 											var d2 = this, name = $.trim(d2.$content.find("#new-tag-name").val());
 											if (!name) { d2.$content.find("#new-tag-name").focus(); return false; }
 											var cc = d2.$content.find(".tag-swatch.sel").data("color") || selColor;
-											$.post(tagsHandlerUrl, { op: "create", name: name, color: cc }, function (j) {
+											$.post(tagsHandlerUrl, { op: "create", name: name, color: cc, scope: tagScope }, function (j) {
 												if (j.status) { var t = { t_id: j.tag.t_id, t_name: j.tag.t_name, t_color: j.tag.t_color }; centreTags.push(t); assignTag(t); d2.close(); self.close(); }
 												else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 											}, "json");
@@ -1197,6 +1211,31 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
  					   		$(nrow).addClass("referral");
 		            	}
 					},
+					"drawCallback": function (settings) {
+						var api = this.api();
+						var $tb = $("#table-applicants tbody");
+						$tb.find("tr.tag-strip").remove();
+						$tb.find("tr").removeClass("has-tag-strip unit-a unit-b");
+						var colspan = $("#table-applicants thead th").filter(":visible").length || 8;
+						var n = 0;
+						api.rows({ page: "current" }).every(function () {
+							var d = this.data();
+							var $node = $(this.node());
+							// Zebra per applicant-unit (row + its tag strip share one shade)
+							// so they read as a single block, not two striped rows.
+							var u = (n % 2 === 0) ? "unit-a" : "unit-b";
+							$node.addClass(u).attr("data-urow", d.aid);
+							if (d && d.tag_block) {
+								$node.addClass("has-tag-strip");
+								var refc = $node.hasClass("referral") ? " referral" : "";
+								// Two empty leading cells align with Detail + Name so the tags
+								// begin under the Edu/Occ/Comp/Desig column and run to the row end.
+								var span = Math.max(1, colspan - 2);
+								$("<tr class=\"tag-strip " + u + refc + "\" data-urow=\"" + d.aid + "\"><td class=\"tag-strip-pad\"></td><td class=\"tag-strip-pad\"></td><td colspan=\"" + span + "\">" + d.tag_block + "</td></tr>").insertAfter($node);
+							}
+							n++;
+						});
+					},
                   	/*buttons: ["copy","csv","excel","pdf","print"], */ 
 					buttons:   [  
 						'.$button_access.'                        
@@ -1219,6 +1258,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            // Open this row
 			            row.child( format(row.data()), "no-padding" ).show();
 			            tr.addClass("shown");
+		            var $strip = tr.nextAll(".tag-strip").first();
+		            if ($strip.length) { tr.after($strip); }
 			 
 			            $("div.slider", row.child()).slideDown();
 		            	$(".clarification-response-"+row.data().aid).load("/app-clarifications/"+row.data().aid);
@@ -1227,6 +1268,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		            	$(".internal-reviews-"+row.data().aid).load("/applicant-reviews/"+row.data().aid);
 			        }
 			    });
+
+				// Hover the whole applicant-unit (row + its tag strip) together.
+				$("#table-applicants tbody").on("mouseenter", "tr[data-urow]", function () {
+					$("#table-applicants tbody tr[data-urow=\"" + $(this).attr("data-urow") + "\"]").addClass("unit-hover");
+				}).on("mouseleave", "tr[data-urow]", function () {
+					$("#table-applicants tbody tr[data-urow=\"" + $(this).attr("data-urow") + "\"]").removeClass("unit-hover");
+				});
 
 				$("#table-applicants tbody").on("change", ".status-select", function() {
 					var s = $(this);
@@ -2151,10 +2199,11 @@ function dh_manageapp_search_show_app()
  * clarifications, activity log and internal review comments - which are pulled
  * in client-side from their existing endpoints. No edit controls.
  */
-function dh_application_view($app_id)
+function dh_application_view($app_id, $at_uid = 0)
 {
 	global $user;
 	$app_id = (int) $app_id;
+	$at_uid = (int) $at_uid;
 
 	$q = "select
 		a_id, a_conf_no as ConfNo, concat(a_f_name,' ',a_m_name,' ',a_l_name) as fullname,
@@ -2265,7 +2314,8 @@ function dh_application_view($app_id)
 		$out .= '<img src="'.check_plain(file_create_url("show-photo/".$app_id)).'" alt="photo" style="float:right;max-width:140px;max-height:180px;border:1px solid #ccc;margin-left:12px" />';
 	$out .= '<h2>'.check_plain($r['fullname']).($r['ConfNo']?' ('.check_plain($r['ConfNo']).')':'').'</h2>';
 	$out .= '<div class="av-status">'.check_plain($r['a_status']).' &middot; '.check_plain($course).'</div>';
-	$out .= _dh_tag_widget($app_id, $r['a_center']);
+	$out .= _dh_tag_widget($app_id, $r['a_center'], $at_uid);
+	$out .= _dh_tag_activity($app_id, $at_uid);
 
 	$out .= $sec('Personal', '<div class="av-grid">'.
 		$fld('Gender', $r['a_gender']).$fld('Date of Birth', $r['a_dob']).

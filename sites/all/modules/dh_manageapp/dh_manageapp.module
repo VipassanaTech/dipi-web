@@ -2007,11 +2007,16 @@ function _add_applicant_review()
 
 	logit($centre, 'Review', $app_id, 'Internal review note added', $user->uid);
 
-	// If the reviewer is a conducting/assisting Assistant Teacher of this
-	// application's course, mark it with the fixed "AT Comments" system tag.
-	if (function_exists('_at_view_applicant_in_my_courses') && function_exists('_dh_tag_mark_at_comment')
-		&& _at_view_applicant_in_my_courses($app_id)) {
-		_dh_tag_mark_at_comment($app_id, $centre, $user->uid);
+	// Auto system tag by reviewer type: a conducting/assisting AT of this
+	// application's course stamps "AT Comments"; centre team stamps "Center
+	// Comment". Both are visible to centre + AT.
+	if (function_exists('_dh_tag_mark_at_comment')) {
+		if (function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($app_id)) {
+			_dh_tag_mark_at_comment($app_id, $centre, $user->uid);
+		}
+		else {
+			_dh_tag_mark_center_comment($app_id, $centre, $user->uid);
+		}
 	}
 
 	$out['status'] = true;

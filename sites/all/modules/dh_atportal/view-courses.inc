@@ -299,6 +299,7 @@ function at_view_course_applicants($c) {
   if (!function_exists('dh_manageapp_search_results')) {
     return t('Applicant list is unavailable.');
   }
+  global $user;
   drupal_set_title('');
   $cid = $c['course'];
   drupal_add_css(drupal_get_path('module', 'dh_atportal') . '/css/at-view.css');
@@ -315,7 +316,7 @@ function at_view_course_applicants($c) {
   // read-only (last arg) so no write actions show even for ATs who also hold
   // edit permissions via another role — only "Add Review" remains. Rendered
   // OUTSIDE .at-view so none of the AT-view styling touches it.
-  $out .= dh_manageapp_search_results('applicant', "a_course=$cid", $c['center'], FALSE, $fname, TRUE);
+  $out .= dh_manageapp_search_results('applicant', "a_course=$cid", $c['center'], FALSE, $fname, TRUE, $user->uid);
   return $out;
 }
 
@@ -377,7 +378,7 @@ function at_view_course_seating($c) {
       . '<span class="vo">' . t('View only') . '</span></div>';
 
   _at_view_fix_links($c['center'], $course);
-  return dh_generate_seating_plan($c['center'], $arg);
+  return dh_generate_seating_plan($c['center'], $arg, '', TRUE);
 }
 
 
@@ -413,11 +414,14 @@ function at_view_course_cells($c) {
  * renderer (Print button only; no edit controls).
  */
 function at_view_applicant_detail($app_id) {
+  global $user;
   $back = '<p>' . l(t('Back'), 'javascript:history.back()', array('external' => TRUE)) . '</p>';
   if (!function_exists('dh_application_view')) {
     return t('Applicant view is unavailable.');
   }
-  return $back . dh_application_view($app_id) . $back;
+  // Pass the AT's uid so the tag widget shows the AT's private tags + system
+  // tags (not centre tags).
+  return $back . dh_application_view($app_id, $user->uid) . $back;
 }
 
 

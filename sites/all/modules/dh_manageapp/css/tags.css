@@ -4,7 +4,7 @@
   padding: 1px 8px;
   margin: 1px 3px 1px 0;
   border-radius: 10px;
-  color: #fff;
+  color: #222;
   font-size: 11px;
   line-height: 16px;
   white-space: nowrap;
@@ -110,3 +110,40 @@
 .tag-new-wrap { margin-top: 12px; }
 .tag-new-btn { padding: 4px 12px; cursor: pointer; border: 1px solid #999; border-radius: 4px; background: #fff; }
 .tag-new-btn:hover { border-color: #333; }
+
+/* Application tags container: use the full available width, wrap when full. */
+.app-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.app-tags .tag-add-btn { margin: 0; }
+
+/* Full-width tag strip injected under each results row. It shares its
+   applicant row's background and drops the divider between them, so the row and
+   its tags read as one block. Zebra is applied per unit in the drawCallback. */
+.tag-strip > td { padding: 2px 10px 8px; }
+/* background-color (not the background shorthand) so the details-control "+"
+   icon's background-image on the first cell is preserved. */
+#table-applicants tbody tr.unit-a:not(.referral) > td { background-color: #ffffff; }
+#table-applicants tbody tr.unit-b:not(.referral) > td { background-color: #f5f7f9; }
+#table-applicants tbody tr.has-tag-strip > td { border-bottom: 0; padding-bottom: 4px; }
+#table-applicants tbody tr.tag-strip > td { border-top: 0; padding-top: 2px; }
+#table-applicants tbody tr.tag-strip > td.tag-strip-pad { padding: 0; }
+#table-applicants tbody tr.unit-hover:not(.referral) > td { background-color: #eaf1f6; }
+/* Activity toggle sits inline on the tags line; expands to a full-width row. */
+.app-tags .tag-activity { margin: 0 0 0 6px; padding-left: 8px; border-left: 1px solid #e4ddc6; }
+.app-tags .tag-activity > summary { padding: 1px 0; }
+.app-tags .tag-activity[open] { flex-basis: 100%; margin: 4px 0 0; padding-left: 0; border-left: 0; }
+
+/* Tag activity log (collapsible, below the tags — detail view and results strip) */
+.tag-activity { margin: 8px 0 14px; font-size: 13px; }
+.tag-activity > summary { cursor: pointer; color: #555; font-weight: 600; user-select: none; padding: 4px 0; list-style-position: inside; }
+.tag-activity > summary:hover { color: #222; }
+/* One change per row, columns aligned for consistency. */
+.tal-table { border-collapse: collapse; margin: 6px 0 2px; font-size: 12px; width: auto; }
+.tal-table th { text-align: left; font-weight: 500; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 16px 4px 0; border-bottom: 1px solid #e6e6e6; }
+.tal-table td { padding: 3px 16px 3px 0; border-bottom: 1px dotted #ececec; vertical-align: middle; }
+.tal-table tr:last-child td { border-bottom: 0; }
+.tal-table .tal-tag { font-weight: 500; white-space: nowrap; }
+.tal-table .tal-act { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+.tal-table .tal-add { color: #2e7d32; }
+.tal-table .tal-remove { color: #c0392b; }
+.tal-table .tal-who { color: #444; }
+.tal-table .tal-when { color: #888; font-variant-numeric: tabular-nums; white-space: nowrap; }
