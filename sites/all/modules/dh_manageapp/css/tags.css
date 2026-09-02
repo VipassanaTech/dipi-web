@@ -134,8 +134,12 @@
 
 /* Tag activity log (collapsible, below the tags — detail view and results strip) */
 .tag-activity { margin: 8px 0 14px; font-size: 13px; }
-.tag-activity > summary { cursor: pointer; color: #555; font-weight: 600; user-select: none; padding: 4px 0; list-style-position: inside; }
-.tag-activity > summary:hover { color: #222; }
+.tag-activity > summary { cursor: pointer; color: #2456a6; font-weight: 600; user-select: none; padding: 4px 6px; list-style: none; display: inline-flex; align-items: center; border: 1px solid #cdd6ea; border-radius: 4px; background: #f2f6fc; }
+.tag-activity > summary::-webkit-details-marker { display: none; }
+.tag-activity > summary:hover { color: #123c7a; border-color: #9db8de; background: #e7eefa; }
+/* Rotating caret makes the expand/collapse affordance obvious. */
+.tag-activity-caret { display: inline-block; margin-right: 5px; font-size: 9px; line-height: 1; transition: transform 0.12s ease; }
+.tag-activity[open] > summary .tag-activity-caret { transform: rotate(90deg); }
 /* One change per row, columns aligned for consistency. */
 .tal-table { border-collapse: collapse; margin: 6px 0 2px; font-size: 12px; width: auto; }
 .tal-table th { text-align: left; font-weight: 500; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 16px 4px 0; border-bottom: 1px solid #e6e6e6; }

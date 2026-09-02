@@ -615,6 +615,10 @@ function _dh_tag_widget($app_id, $centre_id, $at_uid = 0)
 		return '';
 	}
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+	// The "+ tag" picker uses jquery-confirm, which the detail page does not load
+	// on its own (the search page does). Load it here so the widget works.
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/jquery-confirm.min.js');
 
 	$assigned = _dh_tag_for_application($app_id, $at_uid);
 	$assigned_ids = array();
@@ -628,46 +632,93 @@ function _dh_tag_widget($app_id, $centre_id, $at_uid = 0)
 			. ' style="' . _dh_tag_chip_style($t['t_color']) . '">'
 			. check_plain($t['t_name']) . $x . '</span>';
 	}
-	$all = _dh_tag_center_tags($centre_id, $at_uid);
-	$opts = '<option value="">+ ' . t('add tag') . '&hellip;</option>';
-	foreach ($all as $t) {
-		// System tags are auto-managed: never offer them for manual assignment.
-		if (!isset($assigned_ids[$t['t_id']]) && empty($t['t_system'])) {
-			$opts .= '<option value="' . $t['t_id'] . '">' . check_plain($t['t_name']) . '</option>';
-		}
-	}
-	// AT context manages private tags on the AT portal, not the centre tag admin.
-	$manage = $at_uid > 0 ? '' : ' <a href="' . url('tags/' . $centre_id) . '" target="_blank" class="tag-manage-link">' . t('manage') . '</a>';
+	// "+ tag" button opens the same picker used on the search-results list;
+	// no <select> and no "manage" link on the detail view.
+	$can_create_tag = ($at_uid > 0) ? 1 : (user_access('create tag') ? 1 : 0);
 	$html = '<div class="app-tags app-tags-widget" data-aid="' . (int) $app_id . '">'
 		. '<strong>' . t('Tags:') . '</strong> ' . $chips
-		. '<select class="tag-add-select">' . $opts . '</select>' . $manage . '</div>';
+		. '<span class="tag-add-btn" title="' . check_plain(t('Add tag')) . '">+ ' . t('tag') . '</span></div>';
 
 	$centre_tags_json = json_encode(_dh_tag_center_tags($centre_id, $at_uid));
 	$app_tag_url = url('app-tag/' . $centre_id . '/handler');
+	$tags_handler_url = url('tags/' . $centre_id . '/handler');
+	$palette_json = json_encode(_dh_tag_palette());
 	$scope_js = $at_uid > 0 ? '"at"' : '""';
 	drupal_add_js('
 	(function ($) {
 		$(document).ready(function () {
-			var byId = {}; (' . $centre_tags_json . ').forEach(function (t) { byId[t.t_id] = t; });
+			var centreTags = ' . $centre_tags_json . ';
+			var byId = {}; centreTags.forEach(function (t) { byId[t.t_id] = t; });
 			var tagUrl = "' . $app_tag_url . '";
+			var tagsHandlerUrl = "' . $tags_handler_url . '";
 			var tagScope = ' . $scope_js . ';
+			var canCreateTag = ' . $can_create_tag . ';
+			var palette = ' . $palette_json . ';
 			function esc(s) { return $("<span>").text(s).html(); }
 			function chipStyle(bg){ bg=(bg||"").replace("#",""); if(bg.length===3){bg=bg[0]+bg[0]+bg[1]+bg[1]+bg[2]+bg[2];} if(bg.length!==6){bg="607d8b";} var r=parseInt(bg.substr(0,2),16),g=parseInt(bg.substr(2,2),16),b=parseInt(bg.substr(4,2),16); function hx(x){x=Math.max(0,Math.min(255,Math.round(x)));var s=x.toString(16);return s.length<2?"0"+s:s;} function mix(a,t){return a+(255-a)*t;} function lin(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);} var back="#"+hx(mix(r,0.85))+hx(mix(g,0.85))+hx(mix(b,0.85)); var bord="#"+hx(mix(r,0.45))+hx(mix(g,0.45))+hx(mix(b,0.45)); var tr=r,tg=g,tb=b; for(var i=0;i<40;i++){var L=0.2126*lin(tr)+0.7152*lin(tg)+0.0722*lin(tb);if(L<=0.10)break;tr*=0.92;tg*=0.92;tb*=0.92;} var fore="#"+hx(tr)+hx(tg)+hx(tb); return "background:"+back+";color:"+fore+";border:1px solid "+bord; }
 				function chip(t) { return $("<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"" + chipStyle(t.t_color) + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"); }
-			$(document).on("change", ".app-tags-widget .tag-add-select", function () {
-				var sel = $(this), box = sel.closest(".app-tags-widget"), aid = box.data("aid"), tid = String(sel.val());
-				if (!tid) { return; }
-				$.post(tagUrl, { op: "assign", tag: tid, application: aid, scope: tagScope }, function (j) {
-					if (j.status) { sel.before(chip(byId[tid])); sel.find("option[value=\"" + tid + "\"]").remove(); sel.val(""); }
-					else { alert(j.msg); }
-				}, "json");
+			$(document).on("click", ".app-tags-widget .tag-add-btn", function (e) {
+				e.stopPropagation();
+				var box = $(this).closest(".app-tags-widget"), aid = box.data("aid"), assigned = {};
+				box.find(".tag-chip").each(function () { assigned[$(this).data("tid")] = 1; });
+				function assignTag(t) {
+					$.post(tagUrl, { op: "assign", tag: t.t_id, application: aid, scope: tagScope }, function (j) {
+						if (j.status) { box.find(".tag-add-btn").before(chip(t)); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+					}, "json");
+				}
+				var avail = centreTags.filter(function (t) { return !assigned[t.t_id] && !(+t.t_system); });
+				var chips = avail.map(function (t) {
+					return "<span class=\"tag-chip tag-pick-opt\" data-tid=\"" + t.t_id + "\" data-name=\"" + esc(t.t_name) + "\" data-color=\"" + t.t_color + "\" style=\"" + chipStyle(t.t_color) + ";cursor:pointer\">" + esc(t.t_name) + "</span>";
+				}).join(" ");
+				var content = "<div class=\"tag-pick\">" + (chips || "<em>No unused tags.</em>") + "</div>"
+					+ (canCreateTag ? "<div class=\"tag-new-wrap\"><button type=\"button\" class=\"tag-new-btn\">+ New tag</button></div>" : "");
+				if (!$.confirm) { return; }
+				$.confirm({
+					title: "Add tag",
+					content: content,
+					buttons: { cancel: function () {} },
+					onContentReady: function () {
+						var self = this;
+						self.$content.on("click", ".tag-pick-opt", function () {
+							assignTag({ t_id: $(this).data("tid"), t_name: $(this).data("name"), t_color: $(this).data("color") });
+							self.close();
+						});
+						self.$content.on("click", ".tag-new-btn", function () {
+							var sw = palette.map(function (c) { return "<span class=\"tag-swatch\" data-color=\"" + c + "\" style=\"background:" + c + "\"></span>"; }).join("");
+							var selColor = palette[0];
+							$.confirm({
+								title: "New tag",
+								content: "<input type=\"text\" id=\"new-tag-name\" placeholder=\"Tag name\" maxlength=\"100\" style=\"width:100%;padding:4px 6px\"><div class=\"tag-swatches\" style=\"margin-top:12px\">" + sw + "</div>",
+								buttons: {
+									create: { text: "Create", btnClass: "btn-blue", action: function () {
+										var d2 = this, name = $.trim(d2.$content.find("#new-tag-name").val());
+										if (!name) { d2.$content.find("#new-tag-name").focus(); return false; }
+										var cc = d2.$content.find(".tag-swatch.sel").data("color") || selColor;
+										$.post(tagsHandlerUrl, { op: "create", name: name, color: cc, scope: tagScope }, function (j) {
+											if (j.status) { var t = { t_id: j.tag.t_id, t_name: j.tag.t_name, t_color: j.tag.t_color }; centreTags.push(t); byId[t.t_id] = t; assignTag(t); d2.close(); self.close(); }
+											else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+										}, "json");
+										return false;
+									} },
+									cancel: function () {}
+								},
+								onContentReady: function () {
+									var d = this;
+									d.$content.find(".tag-swatch").first().addClass("sel");
+									d.$content.on("click", ".tag-swatch", function () { d.$content.find(".tag-swatch").removeClass("sel"); $(this).addClass("sel"); selColor = $(this).data("color"); });
+									d.$content.find("#new-tag-name").focus();
+								}
+							});
+						});
+					}
+				});
 			});
 			$(document).on("click", ".app-tags-widget .tag-x", function () {
 				var c = $(this).closest(".tag-chip"), box = c.closest(".app-tags-widget"), aid = box.data("aid"), tid = String(c.data("tid"));
 				var t0 = byId[tid], name = t0 ? t0.t_name : "";
 				var doRemove = function () {
 					$.post(tagUrl, { op: "unassign", tag: tid, application: aid, scope: tagScope }, function (j) {
-						if (j.status) { c.remove(); var t = byId[tid]; if (t) { box.find(".tag-add-select").append($("<option>").attr("value", tid).text(t.t_name)); } }
+						if (j.status) { c.remove(); }
 						else { alert(j.msg); }
 					}, "json");
 				};
@@ -682,8 +733,8 @@ function _dh_tag_widget($app_id, $centre_id, $at_uid = 0)
 }
 
 /**
- * Collapsed "Tag activity" panel for the application detail page: who applied or
- * removed each tag, and when. Scoped to the tags visible in this context
+ * "Tag activity" panel for the application detail page (expanded by default):
+ * who applied or removed each tag, and when. Scoped to the tags visible in this context
  * (centre context: centre + system; AT context: own private + system). Returns
  * '' when there is no activity. Uses a native <details> element (no JS).
  */
@@ -700,7 +751,8 @@ function _dh_tag_activity($app_id, $at_uid = 0)
 		 ORDER BY l.atl_at DESC, l.atl_id DESC",
 		array(':a' => $app_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
-	return _dh_tag_activity_render($rows);
+	// Detail view: expanded by default (list stays collapsed to keep rows compact).
+	return _dh_tag_activity_render($rows, TRUE);
 }
 
 /**
@@ -741,7 +793,7 @@ function _dh_tag_activity_bulk(array $app_ids, $at_uid = 0)
  * Shared by the detail view (single fetch) and the list (bulk fetch). Rows are
  * already scope-filtered and newest-first. Returns '' for an empty set.
  */
-function _dh_tag_activity_render($rows)
+function _dh_tag_activity_render($rows, $open = FALSE)
 {
 	if (!$rows) {
 		return '';
@@ -760,7 +812,8 @@ function _dh_tag_activity_render($rows)
 			. '<td class="tal-when">' . check_plain($r['atl_at']) . '</td>'
 			. '</tr>';
 	}
-	return '<details class="tag-activity"><summary>' . t('Tag activity (@n)', array('@n' => count($rows))) . '</summary>'
+	$caret = '<span class="tag-activity-caret" aria-hidden="true">&#9656;</span> ';
+	return '<details class="tag-activity"' . ($open ? ' open' : '') . '><summary>' . $caret . t('Tag activity (@n)', array('@n' => count($rows))) . '</summary>'
 		. '<table class="tal-table"><thead><tr>'
 		. '<th>' . t('Tag') . '</th><th>' . t('Action') . '</th><th>' . t('By') . '</th><th>' . t('When') . '</th>'
 		. '</tr></thead><tbody>' . $body . '</tbody></table></details>';
