@@ -1,6 +1,6 @@
 <?php
 
-function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False, $excel_file_name = null )
+function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name = False, $excel_file_name = null, $read_only = FALSE )
 {
 	global $user;
   	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
@@ -707,7 +707,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	$out = theme('table', array('header' => $header, 'rows' => array(), 'attributes' => $attributes));
 	$data = json_encode($rows);
 
-	if ( user_access('change status'))
+	if ( user_access('change status') && !$read_only)
 	{
 		$status_select = '<option value="" selected="selected">Choose</option>';
 		foreach ($statuses as $key => $value) 
@@ -784,6 +784,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
             $actions[] = "Send LC Review Email";
         }
 		//$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
+		// Read-only surface (AT portal): drop all write actions (transfer/add/
+		// referral/delete/Send-LC-Review-Email). "Add Review" stays — it is gated
+		// separately via $can_add_review below.
+		if ($read_only) { $actions = array(); }
 		$action = implode("," , $actions);
 //		$action_select .='<option value="Add">'.$add_action.'</option>';
 		//$action_select .= 'return "<a href=\"#\" action=\"Transfer\" class=\"course-transfer\">Transfer</a>";';
@@ -796,7 +800,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 	$button_access = '';
     $excel_file_name = ($excel_file_name)?$excel_file_name:"Student Data";
-	if (user_access('export data'))
+	if (user_access('export data') && !$read_only)
 		if ( !($iPad || $iPhone || $iPod) )
 			$button_access = '                        
 				$.extend( true, {}, buttonCommon, {

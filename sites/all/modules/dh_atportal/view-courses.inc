@@ -311,9 +311,11 @@ function at_view_course_applicants($c) {
   $out .= '<div style="margin:-8px 0 14px"><a class="at-back" href="' . url('at-portal/my-course/' . $cid) . '">' . t('← Back to course') . '</a>'
         . ' &nbsp;·&nbsp; <a class="at-back" href="' . url('at-portal/my-courses') . '">' . t('All my courses') . '</a></div>';
   $out .= '</div>';
-  // The application list IS the registrar's search-results table, kept exactly
-  // as-is — rendered OUTSIDE .at-view so none of the AT-view styling touches it.
-  $out .= dh_manageapp_search_results('applicant', "a_course=$cid", $c['center'], FALSE, $fname);
+  // The application list IS the registrar's search-results table, rendered
+  // read-only (last arg) so no write actions show even for ATs who also hold
+  // edit permissions via another role — only "Add Review" remains. Rendered
+  // OUTSIDE .at-view so none of the AT-view styling touches it.
+  $out .= dh_manageapp_search_results('applicant', "a_course=$cid", $c['center'], FALSE, $fname, TRUE);
   return $out;
 }
 
