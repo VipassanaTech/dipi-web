@@ -57,6 +57,22 @@ ul {
 	border: 1px solid #000000;
 }
 
+/* Drag-and-drop: seat-sized "drop here" target (jQuery UI sortable placeholder).
+   forcePlaceholderSize sets its width/height inline to the dragged card's size;
+   border-box keeps the dashed border inside that footprint so the grid never
+   reflows. It floats the same side as the cards so it sits in the seat slot. */
+.dh-seat-ph {
+	list-style: none;
+	box-sizing: border-box;
+	width: 140px;
+	height: 76px;
+	border: 2px dashed #2f77c4;
+	background: #eaf3fb;
+	visibility: visible !important;
+}
+.sortable-m .dh-seat-ph { float: right; }
+.sortable-f .dh-seat-ph { float: left; }
+
 
 .seat-no {
 	/* A touch smaller than the name so the name reads as the primary line.

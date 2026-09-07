@@ -1621,10 +1621,14 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	        $(this).css({"cursor": "grab"});
 	});
 
-    $(".sortable-m").sortable();
+    // Easier drop: land where the CURSOR is (not >50% card overlap), with a
+    // visible seat-sized "drop here" placeholder. Model is unchanged (reorder ->
+    // recompute row/col by list index on save).
+    var dhSortOpts = { tolerance: "pointer", forcePlaceholderSize: true, placeholder: "dh-seat-ph", cursorAt: { left: 40, top: 20 }, opacity: 0.85 };
+    $(".sortable-m").sortable(dhSortOpts);
     $(".sortable-m").disableSelection();
 
-    $(".sortable-f").sortable();
+    $(".sortable-f").sortable(dhSortOpts);
     $(".sortable-f").disableSelection();
 
 
@@ -2506,7 +2510,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		$(".sortable-m .seatnumber, .sortable-f .seatnumber").empty();
 		$(".bg-table-m, .bg-table-f").find(".s-acco, .s-cell, .s-name, .s-old-student, .s-age, .s-backrest").empty();
 
-		$(".sortable-m, .sortable-f").sortable();
+		// Easier drop: land where the CURSOR is (not >50% card overlap), with a
+		// visible seat-sized "drop here" placeholder. Model is unchanged.
+		$(".sortable-m, .sortable-f").sortable({ tolerance: "pointer", forcePlaceholderSize: true, placeholder: "dh-seat-ph", cursorAt: { left: 40, top: 20 }, opacity: 0.85 });
 		$(".sortable-m, .sortable-f").disableSelection();
 		$(document).on("mouseenter", ".sortable-m .ui-state-default, .sortable-f .ui-state-default", function(){ $(this).css({"cursor":"move"}); });
 
