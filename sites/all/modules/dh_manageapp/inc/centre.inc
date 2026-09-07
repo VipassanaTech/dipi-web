@@ -83,23 +83,36 @@ function dh_manage_centre()
 		foreach ($cres as $cr)
 			$counts[$cr->tid] = array('up' => (int) $cr->c_up, 'all' => (int) $cr->c_all, 'past' => (int) $cr->c_past);
 
-		$period_links = function ($tid) use ($base, $counts) {
+		// Inline labelled counts for one tag: clickable when > 0, a muted label otherwise.
+		$count_inline = function ($tid) use ($base, $counts) {
 			$c = isset($counts[$tid]) ? $counts[$tid] : array('up' => 0, 'all' => 0, 'past' => 0);
-			return '<a class="button tag-period" href="' . $base . '/' . $tid . '/upcoming">' . t('Upcoming') . ' (' . $c['up'] . ')</a> '
-				. '<a class="button tag-period" href="' . $base . '/' . $tid . '/all">' . t('All') . ' (' . $c['all'] . ')</a> '
-				. '<a class="button tag-period" href="' . $base . '/' . $tid . '/past">' . t('Past') . ' (' . $c['past'] . ')</a>';
+			$cell = function ($label, $n, $period) use ($base, $tid) {
+				return $n > 0
+					? '<a href="' . $base . '/' . $tid . '/' . $period . '">' . $label . ' ' . $n . '</a>'
+					: '<span class="tdg-zero">' . $label . ' ' . $n . '</span>';
+			};
+			return $cell(t('Upcoming'), $c['up'], 'upcoming') . ' &middot; '
+				. $cell(t('All'), $c['all'], 'all') . ' &middot; '
+				. $cell(t('Past'), $c['past'], 'past');
 		};
 
 		$out .= '<div class="tag-dash-block"><h3>' . t('Tagged Applications')
 			. ' <a href="' . url('tags/' . $centre_arg) . '" class="tag-manage-link" style="font-size:13px;font-weight:normal">' . t('Manage tags') . '</a></h3>';
 
+		$out .= '<div class="tag-pin-hint">&#9733; ' . t('Star a tag to pin it here for quick access.') . '</div>';
+
+		// Pinned tags as responsive cards (3-up on desktop, 1-up on mobile). Each
+		// card carries its own labelled counts, since side-by-side cards can't share
+		// a single set of column headers.
 		if ($pinned) {
-			$out .= '<div class="tag-pinned">';
+			$out .= '<div class="tag-pin-cards">';
 			foreach ($pinned as $t) {
-				$out .= '<div class="tag-pinned-row">'
-					. '<a href="#" class="tag-unpin" data-tid="' . $t['t_id'] . '" title="' . t('Unpin') . '">&#9733;</a> '
-					. '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span> '
-					. $period_links($t['t_id'])
+				$out .= '<div class="tag-pin-card">'
+					. '<div class="tag-pin-card-head">'
+					. '<a href="#" class="tag-unpin" data-tid="' . $t['t_id'] . '" title="' . t('Unpin') . '">&#9733;</a>'
+					. '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '" title="' . check_plain($t['t_name']) . '">' . check_plain($t['t_name']) . '</span>'
+					. '</div>'
+					. '<div class="tag-pin-counts">' . $count_inline($t['t_id']) . '</div>'
 					. '</div>';
 			}
 			$out .= '</div>';
@@ -109,12 +122,11 @@ function dh_manage_centre()
 		foreach ($all_tags as $t) {
 			$opts .= '<option value="' . $t['t_id'] . '" data-color="' . check_plain($t['t_color']) . '">' . check_plain($t['t_name']) . '</option>';
 		}
-		$out .= '<div class="tag-choose">'
-			. '<select id="dash-tag-select">' . $opts . '</select> '
-			. '<a href="#" id="dash-tag-pin" title="' . t('Pin this tag') . '" style="display:none">&#9734;</a> &nbsp;'
-			. '<a id="dash-tag-upcoming" class="button tag-period" href="#">' . t('Upcoming') . '</a> '
-			. '<a id="dash-tag-all" class="button tag-period" href="#">' . t('All') . '</a> '
-			. '<a id="dash-tag-past" class="button tag-period" href="#">' . t('Past') . '</a>'
+		$out .= '<div class="tag-choose2">'
+			. '<select id="dash-tag-select">' . $opts . '</select>'
+			. '<span id="dash-tag-counts" class="tag-pin-counts" style="display:none"></span>'
+			. '<a href="#" id="dash-tag-pin" class="tag-pin-btn" style="display:none">&#9734; ' . t('Pin') . '</a>'
+			. '<span class="tag-choose-hint">' . t('pick a tag, then Pin it') . '</span>'
 			. '</div></div>';
 
 		$app_tag_url = url('app-tag/' . $centre_arg . '/handler');
@@ -132,22 +144,26 @@ function dh_manage_centre()
 					var color = $(opt.element).data("color") || "#607d8b";
 					return $("<span class=\"tag-opt\"><span class=\"tag-dot\" style=\"background:" + color + "\"></span></span>").append(document.createTextNode(opt.text));
 				}
-				if ($.fn.select2) { $sel.select2({ width: "240px", allowClear: true, placeholder: "' . t('Choose a tag') . '", templateResult: fmtTag, templateSelection: fmtTag }); }
-				var up = $("#dash-tag-upcoming"), al = $("#dash-tag-all"), pa = $("#dash-tag-past"), pin = $("#dash-tag-pin");
-				function setEnabled(on) { [up, al, pa].forEach(function (a) { a.css({ pointerEvents: on ? "" : "none", opacity: on ? 1 : 0.4 }); }); }
-				setEnabled(false);
+				if ($.fn.select2) { $sel.select2({ width: "260px", allowClear: true, placeholder: "' . t('Choose a tag') . '", templateResult: fmtTag, templateSelection: fmtTag }); }
+				var $counts = $("#dash-tag-counts"), pin = $("#dash-tag-pin");
+				function inlineCounts(tid, c) {
+					function cell(label, n, period) {
+						return n > 0
+							? "<a href=\"" + base + tid + "/" + period + "\">" + label + " " + n + "</a>"
+							: "<span class=\"tdg-zero\">" + label + " " + n + "</span>";
+					}
+					return cell("Upcoming", c.up, "upcoming") + " &middot; " + cell("All", c.all, "all") + " &middot; " + cell("Past", c.past, "past");
+				}
 				$sel.on("change", function () {
 					var tid = $(this).val();
 					if (tid) {
 						var c = tagCounts[tid] || { up: 0, all: 0, past: 0 };
-						up.attr("href", base + tid + "/upcoming").text("Upcoming (" + c.up + ")");
-						al.attr("href", base + tid + "/all").text("All (" + c.all + ")");
-						pa.attr("href", base + tid + "/past").text("Past (" + c.past + ")");
-						setEnabled(true);
-						pin.show().html(pinnedIds.indexOf(String(tid)) >= 0 ? "&#9733;" : "&#9734;").data("tid", tid);
+						$counts.html(inlineCounts(tid, c)).show();
+						var isPinned = pinnedIds.indexOf(String(tid)) >= 0;
+						pin.html((isPinned ? "&#9733; Pinned" : "&#9734; Pin")).data("tid", tid).show();
 					} else {
-						up.text("Upcoming"); al.text("All"); pa.text("Past");
-						setEnabled(false); pin.hide();
+						$counts.hide().empty();
+						pin.hide();
 					}
 				});
 				pin.on("click", function (e) {

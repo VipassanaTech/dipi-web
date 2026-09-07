@@ -83,23 +83,74 @@
   border: 1px solid #e0e0e0;
   border-radius: 6px;
 }
-.tag-dash-block h3 { margin: 0 0 8px; }
-.tag-dash-block .button { margin-left: 4px; }
+.tag-dash-block h3 { margin: 0 0 10px; }
 .tag-dash-preview { vertical-align: middle; }
 
+/* Pinning hint */
+.tag-pin-hint { font-size: 12.5px; color: #666; margin: 0 0 12px; }
+
+/* Pinned tags as responsive cards: 3-up on desktop, 1-up on mobile. */
+.tag-pin-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.tag-pin-card {
+  min-width: 0;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+}
+.tag-pin-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.tag-pin-card-head .tag-unpin { flex: none; }
+.tag-pin-card-head .tag-chip {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  padding: 2px 10px;
+  line-height: 18px;
+}
+.tag-pin-counts { font-size: 12.5px; color: #666; }
+.tag-pin-counts a { color: #1a73e8; font-weight: 500; text-decoration: none; }
+.tag-pin-counts a:hover { text-decoration: underline; }
+.tag-pin-counts .tdg-zero { color: #bbb; }
+
+/* Choose-a-tag + pin row */
+.tag-choose2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e2e2;
+}
+.tag-pin-btn {
+  display: inline-block;
+  padding: 3px 12px;
+  border: 1px solid #f5a623;
+  border-radius: 14px;
+  color: #b9770a;
+  background: #fff8ec;
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.tag-pin-btn:hover { background: #fdeccb; color: #8a5a06; }
+.tag-choose-hint { font-size: 12.5px; color: #999; }
+
 /* Pins */
-.tag-pinned { margin: 6px 0 10px; }
-.tag-pinned-row { margin: 4px 0; line-height: 24px; }
-.tag-choose { margin-top: 6px; }
-.tag-period { margin: 0 2px; }
-.tag-unpin, #dash-tag-pin, .tag-admin-pin {
+.tag-unpin, .tag-admin-pin {
   color: #f5a623;
   text-decoration: none;
   font-size: 17px;
   vertical-align: middle;
   cursor: pointer;
 }
-.tag-unpin:hover, #dash-tag-pin:hover, .tag-admin-pin:hover { color: #e0900a; }
+.tag-unpin:hover, .tag-admin-pin:hover { color: #e0900a; }
 .tag-admin-pin.off { color: #bbb; }
 
 /* Client-side tag filter on search results */
