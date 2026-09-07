@@ -1917,6 +1917,8 @@ function _dh_log_table_css()
 		. '.dh-log-table .review-body .review-edited{float:left;margin-right:5px;color:#999;font-style:italic;font-size:11px}'
 		. '.dh-log-table p,.dh-log-table ul,.dh-log-table ol{margin:0 0 6px}'
 		. '.dh-log-table td p:last-child,.dh-log-table td ul:last-child,.dh-log-table td ol:last-child{margin-bottom:0}'
+		. '.ir-section{margin:14px 0 4px;font-size:14px;font-weight:500}'
+		. '.ir-none{color:#888;font-size:13px}'
 		. '</style>';
 }
 
@@ -1986,9 +1988,28 @@ function _get_applicant_reviews()
 {
 	global $user;
 	$app_id = (int) arg(1);
+
+	/* Split into "AT Comments" vs "Center Comments" by the SAME rule used when a
+	   review is added: the author is an AT (username = t_code.t_gender) Confirmed to
+	   Conduct/Assist this applicant's course. Derived here so it also classifies
+	   older reviews (no stored flag). */
+	$course = db_query("select a_course from dh_applicant where a_id=:a", array(':a' => $app_id))->fetchField();
+	$at_set = array();
+	if ($course) {
+		foreach (db_query(
+			"select LOWER(CONCAT(t.t_code, '.', t.t_gender)) AS uname
+			 from dh_teacher t JOIN dh_course_teacher ct ON ct.ct_teacher = t.t_id
+			 where ct.ct_course = :c AND ct.ct_status = 'Confirmed' AND ct.ct_type IN ('Conducting','Assisting')",
+			array(':c' => $course)
+		)->fetchCol() as $un) {
+			$at_set[$un] = 1;
+		}
+	}
+
 	$q = "select ar_id, ar_review, ar_created, ar_updated, ar_user, name from dh_applicant_reviews left join users on ar_user=uid where ar_applicant=:a order by ar_created desc";
 	$res = db_query($q, array(':a' => $app_id));
-	$rows = array();
+	$at_rows = array();
+	$center_rows = array();
 	while ($row = $res->fetchAssoc())
 	{
 		$when = _dh_fmt_dt($row['ar_created']);
@@ -2003,19 +2024,33 @@ function _get_applicant_reviews()
 		$action = ($row['ar_user'] == $user->uid)
 			? '<a href="#" class="edit-review-btn" data-ar-id="' . (int) $row['ar_id'] . '" data-aid="' . $app_id . '">' . t('Edit') . '</a>'
 			: '';
-		$rows[] = array(
+		$r = array(
 			array('data' => $when, 'class' => array('lg-when')),
 			array('data' => $body, 'class' => array('ir-review')),
 			array('data' => $action, 'class' => array('ir-action')),
 			array('data' => check_plain($row['name']), 'class' => array('ir-user')),
 		);
+		$uname = strtolower((string) $row['name']);
+		if ($uname !== '' && isset($at_set[$uname]))
+			$at_rows[] = $r;
+		else
+			$center_rows[] = $r;
 	}
+
 	$header = array('DateTime', 'Review', 'Action', 'User');
+	$section = function ($label, $rows) use ($header) {
+		$h = '<h5 class="ir-section">' . $label . ' (' . count($rows) . ')</h5>';
+		$h .= $rows
+			? theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('dh-log-table'))))
+			: '<em class="ir-none">' . t('None.') . '</em>';
+		return $h;
+	};
+
 	$out = _dh_log_table_css() . '<h4>Internal Review Comments</h4>';
-	if (!empty($rows))
-		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('dh-log-table'))));
-	else
+	if (!$at_rows && !$center_rows)
 		$out .= '<em>No review comments yet.</em>';
+	else
+		$out .= $section(t('AT Comments'), $at_rows) . $section(t('Center Comments'), $center_rows);
 	print $out;
 	exit;
 }
