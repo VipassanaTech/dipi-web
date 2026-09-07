@@ -1034,6 +1034,22 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		}
 
 		db_update('dh_applicant')->fields($app)->condition('a_id', $app_id )->execute();
+		// Auto "Attended" system tag mirrors the attending checkbox (going forward).
+		// Non-fatal: tagging must never break saving the application.
+		if (function_exists('_dh_tag_mark_attended')) {
+			try {
+				$_ac = db_query("select a_center from dh_applicant where a_id=:a", array(':a' => $app_id))->fetchField();
+				if (!empty($app['a_attended'])) {
+					_dh_tag_mark_attended($app_id, $_ac, $user->uid);
+				}
+				else {
+					_dh_tag_unmark_attended($app_id, $_ac, $user->uid);
+					_dh_tag_unmark_all_groups($app_id, $_ac, $user->uid);
+				}
+			} catch (Exception $e) {
+				watchdog('dh_tag', 'Auto-tag on application save failed for app @a: @m', array('@a' => $app_id, '@m' => $e->getMessage()), WATCHDOG_WARNING);
+			}
+		}
 		$extra_id = db_query("select ae_id from dh_applicant_extra where ae_applicant=".$app_id)->fetchField();
 		$app_course_id = db_query("select ac_id from dh_applicant_course where ac_applicant=".$app_id." limit 1")->fetchField();
 		$app_attended_id = db_query("select aa_id from dh_applicant_attended where aa_applicant=".$app_id)->fetchField();

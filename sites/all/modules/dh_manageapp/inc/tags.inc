@@ -198,7 +198,7 @@ function _dh_tag_center_tags($centre_id, $at_uid = 0)
 {
 	$scope = _dh_tag_scope_where('', $at_uid);
 	return db_query(
-		"SELECT t_id, t_name, t_color, t_created_by, t_system, t_owner FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND $scope ORDER BY t_name",
+		"SELECT t_id, t_name, t_color, t_created_by, t_system, t_owner FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND $scope ORDER BY t_system DESC, t_name",
 		array(':c' => $centre_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -226,7 +226,7 @@ function _dh_tag_for_application($application_id, $at_uid = 0)
 		"SELECT t.t_id, t.t_name, t.t_color, t.t_system, t.t_owner
 		 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
 		 WHERE at.at_application = :a AND at.at_deleted = 0 AND t.t_deleted = 0 AND $scope
-		 ORDER BY t.t_name",
+		 ORDER BY t.t_system DESC, t.t_name",
 		array(':a' => $application_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -248,7 +248,7 @@ function _dh_tag_pinned($uid, $centre_id)
 		"SELECT t.t_id, t.t_name, t.t_color
 		 FROM dh_tag_pin p JOIN dh_tag t ON p.tp_tag = t.t_id
 		 WHERE p.tp_user = :u AND t.t_center = :c AND t.t_deleted = 0
-		 ORDER BY t.t_name",
+		 ORDER BY t.t_system DESC, t.t_name",
 		array(':u' => $uid, ':c' => $centre_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -268,6 +268,11 @@ function _dh_tag_pinned($uid, $centre_id)
 
 define('DH_AT_COMMENTS_TAG', 'AT Comments');
 define('DH_CENTER_COMMENT_TAG', 'Center Comment');
+define('DH_ATTENDED_TAG', 'Attended');
+// All system tags share one colour so they read as one group (soft-tinted at
+// render). Indigo is deliberately NOT in _dh_tag_palette(), so no user tag can
+// share it and system tags are always visually distinct.
+define('DH_SYSTEM_TAG_COLOR', '#3f51b5');
 
 /**
  * Find (or lazily create) a per-centre system tag by name; returns t_id.
@@ -307,6 +312,33 @@ function _dh_tag_log($tag_id, $application_id, $action, $uid)
 }
 
 /**
+ * Append a row to the tag-lifecycle log (rename / delete). For a rename,
+ * $old/$new are the old/new names; for a delete, $old is the name and $new is
+ * the count of applications it was mapped to (as a string).
+ */
+function _dh_tag_log_change($tag_id, $center, $action, $old, $new, $uid)
+{
+	db_insert('dh_tag_log')->fields(array(
+		'tl_tag' => (int) $tag_id,
+		'tl_center' => (int) $center,
+		'tl_action' => $action,
+		'tl_old' => ($old === NULL ? NULL : (string) $old),
+		'tl_new' => ($new === NULL ? NULL : (string) $new),
+		'tl_by' => (int) $uid,
+		'tl_at' => date('Y-m-d H:i:s'),
+	))->execute();
+}
+
+/**
+ * Who may VIEW the tag-change log (per-tag history + combined panel): tag
+ * managers only. Anyone who can change a tag still gets logged regardless.
+ */
+function _dh_tag_can_view_log()
+{
+	return user_access('edit all tag') || user_access('delete all tag');
+}
+
+/**
  * Is a tag currently (non-deleted) assigned to an application?
  */
 function _dh_tag_is_active($tag_id, $application_id)
@@ -340,13 +372,61 @@ function _dh_tag_mark_system($application_id, $centre_id, $name, $color, $uid = 
 /** "AT Comments": reviewer is a conducting/assisting AT of the course. */
 function _dh_tag_mark_at_comment($application_id, $centre_id, $uid = 0)
 {
-	_dh_tag_mark_system($application_id, $centre_id, DH_AT_COMMENTS_TAG, '#16a085', $uid);
+	_dh_tag_mark_system($application_id, $centre_id, DH_AT_COMMENTS_TAG, DH_SYSTEM_TAG_COLOR, $uid);
 }
 
 /** "Center Comment": reviewer is centre team (not the course's AT). */
 function _dh_tag_mark_center_comment($application_id, $centre_id, $uid = 0)
 {
-	_dh_tag_mark_system($application_id, $centre_id, DH_CENTER_COMMENT_TAG, '#8e44ad', $uid);
+	_dh_tag_mark_system($application_id, $centre_id, DH_CENTER_COMMENT_TAG, DH_SYSTEM_TAG_COLOR, $uid);
+}
+
+/** Auto system tag "Attended" (applied when a_attended becomes 1). */
+function _dh_tag_mark_attended($application_id, $centre_id, $uid = 0)
+{
+	_dh_tag_mark_system($application_id, $centre_id, DH_ATTENDED_TAG, DH_SYSTEM_TAG_COLOR, $uid);
+}
+
+/** Auto system tag "Group-<n>" (1..9), from the applicant's aa_group. */
+function _dh_tag_mark_group($application_id, $centre_id, $group, $uid = 0)
+{
+	$group = (int) $group;
+	if ($group < 1 || $group > 9) {
+		return;
+	}
+	_dh_tag_mark_system($application_id, $centre_id, 'Group-' . $group, DH_SYSTEM_TAG_COLOR, $uid);
+}
+
+/**
+ * Remove an active system-tag mapping by name (auto-managed removal; logs it).
+ * No-op if the tag or the active mapping does not exist.
+ */
+function _dh_tag_unmark_system($application_id, $centre_id, $name, $uid = 0)
+{
+	$tid = db_query(
+		"SELECT t_id FROM dh_tag WHERE t_center = :c AND t_system = 1 AND t_name = :n AND t_deleted = 0",
+		array(':c' => (int) $centre_id, ':n' => $name)
+	)->fetchField();
+	if (!$tid || !_dh_tag_is_active($tid, $application_id)) {
+		return;
+	}
+	db_update('dh_application_tag')->fields(array('at_deleted' => 1))
+		->condition('at_tag', $tid)->condition('at_application', (int) $application_id)->execute();
+	_dh_tag_log($tid, $application_id, 'remove', $uid);
+}
+
+/** Remove the "Attended" system tag from an application. */
+function _dh_tag_unmark_attended($application_id, $centre_id, $uid = 0)
+{
+	_dh_tag_unmark_system($application_id, $centre_id, DH_ATTENDED_TAG, $uid);
+}
+
+/** Remove any Group-1..9 system tag from an application. */
+function _dh_tag_unmark_all_groups($application_id, $centre_id, $uid = 0)
+{
+	for ($g = 1; $g <= 9; $g++) {
+		_dh_tag_unmark_system($application_id, $centre_id, 'Group-' . $g, $uid);
+	}
 }
 
 /* ---------------------------------------------------------------------------
@@ -375,6 +455,14 @@ function dh_tags_handler($centre_id)
 
 	if ($op === 'list') {
 		_dh_tag_json(array('status' => 1, 'tags' => _dh_tag_center_tags($centre_id, $at_mode ? $at_uid : 0)));
+	}
+
+	if ($op === 'history') {
+		if (!_dh_tag_can_view_log()) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to view tag history.')));
+		}
+		$rows = _dh_tag_change_rows($centre_id, (int) $_POST['t_id']);
+		_dh_tag_json(array('status' => 1, 'html' => _dh_tag_change_render($rows, TRUE)));
 	}
 
 	if ($op === 'create') {
@@ -438,6 +526,9 @@ function dh_tags_handler($centre_id)
 		db_update('dh_tag')->fields(array(
 			't_name' => $name, 't_color' => $color, 't_updated' => date('Y-m-d H:i:s'), 't_updated_by' => $user->uid,
 		))->condition('t_id', $tag['t_id'])->execute();
+		if ($name !== $tag['t_name']) {
+			_dh_tag_log_change($tag['t_id'], $centre_id, 'rename', $tag['t_name'], $name, $user->uid);
+		}
 		_dh_tag_json(array('status' => 1, 'tag' => array('t_id' => $tag['t_id'], 't_name' => $name, 't_color' => $color)));
 	}
 
@@ -463,9 +554,15 @@ function dh_tags_handler($centre_id)
 				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to delete this tag.')));
 			}
 		}
+		// Count current mappings (for the audit trail) before hiding the tag.
+		$map_count = (int) db_query(
+			"SELECT COUNT(*) FROM dh_application_tag WHERE at_tag = :t AND at_deleted = 0",
+			array(':t' => $tag['t_id'])
+		)->fetchField();
 		// Soft-delete the tag; its assignments are hidden by the join filters.
 		db_update('dh_tag')->fields(array('t_deleted' => 1, 't_updated' => date('Y-m-d H:i:s'), 't_updated_by' => $user->uid))
 			->condition('t_id', $tag['t_id'])->execute();
+		_dh_tag_log_change($tag['t_id'], $centre_id, 'delete', $tag['t_name'], (string) $map_count, $user->uid);
 		_dh_tag_json(array('status' => 1));
 	}
 
@@ -819,6 +916,74 @@ function _dh_tag_activity_render($rows, $open = FALSE)
 		. '</tr></thead><tbody>' . $body . '</tbody></table></details>';
 }
 
+/**
+ * Fetch tag-lifecycle rows (rename / delete) for a centre, newest first. Pass a
+ * $tag_id for one tag's history, or 0 for the whole centre. The tag join is a
+ * LEFT join (unfiltered by t_deleted) so a deleted tag still resolves its name.
+ */
+function _dh_tag_change_rows($centre_id, $tag_id = 0, $limit = 200)
+{
+	$q = "SELECT l.tl_tag, l.tl_action, l.tl_old, l.tl_new, l.tl_at, l.tl_by, t.t_name, u.name AS uname
+		 FROM dh_tag_log l
+		 LEFT JOIN dh_tag t ON t.t_id = l.tl_tag
+		 LEFT JOIN users u ON u.uid = l.tl_by
+		 WHERE l.tl_center = :c";
+	$args = array(':c' => (int) $centre_id);
+	if ($tag_id) {
+		$q .= " AND l.tl_tag = :t";
+		$args[':t'] = (int) $tag_id;
+	}
+	$q .= " ORDER BY l.tl_at DESC, l.tl_id DESC";
+	return db_query_range($q, 0, (int) $limit, $args)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Render tag-lifecycle rows as a table: Tag | Change | Detail | By | When.
+ * $bare = table only (for the per-tag history dialog); otherwise wrapped in a
+ * collapsed "Tag change log" panel (for the Manage Tags page).
+ */
+function _dh_tag_change_render($rows, $bare = FALSE)
+{
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+	if (!$rows) {
+		return '<p class="tag-log-empty"><em>' . t('No tag changes recorded yet.') . '</em></p>';
+	}
+	$body = '';
+	foreach ($rows as $r) {
+		$who = ($r['tl_by'] == 0)
+			? t('System')
+			: (($r['uname'] !== NULL && $r['uname'] !== '') ? $r['uname'] : t('User #@u', array('@u' => $r['tl_by'])));
+		if ($r['tl_action'] === 'delete') {
+			$act = t('deleted');
+			$cls = 'tal-remove';
+			$name = ($r['t_name'] !== NULL && $r['t_name'] !== '') ? $r['t_name'] : $r['tl_old'];
+			$n = (int) $r['tl_new'];
+			$detail = format_plural($n, 'was on 1 application', 'was on @count applications');
+		}
+		else {
+			$act = t('renamed');
+			$cls = 'tal-add';
+			$name = ($r['t_name'] !== NULL && $r['t_name'] !== '') ? $r['t_name'] : $r['tl_new'];
+			$detail = '<span class="tal-old">' . check_plain($r['tl_old']) . '</span> &rarr; <span class="tal-new">' . check_plain($r['tl_new']) . '</span>';
+		}
+		$body .= '<tr>'
+			. '<td class="tal-tag">' . check_plain($name) . '</td>'
+			. '<td class="tal-act ' . $cls . '">' . $act . '</td>'
+			. '<td class="tal-detail">' . $detail . '</td>'
+			. '<td class="tal-who">' . check_plain($who) . '</td>'
+			. '<td class="tal-when">' . check_plain($r['tl_at']) . '</td>'
+			. '</tr>';
+	}
+	$table = '<table class="tal-table"><thead><tr>'
+		. '<th>' . t('Tag') . '</th><th>' . t('Change') . '</th><th>' . t('Detail') . '</th><th>' . t('By') . '</th><th>' . t('When') . '</th>'
+		. '</tr></thead><tbody>' . $body . '</tbody></table>';
+	if ($bare) {
+		return $table;
+	}
+	$caret = '<span class="tag-activity-caret" aria-hidden="true">&#9656;</span> ';
+	return '<details class="tag-activity"><summary>' . $caret . t('Tag change log (@n)', array('@n' => count($rows))) . '</summary>' . $table . '</details>';
+}
+
 /* ---------------------------------------------------------------------------
  * Tagged-applications search (dashboard Present/Past links)
  * ------------------------------------------------------------------------- */
@@ -893,6 +1058,9 @@ function dh_tags_admin($centre_id)
 {
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/manageapp.css');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
+	// jquery-confirm powers the delete warning + the per-tag History dialog.
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/jquery-confirm.min.js');
 	$palette = _dh_tag_palette();
 	$tags = _dh_tag_center_tags($centre_id);
 
@@ -900,6 +1068,13 @@ function dh_tags_admin($centre_id)
 	$pinned_ids = array_flip(_dh_tag_pinned_ids($user->uid));
 	$can_use = user_access('use tag') ? 1 : 0;
 	$can_create = user_access('create tag') ? 1 : 0;
+	$can_view_log = _dh_tag_can_view_log() ? 1 : 0;
+
+	// Per-tag mapping counts (one grouped query) so Delete can warn with the number.
+	$map_counts = array();
+	foreach (db_query("SELECT at_tag, COUNT(*) AS c FROM dh_application_tag WHERE at_deleted = 0 GROUP BY at_tag") as $mc) {
+		$map_counts[$mc->at_tag] = (int) $mc->c;
+	}
 
 	$swatches = '';
 	foreach ($palette as $c) {
@@ -916,7 +1091,11 @@ function dh_tags_admin($centre_id)
 			$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '">Edit</a> ';
 		}
 		if ($can_del) {
-			$actions .= '<a href="#" class="tag-delete" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '">Delete</a>';
+			$mc = isset($map_counts[$t['t_id']]) ? $map_counts[$t['t_id']] : 0;
+			$actions .= '<a href="#" class="tag-delete" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-count="' . $mc . '">Delete</a>';
+		}
+		if ($can_view_log && !$is_system) {
+			$actions .= ' <a href="#" class="tag-history" data-id="' . $t['t_id'] . '">History</a>';
 		}
 		$pin = '';
 		if ($can_use) {
@@ -941,6 +1120,12 @@ function dh_tags_admin($centre_id)
 		. $create_block
 		. '<table class="table tag-table"><thead><tr><th>Tag</th><th>Actions</th></tr></thead>'
 		. '<tbody>' . ($rows ?: '<tr><td colspan="2"><em>No tags yet.</em></td></tr>') . '</tbody></table>';
+
+	if ($can_view_log) {
+		$out .= '<div class="tag-log-block"><h4>' . t('Tag change log') . '</h4>'
+			. _dh_tag_change_render(_dh_tag_change_rows($centre_id, 0, 200))
+			. '</div>';
+	}
 
 	$handler = url('tags/' . $centre_id . '/handler');
 	$app_tag_handler = url('app-tag/' . $centre_id . '/handler');
@@ -971,14 +1156,26 @@ function dh_tags_admin($centre_id)
 			});
 			$(document).on("click", ".tag-delete", function (e) {
 				e.preventDefault();
-				var id = $(this).data("id"), name = $(this).data("name");
+				var id = $(this).data("id"), name = $(this).data("name"), cnt = parseInt($(this).data("count"), 10) || 0;
+				var msg = cnt > 0
+					? "This tag is on " + cnt + " application" + (cnt === 1 ? "" : "s") + ". Deleting removes it from all of them. Continue?"
+					: "Delete tag \"" + name + "\"?";
 				var go = function () {
 					$.post("' . $handler . '", { op: "delete", t_id: id }, function (j) {
 						if (j.status) { location.reload(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 					}, "json");
 				};
-				if ($.confirm) { $.confirm({ title: "Delete tag", content: "Delete tag \"" + name + "\"? It will be removed from all applications.", buttons: { del: { text: "Delete", btnClass: "btn-red", action: go }, cancel: function () {} } }); }
-				else if (confirm("Delete tag " + name + "?")) { go(); }
+				if ($.confirm) { $.confirm({ title: "Delete tag", content: msg, buttons: { del: { text: "Delete", btnClass: "btn-red", action: go }, cancel: function () {} } }); }
+				else if (confirm(msg)) { go(); }
+			});
+			$(document).on("click", ".tag-history", function (e) {
+				e.preventDefault();
+				var id = $(this).data("id"), name = $(this).closest("tr").find(".tag-chip").text();
+				$.post("' . $handler . '", { op: "history", t_id: id }, function (j) {
+					if (!j.status) { ($.alert ? $.alert(j.msg) : alert(j.msg)); return; }
+					if ($.confirm) { $.confirm({ title: "History: " + name, content: j.html, columnClass: "medium", buttons: { ok: { text: "Close" } } }); }
+					else { ($.alert ? $.alert(j.html) : alert("History loaded")); }
+				}, "json");
 			});
 			$(document).on("click", ".tag-edit", function (e) {
 				e.preventDefault();

@@ -202,3 +202,12 @@
 .tal-table .tal-remove { color: #c0392b; }
 .tal-table .tal-who { color: #444; }
 .tal-table .tal-when { color: #888; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tal-table .tal-detail { color: #555; }
+.tal-table .tal-detail .tal-old { color: #999; text-decoration: line-through; }
+.tal-table .tal-detail .tal-new { color: #222; font-weight: 500; }
+
+/* Tag change log (Manage Tags page) */
+.tag-history { color: #2456a6; }
+.tag-log-block { margin-top: 18px; }
+.tag-log-block h4 { margin: 0 0 4px; }
+.tag-log-empty { color: #888; font-size: 13px; margin: 4px 0; }

@@ -13,6 +13,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 	/* Rich-text editor for the "Add Review" internal note dialog. */
 	drupal_add_js( libraries_get_path("ckeditor"). "/ckeditor.js");
+	/* Edit-own-review-comment handler (delegated; needs ckeditor + jquery-confirm). */
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/review-edit.js');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
 	if ( !($iPad || $iPhone || $iPod) )
 	{
@@ -26,8 +28,23 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	// Searchable (type-to-filter) centre/course dropdowns in the Transfer/Add popup.
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/select2.min.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/select2.min.js");
-	// Dropdown attaches to <body>; keep it above the jquery-confirm modal (z-index 99999999).
-	drupal_add_css('.select2-container{z-index:999999999}', array('type' => 'inline'));
+	// An OPEN select2 dropdown attaches to <body>; keep it above the jquery-confirm
+	// modal (z-index 99999999). Scope to --open only: elevating every idle
+	// .select2-container made the on-page "Filter by tag" control poke through the
+	// Add Review popup.
+	drupal_add_css('.select2-container--open{z-index:999999999}', array('type' => 'inline'));
+	// "Filter by tag" multi-select: left-aligned, cleanly-wrapping chips (select2's
+	// default float layout mis-aligned wrapped chips), label top-aligned to the box.
+	drupal_add_css(
+		'.tag-filter-bar{display:flex;align-items:flex-start;gap:8px}'
+		. '.tag-filter-bar>b{padding-top:7px;white-space:nowrap}'
+		. '.tag-filter-bar .select2-container{vertical-align:top;flex:1 1 auto;max-width:520px}'
+		. '.tag-filter-bar .select2-selection--multiple{min-height:34px}'
+		. '.tag-filter-bar .select2-selection--multiple .select2-selection__rendered{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:4px;padding:3px 6px;text-align:left}'
+		. '.tag-filter-bar .select2-selection__choice{float:none;margin:0}'
+		. '.tag-filter-bar .select2-search--inline{float:none}',
+		array('type' => 'inline')
+	);
 	
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
@@ -554,7 +571,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$res = db_query(
 				"SELECT at.at_application, t.t_id, t.t_name, t.t_color, t.t_system
 				 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
-				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND $tscope AND at.at_application IN (:aids)",
+				 WHERE at.at_deleted = 0 AND t.t_deleted = 0 AND $tscope AND at.at_application IN (:aids)
+				 ORDER BY t.t_system DESC, t.t_name",
 				array(':aids' => $aids)
 			);
 			foreach ($res as $tr) { $app_tags[$tr->at_application][] = $tr; }
@@ -563,9 +581,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$present_tags = array();
 		foreach ($app_tags as $tgs)
 			foreach ($tgs as $tg)
-				$present_tags[$tg->t_id] = array('t_id' => $tg->t_id, 't_name' => $tg->t_name, 't_color' => $tg->t_color);
+				$present_tags[$tg->t_id] = array('t_id' => $tg->t_id, 't_name' => $tg->t_name, 't_color' => $tg->t_color, 't_system' => (int) $tg->t_system);
 		$present_tags = array_values($present_tags);
-		usort($present_tags, function ($a, $b) { return strcasecmp($a['t_name'], $b['t_name']); });
+		// System tags first, then alphabetical.
+		usort($present_tags, function ($a, $b) {
+			if ($a['t_system'] != $b['t_system']) { return $b['t_system'] - $a['t_system']; }
+			return strcasecmp($a['t_name'], $b['t_name']);
+		});
 		// Collapsed per-row tag activity panels, fetched in one batched query.
 		$act_map = _dh_tag_activity_bulk($aids, $at_uid);
 		foreach ($rows as $i => $row)
@@ -617,24 +639,28 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				// tags actually present on a row are offered, each shown with its colour.
 				function fmtTag(opt) {
 					if (!opt.id) { return opt.text; }
+					if (opt.id === "__none__") { return $("<span class=\"tag-opt\"></span>").append(document.createTextNode(opt.text)); }
 					var color = $(opt.element).data("color") || "#607d8b";
 					return $("<span class=\"tag-opt\"><span class=\"tag-dot\" style=\"background:" + color + "\"></span></span>").append(document.createTextNode(opt.text));
 				}
 				var filterTags = ' . $present_tags_json . ';
 				if (filterTags.length) {
-					var $ff = $("<select id=\"tag-filter-select\" class=\"tag-filter-select no-print\"></select>");
-					$ff.append("<option value=\"\">All applications</option>");
+					// Multi-select: pick any number of tags (OR match); "No tags" matches untagged.
+					var $ff = $("<select id=\"tag-filter-select\" class=\"tag-filter-select no-print\" multiple=\"multiple\"></select>");
+					$ff.append($("<option>").attr("value", "__none__").text("No tags"));
 					filterTags.forEach(function (t) { $ff.append($("<option>").attr("value", t.t_id).attr("data-color", t.t_color).text(t.t_name)); });
-					$("#table-applicants").before($("<div class=\"tag-filter-bar no-print\">").append("<b>Filter by tag:</b> ").append($ff));
-					if ($.fn.select2) { $ff.select2({ width: "220px", templateResult: fmtTag, templateSelection: fmtTag }); }
+					$("#table-applicants").before($("<div class=\"tag-filter-bar no-print\" style=\"margin:6px 0 16px\">").append("<b>Filter by tag:</b> ").append($ff));
+					if ($.fn.select2) { $ff.select2({ width: "100%", multiple: true, allowClear: true, placeholder: "All applications", templateResult: fmtTag, templateSelection: fmtTag }); }
 				}
 				$.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 					if (settings.nTable.id !== "table-applicants") { return true; }
-					var val = $("#tag-filter-select").val();
-					if (!val) { return true; }
+					var vals = $("#tag-filter-select").val() || [];
+					if (!vals.length) { return true; }
 					var row = settings.aoData[dataIndex]._aData;
-					var ids = (row && row.tag_ids) ? String(row.tag_ids).split(",") : [];
-					return ids.indexOf(String(val)) >= 0;
+					var ids = (row && row.tag_ids) ? String(row.tag_ids).split(",").filter(function (x) { return x !== ""; }) : [];
+					if (vals.indexOf("__none__") >= 0 && ids.length === 0) { return true; }
+					for (var i = 0; i < vals.length; i++) { if (vals[i] !== "__none__" && ids.indexOf(String(vals[i])) >= 0) { return true; } }
+					return false;
 				});
 				$(document).on("change", "#tag-filter-select", function () {
 					if ($.fn.dataTable.isDataTable("#table-applicants")) { $("#table-applicants").DataTable().draw(); }
@@ -1474,6 +1500,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 										{ name: "cleanup", items: ["RemoveFormat"] }
 									];
 								}
+								/* Tighten paragraph spacing so Enter does not leave a big gap. */
+								cfg.on = { instanceReady: function () { this.document.appendStyleText("p{margin:0 0 6px}ul,ol{margin:0 0 6px}"); } };
 								CKEDITOR.replace(edId, cfg);
 							}
 						},
@@ -2427,6 +2455,12 @@ function dh_application_view($app_id, $at_uid = 0)
 	$out .= $sec('Activity Log', '<div class="activity-log-'.$app_id.'">Loading...</div>');
 
 	$out .= '</div>';
+
+	// Assets for editing one's own review comment inline (Edit link in the list).
+	drupal_add_js( libraries_get_path("ckeditor"). "/ckeditor.js");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
+	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/review-edit.js");
 
 	$js = 'jQuery(function($){
 		$(".applied-courses-'.$app_id.'").load("/app-courses/'.$app_id.'");

@@ -237,6 +237,13 @@ function dh_manageapp_menu()
 	       'access arguments' => array('add applicant review'),
 	       'type' => MENU_CALLBACK);
 
+	// Edit an existing review note (keyed by ar_id; author-only enforced in the
+	// callback, not just the perm).
+	$items['edit-review/%'] = array( 'title' => t('Edit Review'),
+	       'page callback' => '_edit_applicant_review',
+	       'access arguments' => array('add applicant review'),
+	       'type' => MENU_CALLBACK);
+
 	$items['change-status/%app_id'] = array( 'title' => t('Search'),
 	       'page callback' => '_change_status',
 	       'access arguments' => array('change status'),
@@ -1885,6 +1892,34 @@ function _get_clarifications()
 	exit;
 }
 
+/* Shared "date on line 1, time on line 2" cell for the review + activity tables. */
+function _dh_fmt_dt($ts)
+{
+	$ts = trim((string) $ts);
+	if ($ts === '') return '';
+	$p = explode(' ', $ts, 2);
+	$out = '<span class="dt-d">' . check_plain($p[0]) . '</span>';
+	if (isset($p[1]) && $p[1] !== '')
+		$out .= '<br><span class="dt-t">' . check_plain($p[1]) . '</span>';
+	return $out;
+}
+
+/* Shared CSS so Internal Review Comments + Activity Log line up identically:
+   fixed-width DateTime column (date/time stacked), narrow Action/User, tight
+   paragraph spacing, and the "(edited)" flag floated to the review's first line. */
+function _dh_log_table_css()
+{
+	return '<style>'
+		. '.dh-log-table th,.dh-log-table td{vertical-align:top}'
+		. '.dh-log-table .lg-when{width:92px;white-space:nowrap}'
+		. '.dh-log-table .dt-t{color:#888;font-size:13.5px;font-variant-numeric:tabular-nums}'
+		. '.dh-log-table .ir-action,.dh-log-table .ir-user{width:1%;white-space:nowrap}'
+		. '.dh-log-table .review-body .review-edited{float:left;margin-right:5px;color:#999;font-style:italic;font-size:11px}'
+		. '.dh-log-table p,.dh-log-table ul,.dh-log-table ol{margin:0 0 6px}'
+		. '.dh-log-table td p:last-child,.dh-log-table td ul:last-child,.dh-log-table td ol:last-child{margin-bottom:0}'
+		. '</style>';
+}
+
 function _get_activity()
 {
 	$app_id = arg(1);
@@ -1894,15 +1929,15 @@ function _get_activity()
 	while( $row = $res->fetchAssoc())
 	{
 		$r = array();
-		$r[] = $row['l_tstamp'];
+		$r[] = array('data' => _dh_fmt_dt($row['l_tstamp']), 'class' => array('lg-when'));
 		$r[] = $row['l_msg'];
 		$r[] = $row['name'];
 		$rows[] = $r;
 	}
 	$header = array('DateTime', 'Activity', 'User');
-	$out = '<h4>Activity Log</h4>';
+	$out = _dh_log_table_css() . '<h4>Activity Log</h4>';
 	if (!empty($rows))
-		$out .= theme('table', array('header' => $header, 'rows' => $rows)) ;
+		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('dh-log-table')))) ;
 	print $out;
 	exit;
 }
@@ -1949,24 +1984,36 @@ function _dh_review_sanitize($html)
    applicant list's expand row). Mirrors _get_activity(). */
 function _get_applicant_reviews()
 {
+	global $user;
 	$app_id = (int) arg(1);
-	$q = "select ar_review, ar_created, name from dh_applicant_reviews left join users on ar_user=uid where ar_applicant=:a order by ar_created desc";
+	$q = "select ar_id, ar_review, ar_created, ar_updated, ar_user, name from dh_applicant_reviews left join users on ar_user=uid where ar_applicant=:a order by ar_created desc";
 	$res = db_query($q, array(':a' => $app_id));
 	$rows = array();
 	while ($row = $res->fetchAssoc())
 	{
-		$r = array();
-		$r[] = check_plain($row['ar_created']);
+		$when = _dh_fmt_dt($row['ar_created']);
+		/* "(edited)" flag floats to the start of the review's first line. */
+		$edited = !empty($row['ar_updated'])
+			? '<span class="review-edited" title="' . check_plain(t('Edited: @t', array('@t' => $row['ar_updated']))) . '">(' . t('edited') . ')</span> '
+			: '';
 		/* stored value was sanitised on the way in; re-filter on output too so a
 		   row that predates the filter (or was inserted another way) is still safe */
-		$r[] = _dh_review_sanitize($row['ar_review']);
-		$r[] = check_plain($row['name']);
-		$rows[] = $r;
+		$body = '<div class="review-body">' . $edited . _dh_review_sanitize($row['ar_review']) . '</div>';
+		/* Edit lives in its own Action column (author-only), like the Activity log. */
+		$action = ($row['ar_user'] == $user->uid)
+			? '<a href="#" class="edit-review-btn" data-ar-id="' . (int) $row['ar_id'] . '" data-aid="' . $app_id . '">' . t('Edit') . '</a>'
+			: '';
+		$rows[] = array(
+			array('data' => $when, 'class' => array('lg-when')),
+			array('data' => $body, 'class' => array('ir-review')),
+			array('data' => $action, 'class' => array('ir-action')),
+			array('data' => check_plain($row['name']), 'class' => array('ir-user')),
+		);
 	}
-	$header = array('DateTime', 'Review', 'Reviewer');
-	$out = '<h4>Internal Review Comments</h4>';
+	$header = array('DateTime', 'Review', 'Action', 'User');
+	$out = _dh_log_table_css() . '<h4>Internal Review Comments</h4>';
 	if (!empty($rows))
-		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('internal-reviews-table'))));
+		$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('dh-log-table'))));
 	else
 		$out .= '<em>No review comments yet.</em>';
 	print $out;
@@ -2021,6 +2068,50 @@ function _add_applicant_review()
 
 	$out['status'] = true;
 	$out['msg'] = 'Review added.';
+	drupal_json_output($out);
+	exit;
+}
+
+/* Edit an existing internal review note. Author-only: the row's ar_user must be
+   the current user. Overwrites the text, stamps ar_updated (drives the "(edited)"
+   marker), and logs the edit. Returns JSON. */
+function _edit_applicant_review()
+{
+	global $user;
+	$ar_id = (int) arg(1);
+	$review = isset($_REQUEST['r']) ? $_REQUEST['r'] : '';
+	$out = array('status' => false);
+
+	if ($ar_id <= 0 || trim(strip_tags($review)) === '')
+	{
+		$out['msg'] = 'Please enter a review note.';
+		drupal_json_output($out);
+		exit;
+	}
+
+	$row = db_query("select ar_user, ar_center, ar_applicant from dh_applicant_reviews where ar_id=:i", array(':i' => $ar_id))->fetchAssoc();
+	if (!$row)
+	{
+		$out['msg'] = 'Review not found.';
+		drupal_json_output($out);
+		exit;
+	}
+	if ($row['ar_user'] != $user->uid)
+	{
+		$out['msg'] = 'You can only edit your own review comment.';
+		drupal_json_output($out);
+		exit;
+	}
+
+	db_update('dh_applicant_reviews')->fields(array(
+		'ar_review'  => _dh_review_sanitize($review),
+		'ar_updated' => date('Y-m-d H:i:s'),
+	))->condition('ar_id', $ar_id)->execute();
+
+	logit($row['ar_center'], 'Review', $row['ar_applicant'], 'Internal review note edited', $user->uid);
+
+	$out['status'] = true;
+	$out['msg'] = 'Review updated.';
 	drupal_json_output($out);
 	exit;
 }
@@ -2289,6 +2380,16 @@ function dh_app_update_attended()
 		$app['a_attended'] = 0;
 		db_update('dh_applicant')->fields($app)->condition('a_id', $app_id)->execute();
 		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);
+		// No longer attended: drop the auto "Attended" + "Group-N" system tags.
+		// Non-fatal: tagging must never break the (already-persisted) attend change.
+		if (function_exists('_dh_tag_unmark_attended')) {
+			try {
+				_dh_tag_unmark_attended($app_id, $centre_id, $user->uid);
+				_dh_tag_unmark_all_groups($app_id, $centre_id, $user->uid);
+			} catch (Exception $e) {
+				watchdog('dh_tag', 'Auto-untag on un-attend failed for app @a: @m', array('@a' => $app_id, '@m' => $e->getMessage()), WATCHDOG_WARNING);
+			}
+		}
 		$out['msg'] = 'Ok';
 		$out['status'] = true; 
 		$out['applicant'] = dh_manageapp_list( $centre_id, $course_id );
@@ -2410,6 +2511,24 @@ function dh_app_update_attended()
 		$fields['aa_applicant'] = $app_id;
 		$fields['aa_created_by'] = $user->uid;
 		db_insert('dh_applicant_attended')->fields($fields)->execute();		
+	}
+	// Auto system tags: mark "Attended" + the current "Group-N"; drop the previous
+	// "Group-M" on a group change. Going forward only (no backfill). Non-fatal:
+	// wrapped so a tagging error can never break attendance or skip lock_release.
+	if (function_exists('_dh_tag_mark_attended')) {
+		try {
+			_dh_tag_mark_attended($app_id, $centre_id, $user->uid);
+			$new_group = isset($fields['aa_group']) ? (int) $fields['aa_group'] : 0;
+			$old_group = isset($prev['aa_group']) ? (int) $prev['aa_group'] : 0;
+			if ($old_group > 0 && $old_group != $new_group) {
+				_dh_tag_unmark_system($app_id, $centre_id, 'Group-' . $old_group, $user->uid);
+			}
+			if ($new_group > 0) {
+				_dh_tag_mark_group($app_id, $centre_id, $new_group, $user->uid);
+			}
+		} catch (Exception $e) {
+			watchdog('dh_tag', 'Auto-tag on attend failed for app @a: @m', array('@a' => $app_id, '@m' => $e->getMessage()), WATCHDOG_WARNING);
+		}
 	}
 	lock_release("dh_app_update_attended");
 
