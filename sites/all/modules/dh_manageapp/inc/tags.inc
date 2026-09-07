@@ -1088,7 +1088,7 @@ function dh_tags_admin($centre_id)
 		$can_del = (!$is_system && _dh_tag_can_modify($t, 'delete')) ? 1 : 0;
 		$actions = $is_system ? '<em title="' . check_plain(t('Auto-applied when an Assistant Teacher comments; cannot be edited or deleted.')) . '">' . t('system') . '</em> ' : '';
 		if ($can_edit) {
-			$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '">Edit</a> ';
+			$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '" data-count="' . (isset($map_counts[$t['t_id']]) ? (int) $map_counts[$t['t_id']] : 0) . '">Edit</a> ';
 		}
 		if ($can_del) {
 			$mc = isset($map_counts[$t['t_id']]) ? $map_counts[$t['t_id']] : 0;
@@ -1102,8 +1102,10 @@ function dh_tags_admin($centre_id)
 			$is_pinned = isset($pinned_ids[$t['t_id']]);
 			$pin = '<a href="#" class="tag-admin-pin' . ($is_pinned ? '' : ' off') . '" data-id="' . $t['t_id'] . '" title="' . t('Pin for me') . '">' . ($is_pinned ? '&#9733;' : '&#9734;') . '</a> ';
 		}
+		$uses = isset($map_counts[$t['t_id']]) ? (int) $map_counts[$t['t_id']] : 0;
 		$rows .= '<tr data-id="' . $t['t_id'] . '">'
-			. '<td>' . $pin . '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span></td>'
+			. '<td>' . $pin . '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span>'
+			. ' <span class="tag-usage" title="' . check_plain(t('Applications with this tag')) . '">' . $uses . '</span></td>'
 			. '<td>' . $actions . '</td></tr>';
 	}
 
@@ -1179,12 +1181,12 @@ function dh_tags_admin($centre_id)
 			});
 			$(document).on("click", ".tag-edit", function (e) {
 				e.preventDefault();
-				var id = $(this).data("id"), name = $(this).data("name"), color = $(this).data("color");
+				var id = $(this).data("id"), name = $(this).data("name"), color = $(this).data("color"), cnt = parseInt($(this).data("count"), 10) || 0;
 				var sw = ""; ' . json_encode($palette) . '.forEach(function (c) { sw += "<span class=\"tag-swatch" + (c===color?" sel":"") + "\" data-color=\"" + c + "\" style=\"background:" + c + "\"></span>"; });
 				if (!$.confirm) { var nn = prompt("Rename tag", name); if (nn===null) return; $.post("' . $handler . '", { op: "update", t_id: id, name: nn, color: color }, function (j) { if (j.status) location.reload(); else alert(j.msg); }, "json"); return; }
 				$.confirm({
 					title: "Edit tag",
-					content: "<input type=\"text\" id=\"tag-edit-name\" value=\"" + name + "\" style=\"width:100%\" maxlength=\"100\"><div class=\"tag-swatches edit-sw\" style=\"margin-top:8px\">" + sw + "</div>",
+					content: (cnt > 0 ? "<div style=\"margin-bottom:8px;padding:6px 8px;background:#fcf8e3;border:1px solid #faebcc;border-radius:4px;color:#8a6d3b;font-size:13px\">This tag is on " + cnt + " application" + (cnt===1?"":"s") + ". The new name and colour will apply to all of them.</div>" : "") + "<input type=\"text\" id=\"tag-edit-name\" value=\"" + name + "\" style=\"width:100%\" maxlength=\"100\"><div class=\"tag-swatches edit-sw\" style=\"margin-top:8px\">" + sw + "</div>",
 					buttons: { save: { text: "Save", btnClass: "btn-blue", action: function () {
 						var self = this; var nn = $.trim($("#tag-edit-name").val()); var cc = this.$content.find(".tag-swatch.sel").data("color") || color;
 						$.post("' . $handler . '", { op: "update", t_id: id, name: nn, color: cc }, function (j) { if (j.status) location.reload(); else { ($.alert ? $.alert(j.msg) : alert(j.msg)); } }, "json");

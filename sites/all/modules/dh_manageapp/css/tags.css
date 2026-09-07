@@ -142,6 +142,21 @@
 .tag-pin-btn:hover { background: #fdeccb; color: #8a5a06; }
 .tag-choose-hint { font-size: 12.5px; color: #999; }
 
+/* Usage count badge on the Manage Tags list */
+.tag-usage {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 16px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: #eceff1;
+  color: #607d8b;
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+  vertical-align: middle;
+}
+
 /* Pins */
 .tag-unpin, .tag-admin-pin {
   color: #f5a623;
