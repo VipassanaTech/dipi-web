@@ -29,6 +29,13 @@
 
   function num(el) { return el ? String(el.value).replace(/[^0-9]/g, '') : ''; }
 
+  // a course type is worth showing/storing only if it has at least one real limit
+  function hasData(sec) {
+    return Object.keys(sec).some(function (k) {
+      return /^(MaxApps|Waitlist)-/.test(k) && parseInt(sec[k], 10) > 0;
+    });
+  }
+
   function hasSplit(sec) {
     var f = false;
     ['Male', 'Female'].forEach(function (G) {
@@ -201,6 +208,7 @@
     var types = host.data('types') || [];
     var byKey = {}; types.forEach(function (t) { byKey[String(t.key)] = t; });
     Object.keys(ini).forEach(function (k) {
+      if (!hasData(ini[k])) { return; }   // skip empty course types
       var t = byKey[k] || { key: k, label: k };
       host.find('tbody').append(rowHtml(t, ini[k]));
     });
