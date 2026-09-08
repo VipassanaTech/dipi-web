@@ -194,12 +194,12 @@ function _dh_tag_scope_where($col, $at_uid)
 /**
  * Tags for a centre visible in the given context, ordered by name.
  */
-function _dh_tag_center_tags($centre_id, $at_uid = 0)
+function _dh_tag_center_tags($centre_id, $at_uid = 0, $deleted = 0)
 {
 	$scope = _dh_tag_scope_where('', $at_uid);
 	return db_query(
-		"SELECT t_id, t_name, t_color, t_created_by, t_system, t_owner FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND $scope ORDER BY t_system DESC, t_name",
-		array(':c' => $centre_id)
+		"SELECT t_id, t_name, t_color, t_created, t_created_by, t_updated, t_updated_by, t_system, t_owner FROM dh_tag WHERE t_center = :c AND t_deleted = :d AND $scope ORDER BY t_system DESC, t_name",
+		array(':c' => $centre_id, ':d' => (int) $deleted)
 	)->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -209,23 +209,29 @@ function _dh_tag_center_tags($centre_id, $at_uid = 0)
  */
 function _dh_tag_name_exists($centre_id, $name, $exclude_id = 0, $owner = 0)
 {
+	// Checks BOTH active and inactive tags — a name must be unique across both,
+	// so a deleted tag is restored (not recreated) rather than duplicated.
 	return (bool) db_query_range(
-		"SELECT 1 FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND t_name = :n AND t_id <> :x AND t_owner = :o",
+		"SELECT 1 FROM dh_tag WHERE t_center = :c AND t_name = :n AND t_id <> :x AND t_owner = :o",
 		0, 1,
 		array(':c' => $centre_id, ':n' => trim($name), ':x' => $exclude_id, ':o' => (int) $owner)
 	)->fetchField();
 }
 
 /**
- * Tags currently on an application (non-deleted), for row/detail rendering.
+ * Tags currently on an application, for row/detail rendering. Shows tags whose
+ * MAPPING is active (at_deleted = 0) regardless of the tag's own active/inactive
+ * state — an inactive (retired) tag stays visible on the applications it is
+ * already on; it just cannot be applied to new ones (enforced in the assign
+ * handler). t.t_deleted is returned so callers can mark/skip inactive tags.
  */
 function _dh_tag_for_application($application_id, $at_uid = 0)
 {
 	$scope = _dh_tag_scope_where('t.', $at_uid);
 	return db_query(
-		"SELECT t.t_id, t.t_name, t.t_color, t.t_system, t.t_owner
+		"SELECT t.t_id, t.t_name, t.t_color, t.t_system, t.t_owner, t.t_deleted
 		 FROM dh_application_tag at JOIN dh_tag t ON at.at_tag = t.t_id
-		 WHERE at.at_application = :a AND at.at_deleted = 0 AND t.t_deleted = 0 AND $scope
+		 WHERE at.at_application = :a AND at.at_deleted = 0 AND $scope
 		 ORDER BY t.t_system DESC, t.t_name",
 		array(':a' => $application_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
@@ -484,7 +490,7 @@ function dh_tags_handler($centre_id)
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag name is too long (max 100).')));
 		}
 		if (_dh_tag_name_exists($centre_id, $name, 0, $owner)) {
-			_dh_tag_json(array('status' => 0, 'msg' => t('A tag with that name already exists.')));
+			_dh_tag_json(array('status' => 0, 'msg' => t('A tag with that name already exists (it may be an inactive tag — restore it from the Inactive tags list).')));
 		}
 		$id = db_insert('dh_tag')->fields(array(
 			't_center' => $centre_id, 't_name' => $name, 't_color' => $color, 't_owner' => $owner,
@@ -566,6 +572,74 @@ function dh_tags_handler($centre_id)
 		_dh_tag_json(array('status' => 1));
 	}
 
+	if ($op === 'restore') {
+		$tag = db_query("SELECT * FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 1",
+			array(':id' => $_POST['t_id'], ':c' => $centre_id))->fetchAssoc();
+		if (!$tag) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('Inactive tag not found.')));
+		}
+		if ($at_mode) {
+			if ($tag['t_owner'] != $at_uid) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You can only restore your own tags.')));
+			}
+		}
+		else {
+			if ($tag['t_owner'] != 0) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('This tag is private and cannot be restored here.')));
+			}
+			if (!_dh_tag_can_modify($tag, 'delete')) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to restore this tag.')));
+			}
+		}
+		// Guard against an active tag already holding this name (shouldn't happen
+		// with global name uniqueness, but protect existing data).
+		$active_dup = db_query_range(
+			"SELECT 1 FROM dh_tag WHERE t_center = :c AND t_deleted = 0 AND t_name = :n AND t_id <> :x AND t_owner = :o",
+			0, 1, array(':c' => $centre_id, ':n' => $tag['t_name'], ':x' => $tag['t_id'], ':o' => (int) $tag['t_owner'])
+		)->fetchField();
+		if ($active_dup) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('An active tag with this name already exists — rename that one first.')));
+		}
+		db_update('dh_tag')->fields(array('t_deleted' => 0, 't_updated' => date('Y-m-d H:i:s'), 't_updated_by' => $user->uid))
+			->condition('t_id', $tag['t_id'])->execute();
+		_dh_tag_log_change($tag['t_id'], $centre_id, 'restore', $tag['t_name'], '', $user->uid);
+		_dh_tag_json(array('status' => 1));
+	}
+
+	if ($op === 'clearmaps') {
+		$tag = db_query("SELECT * FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
+			array(':id' => $_POST['t_id'], ':c' => $centre_id))->fetchAssoc();
+		if (!$tag) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found.')));
+		}
+		if (!empty($tag['t_system'])) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('System tag assignments are managed automatically and cannot be cleared here.')));
+		}
+		if ($at_mode) {
+			if ($tag['t_owner'] != $at_uid) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You can only change your own tags.')));
+			}
+		}
+		else {
+			if ($tag['t_owner'] != 0) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('This tag is private and cannot be changed here.')));
+			}
+			if (!_dh_tag_can_modify($tag, 'delete')) {
+				_dh_tag_json(array('status' => 0, 'msg' => t('You do not have permission to change this tag.')));
+			}
+		}
+		// Remove the tag from every application it is on, logging each removal
+		// (per-application audit trail) exactly like a single unassign.
+		$aids = db_query("SELECT at_application FROM dh_application_tag WHERE at_tag = :t AND at_deleted = 0",
+			array(':t' => $tag['t_id']))->fetchCol();
+		foreach ($aids as $aid) {
+			db_update('dh_application_tag')->fields(array('at_deleted' => 1))
+				->condition('at_tag', $tag['t_id'])->condition('at_application', $aid)->condition('at_deleted', 0)->execute();
+			_dh_tag_log($tag['t_id'], $aid, 'remove', $user->uid);
+		}
+		_dh_tag_json(array('status' => 1, 'count' => count($aids)));
+	}
+
 	_dh_tag_json(array('status' => 0, 'msg' => t('Unknown operation.')));
 }
 
@@ -593,10 +667,15 @@ function dh_app_tag_handler($centre_id)
 	// Validate the tag exists in this centre for the mutating ops.
 	if (in_array($op, array('assign', 'unassign', 'bulk', 'pin', 'unpin'))) {
 		$tag_id = (int) $_POST['tag'];
-		$tag_row = db_query("SELECT t_system, t_owner FROM dh_tag WHERE t_id = :id AND t_center = :c AND t_deleted = 0",
+		$tag_row = db_query("SELECT t_system, t_owner, t_deleted FROM dh_tag WHERE t_id = :id AND t_center = :c",
 			array(':id' => $tag_id, ':c' => $centre_id))->fetchAssoc();
 		if (!$tag_row) {
 			_dh_tag_json(array('status' => 0, 'msg' => t('Tag not found in this centre.')));
+		}
+		// An inactive (retired) tag stays on its applications and may be removed,
+		// but it can never be applied to new applications.
+		if (!empty($tag_row['t_deleted']) && in_array($op, array('assign', 'bulk'))) {
+			_dh_tag_json(array('status' => 0, 'msg' => t('This tag is inactive and can no longer be added. Restore it first.')));
 		}
 		// System tags cannot be manually assigned or removed by anyone.
 		if (!empty($tag_row['t_system']) && in_array($op, array('assign', 'unassign', 'bulk'))) {
@@ -844,7 +923,7 @@ function _dh_tag_activity($app_id, $at_uid = 0)
 		 FROM dh_application_tag_log l
 		 JOIN dh_tag t ON t.t_id = l.atl_tag
 		 LEFT JOIN users u ON u.uid = l.atl_by
-		 WHERE l.atl_application = :a AND t.t_deleted = 0 AND $scope
+		 WHERE l.atl_application = :a AND $scope
 		 ORDER BY l.atl_at DESC, l.atl_id DESC",
 		array(':a' => $app_id)
 	)->fetchAll(PDO::FETCH_ASSOC);
@@ -870,7 +949,7 @@ function _dh_tag_activity_bulk(array $app_ids, $at_uid = 0)
 		 FROM dh_application_tag_log l
 		 JOIN dh_tag t ON t.t_id = l.atl_tag
 		 LEFT JOIN users u ON u.uid = l.atl_by
-		 WHERE l.atl_application IN (:aids) AND t.t_deleted = 0 AND $scope
+		 WHERE l.atl_application IN (:aids) AND $scope
 		 ORDER BY l.atl_at DESC, l.atl_id DESC",
 		array(':aids' => $app_ids)
 	)->fetchAll(PDO::FETCH_ASSOC);
@@ -1076,38 +1155,85 @@ function dh_tags_admin($centre_id)
 		$map_counts[$mc->at_tag] = (int) $mc->c;
 	}
 
+	// Per-tag history-log counts (rename/delete) so History is only clickable when there is history.
+	$log_counts = array();
+	foreach (db_query("SELECT tl_tag, COUNT(*) AS c FROM dh_tag_log GROUP BY tl_tag") as $lc) {
+		$log_counts[$lc->tl_tag] = (int) $lc->c;
+	}
+
+	// Resolve created-by / updated-by user IDs to names (uid 0 = system).
+	$uids = array();
+	foreach ($tags as $t) {
+		if (!empty($t['t_created_by'])) { $uids[$t['t_created_by']] = 1; }
+		if (!empty($t['t_updated_by'])) { $uids[$t['t_updated_by']] = 1; }
+	}
+	$uid_names = array();
+	if ($uids) {
+		foreach (db_query("SELECT uid, name FROM users WHERE uid IN (:u)", array(':u' => array_keys($uids))) as $u) {
+			$uid_names[$u->uid] = $u->name;
+		}
+	}
+	$who = function ($uid) use ($uid_names) {
+		if (empty($uid)) { return '<em>system</em>'; }
+		return isset($uid_names[$uid]) ? check_plain($uid_names[$uid]) : ('uid ' . (int) $uid);
+	};
+	$when = function ($ts) {
+		return ($ts && $ts != '0000-00-00 00:00:00') ? date('d M Y, H:i', strtotime($ts)) : '<span class="tag-dim">&mdash;</span>';
+	};
+
 	$swatches = '';
 	foreach ($palette as $c) {
 		$swatches .= '<span class="tag-swatch" data-color="' . $c . '" style="background:' . $c . '"></span>';
 	}
 
-	$rows = '';
-	foreach ($tags as $t) {
-		$is_system = !empty($t['t_system']);
-		$can_edit = (!$is_system && _dh_tag_can_modify($t, 'edit')) ? 1 : 0;
-		$can_del = (!$is_system && _dh_tag_can_modify($t, 'delete')) ? 1 : 0;
-		$actions = $is_system ? '<em title="' . check_plain(t('Auto-applied when an Assistant Teacher comments; cannot be edited or deleted.')) . '">' . t('system') . '</em> ' : '';
-		if ($can_edit) {
-			$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '" data-count="' . (isset($map_counts[$t['t_id']]) ? (int) $map_counts[$t['t_id']] : 0) . '">Edit</a> ';
+	// Row builder shared by the Active and Inactive tables.
+	// $active = TRUE  -> pin + Edit / Delete / Remove all + History
+	// $active = FALSE -> Restore + History only (Inactive/deleted tags)
+	$build_rows = function ($taglist, $active) use ($map_counts, $log_counts, $who, $when, $can_use, $can_view_log, $pinned_ids) {
+		$html = '';
+		foreach ($taglist as $t) {
+			$is_system = !empty($t['t_system']);
+			$uses = isset($map_counts[$t['t_id']]) ? (int) $map_counts[$t['t_id']] : 0;
+			$actions = '';
+			if ($active) {
+				$actions = $is_system ? '<em title="' . check_plain(t('Auto-applied when an Assistant Teacher comments; cannot be edited or deleted.')) . '">' . t('system') . '</em> ' : '';
+				if (!$is_system && _dh_tag_can_modify($t, 'edit')) {
+					$actions .= '<a href="#" class="tag-edit" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-color="' . check_plain($t['t_color']) . '" data-count="' . $uses . '">Edit</a> ';
+				}
+				if (!$is_system && _dh_tag_can_modify($t, 'delete')) {
+					$actions .= '<a href="#" class="tag-delete" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-count="' . $uses . '">Make inactive</a> ';
+					if ($uses > 0) {
+						$actions .= '<a href="#" class="tag-clearmaps" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-count="' . $uses . '">Remove all</a> ';
+					}
+				}
+			}
+			elseif (!$is_system && _dh_tag_can_modify($t, 'delete')) {
+				$actions .= '<a href="#" class="tag-restore" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-count="' . $uses . '">Restore</a> ';
+			}
+			if ($can_view_log && !$is_system) {
+				$actions .= !empty($log_counts[$t['t_id']])
+					? ' <a href="#" class="tag-history" data-id="' . $t['t_id'] . '">History</a>'
+					: ' <span class="tag-history-off" title="' . check_plain(t('No history yet')) . '">History</span>';
+			}
+			$pin = '';
+			if ($active && $can_use) {
+				$is_pinned = isset($pinned_ids[$t['t_id']]);
+				$pin = '<a href="#" class="tag-admin-pin' . ($is_pinned ? '' : ' off') . '" data-id="' . $t['t_id'] . '" title="' . t('Pin for me') . '">' . ($is_pinned ? '&#9733;' : '&#9734;') . '</a> ';
+			}
+			$html .= '<tr data-id="' . $t['t_id'] . '">'
+				. '<td>' . $pin . '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span>'
+				. ' <span class="tag-usage" title="' . check_plain(t('Applications with this tag')) . '">' . $uses . '</span></td>'
+				. '<td class="tag-meta">' . $when($t['t_created']) . '</td>'
+				. '<td class="tag-meta">' . $who($t['t_created_by']) . '</td>'
+				. '<td class="tag-meta">' . $when($t['t_updated']) . '</td>'
+				. '<td class="tag-meta">' . $who($t['t_updated_by']) . '</td>'
+				. '<td>' . $actions . '</td></tr>';
 		}
-		if ($can_del) {
-			$mc = isset($map_counts[$t['t_id']]) ? $map_counts[$t['t_id']] : 0;
-			$actions .= '<a href="#" class="tag-delete" data-id="' . $t['t_id'] . '" data-name="' . check_plain($t['t_name']) . '" data-count="' . $mc . '">Delete</a>';
-		}
-		if ($can_view_log && !$is_system) {
-			$actions .= ' <a href="#" class="tag-history" data-id="' . $t['t_id'] . '">History</a>';
-		}
-		$pin = '';
-		if ($can_use) {
-			$is_pinned = isset($pinned_ids[$t['t_id']]);
-			$pin = '<a href="#" class="tag-admin-pin' . ($is_pinned ? '' : ' off') . '" data-id="' . $t['t_id'] . '" title="' . t('Pin for me') . '">' . ($is_pinned ? '&#9733;' : '&#9734;') . '</a> ';
-		}
-		$uses = isset($map_counts[$t['t_id']]) ? (int) $map_counts[$t['t_id']] : 0;
-		$rows .= '<tr data-id="' . $t['t_id'] . '">'
-			. '<td>' . $pin . '<span class="tag-chip" style="' . _dh_tag_chip_style($t['t_color']) . '">' . check_plain($t['t_name']) . '</span>'
-			. ' <span class="tag-usage" title="' . check_plain(t('Applications with this tag')) . '">' . $uses . '</span></td>'
-			. '<td>' . $actions . '</td></tr>';
-	}
+		return $html;
+	};
+
+	$active_rows = $build_rows($tags, TRUE);
+	$inactive_rows = $build_rows(_dh_tag_center_tags($centre_id, 0, 1), FALSE);
 
 	$create_block = '';
 	if ($can_create) {
@@ -1117,17 +1243,17 @@ function dh_tags_admin($centre_id)
 			. '<button id="tag-add-btn" class="btn btn-blue">Add Tag</button></div>';
 	}
 
+	$thead = '<thead><tr><th>Tag</th><th>Created</th><th>Created by</th><th>Updated</th><th>Updated by</th><th>Actions</th></tr></thead>';
+
 	$out = '<h2>' . l('&laquo; Back to Centre', 'centre/' . $centre_id, array('html' => TRUE)) . '</h2>'
 		. '<h3>' . t('Application Tags') . '</h3>'
 		. $create_block
-		. '<table class="table tag-table"><thead><tr><th>Tag</th><th>Actions</th></tr></thead>'
-		. '<tbody>' . ($rows ?: '<tr><td colspan="2"><em>No tags yet.</em></td></tr>') . '</tbody></table>';
-
-	if ($can_view_log) {
-		$out .= '<div class="tag-log-block"><h4>' . t('Tag change log') . '</h4>'
-			. _dh_tag_change_render(_dh_tag_change_rows($centre_id, 0, 200))
-			. '</div>';
-	}
+		. '<h4>' . t('Active tags') . '</h4>'
+		. '<table class="table tag-table">' . $thead
+		. '<tbody>' . ($active_rows ?: '<tr><td colspan="6"><em>No active tags.</em></td></tr>') . '</tbody></table>'
+		. '<h4 class="tag-inactive-head">' . t('Inactive tags (deleted)') . '</h4>'
+		. '<table class="table tag-table tag-table-inactive">' . $thead
+		. '<tbody>' . ($inactive_rows ?: '<tr><td colspan="6"><em>No inactive tags.</em></td></tr>') . '</tbody></table>';
 
 	$handler = url('tags/' . $centre_id . '/handler');
 	$app_tag_handler = url('app-tag/' . $centre_id . '/handler');
@@ -1160,14 +1286,38 @@ function dh_tags_admin($centre_id)
 				e.preventDefault();
 				var id = $(this).data("id"), name = $(this).data("name"), cnt = parseInt($(this).data("count"), 10) || 0;
 				var msg = cnt > 0
-					? "This tag is on " + cnt + " application" + (cnt === 1 ? "" : "s") + ". Deleting removes it from all of them. Continue?"
-					: "Delete tag \"" + name + "\"?";
+					? "Make \"" + name + "\" inactive? It stays on its " + cnt + " application" + (cnt === 1 ? "" : "s") + " but can no longer be added to new ones. You can restore it later."
+					: "Make \"" + name + "\" inactive? It can no longer be added to new applications. You can restore it later.";
 				var go = function () {
 					$.post("' . $handler . '", { op: "delete", t_id: id }, function (j) {
 						if (j.status) { location.reload(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 					}, "json");
 				};
-				if ($.confirm) { $.confirm({ title: "Delete tag", content: msg, buttons: { del: { text: "Delete", btnClass: "btn-red", action: go }, cancel: function () {} } }); }
+				if ($.confirm) { $.confirm({ title: "Make tag inactive", content: msg, buttons: { del: { text: "Make inactive", btnClass: "btn-red", action: go }, cancel: function () {} } }); }
+				else if (confirm(msg)) { go(); }
+			});
+			$(document).on("click", ".tag-restore", function (e) {
+				e.preventDefault();
+				var id = $(this).data("id"), name = $(this).data("name");
+				var go = function () {
+					$.post("' . $handler . '", { op: "restore", t_id: id }, function (j) {
+						if (j.status) { location.reload(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+					}, "json");
+				};
+				var msg = "Restore \"" + name + "\"? It can be added to applications again.";
+				if ($.confirm) { $.confirm({ title: "Restore tag", content: msg, buttons: { ok: { text: "Restore", btnClass: "btn-blue", action: go }, cancel: function () {} } }); }
+				else if (confirm(msg)) { go(); }
+			});
+			$(document).on("click", ".tag-clearmaps", function (e) {
+				e.preventDefault();
+				var id = $(this).data("id"), name = $(this).data("name"), cnt = parseInt($(this).data("count"), 10) || 0;
+				var msg = "Remove \"" + name + "\" from all " + cnt + " application" + (cnt === 1 ? "" : "s") + "? This clears the tag from every application (logged on each). This cannot be undone in bulk.";
+				var go = function () {
+					$.post("' . $handler . '", { op: "clearmaps", t_id: id }, function (j) {
+						if (j.status) { location.reload(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+					}, "json");
+				};
+				if ($.confirm) { $.confirm({ title: "Remove from all applications", content: msg, buttons: { del: { text: "Remove all", btnClass: "btn-red", action: go }, cancel: function () {} } }); }
 				else if (confirm(msg)) { go(); }
 			});
 			$(document).on("click", ".tag-history", function (e) {

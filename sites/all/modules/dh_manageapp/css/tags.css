@@ -157,6 +157,15 @@
   vertical-align: middle;
 }
 
+/* Created/updated meta columns + disabled History */
+.tag-table .tag-meta { font-size: 13px; color: #555; white-space: nowrap; }
+.tag-table .tag-meta em { color: #888; font-style: italic; }
+.tag-dim { color: #bbb; }
+.tag-history-off { color: #bbb; cursor: default; }
+.tag-clearmaps { color: #c0392b; }
+.tag-inactive-head { margin-top: 24px; color: #777; }
+.tag-table-inactive .tag-chip { opacity: 0.85; }
+
 /* Pins */
 .tag-unpin, .tag-admin-pin {
   color: #f5a623;
