@@ -78,16 +78,19 @@
 
   function scaffold(host) {
     var ex =
-      '<div class="cc-examples"><b>Example</b> &mdash; 10 Day, Male: <i>Waitlist at</i> 30, <i>Full at</i> 40. ' +
-      'The Male section becomes <b>Wait List</b> at 30 applications and <b>Course Full</b> at 40 applications. Leave a box blank for no limit.' +
-      '<div class="cc-note"><b>Full</b> must be greater than <b>Waitlist</b>.<br>' +
-      'Both numbers are the <b>total</b> applications received (counted from zero) &mdash; <b>Full is not added on top of Waitlist</b>. ' +
-      'So <i>Waitlist 30, Full 40</i> means it closes at 40 in total, not at 30+40.<br>' +
-      'Tick <b>split</b> to set separate limits for New / Old / Sevak.<br>' +
-      'The count does not include applications with status <b>Cancelled</b>, <b>Rejected</b> or <b>Duplicate</b>.<br>' +
-      'These settings only move a course to <b>Wait List</b> or <b>Course Full</b>. Once a course is waitlisted or closed, ' +
-      'changing these settings will <b>not</b> re-open it &mdash; to re-open, do it manually from <b>Manage Courses</b>.</div>' +
-      '</div>';
+      '<div class="cc-examples">' +
+      '<div class="cc-ex-eg"><b>Example</b> &mdash; 10 Day, Male: <i>Waitlist at</i> 30, <i>Full at</i> 40 &rarr; ' +
+      'the Male section becomes <b>Wait List</b> at 30 applications and <b>Course Full</b> at 40.</div>' +
+      '<ul class="cc-ex-list">' +
+      '<li><b>Full</b> must be greater than <b>Waitlist</b>.</li>' +
+      '<li>Both numbers are the <b>total</b> applications received, counted from zero &mdash; ' +
+      '<b>Full is not added on top of Waitlist</b> (Waitlist 30 / Full 40 closes at 40 in total, not 70).</li>' +
+      '<li>Leave a box <b>blank</b> for no limit.</li>' +
+      '<li>Tick <b>split</b> to set separate limits for New / Old / Sevak.</li>' +
+      '<li>The count excludes applications marked <b>Cancelled</b>, <b>Rejected</b> or <b>Duplicate</b>.</li>' +
+      '<li>These settings only move a course to <b>Wait List</b> or <b>Course Full</b> &mdash; they never ' +
+      're-open a closed course (re-open it in <b>Manage Courses</b>).</li>' +
+      '</ul></div>';
     host.html(
       '<table class="cc-table"><thead>' +
       '<tr><th class="cc-tname"></th><th colspan="2">Male</th><th class="cc-gap"></th><th colspan="2">Female</th><th></th></tr>' +
@@ -129,6 +132,7 @@
       i++;
     });
     host.find('.cc-empty').toggle(i === 0);
+    host.find('.cc-table').toggle(i > 0);   // hide the empty header table until a type is added
   }
 
   function applyAdvState(host) {

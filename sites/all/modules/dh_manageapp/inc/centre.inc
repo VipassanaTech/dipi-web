@@ -391,7 +391,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	foreach ($cc_types as $k => $lbl) { $cc_json[] = array('key' => $k, 'label' => $lbl); }
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/course-config.js');
 	$form[$group]['cc_visual'] = array(
-		'#markup' => '<div class="cc-fullrow"><label>Set how many applications fill or waitlist each course type (leave blank for no limit).</label>'
+		'#markup' => '<div class="cc-fullrow cc-limits-head"><label>Set how many applications fill or waitlist each course type (leave blank for no limit).</label>'
 			. '<div id="dh-coursecfg" data-types="' . check_plain(json_encode($cc_json)) . '"></div></div>',
 		'#weight' => 2,
 	);
