@@ -152,6 +152,52 @@ input.throbbing {
   flex: 0 0 auto;
 }
 
+/* Visual Course Configuration editor (prototype) */
+/* Force the waitlist question and the editor onto their own full-width rows
+   (the Course Settings fieldset otherwise floats form-items side-by-side). */
+.cc-fullrow { clear: both; display: block; width: 100%; float: none; }
+.cc-fullrow .control-label, .cc-fullrow > label { float: none; display: block; }
+#dh-coursecfg { margin: 12px 0 6px; overflow-x: auto; }
+#dh-coursecfg + .cc-fullrow, .cc-fullrow > label { margin-bottom: 6px; }
+.cc-fullrow > label { font-size: 14px; color: #333; }
+.cc-table { border-collapse: collapse; font-size: 14px; min-width: 540px; }
+.cc-table th, .cc-table td { padding: 9px 14px; text-align: center; }
+/* group headers (Male / Female) */
+.cc-table thead tr:first-child th { color: #333; font-weight: 600; font-size: 14px; border-bottom: 1px solid #e5e5e5; padding-bottom: 6px; }
+/* sub headers (Waitlist at / Full at) */
+.cc-table thead tr:last-child th { color: #888; font-weight: 500; font-size: 12.5px; padding-top: 5px; padding-bottom: 9px; }
+.cc-table .cc-tname { text-align: left; white-space: nowrap; font-weight: 600; color: #222; }
+.cc-table .cc-atype { text-align: left; color: #888; white-space: nowrap; font-weight: normal; padding-left: 24px; }
+/* thin vertical divider between the Male and Female groups */
+.cc-table .cc-gap { width: 1px; padding: 0; border-left: 1px solid #ececec; }
+.cc-table .cc-in { width: 70px; text-align: center; padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+.cc-table .cc-in:focus { border-color: #6673c7; outline: none; box-shadow: 0 0 0 2px rgba(102,115,199,.15); }
+.cc-table .cc-in.cc-off { background: #f5f5f5; color: #bbb; border-color: #e8e8e8; }
+.cc-table tbody .cc-type td { border-top: 1px solid #eee; vertical-align: middle; }
+.cc-table tbody tr.cc-alt { background: #fafafa; }
+.cc-table tbody .cc-type:hover { background: #eef2ff; }
+.cc-table .cc-advcell { font-size: 12.5px; white-space: nowrap; color: #666; }
+.cc-table .cc-advcell label { font-weight: normal; margin: 0; cursor: pointer; }
+.cc-table .cc-advcell input { vertical-align: -1px; margin-right: 3px; }
+.cc-table .cc-adv-row td { border: 0; padding-top: 2px; padding-bottom: 2px; }
+/* remove-type control */
+.cc-table .cc-rm { color: #c0392b; cursor: pointer; font-weight: 700; margin-right: 4px; text-decoration: none; font-size: 15px; line-height: 1; }
+.cc-table .cc-rm:hover { color: #922b21; }
+/* invalid box (Full <= Waitlist) */
+.cc-table .cc-in.cc-err { border-color: #c0392b; background: #fdecea; }
+/* add-type dropdown */
+.cc-add { margin: 10px 0 4px; }
+.cc-add-sel { font-size: 14px; padding: 6px 10px; border: 1px solid #bbb; border-radius: 4px; min-width: 220px; }
+.cc-empty { color: #888; font-size: 13.5px; margin: 6px 0; }
+/* validation summary */
+.cc-msg { display: none; margin: 8px 0; padding: 8px 12px; background: #fdecea; border: 1px solid #f5c6c2; border-radius: 4px; color: #a5281b; font-size: 13.5px; }
+/* examples */
+.cc-examples { margin: 14px 0 4px; padding: 10px 14px; background: #f6f8fa; border: 1px solid #e5e8eb; border-radius: 5px; font-size: 13.5px; color: #444; max-width: 640px; }
+.cc-examples b { color: #333; }
+.cc-examples ul { margin: 6px 0 0; padding-left: 18px; }
+.cc-examples li { margin-bottom: 6px; line-height: 1.5; }
+.cc-examples .cc-note { margin-top: 6px; color: #666; font-size: 12.5px; }
+
 .summary-block .table-responsive {
 	display: inline-block;
 	margin-right: 35px;

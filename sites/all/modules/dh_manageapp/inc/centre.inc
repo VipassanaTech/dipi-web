@@ -377,12 +377,31 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 
 	$group = 'Course Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
-	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
-		'#default_value' => $add?"[1-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[2-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[3-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[10-Day]\nMaxApps-Male = \nMaxApps-Female = \n[10-DayExecutive]\nMaxApps-Male = \nMaxApps-Female = \n[10-DaySpecial]\nMaxApps-Male = \nMaxApps-Female = \n[Satipatthana]\nMaxApps-Male = \nMaxApps-Female = \n[20-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[30-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[45-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n[60-DayOSC]\nMaxApps-Male = \nMaxApps-Female = \n\n":$edit_data['cs_course_config'], '#required' => 1,
-		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
-	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 4,
+	// "Move to waitlist" question first (full-width row, above the editor).
+	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 1,
+		'#prefix' => '<div class="cc-fullrow">', '#suffix' => '</div>',
 		'#default_value' => $add?0:$edit_data['cs_apps_waitlist'], '#type' => 'radios', '#options' => array('1' => 'Yes', '0' => 'No') );
+
+	// Visual Course Configuration editor (prototype): a table over the raw INI.
+	// Lists all course types (distinct td_key); JS assembles the INI into the
+	// hidden cs_course_config textarea, so the backend stays unchanged.
+	$cc_types = db_query("select td_key, min(td_val1) label from dh_type_detail where td_type='COURSE-TYPE' and td_key <> '' group by td_key order by min(td_val2), min(td_val1)")->fetchAllKeyed();
+	$cc_json = array();
+	foreach ($cc_types as $k => $lbl) { $cc_json[] = array('key' => $k, 'label' => $lbl); }
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/course-config.js');
+	$form[$group]['cc_visual'] = array(
+		'#markup' => '<div class="cc-fullrow"><label>Set how many applications fill or waitlist each course type (leave blank for no limit).</label>'
+			. '<div id="dh-coursecfg" data-types="' . check_plain(json_encode($cc_json)) . '"></div></div>',
+		'#weight' => 2,
+	);
+
+	// Hidden raw store; the visual editor (course-config.js) reads/writes it.
+	// New centre starts empty (types are added as needed). Not required — a
+	// centre may legitimately set no limits (blank = no auto Full/Waitlist).
+	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3,
+		'#default_value' => $add ? '' : $edit_data['cs_course_config'],
+		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
 	$group = 'Hall Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
@@ -802,6 +821,38 @@ function dh_ma_centre_form_validate($form, &$form_state)
 	else
 		foreach (dh_validate_seat_config(_dh_ma_seatcfg_ini($in)) as $err)
 			form_set_error('seatcfg_male_spr', 'Seating Layout: '.$err);
+
+	// --- Course Configuration: Full must be greater than Waitlist wherever both set. ---
+	$cc = isset($in['cs_course_config']) ? trim($in['cs_course_config']) : '';
+	if ($cc !== '')
+	{
+		$cini = @parse_ini_string($cc, true, INI_SCANNER_RAW);
+		if ($cini === false)
+			form_set_error('cs_course_config', 'Course Configuration: the values could not be read. Please re-check.');
+		else
+		{
+			$lbls = db_query("select td_key, min(td_val1) label from dh_type_detail where td_type='COURSE-TYPE' and td_key <> '' group by td_key")->fetchAllKeyed();
+			$subs = array('' => '', '-New' => ' New', '-Old' => ' Old', '-Server' => ' Sevak');
+			foreach ($cini as $sec => $vals)
+			{
+				if (!is_array($vals)) continue;
+				$tlabel = isset($lbls[$sec]) ? $lbls[$sec] : $sec;
+				foreach (array('Male', 'Female') as $g)
+				{
+					foreach ($subs as $sfx => $sublbl)
+					{
+						$w = isset($vals['Waitlist-'.$g.$sfx]) ? trim($vals['Waitlist-'.$g.$sfx]) : '';
+						$f = isset($vals['MaxApps-'.$g.$sfx])  ? trim($vals['MaxApps-'.$g.$sfx])  : '';
+						foreach (array($w, $f) as $vv)
+							if ($vv !== '' && !ctype_digit($vv))
+								form_set_error('cs_course_config', "Course Configuration - $tlabel ($g$sublbl): values must be whole numbers.");
+						if ($w !== '' && $f !== '' && ctype_digit($w) && ctype_digit($f) && (int)$w > 0 && (int)$f > 0 && (int)$f <= (int)$w)
+							form_set_error('cs_course_config', "Course Configuration - $tlabel, $g$sublbl: Full ($f) must be greater than Waitlist ($w).");
+					}
+				}
+			}
+		}
+	}
 
 	// --- Cell Settings: each gender needs cells defined (skipped for no-cell centres). ---
 	if (empty($in['cs_has_cells']))
