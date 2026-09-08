@@ -35,7 +35,7 @@
 .form-item-a-mob-country, .form-item-a-address, .form-item-a-zip, .form-item-a-education, .form-item-s-education, 
 .form-item-document-type, .form-item-ac-first-location-str, 
 .form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,
-.form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile,
+.form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile, .form-item-mode,
 .form-item-a-lang-1,  .form-item-a-lang-3, .form-item-al-relationship, .form-item-al-relation-harmonious,
 .form-item-al-left-course-details, .form-item-al-personal-tragedy-details, .form-item-al-special-req-details,
 .form-item-al-recommending, .form-item-ae-nationality,
@@ -161,6 +161,12 @@ input.throbbing {
    radios — the form-item floats in this theme, so clear it and un-float) */
 .cc-fullrow > .form-item { float: none !important; display: block; width: 100%; }
 .cc-hint { clear: both; color: #666; font-size: 13px; line-height: 1.5; margin: 4px 0 0; max-width: 680px; }
+
+/* The discourse-language multi-select has a hidden label, so its select2 widget
+   would sit up at the label line. Drop it one label-height to line up with the
+   labelled fields (Application Mode, "is any of/none of") on the same row. */
+.form-item-lang-discourse { width: 260px; }
+.form-item-lang-discourse .select2-container { margin-top: 23px; width: 260px !important; }
 /* separate the "Set limits" block from the Waitlist Yes/No question above it */
 .cc-limits-head { margin-top: 20px; padding-top: 16px; border-top: 1px solid #ececec; }
 /* match the theme's standard form-label size (control-label = 16px) so this

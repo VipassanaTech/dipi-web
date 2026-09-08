@@ -1757,6 +1757,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     $bm_id = arg(2);
     $edit_data_status = explode( ', ', $edit_data['status'] );
     $edit_data['status'] = array_combine($edit_data_status, $edit_data_status);
+    if ( !empty($edit_data['lang_discourse']) ) {
+      $edit_data_ld = explode( ', ', $edit_data['lang_discourse'] );
+      $edit_data['lang_discourse'] = array_combine($edit_data_ld, $edit_data_ld);
+    }
+    else {
+      $edit_data['lang_discourse'] = array();
+    }
   }
 
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
@@ -1835,6 +1842,15 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 
 		if ( $storage['country'] <> '' )
 			$where .= " and a_country = '".$storage['country']."'";
+
+		if ( isset($storage['lang_discourse']) && is_array($storage['lang_discourse']) && count(array_filter($storage['lang_discourse'])) > 0 )
+		{
+			$ld_list = implode("', '", array_map('addslashes', array_filter($storage['lang_discourse'])));
+			if ( isset($storage['lang_discourse_op']) && $storage['lang_discourse_op'] === 'not_in' )
+				$where .= " and (a_lang_discourse not in ('".$ld_list."') or a_lang_discourse is null or a_lang_discourse = '')";
+			else
+				$where .= " and a_lang_discourse in ('".$ld_list."')";
+		}
 
 		if ( $storage['is_foreign'] <> '' )
 		{
@@ -2009,14 +2025,17 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
 		$form['state'] = array('#title' => 'State', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['state']:'','#weight' => 10);
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['email']:'', '#weight' => 11);
-		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#default_value' => $update_bm?$edit_data['mode']:'', '#options' => $modes, '#weight' => 12 );
+		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#default_value' => $update_bm?$edit_data['mode']:'', '#options' => $modes, '#weight' => 18 );
+		$langs = db_query("select l_name, l_name from dh_languages order by l_name")->fetchAllKeyed();
+		$form['lang_discourse_op'] = array('#title' => 'Discourse Language', '#type' => 'select', '#options' => array('in' => 'is any of', 'not_in' => 'is none of'), '#default_value' => ($update_bm && isset($edit_data['lang_discourse_op'])) ? $edit_data['lang_discourse_op'] : 'in', '#weight' => 19);
+		$form['lang_discourse'] = array('#title' => 'Discourse Language', '#title_display' => 'invisible', '#type' => 'select', '#multiple' => 'multiple', '#options' => $langs, '#default_value' => ($update_bm && isset($edit_data['lang_discourse'])) ? $edit_data['lang_discourse'] : array(), '#weight' => 20, '#attributes' => array('id' => 'edit-lang-discourse'));
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['alist']:'0',  '#weight' => 13);
 		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_at']:'0',  '#weight' => 14);
 		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_foreign']:'0',  '#weight' => 15);
 		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_willing_to_serve']:'0',  '#weight' => 16);
 		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_pregnant']:'0',  '#weight' => 17);
-		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['mobile']:'',  '#weight' => 18);
-		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['phone_home']:'', '#weight' => 19);
+		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['mobile']:'',  '#weight' => 21);
+		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['phone_home']:'', '#weight' => 22);
 		/*$form['date_from'] = array('#title' => 'Received From', '#type' => 'date_popup', '#size' => '15', '#weight' => 6, 
 			'#default_value' => '', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
 	    		'maxDate' => 0, '#required' => 1, 
@@ -2106,6 +2125,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 					$("#edit-course").select2();
 					$("#edit-country").select2();
           $("#edit-app-status").select2();
+          $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
 					$("#edit-f-name").focus();
 
           var old_status_values = [];
