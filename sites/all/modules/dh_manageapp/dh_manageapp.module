@@ -131,6 +131,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage course'),
 	       'type' => MENU_CALLBACK);
 
+    // Toggle a course's "pin to dashboard" flag from the course page (POST).
+    $items['course-pin/%centre_id/%course_id'] = array('title' => t('Pin course to dashboard'),
+	       'page callback' => '_dh_course_pin_toggle',
+	       'access arguments' => array('manage course'),
+	       'type' => MENU_CALLBACK);
+
     $items['centre'] = array('title' => t('Manage Centre'),
 	       'page callback' => 'dh_manage_centre',
 	       'access arguments' => array('access centre'),

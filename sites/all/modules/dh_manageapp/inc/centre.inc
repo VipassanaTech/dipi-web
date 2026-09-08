@@ -345,9 +345,36 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	$group = 'Search Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_pagination'] = array('#title' => 'Show Pagination on', '#type' => 'radios', '#weight' => 1,
-		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'), 
+		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'),
 		'#default_value' => $add?'bottom':$edit_data['cs_pagination'], '#required' => 0,  );
-	
+
+	$group = 'Dashboard Settings';
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false);
+	// Only the short/service/other course types are offered as dashboard hide toggles.
+	// Ordered so "others" fill the LEFT column and 1/2/3-Day fill the RIGHT column
+	// (paired with grid-auto-flow:column in CSS): others first, then the day courses.
+	$ct_rows = db_query("select td_id, td_key, td_val1 from dh_type_detail where td_type='COURSE-TYPE' and td_key in ('1-DayOSC','OSProgram','Child-Teen','Other','ServicePeriod','2-DayOSC','3-DayOSC') order by td_val2, td_val1")->fetchAll();
+	$day_order = array('1-DayOSC' => 1, '2-DayOSC' => 2, '3-DayOSC' => 3);
+	$ct_others = array(); $ct_days = array();
+	foreach ($ct_rows as $r) {
+		if (isset($day_order[$r->td_key])) $ct_days[$day_order[$r->td_key]] = $r;
+		else $ct_others[] = $r;
+	}
+	ksort($ct_days);
+	$ct_opts = array();
+	foreach ($ct_others as $r) $ct_opts[$r->td_id] = $r->td_val1;
+	foreach ($ct_days as $r) $ct_opts[$r->td_id] = $r->td_val1;
+	$hide_default = ($add || empty($edit_data['cs_dash_hide_types'])) ? array() : array_values(array_filter(explode(',', $edit_data['cs_dash_hide_types'])));
+	$form[$group]['cs_dash_hide_types'] = array(
+		'#title' => 'Hide these course types from the Upcoming Courses grid on the dashboard',
+		'#type' => 'checkboxes',
+		'#options' => $ct_opts,
+		'#default_value' => $hide_default,
+		'#prefix' => '<div class="dash-hide-types">',
+		'#suffix' => '</div>',
+		'#description' => 'Tick a course type to keep it out of the dashboard grid. A course pinned from its course page always shows, even if its type is ticked here.',
+	);
+
 	$group = 'Course Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
 	$form[$group]['cs_course_config'] = array('#title' => 'Course Configuration', '#type' => 'textarea', '#rows' => '10', '#weight' => 3, 
@@ -654,6 +681,11 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	// Assemble the Seating Configuration INI from the friendly seatcfg_* fields.
 	$form_state['input']['cs_seat_config'] = _dh_ma_seatcfg_ini($form_state['input']);
 
+	// Dashboard: hidden course types checkboxes -> comma-list string for storage.
+	$form_state['input']['cs_dash_hide_types'] = !empty($form_state['input']['cs_dash_hide_types'])
+		? implode(',', array_keys(array_filter((array) $form_state['input']['cs_dash_hide_types'])))
+		: '';
+
 	$centre = array(); $centre_setting = array();
 	foreach ($form_state['input'] as $key => $value)
 	{
@@ -844,10 +876,19 @@ function upcoming_courses( $centre_id )
 	$s_res = db_query($q);
 	while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];
 
-	//$where = " where a_center=$centre_id and  c.c_start >= '".$now."' and c.c_start <= '".$now_plus_1month."'";
-	$c_hand = db_query("select c_id from dh_course where c_center=$centre_id  and c_start >= '$now' and c_deleted=0 order by c_start limit 4");
+	// Course types the centre has switched off for the dashboard (comma-list of td_id).
+	$hide = db_query("select cs_dash_hide_types from dh_center_setting where cs_center=:c", array(':c' => $centre_id))->fetchField();
+	$hide_ids = array_filter(array_map('intval', explode(',', (string) $hide)));
+	$type_filter = $hide_ids ? " and c_course_type not in (".implode(',', $hide_ids).")" : "";
+
+	// Default set: the next 4 upcoming, non-cancelled courses (respecting hidden types).
+	$c_hand = db_query("select c_id from dh_course where c_center=$centre_id and c_start >= '$now' and c_deleted=0 and c_cancelled=0 $type_filter order by c_start, c_id limit 4");
 	$courses = array();
 	while($r = $c_hand->fetchAssoc())
+		$courses[$r['c_id']] = $r['c_id'];
+	// Pinned courses always show, in addition to the 4, ignoring the type filter.
+	$p_hand = db_query("select c_id from dh_course where c_center=$centre_id and c_start >= '$now' and c_deleted=0 and c_cancelled=0 and c_dashboard_pin=1 order by c_start, c_id");
+	while($r = $p_hand->fetchAssoc())
 		$courses[$r['c_id']] = $r['c_id'];
 	if (count($courses) > 0)
 		$where = " where a_center=$centre_id and  c.c_id in (".implode(",", array_keys($courses) ).")";

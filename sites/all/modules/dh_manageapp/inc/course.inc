@@ -23,6 +23,10 @@ function dh_course_dashboard()
   		  -moz-columns: 1;
 	  }
 	  h2 { margin-top: 0 !important; }
+	  .course-pin-box { margin: 4px 0 14px; }
+	  .course-pin-btn { display: inline-block; text-decoration: none; padding: 5px 14px; border-radius: 16px; border: 1px solid #f5a623; color: #b9770a; background: #fff; font-size: 14px; }
+	  .course-pin-btn.pinned { background: #fff8ec; }
+	  .course-pin-btn:hover { background: #fdeccb; color: #8a5a06; }
 
  	  @media only screen and (min-width: 768px) {
     	  .multi-column {
@@ -42,6 +46,22 @@ function dh_course_dashboard()
 	//if ($finalized) $type = 's';
 	$out = "<h2>$course_name (".l("Edit", "manage-course/".arg(1), array('query' => array('c' => arg(2) ))).")</h2>";
 	$out .= "<h3>".l("Back to Dashboard", "centre/".arg(1))."</h3>";
+	// Pin-to-dashboard toggle (course managers only).
+	if (user_access('manage course'))
+	{
+		$pinned = db_query("select c_dashboard_pin from dh_course where c_id=".(int) arg(2))->fetchField();
+		$out .= '<div class="course-pin-box"><a href="#" id="course-pin-toggle" data-centre="'.(int) arg(1).'" data-course="'.(int) arg(2).'" class="course-pin-btn'.($pinned ? ' pinned' : '').'">'
+			. ($pinned ? '&#9733; Pinned to dashboard (click to unpin)' : '&#9734; Pin to dashboard')
+			. '</a></div>';
+		drupal_add_js('(function($){$(document).ready(function(){
+			$("#course-pin-toggle").on("click",function(e){e.preventDefault();var a=$(this);
+				$.post("/course-pin/"+a.data("centre")+"/"+a.data("course"),{},function(j){
+					if(j&&j.status){a.toggleClass("pinned",!!j.pinned);a.html(j.pinned?"★ Pinned to dashboard (click to unpin)":"☆ Pin to dashboard");}
+					else{alert((j&&j.msg)?j.msg:"Could not update pin.");}
+				},"json").fail(function(){alert("Could not update pin.");});
+			});
+		});})(jQuery);', "inline");
+	}
 	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Group-wise Seating' => 'group-seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )
@@ -64,6 +84,29 @@ function dh_course_dashboard()
 //	else
 		$out .= course_summary( arg(1), "where c_id=".arg(2), array() );
 	return $out;
+}
+
+/* Toggle a course's "pin to dashboard" flag (from the course page). JSON. */
+function _dh_course_pin_toggle()
+{
+	global $user;
+	$centre = (int) arg(1);
+	$course = (int) arg(2);
+	$out = array('status' => false);
+	$row = db_query("select c_center, c_dashboard_pin from dh_course where c_id=:c", array(':c' => $course))->fetchAssoc();
+	if (!$row || (int) $row['c_center'] !== $centre)
+	{
+		$out['msg'] = 'Course not found.';
+		drupal_json_output($out);
+		exit;
+	}
+	$new = $row['c_dashboard_pin'] ? 0 : 1;
+	db_update('dh_course')->fields(array('c_dashboard_pin' => $new, 'c_updated' => date('Y-m-d H:i:s'), 'c_updated_by' => $user->uid))
+		->condition('c_id', $course)->execute();
+	$out['status'] = true;
+	$out['pinned'] = $new;
+	drupal_json_output($out);
+	exit;
 }
 
 
@@ -766,7 +809,7 @@ function course_summary( $centre_id, $where, $statuses )
 
 	}
 
-	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type order by c.c_start";
+	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old,a_type, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) $where and c_deleted=0  group by c.c_id,c.c_name, a_gender,a_status, a_old, a_type order by c.c_start, c.c_id";
 
 	$out = '';
 	$next_month = db_query($q);
@@ -776,19 +819,37 @@ function course_summary( $centre_id, $where, $statuses )
 		$future_courses[$r['c_name'].'||'.$r['c_id']][$r['a_status']][$r['a_gender']][$r['a_old']][strtolower($r['a_type'])] = $r['tot'];
 	}
 	
+	// Per-course long-course flag + the LC-only statuses to append for LC courses
+	// (gated by review permission, same as the course page).
+	$course_ids = array();
+	foreach ($future_courses as $ck => $x) { $p = explode('||', $ck); $course_ids[] = (int) $p[1]; }
+	$is_lc_map = array();
+	if ($course_ids)
+		foreach (db_query("select c.c_id, td.td_val3 from dh_course c left join dh_type_detail td on c.c_course_type=td.td_id where c.c_id in (".implode(',', $course_ids).")") as $cr)
+			$is_lc_map[$cr->c_id] = ($cr->td_val3 == 'LC') ? 1 : 0;
+	$lc_statuses = array();
+	if (user_access('r-at review') || user_access('a-at review'))
+		foreach (db_query("select td_key from dh_type_detail where td_type='COURSE-LC-STATUS' order by td_val2") as $lr)
+			$lc_statuses[] = $lr->td_key;
+
 	$header = array('','NM','OM', 'Total', 'SM', '&nbsp;&nbsp;' , 'NF','OF', 'Total', 'SF');
 	$gender = array('M', 'F');
 	foreach( $future_courses as $course => $status_data )
 	{
 		$temp = explode("||", $course);
 		$course_id = $temp[1];
+		// LC courses append the extra LC statuses as additional rows (idempotent,
+		// so no double-up if the caller already included them).
+		$course_statuses = $statuses;
+		if (!empty($is_lc_map[$course_id]) && $lc_statuses)
+			foreach ($lc_statuses as $ls) if (!in_array($ls, $course_statuses)) $course_statuses[] = $ls;
 		//$out .= '<div class="summary-block"><div class="table-heading">'.l($temp[0], "search-course/".$centre_id."/".$course_id, array("query" => array("s" => '', 't' => '','g' => ''))).'</div>';
 		$out .= '<div class="summary-block"><div class="table-heading">'.l($temp[0], "course/".$centre_id."/".$course_id).'</div>';
 		$rows = array();
 		$totals_row = array(); $totals_row['M'] = $totals_row['F'] = array(); 
 		$totals_row['M'][0] = $totals_row['F'][0] = $totals_row['M'][1] = $totals_row['F'][1] = 0; 
 		$sevak['M'] = $sevak['F'] = 0;
-		foreach( $statuses as $status ) 
+		foreach( $course_statuses as $status )
 		{
 			$r = array();
 			$r[] = l($status, "search-course/".$centre_id."/".$course_id, array("query" => array("s" => $status, 't' => '','g' => '')));
@@ -843,7 +904,9 @@ function course_summary( $centre_id, $where, $statuses )
 		$out .= theme('table', array('header' => $header, 'rows' => $rows));
 		$out .= '</div>';
 	}
-	return $out;
+	// Wrap blocks in a CSS grid so rows align to equal height (no float staggering
+	// when a long-course block is taller than its neighbour).
+	return $out === '' ? '' : '<div class="summary-grid">'.$out.'</div>';
 
 }
 
