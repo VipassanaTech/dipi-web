@@ -381,7 +381,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	// "Move to waitlist" question first (full-width row, above the editor).
 	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 1,
 		'#prefix' => '<div class="cc-fullrow">',
-		'#suffix' => '<div class="cc-hint">Applies to short courses only. Long-course applications are <b>not</b> moved to the waitlist automatically &mdash; they are waitlisted only after AT review (R-AT Review, RAT / AAT).</div></div>',
+		'#suffix' => '<div class="cc-hint">Long-course applications are <b>not</b> moved to the waitlist automatically &mdash; they are waitlisted manually only after AT review (R-AT Review, A-AT Review).</div></div>',
 		'#default_value' => $add?0:$edit_data['cs_apps_waitlist'], '#type' => 'radios', '#options' => array('1' => 'Yes', '0' => 'No') );
 
 	// Visual Course Configuration editor (prototype): a table over the raw INI.

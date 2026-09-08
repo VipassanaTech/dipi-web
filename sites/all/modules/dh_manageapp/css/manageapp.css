@@ -157,8 +157,10 @@ input.throbbing {
    (the Course Settings fieldset otherwise floats form-items side-by-side). */
 .cc-fullrow { clear: both; display: block; width: 100%; float: none; }
 .cc-fullrow .control-label, .cc-fullrow > label { float: none; display: block; }
-/* small helper note under the "Move to Waitlist" option */
-.cc-hint { color: #666; font-size: 13px; line-height: 1.5; margin: 3px 0 0; max-width: 680px; }
+/* small helper note under the "Move to Waitlist" option (full width, below the
+   radios — the form-item floats in this theme, so clear it and un-float) */
+.cc-fullrow > .form-item { float: none !important; display: block; width: 100%; }
+.cc-hint { clear: both; color: #666; font-size: 13px; line-height: 1.5; margin: 4px 0 0; max-width: 680px; }
 /* separate the "Set limits" block from the Waitlist Yes/No question above it */
 .cc-limits-head { margin-top: 20px; padding-top: 16px; border-top: 1px solid #ececec; }
 /* match the theme's standard form-label size (control-label = 16px) so this

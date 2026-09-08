@@ -90,8 +90,8 @@
       '<li>The count excludes applications marked <b>Cancelled</b>, <b>Rejected</b> or <b>Duplicate</b>.</li>' +
       '<li>These settings only move a course to <b>Wait List</b> or <b>Course Full</b> &mdash; they never ' +
       're-open a closed course (re-open it in <b>Manage Courses</b>).</li>' +
-      '<li><b>Long courses:</b> applications are <b>not</b> waitlisted automatically &mdash; they go through ' +
-      'AT review (R-AT Review) and move to Wait List only after the review (RAT / AAT) is complete.</li>' +
+      '<li><b>Long courses:</b> applications are <b>not</b> moved to the waitlist automatically &mdash; they are ' +
+      'waitlisted manually only after AT review (R-AT Review, A-AT Review).</li>' +
       '</ul></div>';
     host.html(
       '<table class="cc-table"><thead>' +
