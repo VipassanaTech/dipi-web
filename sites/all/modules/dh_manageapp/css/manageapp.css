@@ -165,8 +165,13 @@ input.throbbing {
 /* The discourse-language multi-select has a hidden label, so its select2 widget
    would sit up at the label line. Drop it one label-height to line up with the
    labelled fields (Application Mode, "is any of/none of") on the same row. */
+/* Discourse Language: one label over [operator] + [language picker], grouped */
+.lang-grp { float: left; margin-right: 25px; margin-bottom: 12px; }
+.lang-grp > .control-label { display: block; float: none; margin-bottom: 5px; }
+.lang-grp-row { display: flex; align-items: center; gap: 8px; }
+.lang-grp-row .form-item { float: none; margin: 0; }
 .form-item-lang-discourse { width: 260px; }
-.form-item-lang-discourse .select2-container { margin-top: 23px; width: 260px !important; }
+.form-item-lang-discourse .select2-container { width: 260px !important; }
 /* separate the "Set limits" block from the Waitlist Yes/No question above it */
 .cc-limits-head { margin-top: 20px; padding-top: 16px; border-top: 1px solid #ececec; }
 /* match the theme's standard form-label size (control-label = 16px) so this
