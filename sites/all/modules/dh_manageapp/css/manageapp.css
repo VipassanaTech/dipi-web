@@ -113,6 +113,107 @@ input.throbbing {
 	margin-right: 12px;
 }
 
+/* ===================== Search form: uniform 2-column layout =====================
+   Two equal columns everywhere (1 column on small screens), consistent field
+   sizing, compact checkboxes, small textareas. */
+#dh-manageapp-search-form > div,
+#dh-manageapp-search-form .panel-body {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px 30px;
+	align-items: end;
+}
+@media (max-width: 820px) {
+	#dh-manageapp-search-form > div,
+	#dh-manageapp-search-form .panel-body { grid-template-columns: 1fr; }
+}
+/* kill Bootstrap clearfix ::before/::after — as grid children they steal a cell
+   and shove every field one column to the right (empty top-left cell) */
+#dh-manageapp-search-form > div::before,
+#dh-manageapp-search-form > div::after,
+#dh-manageapp-search-form .panel-body::before,
+#dh-manageapp-search-form .panel-body::after { content: none; display: none; }
+/* grid items must be allowed to shrink below content min-width, else one wide
+   item forces the 1fr track wider than the viewport (mobile horizontal scroll) */
+#dh-manageapp-search-form > div > *,
+#dh-manageapp-search-form .panel-body > * { min-width: 0; }
+/* drop old float/clear/margins inside this form */
+#dh-manageapp-search-form .form-item,
+#dh-manageapp-search-form .lang-grp { float: none !important; clear: none !important; margin: 0 !important; width: auto !important; min-width: 0; }
+/* controls fill their cell uniformly */
+#dh-manageapp-search-form input[type="text"],
+#dh-manageapp-search-form input[type="email"],
+#dh-manageapp-search-form select:not(.select2-hidden-accessible),
+#dh-manageapp-search-form textarea { width: 100% !important; box-sizing: border-box; }
+#dh-manageapp-search-form .select2-container { width: 100% !important; }
+#dh-manageapp-search-form label.control-label { display: block; font-weight: 600; margin: 0 0 3px; font-size: 14px; }
+#dh-manageapp-search-form textarea { height: 40px; min-height: 40px; resize: vertical; }
+/* number inputs stay compact within their cell */
+#dh-manageapp-search-form input[type="number"] { width: 150px !important; max-width: 100%; box-sizing: border-box; }
+/* checkbox group: one full-width row, wrapping inline */
+#dh-manageapp-search-form .cb-group { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; }
+#dh-manageapp-search-form .cb-group .form-item { width: auto !important; }
+#dh-manageapp-search-form .cb-group label.control-label { display: inline; font-weight: normal; margin: 0 0 0 4px; }
+/* Applicant Type radios inline within their cell */
+#dh-manageapp-search-form .form-type-radios .form-radios { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+/* full-width blocks span both columns */
+#dh-manageapp-search-form > div > h2,
+#dh-manageapp-search-form > div > h3,
+#dh-manageapp-search-form > div > fieldset,
+#dh-manageapp-search-form > div > .panel,
+#dh-manageapp-search-form .form-actions,
+#dh-manageapp-search-form .form-submit { grid-column: 1 / -1; }
+/* Course sits alone on the first row */
+#dh-manageapp-search-form .form-item-course { grid-column: 1 / -1; }
+
+/* Least/Max numbers: 4 per row (2 on mobile), pairs kept together, own row */
+#dh-manageapp-search-form .num-grid {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px 20px;
+	align-items: end;
+}
+@media (max-width: 820px) {
+	#dh-manageapp-search-form .num-grid { grid-template-columns: 1fr 1fr; }
+}
+#dh-manageapp-search-form .num-grid .form-item { min-width: 0; }
+#dh-manageapp-search-form .num-grid input[type="number"] { width: 100% !important; }
+
+/* Bulk-Mail: the checkbox is the master switch — make it prominent */
+#dh-manageapp-search-form .bm-toggle {
+	grid-column: 1 / -1;
+	background: #eef7ff;
+	border: 1px solid #b6d9f2;
+	border-radius: 6px;
+	padding: 12px 16px;
+	margin-bottom: 6px;
+}
+#dh-manageapp-search-form .bm-toggle .form-item { margin: 0 !important; }
+#dh-manageapp-search-form .bm-toggle label.control-label {
+	display: inline; font-weight: 700; font-size: 16px; margin: 0; padding-left: 0; vertical-align: middle;
+}
+/* Bootstrap's .checkbox makes the box position:absolute + label padding-left:20px,
+   which overlaps the text. Put the box back in normal flow with a real gap. */
+#dh-manageapp-search-form .bm-toggle input[type="checkbox"] {
+	position: static; left: auto; float: none;
+	width: 18px; height: 18px; margin: 0 10px 0 0; vertical-align: middle;
+}
+#dh-manageapp-search-form .bm-toggle-hint { display: block; color: #555; font-size: 12.5px; margin: 6px 0 0; }
+/* Gated bulk-mail fields laid out in a row, greyed + blocked when switch is off */
+#dh-manageapp-search-form .bm-gated {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 14px 20px;
+	align-items: end;
+}
+@media (max-width: 820px) {
+	#dh-manageapp-search-form .bm-gated { grid-template-columns: 1fr; }
+}
+#dh-manageapp-search-form .bm-gated.bm-disabled { opacity: .45; pointer-events: none; }
+
+
 
 @media only screen and (min-width: 768px) {
   .summary-block {

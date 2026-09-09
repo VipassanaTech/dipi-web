@@ -2054,11 +2054,11 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$langs = db_query("select l_name, l_name from dh_languages order by l_name")->fetchAllKeyed();
 		$form['lang_discourse_op'] = array('#title' => 'Discourse Language', '#title_display' => 'invisible', '#type' => 'select', '#options' => array('in' => 'is any of', 'not_in' => 'is none of'), '#default_value' => ($update_bm && isset($edit_data['lang_discourse_op'])) ? $edit_data['lang_discourse_op'] : 'in', '#weight' => 19, '#prefix' => '<div class="lang-grp"><label class="control-label">Discourse Language</label><div class="lang-grp-row">');
 		$form['lang_discourse'] = array('#title' => 'Discourse Language', '#title_display' => 'invisible', '#type' => 'select', '#multiple' => 'multiple', '#options' => $langs, '#default_value' => ($update_bm && isset($edit_data['lang_discourse'])) ? $edit_data['lang_discourse'] : array(), '#weight' => 20, '#attributes' => array('id' => 'edit-lang-discourse'), '#suffix' => '</div></div>');
-		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['alist']:'0',  '#weight' => 13);
+		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['alist']:'0',  '#weight' => 13, '#prefix' => '<div class="cb-group">');
 		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_at']:'0',  '#weight' => 14);
 		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_foreign']:'0',  '#weight' => 15);
 		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_willing_to_serve']:'0',  '#weight' => 16);
-		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_pregnant']:'0',  '#weight' => 17);
+		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_pregnant']:'0',  '#weight' => 17, '#suffix' => '</div>');
 		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['mobile']:'',  '#weight' => 21);
 		$form['phone_home'] = array('#title' => 'Phone Home', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['phone_home']:'', '#weight' => 22);
 		/*$form['date_from'] = array('#title' => 'Received From', '#type' => 'date_popup', '#size' => '15', '#weight' => 6, 
@@ -2086,23 +2086,25 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$form[$group]['occupation'] = array('#title' => 'Occupation', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['occupation']:'', '#size' => '15', '#weight' => 3, '#description' => 'Enter values in separate lines');
 			$form[$group]['designation'] = array('#title' => 'Designation', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['designation']:'', '#size' => '15', '#weight' => 4, '#description' => 'Enter values in separate lines');
 			$form[$group]['company'] = array('#title' => 'Company', '#type' => 'textarea', '#default_value' => $update_bm?$edit_data['company']:'', '#size' => '15', '#weight' => 5, '#description' => 'Enter values in separate lines');
-      $form[$group]['least_10_day'] = array('#title' => 'Least number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200' ), '#size' => '15', '#weight' => 5.1, );
-      $form[$group]['least_stp'] = array('#title' => 'Least number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.2, );
-      $form[$group]['least_spl'] = array('#title' => 'Least number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.3, );
-      $form[$group]['least_20_day'] = array('#title' => 'Least number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.4, );
-      $form[$group]['least_30_day'] = array('#title' => 'Least number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.5, );
-      $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.6, );
-      $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.7, );
-      $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.8, );
-
-      $form[$group]['max_10_day'] = array('#title' => 'Max number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '300' ), '#size' => '15', '#weight' => 5.81, );
-      $form[$group]['max_stp'] = array('#title' => 'Max number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.82, );
-      $form[$group]['max_spl'] = array('#title' => 'Max number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.83, );
-      $form[$group]['max_20_day'] = array('#title' => 'Max number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.84, );
-      $form[$group]['max_30_day'] = array('#title' => 'Max number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.85, );
-      $form[$group]['max_45_day'] = array('#title' => 'Max number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.86, );
-      $form[$group]['max_60_day'] = array('#title' => 'Max number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.87, );
-      $form[$group]['max_service'] = array('#title' => 'Max number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.88, );
+      // Least/Max shown as pairs (Least X immediately followed by Max X) in a
+      // 4-per-row grid (2-per-row on mobile). The .num-grid wrapper starts on a
+      // fresh row; weights interleave so each pair stays together.
+      $form[$group]['least_10_day'] = array('#title' => 'Least number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200' ), '#size' => '15', '#weight' => 5.10, '#prefix' => '<div class="num-grid">', );
+      $form[$group]['max_10_day'] = array('#title' => 'Max number of 10 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_10_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '300' ), '#size' => '15', '#weight' => 5.11, );
+      $form[$group]['least_stp'] = array('#title' => 'Least number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.20, );
+      $form[$group]['max_stp'] = array('#title' => 'Max number of STP', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_stp']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.21, );
+      $form[$group]['least_spl'] = array('#title' => 'Least number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.30, );
+      $form[$group]['max_spl'] = array('#title' => 'Max number of SPL', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_spl']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.31, );
+      $form[$group]['least_20_day'] = array('#title' => 'Least number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.40, );
+      $form[$group]['max_20_day'] = array('#title' => 'Max number of 20 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_20_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.41, );
+      $form[$group]['least_30_day'] = array('#title' => 'Least number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.50, );
+      $form[$group]['max_30_day'] = array('#title' => 'Max number of 30 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_30_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100' ), '#size' => '15', '#weight' => 5.51, );
+      $form[$group]['least_45_day'] = array('#title' => 'Least number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.60, );
+      $form[$group]['max_45_day'] = array('#title' => 'Max number of 45 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_45_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.61, );
+      $form[$group]['least_60_day'] = array('#title' => 'Least number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.70, );
+      $form[$group]['max_60_day'] = array('#title' => 'Max number of 60 day', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_60_day']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '100'), '#size' => '15', '#weight' => 5.71, );
+      $form[$group]['least_service'] = array('#title' => 'Least number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['least_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.80, );
+      $form[$group]['max_service'] = array('#title' => 'Max number of Seva', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['max_service']:'', '#attributes' => array(' type' => 'number', 'min' => '0', 'max' => '200'), '#size' => '15', '#weight' => 5.81, '#suffix' => '</div>', );
 		}
 
     if (user_access('mass mail') && $centre_id <> '')
@@ -2123,10 +2125,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       }
       else
       {
-        $form[$group]['bulk-mail'] = array('#title' => '&nbsp;Bulk-Mail to Search Result?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 1);
+        $form[$group]['bulk-mail'] = array('#title' => 'Bulk-Mail to Search Result?', '#type' => 'checkbox', '#default_value' => '0',  '#weight' => 1,
+          '#id' => 'edit-bm-master',
+          '#prefix' => '<div class="bm-toggle"><span class="bm-toggle-hint">Tick this to email everyone in the search result. The fields below are used only when this is ticked.</span>',
+          '#suffix' => '</div>');
       }
 
-      $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['bulk_mail_name']:'', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch');
+      $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['bulk_mail_name']:'', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch', '#prefix' => '<div class="bm-gated">');
       $q = "select l_id, l_name from dh_letter where l_center = $centre_id and l_event='custom'";
       $letters = db_query($q)->fetchAllKeyed();
       $letters[''] = 'Choose';
@@ -2140,7 +2145,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       ),
       '#date_label_position' => 'above',
     '#theme_wrappers' => array('date_popup'),
-    '#suffix' => '',
+    '#suffix' => '</div>',
         '#weight' => 7);
     }
 
@@ -2186,6 +2191,21 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
           }
           applyCountryDeps();
           $("#edit-country").on("change", function(){ applyCountryDeps(); });
+
+          // Bulk-Mail gate: the "Bulk-Mail to Search Result?" checkbox controls
+          // whether the batch-name / letter / date fields are usable. When it is
+          // not ticked, those fields are disabled and greyed out. Guarded so the
+          // edit-schedule screen (where the checkbox is hidden) keeps them on.
+          var $bmToggle = $("#edit-bm-master");
+          if($bmToggle.length){
+            var applyBmGate = function(){
+              var on = $bmToggle.is(":checked");
+              $(".bm-gated").toggleClass("bm-disabled", !on);
+              $(".bm-gated").find("input, select, textarea").prop("disabled", !on);
+            };
+            $bmToggle.on("change", applyBmGate);
+            applyBmGate();
+          }
 					$("#edit-f-name").focus();
 
           var old_status_values = [];
