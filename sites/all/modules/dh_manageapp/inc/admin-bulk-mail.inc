@@ -39,6 +39,55 @@ function dh_admin_bulk_mail_compose_form($form, &$form_state, $abm_id) {
   $form['abm_reply_to'] = array('#title' => 'Reply-to (optional)', '#type' => 'textfield', '#default_value' => $abm['abm_reply_to'], '#weight' => 4);
   $form['abm_subject'] = array('#title' => 'Subject', '#type' => 'textfield', '#required' => TRUE, '#default_value' => $abm['abm_subject'], '#weight' => 5);
   $form['abm_body'] = array('#title' => 'Body (HTML)', '#type' => 'textarea', '#rows' => 18, '#required' => TRUE, '#default_value' => $abm['abm_body'], '#weight' => 6);
+
+  drupal_add_js(libraries_get_path('ckeditor') . '/ckeditor.js');
+  drupal_add_js('
+    (function ($) {
+      $(document).ready(function(){
+        if (window.CKEDITOR) {
+          if (CKEDITOR.instances["edit-abm-body"]) { CKEDITOR.instances["edit-abm-body"].destroy(true); }
+          CKEDITOR.replace("edit-abm-body", {
+            allowedContent: true,
+            height: 380,
+            resize_enabled: true,
+            pasteFromWordRemoveFontStyles: false,
+            pasteFromWordRemoveStyles: false,
+            filebrowserImageUploadUrl: "/admin-bulk-mail/image-upload",
+            uploadUrl: "/admin-bulk-mail/image-upload",
+            filebrowserUploadMethod: "xhr",
+            toolbar: [
+              { name: "document", items: ["Source","-","Preview","Print"] },
+              { name: "clipboard", items: ["Cut","Copy","Paste","PasteText","PasteFromWord","-","Undo","Redo"] },
+              { name: "basicstyles", items: ["Bold","Italic","Underline","Strike","-","RemoveFormat"] },
+              { name: "paragraph", items: ["NumberedList","BulletedList","-","Outdent","Indent","-","Blockquote","-","JustifyLeft","JustifyCenter","JustifyRight"] },
+              { name: "links", items: ["Link","Unlink"] },
+              { name: "insert", items: ["Image","Table","HorizontalRule","SpecialChar"] },
+              "/",
+              { name: "styles", items: ["Format","Font","FontSize"] },
+              { name: "colors", items: ["TextColor","BGColor"] },
+              { name: "tools", items: ["Maximize"] }
+            ]
+          });
+        }
+      });
+    })(jQuery);
+  ', 'inline');
+
+  $atts = db_query("select abma_id, abma_name, abma_size from dh_admin_bulk_mail_attachment where abma_abm=:id order by abma_id", array(':id' => $abm_id));
+  $items = array();
+  foreach ($atts as $a) {
+    $items[] = check_plain($a->abma_name) . ' (' . round($a->abma_size / 1024) . ' KB) — ' . l('remove', 'admin-bulk-mail/' . $abm_id . '/attach-delete/' . $a->abma_id);
+  }
+  $form['attachments_list'] = array(
+    '#markup' => '<div class="abm-attachments"><label>Attachments</label>' . ($items ? theme('item_list', array('items' => $items)) : '<em>none</em>') . '</div>',
+    '#weight' => 6.4,
+  );
+  $form['abm_attachment'] = array('#title' => 'Add attachment', '#type' => 'file', '#weight' => 6.5);
+  $form['upload'] = array(
+    '#type' => 'submit', '#value' => 'Upload attachment', '#weight' => 6.6,
+    '#submit' => array('dh_admin_bulk_mail_attach_submit'), '#limit_validation_errors' => array(),
+  );
+
   $form['abm_schedule_date'] = array(
     '#title' => 'Send date', '#type' => 'date_popup', '#date_format' => 'Y-m-d',
     '#default_value' => $abm['abm_schedule_date'] ? $abm['abm_schedule_date'] : date('Y-m-d'),
@@ -93,9 +142,57 @@ function dh_admin_bulk_mail_test_submit($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
 }
 
-function dh_admin_bulk_mail_image_upload() { drupal_json_output(array()); }
-function dh_admin_bulk_mail_attach($abm_id) { return 'TODO attach '.$abm_id; }
-function dh_admin_bulk_mail_attach_delete($abm_id, $abma_id) { return 'TODO detach'; }
+function dh_admin_bulk_mail_image_upload() {
+  // Reuse the letters image-upload verbatim: same image validation, same
+  // public://letters/images dir (so _dh_letter_embed_inline_images finds them at
+  // send time), same CKEditor JSON. It prints JSON and drupal_exit()s.
+  return dh_letter_image_upload();
+}
+
+function dh_admin_bulk_mail_attach_submit($form, &$form_state) {
+  $abm_id = $form_state['abm_id'];
+  $dir = 'private://admin-bulk-mail/' . $abm_id;
+  file_prepare_directory($dir, FILE_CREATE_DIRECTORY);
+  $validators = array('file_validate_extensions' => array('pdf doc docx xls xlsx ppt pptx txt csv png jpg jpeg gif'));
+  $file = file_save_upload('abm_attachment', $validators, $dir, FILE_EXISTS_RENAME);
+  if ($file) {
+    $cur = (int) db_query("select coalesce(sum(abma_size),0) from dh_admin_bulk_mail_attachment where abma_abm=:id", array(':id' => $abm_id))->fetchField();
+    if ($cur + $file->filesize > 20 * 1024 * 1024) {
+      file_delete($file);
+      drupal_set_message('Attachment exceeds the total size limit (~20 MB).', 'error');
+    }
+    else {
+      $file->status = FILE_STATUS_PERMANENT;
+      file_save($file);
+      file_usage_add($file, 'dh_manageapp', 'abm', $abm_id);
+      db_insert('dh_admin_bulk_mail_attachment')->fields(array(
+        'abma_abm' => $abm_id, 'abma_uri' => $file->uri, 'abma_name' => $file->filename,
+        'abma_size' => $file->filesize, 'abma_created' => date('Y-m-d H:i:s'),
+      ))->execute();
+      drupal_set_message('Attachment added: ' . check_plain($file->filename));
+    }
+  }
+  $form_state['rebuild'] = TRUE;
+}
+
+function dh_admin_bulk_mail_attach($abm_id) { drupal_goto('admin-bulk-mail/' . $abm_id . '/compose'); }
+
+function dh_admin_bulk_mail_attach_delete($abm_id, $abma_id) {
+  $uri = db_query("select abma_uri from dh_admin_bulk_mail_attachment where abma_id=:a and abma_abm=:b", array(':a' => $abma_id, ':b' => $abm_id))->fetchField();
+  if ($uri) {
+    db_delete('dh_admin_bulk_mail_attachment')->condition('abma_id', $abma_id)->execute();
+    $fid = db_query("select fid from file_managed where uri=:u", array(':u' => $uri))->fetchField();
+    if ($fid && ($fo = file_load($fid))) {
+      file_usage_delete($fo, 'dh_manageapp', 'abm', $abm_id);
+      file_delete($fo);
+    }
+    else {
+      @drupal_unlink($uri);
+    }
+    drupal_set_message('Attachment removed.');
+  }
+  drupal_goto('admin-bulk-mail/' . $abm_id . '/compose');
+}
 function dh_admin_bulk_mail_delete($abm_id) { return 'TODO delete '.$abm_id; }
 function dh_admin_bulk_mail_show_log($abm_id) { return 'TODO log '.$abm_id; }
 function dh_admin_bulk_mail_get_log($abm_id) { drupal_json_output(array()); }
