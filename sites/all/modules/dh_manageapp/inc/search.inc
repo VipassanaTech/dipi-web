@@ -1771,6 +1771,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     else {
       $edit_data['state'] = array();
     }
+    if ( !empty($edit_data['country']) ) {
+      $edit_data_c = explode( ', ', $edit_data['country'] );
+      $edit_data['country'] = array_combine($edit_data_c, $edit_data_c);
+    }
+    else {
+      $edit_data['country'] = array();
+    }
   }
 
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
@@ -1847,8 +1854,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		elseif ( $storage['gender'] <> '' )
 			$where .= " and a_gender = '".$storage['gender']."'";
 
-		if ( $storage['country'] <> '' )
-			$where .= " and a_country = '".$storage['country']."'";
+		$multi_country = FALSE;
+		if ( isset($storage['country']) && is_array($storage['country']) && count(array_filter($storage['country'])) > 0 )
+		{
+			$sel_countries = array_filter($storage['country']);
+			$where .= " and a_country in ('".implode("', '", array_map('addslashes', $sel_countries))."')";
+			$multi_country = count($sel_countries) > 1;
+		}
 
 		if ( isset($storage['lang_discourse']) && is_array($storage['lang_discourse']) && count(array_filter($storage['lang_discourse'])) > 0 )
 		{
@@ -1865,19 +1877,20 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$where .= " and a_country NOT IN ('$centre_country')";
 		}
 
-		if ( isset($storage['state']) && is_array($storage['state']) && count(array_filter($storage['state'])) > 0 )
+		// State / City / Pin are country-specific: only applied when NOT multiple countries.
+		if ( !$multi_country && isset($storage['state']) && is_array($storage['state']) && count(array_filter($storage['state'])) > 0 )
 			$where .= " and s_name in ('".implode("', '", array_map('addslashes', array_filter($storage['state'])))."')";
 
 		if ( $storage['email'] <> '' )
 			$where .= " and a_email LIKE '".$storage['email']."%'";
 
-		if ( isset($storage['pin']) && ($storage['pin'] <> '') )
+		if ( !$multi_country && isset($storage['pin']) && ($storage['pin'] <> '') )
     {
       $temp = explode("\r\n", $storage['pin']);
 			$where .=  " and a_zip in ('".trim(implode("', '",$temp))."')";
     }
 
-		if ( isset($storage['city']) && ( $storage['city'] <> '') )
+		if ( !$multi_country && isset($storage['city']) && ( $storage['city'] <> '') )
 		{
 			$temp = explode("\r\n", $storage['city']);
 			$where .=  " and (ci.c_name in ('".trim(implode("', '",$temp))."'".") or a_city_str in ('".trim(implode("', '",$temp))."'".")) ";
@@ -2003,7 +2016,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 
 		$q = "select c_code, c_name from dh_country order by c_name";
 		$countries = db_query($q)->fetchAllKeyed();
-		$countries[''] = 'Choose';
+		// Country is a multi-select; no blank "Choose" option (select2 placeholder instead).
 		// States grouped by country code, for the dependent State dropdown (client-side cascade).
 		$states_by_country = array();
 		foreach (db_query("select s_country, s_name from dh_state order by s_name") as $srow) {
@@ -2031,7 +2044,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#default_value' => $update_bm?$edit_data['status']:'', '#options' => $statuses, '#multiple' => "multiple", '#weight' => 6, '#attributes' => array('id' => 'edit-app-status'));
 		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => $update_bm?$edit_data['type']:'Both',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => $update_bm?$edit_data['gender']:'',  '#weight' => 8);
-		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => $update_bm?$edit_data['country']:'', '#weight' => 9);
+		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#multiple' => 'multiple', '#options' => $countries, '#default_value' => ($update_bm && isset($edit_data['country']) && is_array($edit_data['country'])) ? $edit_data['country'] : array(), '#validated' => TRUE, '#weight' => 9, '#attributes' => array('id' => 'edit-country'));
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
 		// State is a dependent dropdown filled from the chosen Country (JS cascade).
 		// #validated => TRUE so a JS-populated value is accepted on submit.
@@ -2139,7 +2152,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			(function ($) {
 				$(document).ready(function(){
 					$("#edit-course").select2();
-					$("#edit-country").select2();
+					$("#edit-country").select2({ placeholder: "Choose country(ies)", allowClear: true, width: "220px" });
           $("#edit-app-status").select2();
           $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
           $("#edit-state").select2({ placeholder: "Choose state(s)", allowClear: true, width: "220px" });
@@ -2152,8 +2165,27 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
             (STATES[cc] || []).forEach(function(n){ $s.append(new Option(n, n, false, sel.indexOf(n) > -1)); });
             $s.trigger("change.select2");
           }
-          fillStates($("#edit-country").val(), curState);
-          $("#edit-country").on("change", function(){ fillStates($(this).val(), []); });
+          var $city = $("#edit-city"), $pin = $("#edit-pin");
+          var $mcHint = $("<div class=\"mc-hint\" style=\"color:#a5281b;font-size:12.5px;margin:2px 0 8px;display:none\">State, City and Pin Code are not available when more than one country is selected.</div>");
+          $("#edit-state").closest(".form-item").after($mcHint);
+          function setBlocked($el, blocked){
+            if(!$el || !$el.length){ return; }
+            $el.prop("disabled", blocked);
+            if(blocked){ $el.is("select") ? $el.val([]) : $el.val(""); }
+            if($el.hasClass("select2-hidden-accessible")){ $el.trigger("change.select2"); }
+            $el.closest(".form-item").css("opacity", blocked ? 0.5 : "");
+          }
+          function applyCountryDeps(){
+            var cc = $("#edit-country").val() || [];
+            var n = cc.length, multi = n > 1;
+            fillStates(n === 1 ? cc[0] : "", n === 1 ? curState : []);
+            setBlocked($("#edit-state"), multi);
+            setBlocked($city, multi);
+            setBlocked($pin, multi);
+            $mcHint.toggle(multi);
+          }
+          applyCountryDeps();
+          $("#edit-country").on("change", function(){ applyCountryDeps(); });
 					$("#edit-f-name").focus();
 
           var old_status_values = [];

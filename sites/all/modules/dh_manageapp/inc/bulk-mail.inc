@@ -47,6 +47,9 @@ function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $sc
   if(isset($criteria['state']) && is_array($criteria['state']))
     $criteria['state'] = implode(", ", $criteria['state']);
 
+  if(isset($criteria['country']) && is_array($criteria['country']))
+    $criteria['country'] = implode(", ", $criteria['country']);
+
 
   unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], $criteria['bm_id'], );
   foreach ($criteria as $key => $value) {
@@ -115,6 +118,17 @@ function dh_show_bulk_mail_schedule()
       {
         $cname = db_query("select c_name from dh_course where c_id=:id", array(':id' => $value))->fetchField();
         if ($cname !== FALSE && trim($cname) !== '') { $value = $cname; }
+      }
+      // Show country NAMES instead of stored codes (single or comma-list).
+      elseif ($key === 'country' && $value)
+      {
+        $names = array();
+        foreach (array_map('trim', explode(',', $value)) as $cd) {
+          if ($cd === '') { continue; }
+          $nm = db_query("select c_name from dh_country where c_code=:c", array(':c' => $cd))->fetchField();
+          $names[] = ($nm !== FALSE && trim($nm) !== '') ? $nm : $cd;
+        }
+        $value = implode(', ', $names);
       }
       // Make the discourse-language operator readable.
       elseif ($key === 'lang_discourse_op')
