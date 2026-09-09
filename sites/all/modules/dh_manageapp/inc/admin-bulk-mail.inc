@@ -189,26 +189,30 @@ function dh_send_admin_bulk_mail(array $abm, $to_email, $to_name = '', $footer =
 
 function dh_admin_bulk_mail_test_submit($form, &$form_state) {
   global $user;
-  $v = $form_state['values'];
+  // #limit_validation_errors => array() on this button prunes $form_state['values']
+  // down to (essentially) empty in Drupal 7, so read the raw, fully-populated
+  // input instead -- otherwise the UPDATE below writes NULL into NOT-NULL columns.
+  $in = $form_state['input'];
+  $g = function ($k) use ($in) { return isset($in[$k]) ? $in[$k] : ''; };
   $abm_id = $form_state['abm_id'];
   // Persist current content to the row so the test reflects exactly what will send.
   db_update('dh_admin_bulk_mail')->fields(array(
-    'abm_name' => $v['abm_name'], 'abm_subject' => $v['abm_subject'], 'abm_body' => $v['abm_body'],
-    'abm_from_name' => $v['abm_from_name'], 'abm_from_email' => $v['abm_from_email'], 'abm_reply_to' => $v['abm_reply_to'],
-    'abm_test_email' => $v['test_email'], 'abm_test_sent_at' => date('Y-m-d H:i:s'),
+    'abm_name' => $g('abm_name'), 'abm_subject' => $g('abm_subject'), 'abm_body' => $g('abm_body'),
+    'abm_from_name' => $g('abm_from_name'), 'abm_from_email' => $g('abm_from_email'), 'abm_reply_to' => $g('abm_reply_to'),
+    'abm_test_email' => $g('test_email'), 'abm_test_sent_at' => date('Y-m-d H:i:s'),
     'abm_updated' => date('Y-m-d H:i:s'), 'abm_updated_by' => $user->uid,
   ))->condition('abm_id', $abm_id)->execute();
 
-  if (!filter_var($v['test_email'], FILTER_VALIDATE_EMAIL)) {
+  if (!filter_var($g('test_email'), FILTER_VALIDATE_EMAIL)) {
     drupal_set_message('Enter a valid test email address.', 'error');
     $form_state['rebuild'] = TRUE;
     return;
   }
   $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
   try {
-    $ret = dh_send_admin_bulk_mail($abm, $v['test_email'], 'Test', "<br><br><small>[test email]</small>", 0);
+    $ret = dh_send_admin_bulk_mail($abm, $g('test_email'), 'Test', "<br><br><small>[test email]</small>", 0);
     $note = variable_get('mode_test', '0') ? ' (test mode is ON — actually delivered to ' . check_plain(variable_get('mode_test_emails', '')) . ')' : '';
-    drupal_set_message('Test email sent to ' . check_plain($v['test_email']) . $note . '. Mailgun id: ' . check_plain($ret['res_id']));
+    drupal_set_message('Test email sent to ' . check_plain($g('test_email')) . $note . '. Mailgun id: ' . check_plain($ret['res_id']));
   }
   catch (\Throwable $e) {
     drupal_set_message('Test send failed: ' . check_plain($e->getMessage()), 'error');
