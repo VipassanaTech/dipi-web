@@ -161,6 +161,7 @@ input.throbbing {
 #dh-manageapp-search-form > div > h3,
 #dh-manageapp-search-form > div > fieldset,
 #dh-manageapp-search-form > div > .panel,
+#dh-manageapp-search-form > div > .table-responsive,
 #dh-manageapp-search-form .form-actions,
 #dh-manageapp-search-form .form-submit { grid-column: 1 / -1; }
 /* Course sits alone on the first row */
