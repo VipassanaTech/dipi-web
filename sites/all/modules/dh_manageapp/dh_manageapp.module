@@ -19,6 +19,7 @@ include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
 include_once dirname(__FILE__) . "/inc/seating.inc";
+include_once dirname(__FILE__) . "/inc/bulk-mail-common.inc";
 include_once dirname(__FILE__) . "/inc/bulk-mail.inc";
 include_once dirname(__FILE__) . "/inc/tags.inc";
 

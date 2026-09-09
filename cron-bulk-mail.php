@@ -45,15 +45,15 @@ while ($row = $result->fetchAssoc())
    {
      $q = "update dh_bulk_mail set bm_processed=2, bm_updated='$bm_updated', bm_updated_by='$bm_updated_by' where bm_id=".$row['bm_id'];
      db_query($q);
-     $result2 = db_query($row['bm_query']);
-     while ($row2 = $result2->fetchAssoc())
-     {
-        echo "Pushing ".$row2['id']."\n";
-        $data = array('bulk_mail_id' => $row['bm_id'], 'applicant_id' => $row2['id'], 'letter_id' => $row['bm_letter'], 'completed' => 0);
-        push_to_queue( 'Dipi', 'mail', json_encode( $data ), 86400000);
-     }
-     $data = array('bulk_mail_id' => $row['bm_id'], 'completed' => 1);
-      push_to_queue( 'Dipi', 'mail', json_encode( $data ), 86400000);
+     $bm_id = $row['bm_id'];
+     $bm_letter = $row['bm_letter'];
+     dh_bulk_mail_enqueue(
+       $row['bm_query'],
+       function ($app_id) use ($bm_id, $bm_letter) {
+         return array('bulk_mail_id' => $bm_id, 'applicant_id' => $app_id, 'letter_id' => $bm_letter, 'completed' => 0);
+       },
+       array('bulk_mail_id' => $bm_id, 'completed' => 1)
+     );
    }
 
 }

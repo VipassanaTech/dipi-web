@@ -4,76 +4,26 @@
 function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $schedule_date, $criteria, $bm_id=0)
 {
   global $user;
-  $q = "select max(a_id) as id from
-    dh_applicant
-    left join dh_applicant_course ac on (a_id=ac_applicant)
-    left join dh_applicant_attended aa on (a_id=aa_applicant)
-    left join dh_applicant_extra ae on (a_id=ae_applicant)
-    left join dh_course c on (a_course=c.c_id)
-    left join dh_country co on (a_country=co.c_code)
-    left join dh_city ci on a_city=ci.c_id
-    left join dh_state s on (a_state=s.s_code and a_country=s.s_country)
-    left join dh_center ce on (a_center=ce.c_id)
-    where
-    $where
-    group by a_email";
-
-  $q_count = "select count(distinct a_email) as id from
-    dh_applicant
-    left join dh_applicant_course ac on (a_id=ac_applicant)
-    left join dh_applicant_attended aa on (a_id=aa_applicant)
-    left join dh_applicant_extra ae on (a_id=ae_applicant)
-    left join dh_course c on (a_course=c.c_id)
-    left join dh_country co on (a_country=co.c_code)
-    left join dh_city ci on a_city=ci.c_id
-    left join dh_state s on (a_state=s.s_code and a_country=s.s_country)
-    left join dh_center ce on (a_center=ce.c_id)
-    where $where";
+  $rq = dh_bulk_mail_build_recipient_query($where);
 
   $bm['bm_name'] = $bulk_mail_name;
   $bm['bm_center'] = arg(1);
-  $bm['bm_count'] = db_query($q_count)->fetchField();
-  $bm['bm_query'] = $q;
+  $bm['bm_count'] = $rq['count'];
+  $bm['bm_query'] = $rq['query'];
   $bm['bm_letter'] = $letter;
   $bm['bm_schedule_date'] = date('Y-m-d H:i:s', strtotime($schedule_date));
+  $bm['bm_criteria'] = dh_bulk_mail_clean_criteria($criteria);
 
-
-  if(isset($criteria['status']))
-    $criteria['status'] = implode(", ", $criteria['status']);
-
-  if(isset($criteria['lang_discourse']) && is_array($criteria['lang_discourse']))
-    $criteria['lang_discourse'] = implode(", ", $criteria['lang_discourse']);
-
-  if(isset($criteria['state']) && is_array($criteria['state']))
-    $criteria['state'] = implode(", ", $criteria['state']);
-
-  if(isset($criteria['country']) && is_array($criteria['country']))
-    $criteria['country'] = implode(", ", $criteria['country']);
-
-
-  unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], $criteria['bm_id'], );
-  foreach ($criteria as $key => $value) {
-    if(!$criteria[$key])
-      unset($criteria[$key]);
-  }
-
-  $bm['bm_criteria'] = json_encode($criteria);
-  // $criteria = theme('table', array('header' => array('Field', 'Value'), 'rows' => $temp));
-  // var_dump($criteria);
-
-  if($bm_id)
-  {
+  if ($bm_id) {
     $bm['bm_updated'] = date('Y-m-d H:i:s');
     $bm['bm_updated_by'] = $user->uid;
     db_update('dh_bulk_mail')->fields($bm)->condition('bm_id', $bm_id)->execute();
   }
-  else
-  {
+  else {
     $bm['bm_created_by'] = $user->uid;
     $bm['bm_updated_by'] = $user->uid;
     db_insert('dh_bulk_mail')->fields($bm)->execute();
   }
-
 }
 
 
