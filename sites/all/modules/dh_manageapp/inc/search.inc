@@ -1764,6 +1764,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     else {
       $edit_data['lang_discourse'] = array();
     }
+    if ( !empty($edit_data['state']) ) {
+      $edit_data_st = explode( ', ', $edit_data['state'] );
+      $edit_data['state'] = array_combine($edit_data_st, $edit_data_st);
+    }
+    else {
+      $edit_data['state'] = array();
+    }
   }
 
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
@@ -1858,8 +1865,8 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$where .= " and a_country NOT IN ('$centre_country')";
 		}
 
-		if ( $storage['state'] <> '' )
-			$where .= " and s_name LIKE '".$storage['state']."%'";
+		if ( isset($storage['state']) && is_array($storage['state']) && count(array_filter($storage['state'])) > 0 )
+			$where .= " and s_name in ('".implode("', '", array_map('addslashes', array_filter($storage['state'])))."')";
 
 		if ( $storage['email'] <> '' )
 			$where .= " and a_email LIKE '".$storage['email']."%'";
@@ -1997,8 +2004,11 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$q = "select c_code, c_name from dh_country order by c_name";
 		$countries = db_query($q)->fetchAllKeyed();
 		$countries[''] = 'Choose';
-		//$q = "select s_code, s_name from dh_state order by s_name";
-		//$states = db_query($q)->fetchAllKeyed();
+		// States grouped by country code, for the dependent State dropdown (client-side cascade).
+		$states_by_country = array();
+		foreach (db_query("select s_country, s_name from dh_state order by s_name") as $srow) {
+			$states_by_country[$srow->s_country][] = $srow->s_name;
+		}
 
 		$q = "select td_val1, td_val1 from dh_type_detail where td_key='APPLICATION-MODE' order by td_val1";
 		$modes = db_query($q)->fetchAllKeyed();
@@ -2023,7 +2033,9 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => $update_bm?$edit_data['gender']:'',  '#weight' => 8);
 		$form['country'] = array('#title' => 'Country', '#type' => 'select', '#options' => $countries, '#default_value' => $update_bm?$edit_data['country']:'', '#weight' => 9);
 		//$form['state'] = array('#title' => 'State', '#type' => 'select', '#options' => $states, '#weight' => 4);
-		$form['state'] = array('#title' => 'State', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['state']:'','#weight' => 10);
+		// State is a dependent dropdown filled from the chosen Country (JS cascade).
+		// #validated => TRUE so a JS-populated value is accepted on submit.
+		$form['state'] = array('#title' => 'State', '#type' => 'select', '#multiple' => 'multiple', '#options' => array(), '#default_value' => ($update_bm && isset($edit_data['state']) && is_array($edit_data['state'])) ? $edit_data['state'] : array(), '#validated' => TRUE, '#weight' => 10, '#attributes' => array('id' => 'edit-state'));
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['email']:'', '#weight' => 11);
 		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#default_value' => $update_bm?$edit_data['mode']:'', '#options' => $modes, '#weight' => 18 );
 		$langs = db_query("select l_name, l_name from dh_languages order by l_name")->fetchAllKeyed();
@@ -2119,6 +2131,10 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
         '#weight' => 7);
     }
 
+		$cur_state = array();
+		if ($update_bm && isset($edit_data['state']) && is_array($edit_data['state'])) { $cur_state = array_values($edit_data['state']); }
+		elseif (isset($form_state['storage']['state']) && is_array($form_state['storage']['state'])) { $cur_state = array_values($form_state['storage']['state']); }
+
 		$js = '
 			(function ($) {
 				$(document).ready(function(){
@@ -2126,6 +2142,18 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 					$("#edit-country").select2();
           $("#edit-app-status").select2();
           $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
+          $("#edit-state").select2({ placeholder: "Choose state(s)", allowClear: true, width: "220px" });
+          var STATES = '.drupal_json_encode($states_by_country).';
+          var curState = '.drupal_json_encode($cur_state).';
+          function fillStates(cc, sel){
+            sel = sel || [];
+            var $s = $("#edit-state");
+            $s.empty();
+            (STATES[cc] || []).forEach(function(n){ $s.append(new Option(n, n, false, sel.indexOf(n) > -1)); });
+            $s.trigger("change.select2");
+          }
+          fillStates($("#edit-country").val(), curState);
+          $("#edit-country").on("change", function(){ fillStates($(this).val(), []); });
 					$("#edit-f-name").focus();
 
           var old_status_values = [];
