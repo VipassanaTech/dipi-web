@@ -136,9 +136,84 @@ function dh_admin_bulk_mail_compose_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'admin-bulk-mail';
 }
 
-// Test-send is implemented in Task 7; stub for now so the button exists.
+/**
+ * Send ONE admin bulk-mail message via Mailgun. Used by test-send and by the
+ * queue consumer (Task 8). $abm is a dh_admin_bulk_mail row (assoc array) with
+ * abm_id/abm_subject/abm_body/abm_from_name/abm_from_email/abm_reply_to.
+ * Embeds CID inline images and attaches the blast's documents. Honours test mode.
+ * Returns array('result'=>TRUE,'res_id'=>...); throws on Mailgun error.
+ */
+function dh_send_admin_bulk_mail(array $abm, $to_email, $to_name = '', $footer = '', $app_id = 0) {
+  $from = $abm['abm_from_name'] . ' <' . $abm['abm_from_email'] . '>';
+  $mg = \Mailgun\Mailgun::create(variable_get('mailgun_key', ''));
+  $test_mode = variable_get('mode_test', '0');
+  $to = $test_mode ? variable_get('mode_test_emails', '') : $to_email;
+
+  // Embed letter-style inline images (same public://letters/images dir) as CID.
+  $embedded = _dh_letter_embed_inline_images($abm['abm_body']);
+  $html = $embedded['html'] . $footer;
+
+  $options = array(
+    'from' => $from,
+    'to' => $to,
+    'subject' => $abm['abm_subject'],
+    'html' => $html,
+    'v:abm-id' => $abm['abm_id'],
+    'v:app-id' => $app_id,
+    'v:test-mode' => $test_mode,
+  );
+  if (!empty($abm['abm_reply_to'])) {
+    $options['h:Reply-To'] = $abm['abm_reply_to'];
+  }
+
+  // Document attachments for this blast.
+  $atts = db_query("select abma_uri, abma_name from dh_admin_bulk_mail_attachment where abma_abm=:id", array(':id' => $abm['abm_id']));
+  foreach ($atts as $a) {
+    $path = drupal_realpath($a->abma_uri);
+    if ($path && file_exists($path)) {
+      $options['attachment'][] = array('filePath' => $path, 'filename' => $a->abma_name);
+    }
+  }
+
+  // CID inline images.
+  if (!empty($embedded['inline'])) {
+    foreach ($embedded['inline'] as $img) {
+      $options['inline'][] = $img;
+    }
+  }
+
+  $domain = get_mailgun_domain($from);
+  $res = $mg->messages()->send($domain, $options);
+  return array('result' => TRUE, 'res_id' => $res->getId());
+}
+
 function dh_admin_bulk_mail_test_submit($form, &$form_state) {
-  drupal_set_message('Test send will be wired in a later step.');
+  global $user;
+  $v = $form_state['values'];
+  $abm_id = $form_state['abm_id'];
+  // Persist current content to the row so the test reflects exactly what will send.
+  db_update('dh_admin_bulk_mail')->fields(array(
+    'abm_name' => $v['abm_name'], 'abm_subject' => $v['abm_subject'], 'abm_body' => $v['abm_body'],
+    'abm_from_name' => $v['abm_from_name'], 'abm_from_email' => $v['abm_from_email'], 'abm_reply_to' => $v['abm_reply_to'],
+    'abm_test_email' => $v['test_email'], 'abm_test_sent_at' => date('Y-m-d H:i:s'),
+    'abm_updated' => date('Y-m-d H:i:s'), 'abm_updated_by' => $user->uid,
+  ))->condition('abm_id', $abm_id)->execute();
+
+  if (!filter_var($v['test_email'], FILTER_VALIDATE_EMAIL)) {
+    drupal_set_message('Enter a valid test email address.', 'error');
+    $form_state['rebuild'] = TRUE;
+    return;
+  }
+  $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
+  try {
+    $ret = dh_send_admin_bulk_mail($abm, $v['test_email'], 'Test', "<br><br><small>[test email]</small>", 0);
+    $note = variable_get('mode_test', '0') ? ' (test mode is ON — actually delivered to ' . check_plain(variable_get('mode_test_emails', '')) . ')' : '';
+    drupal_set_message('Test email sent to ' . check_plain($v['test_email']) . $note . '. Mailgun id: ' . check_plain($ret['res_id']));
+  }
+  catch (\Throwable $e) {
+    drupal_set_message('Test send failed: ' . check_plain($e->getMessage()), 'error');
+    watchdog('AdminBulkMail', 'test send failed abm=@a: @m', array('@a' => $abm_id, '@m' => $e->getMessage()), WATCHDOG_ERROR);
+  }
   $form_state['rebuild'] = TRUE;
 }
 
