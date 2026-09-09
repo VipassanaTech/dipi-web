@@ -2,6 +2,23 @@
 // sites/all/modules/dh_manageapp/inc/admin-bulk-mail.inc
 // Administrator (centre-independent) bulk email — self-contained subsystem.
 
+function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
+  global $user;
+  $rq = dh_bulk_mail_build_recipient_query($where);
+  $now = date('Y-m-d H:i:s');
+  return db_insert('dh_admin_bulk_mail')->fields(array(
+    'abm_query' => $rq['query'],
+    'abm_count' => $rq['count'],
+    'abm_criteria' => dh_bulk_mail_clean_criteria($criteria),
+    'abm_centres' => $centres_csv,
+    'abm_processed' => 0,   // draft
+    'abm_created' => $now,
+    'abm_updated' => $now,
+    'abm_created_by' => $user->uid,
+    'abm_updated_by' => $user->uid,
+  ))->execute();
+}
+
 function dh_admin_bulk_mail_list() { return 'TODO list'; }
 function dh_admin_bulk_mail_compose($abm_id) { return 'TODO compose '.$abm_id; }
 function dh_admin_bulk_mail_image_upload() { drupal_json_output(array()); }

@@ -1751,6 +1751,17 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	if (arg(1) <> '')
 		$centre_id = arg(1);
 
+  $admin_mode = (arg(0) == 'admin-bulk-mail') && user_access('admin mass mail');
+  if ($admin_mode) {
+    // Admin routes don't carry a centre in arg(1) (e.g. arg(1) is literally
+    // "new" for admin-bulk-mail/new). Neutralize $centre_id to the existing
+    // centre-0 sentinel (see dh_center c_id=0, the template/non-real centre)
+    // so downstream single-centre queries (e.g. in dh_manageapp_search_results())
+    // stay valid SQL and simply return nothing, instead of erroring out on a
+    // bogus value like "c_center=new".
+    $centre_id = 0;
+  }
+
   if (arg(0) == "bulk-mail")
   {
     $update_bm = 1;
@@ -1814,10 +1825,19 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
                 $storage[$key] = addslashes($value);
         }
 
-		if( $centre_id == '')
-			$centre_id = $storage['centre'];
-
-		$where = "a_center='".$centre_id."'";
+		if ($admin_mode) {
+			$sel = (isset($storage['abm_centres']) && is_array($storage['abm_centres'])) ? array_filter($storage['abm_centres']) : array();
+			if (!empty($sel)) {
+				$where = "a_center in (" . implode(',', array_map('intval', $sel)) . ")";
+			}
+			else {
+				$where = "1=1"; // all centres
+			}
+		}
+		else {
+			if ($centre_id == '') { $centre_id = $storage['centre']; }
+			$where = "a_center='" . $centre_id . "'";
+		}
 		if ( $storage['course'] <> '' )
 			$where .= " and a_course='".$storage['course']."'";
 		if ( $storage['f_name'] <> '' )
@@ -1965,6 +1985,20 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		else
 			$db_type = 'student';
 
+    if ($admin_mode) {
+      $centres_csv = '';
+      if (isset($storage['abm_centres']) && is_array($storage['abm_centres'])) {
+        $centres_csv = implode(',', array_map('intval', array_filter($storage['abm_centres'])));
+      }
+      $abm_id = dh_admin_bulk_mail_create_draft($where, $storage, $centres_csv);
+      $cnt = db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchField();
+      $out = '<h2>' . l('Back to Admin Bulk Email', 'admin-bulk-mail') . '</h2>';
+      $out .= '<p><a class="btn btn-primary" href="/admin-bulk-mail/' . $abm_id . '/compose">Compose bulk email for these ' . $cnt . ' recipients</a></p>';
+      $out .= dh_manageapp_search_results($db_type, $where, $centre_id);
+      $form['out'] = array('#markup' => $out, '#weight' => 100);
+      return $form;
+    }
+
     if($storage['bulk-mail'])
     {
         $schedule_date = $storage['bulk-mail-schedule']['date'];
@@ -1994,7 +2028,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
 
-		if ( $centre_id == '' )
+		if ( !$admin_mode && $centre_id == '' )
 		{
 			if (user_access("access all centres"))
 				$q = "select c_id, c_name from dh_center order by c_name";
@@ -2035,7 +2069,21 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$breadcrumb .= l("Back to Dashboard", "centre/".$centre_id);
 		if ($breadcrumb <> '')
 			$form['a'] = array('#markup' => '<h3>'.$breadcrumb.'</h3>');
-		$form['#attributes'] = array('class' => array('container-inline')); 
+		$form['#attributes'] = array('class' => array('container-inline'));
+		if ($admin_mode) {
+			$all_centres = db_query("select c_id, c_name from dh_center where c_id<>0 order by c_name")->fetchAllKeyed();
+			$form['abm_centres'] = array(
+				'#title' => 'Centres',
+				'#type' => 'select',
+				'#multiple' => 'multiple',
+				'#options' => $all_centres,
+				'#default_value' => array(),
+				'#validated' => TRUE,
+				'#weight' => 0,
+				'#attributes' => array('id' => 'edit-abm-centres'),
+				'#description' => 'Leave blank to target ALL centres.',
+			);
+		}
 		$form['course'] = array('#title' => 'Course', '#type' => 'select','#default_value' => $update_bm?$edit_data['course']:'', '#options' => $courses, '#weight' => 1);
 		/*$form['db_type'] = array('#title' => 'DB Type', '#type' => 'radios', '#options' => array('s' => 'Student', 'a' => 'Applicant' ), '#default_value' => 'a',  '#weight' => 2);*/
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['f_name']:'', '#weight' => 3);
@@ -2157,6 +2205,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			(function ($) {
 				$(document).ready(function(){
 					$("#edit-course").select2();
+					if ($("#edit-abm-centres").length) { $("#edit-abm-centres").select2({ placeholder: "All centres", allowClear: true, width: "260px" }); }
 					$("#edit-country").select2({ placeholder: "Choose country(ies)", allowClear: true, width: "220px" });
           $("#edit-app-status").select2();
           $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
