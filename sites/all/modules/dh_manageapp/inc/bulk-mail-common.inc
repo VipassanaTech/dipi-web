@@ -38,7 +38,8 @@ function dh_bulk_mail_clean_criteria($criteria) {
     $criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'],
     $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'],
     $criteria['bulk_mail_name'], $criteria['letters'],
-    $criteria['bulk-mail-schedule'], $criteria['bm_id']
+    $criteria['bulk-mail-schedule'], $criteria['bm_id'],
+    $criteria['abm_centres']
   );
   foreach ($criteria as $key => $value) {
     if (!$criteria[$key]) {

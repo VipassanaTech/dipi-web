@@ -1828,7 +1828,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		if ($admin_mode) {
 			$sel = (isset($storage['abm_centres']) && is_array($storage['abm_centres'])) ? array_filter($storage['abm_centres']) : array();
 			if (!empty($sel)) {
-				$where = "a_center in (" . implode(',', array_map('intval', $sel)) . ")";
+				$where = "a_center in (" . implode(',', array_filter(array_map('intval', $sel))) . ")";
 			}
 			else {
 				$where = "1=1"; // all centres
@@ -1891,7 +1891,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 				$where .= " and a_lang_discourse in ('".$ld_list."')";
 		}
 
-		if ( $storage['is_foreign'] <> '' )
+		if ( !$admin_mode && $storage['is_foreign'] <> '' )
 		{
 			$centre_country = db_query("select c_country from dh_center where c_id=$centre_id")->fetchField();
 			$where .= " and a_country NOT IN ('$centre_country')";
@@ -1988,7 +1988,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     if ($admin_mode) {
       $centres_csv = '';
       if (isset($storage['abm_centres']) && is_array($storage['abm_centres'])) {
-        $centres_csv = implode(',', array_map('intval', array_filter($storage['abm_centres'])));
+        $centres_csv = implode(',', array_filter(array_map('intval', $storage['abm_centres'])));
       }
       $abm_id = dh_admin_bulk_mail_create_draft($where, $storage, $centres_csv);
       $cnt = db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchField();
@@ -2104,7 +2104,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		$form['lang_discourse'] = array('#title' => 'Discourse Language', '#title_display' => 'invisible', '#type' => 'select', '#multiple' => 'multiple', '#options' => $langs, '#default_value' => ($update_bm && isset($edit_data['lang_discourse'])) ? $edit_data['lang_discourse'] : array(), '#weight' => 20, '#attributes' => array('id' => 'edit-lang-discourse'), '#suffix' => '</div></div>');
 		$form['alist'] = array('#title' => '&nbsp;AList?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['alist']:'0',  '#weight' => 13, '#prefix' => '<div class="cb-group">');
 		$form['is_at'] = array('#title' => '&nbsp;Is Teacher?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_at']:'0',  '#weight' => 14);
-		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_foreign']:'0',  '#weight' => 15);
+		$form['is_foreign'] = array('#title' => '&nbsp;Is Foreign National?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_foreign']:'0',  '#weight' => 15, '#access' => !$admin_mode);
 		$form['is_willing_to_serve'] = array('#title' => '&nbsp;Willing To Serve?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_willing_to_serve']:'0',  '#weight' => 16);
 		$form['is_pregnant'] = array('#title' => '&nbsp;Is Pregnant?', '#type' => 'checkbox', '#default_value' => $update_bm?$edit_data['is_pregnant']:'0',  '#weight' => 17, '#suffix' => '</div>');
 		$form['mobile'] = array('#title' => 'Mobile', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['mobile']:'',  '#weight' => 21);
