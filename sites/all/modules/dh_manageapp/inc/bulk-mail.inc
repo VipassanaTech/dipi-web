@@ -104,6 +104,18 @@ function dh_show_bulk_mail_schedule()
     $criteria = json_decode($r['bm_criteria']);
     foreach ($criteria as $key => $value)
     {
+      // Show the course NAME instead of the stored course id (users find the raw
+      // id confusing).
+      if ($key === 'course' && $value)
+      {
+        $cname = db_query("select c_name from dh_course where c_id=:id", array(':id' => $value))->fetchField();
+        if ($cname !== FALSE && trim($cname) !== '') { $value = $cname; }
+      }
+      // Make the discourse-language operator readable.
+      elseif ($key === 'lang_discourse_op')
+      {
+        $value = ($value === 'not_in') ? 'is none of' : 'is any of';
+      }
       $temp['criteria'][] = array($key, nl2br($value));
     }
     $temp['criteria'] = theme('table', array('header' => array('Field', 'Value'), 'rows' => $temp['criteria']));
