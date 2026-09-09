@@ -45,7 +45,7 @@ function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $sc
     $criteria['lang_discourse'] = implode(", ", $criteria['lang_discourse']);
 
 
-  unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], );
+  unset($criteria['form_build_id'], $criteria['form_token'], $criteria['form_id'], $criteria['bulk-mail'], $criteria['db_type'], $criteria['op'], $criteria['bulk_mail_name'], $criteria['letters'], $criteria['bulk-mail-schedule'], $criteria['bm_id'], );
   foreach ($criteria as $key => $value) {
     if(!$criteria[$key])
       unset($criteria[$key]);
@@ -104,6 +104,8 @@ function dh_show_bulk_mail_schedule()
     $criteria = json_decode($r['bm_criteria']);
     foreach ($criteria as $key => $value)
     {
+      // Internal-only key that leaks into older saved criteria; never a filter.
+      if ($key === 'bm_id') { continue; }
       // Show the course NAME instead of the stored course id (users find the raw
       // id confusing).
       if ($key === 'course' && $value)
