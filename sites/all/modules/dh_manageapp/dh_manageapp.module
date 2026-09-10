@@ -2789,8 +2789,24 @@ function _get_sms_count()
 
 function show_application_pdf( $app_id )
 {
-	$q = "select a_uri from dh_applicant where a_id=".$app_id;
-	$url = db_query($q)->fetchField();
+	$q = "select c.c_subdomain,
+        DATE_FORMAT(co.c_start, '%d-%b-%Y') as 'start_date',
+        td.td_val1, a.a_f_name, a.a_l_name, a_uri
+        from dh_applicant a
+        left join dh_course co on a.a_course=co.c_id
+        left join dh_center c on a.a_center=c.c_id
+        left join dh_type_detail td on co.c_course_type=td.td_id
+        where a_id=:a_id";
+
+    $r = db_query($q, array(':a_id'=>$app_id))->fetchAssoc();
+
+    $filename = ucfirst($r["c_subdomain"]) . '_'
+      . $r["start_date"] . '_'
+      . application_filename_part($r["td_val1"]) . '_'
+      . application_filename_part($r["a_f_name"]) . '-'
+      . application_filename_part($r["a_l_name"]).".pdf";
+
+    $url = $r["a_uri"];
 
 	$url = str_replace("private:///", '', $url);
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $url, 'stream');
@@ -2798,7 +2814,7 @@ function show_application_pdf( $app_id )
 		watchdog('S3PDF', $ret['message']);
 
 	header("Content-Type: application/pdf");
-	header('Content-disposition:inline; filename="'.basename($url).'"');
+	header('Content-disposition:inline; filename="'.$filename.'"');
 	header('Cache-Control: private');
 	// If you're serving to IE 9, then the following may be needed
 	//header('Cache-Control: max-age=1');
@@ -2807,6 +2823,25 @@ function show_application_pdf( $app_id )
 	print($ret['data']);
 	exit();
 
+}
+
+function application_filename_part($value)
+{
+    // Trim whitespace
+    $value = trim($value);
+
+    // Replace any whitespace sequence with -
+    $value = preg_replace('/\s+/', '-', $value);
+
+    // Replace characters that are unsafe/problematic in filenames with -
+    // Keep letters (including UTF-8), numbers, _, -, and .
+    $value = preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $value);
+
+    // Avoid multiple consecutive -
+    $value = preg_replace('/-+/', '-', $value);
+
+    // Remove leading/trailing - or .
+    return trim($value, '-.');
 }
 
 
