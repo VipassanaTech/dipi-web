@@ -19,7 +19,38 @@ function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
   ))->execute();
 }
 
-function dh_admin_bulk_mail_list() { return 'TODO list'; }
+function dh_admin_bulk_mail_list() {
+  $labels = array(0 => 'Draft', 1 => 'Pending', 2 => 'In-progress', 3 => 'Done', 4 => 'Failed', 5 => 'Cancelled');
+  $rows = array();
+  $res = db_query("select * from dh_admin_bulk_mail where abm_deleted=0 order by abm_id desc");
+  foreach ($res as $r) {
+    $centres = $r->abm_centres !== '' ? (count(array_filter(explode(',', $r->abm_centres))) . ' centre(s)') : 'All';
+    $actions = array();
+    if ($r->abm_processed == 0 || $r->abm_processed == 1) {
+      $actions[] = l('Compose', 'admin-bulk-mail/' . $r->abm_id . '/compose');
+    }
+    $actions[] = l('Log', 'admin-bulk-mail/' . $r->abm_id . '/show-log');
+    $actions[] = l('Delete', 'admin-bulk-mail/' . $r->abm_id . '/delete');
+    $rows[] = array(
+      check_plain($r->abm_name) === '' ? '(unnamed)' : check_plain($r->abm_name),
+      $centres,
+      (int) $r->abm_count,
+      (int) $r->abm_sent,
+      (int) $r->abm_failed,
+      ((int) $r->abm_skipped_unsub + (int) $r->abm_skipped_invalid),
+      check_plain($r->abm_schedule_date),
+      $labels[$r->abm_processed],
+      implode(' | ', $actions),
+    );
+  }
+  $out = '<h2>' . l('+ New admin bulk email', 'admin-bulk-mail/new') . '</h2>';
+  $out .= theme('table', array(
+    'header' => array('Name', 'Centres', 'Recipients', 'Sent', 'Failed', 'Skipped', 'Send date', 'Status', 'Actions'),
+    'rows' => $rows,
+    'empty' => 'No admin bulk emails yet.',
+  ));
+  return $out;
+}
 
 function dh_admin_bulk_mail_compose($abm_id) {
   return drupal_get_form('dh_admin_bulk_mail_compose_form', $abm_id);
@@ -272,8 +303,37 @@ function dh_admin_bulk_mail_attach_delete($abm_id, $abma_id) {
   }
   drupal_goto('admin-bulk-mail/' . $abm_id . '/compose');
 }
-function dh_admin_bulk_mail_delete($abm_id) { return 'TODO delete '.$abm_id; }
-function dh_admin_bulk_mail_show_log($abm_id) { return 'TODO log '.$abm_id; }
+function dh_admin_bulk_mail_delete($abm_id) {
+  db_query("update dh_admin_bulk_mail set abm_deleted=1, abm_updated=:u where abm_id=:id", array(':u' => date('Y-m-d H:i:s'), ':id' => $abm_id));
+  drupal_set_message('Admin bulk email deleted.');
+  drupal_goto('admin-bulk-mail');
+}
+function dh_admin_bulk_mail_show_log($abm_id) {
+  $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
+  if (!$abm) { drupal_not_found(); drupal_exit(); }
+  $out = '<h2>' . l('Back to Admin Bulk Email', 'admin-bulk-mail') . '</h2>';
+  $out .= '<h3>' . check_plain($abm['abm_name'] !== '' ? $abm['abm_name'] : '(unnamed)') . '</h3>';
+  $out .= '<p>Matched <b>' . (int) $abm['abm_count'] . '</b> &middot; Sent <b>' . (int) $abm['abm_sent'] . '</b> &middot; Failed <b>' . (int) $abm['abm_failed'] . '</b> &middot; Skipped (unsubscribed) <b>' . (int) $abm['abm_skipped_unsub'] . '</b> &middot; Skipped (invalid email) <b>' . (int) $abm['abm_skipped_invalid'] . '</b></p>';
+  $out .= '<p><em>Only problem recipients are listed below; successful sends are counted but not listed individually.</em></p>';
+  $rows = array();
+  $res = db_query("select * from dh_admin_bulk_mail_log where abml_abm=:id order by abml_id desc", array(':id' => $abm_id));
+  foreach ($res as $r) {
+    $rows[] = array(
+      check_plain($r->abml_name),
+      check_plain($r->abml_email),
+      check_plain($r->abml_center),
+      check_plain($r->abml_status),
+      check_plain($r->abml_error),
+      check_plain($r->abml_created),
+    );
+  }
+  $out .= theme('table', array(
+    'header' => array('Name', 'Email', 'Centre', 'Status', 'Error', 'Time'),
+    'rows' => $rows,
+    'empty' => 'No problem recipients (all sends succeeded, or the blast has not run yet).',
+  ));
+  return $out;
+}
 function dh_admin_bulk_mail_get_log($abm_id) { drupal_json_output(array()); }
 /** Insert an EXCEPTIONS-ONLY log row (failed / skipped-unsub / skipped-invalid). Successes are not logged per-row. */
 function dh_admin_bulk_mail_log_row($abm_id, $app_id, $name, $email, $center, $status, $error) {
