@@ -2307,8 +2307,12 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 function dh_manageapp_search_form_validate($form, &$form_state) 
 {
 	$values = $form_state['values'];
+	$admin_mode = (arg(0) == 'admin-bulk-mail') && user_access('admin mass mail');
 	if (arg(1) <> '')
 		$values['centre'] = arg(1);
+	// Admin bulk email targets by criteria (blank centre = all centres), so the
+	// centre-required and course/name/conf/email-required gates do not apply.
+	if (!$admin_mode) {
   	if ($values['centre'] == '')
   	{
     	form_set_error('centre', 'Centre must be selected');
@@ -2324,6 +2328,7 @@ function dh_manageapp_search_form_validate($form, &$form_state)
   	if ( $values['phone_home'] <> '' ) $count++;
   	if ( $count == 0 && !$values['bulk-mail'])
   		form_set_error('course', 'Please select a Course or Name or Conf No or Email');
+	}
 
     if($values['bulk-mail'])
     {
