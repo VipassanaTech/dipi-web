@@ -256,7 +256,10 @@ function dh_admin_bulk_mail_test_submit($form, &$form_state) {
   }
   $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
   try {
-    $ret = dh_send_admin_bulk_mail($abm, $g('test_email'), 'Test', "<br><br><small>[test email]</small>", 0);
+    // Include the REAL unsubscribe footer so the test is a faithful preview of what
+    // recipients receive (the marker just flags it as a test).
+    $footer = "<br><br><small>[test email]</small>" . dh_admin_bulk_mail_unsub_footer($g('test_email'));
+    $ret = dh_send_admin_bulk_mail($abm, $g('test_email'), 'Test', $footer, 0);
     $note = variable_get('mode_test', '0') ? ' (test mode is ON — actually delivered to ' . check_plain(variable_get('mode_test_emails', '')) . ')' : '';
     drupal_set_message('Test email sent to ' . check_plain($g('test_email')) . $note . '. Mailgun id: ' . check_plain($ret['res_id']));
   }
