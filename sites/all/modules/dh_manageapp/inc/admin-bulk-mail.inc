@@ -275,4 +275,66 @@ function dh_admin_bulk_mail_attach_delete($abm_id, $abma_id) {
 function dh_admin_bulk_mail_delete($abm_id) { return 'TODO delete '.$abm_id; }
 function dh_admin_bulk_mail_show_log($abm_id) { return 'TODO log '.$abm_id; }
 function dh_admin_bulk_mail_get_log($abm_id) { drupal_json_output(array()); }
-function dh_admin_bulk_mail_unsubscribe($token) { return 'TODO unsub'; }
+/** Insert an EXCEPTIONS-ONLY log row (failed / skipped-unsub / skipped-invalid). Successes are not logged per-row. */
+function dh_admin_bulk_mail_log_row($abm_id, $app_id, $name, $email, $center, $status, $error) {
+  db_insert('dh_admin_bulk_mail_log')->fields(array(
+    'abml_abm' => $abm_id, 'abml_applicant' => $app_id, 'abml_name' => $name, 'abml_email' => $email,
+    'abml_center' => $center, 'abml_status' => $status, 'abml_error' => substr((string) $error, 0, 1000),
+    'abml_created' => date('Y-m-d H:i:s'),
+  ))->execute();
+}
+
+/** Global unsubscribe footer (encrypted email → public abm-unsubscribe route). Mirrors the centre footer pattern. */
+function dh_admin_bulk_mail_unsub_footer($email) {
+  $pass = variable_get('bulk_mail_auth_pass', '');
+  $authcode = bin2hex(openssl_encrypt($email, "AES-128-ECB", $pass));
+  $url = url('abm-unsubscribe/' . $authcode, array('absolute' => TRUE));
+  return "<br><br><small>If you don't want to receive these emails, <a href='$url'>Unsubscribe</a></small>";
+}
+
+/** Handle one queued admin message (recipient or completion sentinel). Updates summary tallies; logs only exceptions. */
+function dh_admin_bulk_mail_consume($data) {
+  if (!empty($data->completed)) {
+    db_query("update dh_admin_bulk_mail set abm_processed=3, abm_updated=:u where abm_id=:id", array(':u' => date('Y-m-d H:i:s'), ':id' => $data->abm_id));
+    return;
+  }
+  $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $data->abm_id))->fetchAssoc();
+  if (!$abm) { return; }
+  $email = isset($data->email) ? $data->email : '';
+  $name = isset($data->name) ? $data->name : '';
+  $app_id = isset($data->app_id) ? $data->app_id : 0;
+  $center = isset($data->center) ? $data->center : NULL;
+
+  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    db_query("update dh_admin_bulk_mail set abm_skipped_invalid=abm_skipped_invalid+1 where abm_id=:id", array(':id' => $abm['abm_id']));
+    dh_admin_bulk_mail_log_row($abm['abm_id'], $app_id, $name, $email, $center, 'skipped-invalid', '');
+    return;
+  }
+  if (db_query("select abu_id from dh_admin_bulk_mail_unsubscribe where abu_email=:e", array(':e' => $email))->fetchField()) {
+    db_query("update dh_admin_bulk_mail set abm_skipped_unsub=abm_skipped_unsub+1 where abm_id=:id", array(':id' => $abm['abm_id']));
+    dh_admin_bulk_mail_log_row($abm['abm_id'], $app_id, $name, $email, $center, 'skipped-unsub', '');
+    return;
+  }
+  try {
+    dh_send_admin_bulk_mail($abm, $email, $name, dh_admin_bulk_mail_unsub_footer($email), $app_id);
+    db_query("update dh_admin_bulk_mail set abm_sent=abm_sent+1 where abm_id=:id", array(':id' => $abm['abm_id']));
+  }
+  catch (\Throwable $e) {
+    db_query("update dh_admin_bulk_mail set abm_failed=abm_failed+1 where abm_id=:id", array(':id' => $abm['abm_id']));
+    dh_admin_bulk_mail_log_row($abm['abm_id'], $app_id, $name, $email, $center, 'failed', $e->getMessage());
+    watchdog('AdminBulkMail', 'send failed abm=@a email=@e: @m', array('@a' => $abm['abm_id'], '@e' => $email, '@m' => $e->getMessage()), WATCHDOG_ERROR);
+  }
+}
+
+function dh_admin_bulk_mail_unsubscribe($token) {
+  $pass = variable_get('bulk_mail_auth_pass', '');
+  $email = @openssl_decrypt(pack('H*', $token), "AES-128-ECB", $pass);
+  if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $exists = db_query("select abu_id from dh_admin_bulk_mail_unsubscribe where abu_email=:e", array(':e' => $email))->fetchField();
+    if (!$exists) {
+      db_insert('dh_admin_bulk_mail_unsubscribe')->fields(array('abu_email' => $email, 'abu_created' => date('Y-m-d H:i:s')))->execute();
+    }
+    return '<h2>Unsubscribed</h2><p>' . check_plain($email) . ' will no longer receive these emails.</p>';
+  }
+  return '<h2>Invalid link</h2><p>This unsubscribe link is not valid.</p>';
+}

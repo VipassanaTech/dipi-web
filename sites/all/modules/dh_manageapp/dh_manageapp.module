@@ -3066,6 +3066,13 @@ function dipi_mail_consumer_callback($msg)
 {
 	try {
 	    $data = json_decode($msg->body);
+      // Admin (centre-independent) bulk email — additive branch. Messages with no
+      // 'type' are centre bulk-mail and fall through to the unchanged logic below.
+      if (isset($data->type) && $data->type === 'admin') {
+        dh_admin_bulk_mail_consume($data);
+        $msg->ack();
+        return;
+      }
       if($data->completed)
       {
         $bm_updated_by = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
