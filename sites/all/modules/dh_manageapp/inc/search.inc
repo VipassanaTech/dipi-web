@@ -1991,10 +1991,26 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
         $centres_csv = implode(',', array_filter(array_map('intval', $storage['abm_centres'])));
       }
       $abm_id = dh_admin_bulk_mail_create_draft($where, $storage, $centres_csv);
-      $cnt = db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchField();
+      $cnt = (int) db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchField();
       $out = '<h2>' . l('Back to Admin Bulk Email', 'admin-bulk-mail') . '</h2>';
-      $out .= '<p><a class="btn btn-primary" href="/admin-bulk-mail/' . $abm_id . '/compose">Compose bulk email for these ' . $cnt . ' recipients</a></p>';
-      $out .= dh_manageapp_search_results($db_type, $where, $centre_id);
+      $out .= '<p style="font-size:15px">This audience is <b>' . $cnt . '</b> recipient(s) (one email per unique address).</p>';
+      $out .= '<p><a class="btn btn-primary" href="/admin-bulk-mail/' . $abm_id . '/compose">Compose bulk email for these ' . $cnt . ' recipients &raquo;</a></p>';
+      // Read-only preview (first N) — no per-row action controls. The actual send
+      // uses the stored criteria, not this table.
+      $preview_limit = 25;
+      $prows = array();
+      foreach (dh_bulk_mail_preview_recipients($where, $preview_limit) as $r) {
+        $prows[] = array(check_plain($r->name), check_plain($r->a_email), check_plain($r->centre));
+      }
+      $out .= '<h3>Preview' . ($cnt > 0 ? ' (showing ' . count($prows) . ' of ' . $cnt . ')' : '') . '</h3>';
+      $out .= theme('table', array(
+        'header' => array('Name', 'Email', 'Centre'),
+        'rows' => $prows,
+        'empty' => 'No recipients match this criteria.',
+      ));
+      if ($cnt > count($prows)) {
+        $out .= '<p><em>…and ' . ($cnt - count($prows)) . ' more. The full list is emailed when the blast is scheduled.</em></p>';
+      }
       $form['out'] = array('#markup' => $out, '#weight' => 100);
       return $form;
     }

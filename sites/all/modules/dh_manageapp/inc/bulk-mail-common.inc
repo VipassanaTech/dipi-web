@@ -8,8 +8,8 @@
  * the recipient count for a given WHERE fragment. The WHERE decides scope:
  * centre passes "a_center='X' and ...", admin passes "a_center in (...)"/"1=1".
  */
-function dh_bulk_mail_build_recipient_query($where) {
-  $joins = "
+function _dh_bulk_mail_joins() {
+  return "
     dh_applicant
     left join dh_applicant_course ac on (a_id=ac_applicant)
     left join dh_applicant_attended aa on (a_id=aa_applicant)
@@ -19,9 +19,24 @@ function dh_bulk_mail_build_recipient_query($where) {
     left join dh_city ci on a_city=ci.c_id
     left join dh_state s on (a_state=s.s_code and a_country=s.s_country)
     left join dh_center ce on (a_center=ce.c_id)";
+}
+
+function dh_bulk_mail_build_recipient_query($where) {
+  $joins = _dh_bulk_mail_joins();
   $query = "select max(a_id) as id from $joins where $where group by a_email";
   $count = db_query("select count(distinct a_email) as id from $joins where $where")->fetchField();
   return array('query' => $query, 'count' => (int) $count);
+}
+
+/**
+ * Read-only recipient preview (one row per distinct email): name, email, centre.
+ * Used by the admin bulk-email targeting page to show a small sample instead of the
+ * full interactive search-results table.
+ */
+function dh_bulk_mail_preview_recipients($where, $limit = 25) {
+  $joins = _dh_bulk_mail_joins();
+  $q = "select concat(ifnull(a_f_name,''),' ',ifnull(a_l_name,'')) as name, a_email, ce.c_name as centre from $joins where $where group by a_email order by a_email limit " . (int) $limit;
+  return db_query($q);
 }
 
 /**
