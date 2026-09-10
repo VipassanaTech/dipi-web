@@ -29,13 +29,22 @@ function dh_bulk_mail_build_recipient_query($where) {
 }
 
 /**
- * Read-only recipient preview (one row per distinct email): name, email, centre.
- * Used by the admin bulk-email targeting page to show a small sample instead of the
- * full interactive search-results table.
+ * Read-only recipient preview (one row per distinct email): name, full address
+ * (street + city + pin + state + country), centre, course. Used by the admin
+ * bulk-email targeting page to sanity-check area-based targeting.
  */
 function dh_bulk_mail_preview_recipients($where, $limit = 25) {
   $joins = _dh_bulk_mail_joins();
-  $q = "select concat(ifnull(a_f_name,''),' ',ifnull(a_l_name,'')) as name, a_email, ce.c_name as centre from $joins where $where group by a_email order by a_email limit " . (int) $limit;
+  $q = "select
+      concat(ifnull(a_f_name,''),' ',ifnull(a_l_name,'')) as name,
+      a_address,
+      coalesce(nullif(ci.c_name,''), a_city_str) as city,
+      a_zip,
+      coalesce(nullif(s.s_name,''), a_state) as state,
+      coalesce(nullif(co.c_name,''), a_country) as country,
+      ce.c_name as centre,
+      c.c_name as course
+    from $joins where $where group by a_email order by a_email limit " . (int) $limit;
   return db_query($q);
 }
 

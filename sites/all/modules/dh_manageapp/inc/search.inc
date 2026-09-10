@@ -2000,11 +2000,18 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       $preview_limit = 25;
       $prows = array();
       foreach (dh_bulk_mail_preview_recipients($where, $preview_limit) as $r) {
-        $prows[] = array(check_plain($r->name), check_plain($r->a_email), check_plain($r->centre));
+        $parts = array();
+        if (trim($r->a_address) !== '') { $parts[] = trim($r->a_address); }
+        $citypin = trim(trim($r->city) . ' ' . trim($r->a_zip));
+        if ($citypin !== '') { $parts[] = $citypin; }
+        if (trim($r->state) !== '') { $parts[] = trim($r->state); }
+        if (trim($r->country) !== '') { $parts[] = trim($r->country); }
+        $address = implode(', ', $parts);
+        $prows[] = array(check_plain($r->name), check_plain($address), check_plain($r->centre), check_plain($r->course));
       }
       $out .= '<h3>Preview' . ($cnt > 0 ? ' (showing ' . count($prows) . ' of ' . $cnt . ')' : '') . '</h3>';
       $out .= theme('table', array(
-        'header' => array('Name', 'Email', 'Centre'),
+        'header' => array('Name', 'Address', 'Centre', 'Course'),
         'rows' => $prows,
         'empty' => 'No recipients match this criteria.',
       ));

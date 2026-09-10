@@ -66,13 +66,71 @@ function dh_admin_bulk_mail_compose($abm_id) {
   return drupal_get_form('dh_admin_bulk_mail_compose_form', $abm_id);
 }
 
+/** Friendly label for a criteria key (falls back to Title-cased key). */
+function _dh_abm_criteria_label($key) {
+  $map = array(
+    'f_name' => 'First Name', 'l_name' => 'Last Name', 'conf_no' => 'Confirmation No',
+    'course' => 'Course', 'status' => 'Status', 'type' => 'Applicant Type', 'gender' => 'Gender',
+    'country' => 'Country', 'state' => 'State', 'email' => 'Email', 'mode' => 'Application Mode',
+    'lang_discourse' => 'Discourse Language', 'lang_discourse_op' => 'Discourse Language Match',
+    'mobile' => 'Mobile', 'phone_home' => 'Phone Home', 'pin' => 'Pin Code', 'city' => 'City',
+    'occupation' => 'Occupation', 'designation' => 'Designation', 'company' => 'Company',
+    'alist' => 'AList', 'is_at' => 'Is Teacher', 'is_foreign' => 'Is Foreign National',
+    'is_willing_to_serve' => 'Willing To Serve', 'is_pregnant' => 'Is Pregnant',
+  );
+  return isset($map[$key]) ? $map[$key] : ucwords(str_replace('_', ' ', $key));
+}
+
+/** Render the stored criteria of an admin blast as a readable Field/Value table. */
+function dh_admin_bulk_mail_criteria_html($abm) {
+  $rows = array();
+  // Centres (names, not raw ids).
+  if (!empty($abm['abm_centres'])) {
+    $ids = array_filter(array_map('intval', explode(',', $abm['abm_centres'])));
+    if ($ids) {
+      $names = db_query("select c_name from dh_center where c_id in (:ids)", array(':ids' => $ids))->fetchCol();
+      $rows[] = array('Centres', check_plain(implode(', ', $names)));
+    }
+  }
+  else {
+    $rows[] = array('Centres', 'All centres');
+  }
+  // Other saved criteria.
+  $crit = $abm['abm_criteria'] ? json_decode($abm['abm_criteria']) : NULL;
+  if ($crit) {
+    foreach ($crit as $key => $value) {
+      if (in_array($key, array('bm_id', 'abm_centres'), TRUE)) { continue; }
+      if (is_array($value)) { $value = implode(', ', $value); }
+      if (trim((string) $value) === '') { continue; }
+      if ($key === 'course') {
+        $cn = db_query("select c_name from dh_course where c_id=:id", array(':id' => $value))->fetchField();
+        if ($cn !== FALSE && trim($cn) !== '') { $value = $cn; }
+      }
+      elseif ($key === 'country') {
+        $names = array();
+        foreach (array_map('trim', explode(',', $value)) as $cd) {
+          if ($cd === '') { continue; }
+          $nm = db_query("select c_name from dh_country where c_code=:c", array(':c' => $cd))->fetchField();
+          $names[] = ($nm !== FALSE && trim($nm) !== '') ? $nm : $cd;
+        }
+        $value = implode(', ', $names);
+      }
+      elseif ($key === 'lang_discourse_op') {
+        $value = ($value === 'not_in') ? 'is none of' : 'is any of';
+      }
+      $rows[] = array(_dh_abm_criteria_label($key), nl2br(check_plain($value)));
+    }
+  }
+  return theme('table', array('header' => array('Field', 'Value'), 'rows' => $rows, 'empty' => 'No filters (all applicants).'));
+}
+
 function dh_admin_bulk_mail_compose_form($form, &$form_state, $abm_id) {
   $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
   if (!$abm) { drupal_not_found(); drupal_exit(); }
   $form_state['abm_id'] = $abm_id;
 
-  $centres_desc = $abm['abm_centres'] !== '' ? ('centres ' . check_plain($abm['abm_centres'])) : 'ALL centres';
-  $form['info'] = array('#markup' => '<p>This blast targets <b>' . (int) $abm['abm_count'] . '</b> recipients (' . $centres_desc . ').</p>');
+  $form['info'] = array('#markup' => '<p>This blast targets <b>' . (int) $abm['abm_count'] . '</b> recipient(s).</p>', '#weight' => 0.5);
+  $form['criteria'] = array('#markup' => '<h3>Criteria</h3>' . dh_admin_bulk_mail_criteria_html($abm), '#weight' => 0.6);
 
   $form['abm_name'] = array('#title' => 'Batch name', '#type' => 'textfield', '#required' => TRUE, '#default_value' => $abm['abm_name'], '#weight' => 1);
   $form['abm_from_name'] = array('#title' => 'From name', '#type' => 'textfield', '#required' => TRUE, '#default_value' => $abm['abm_from_name'], '#weight' => 2);
