@@ -2124,8 +2124,8 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		*/
 		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
 
-		if ($centre_id <> '')
-		{		
+		if ($centre_id <> '' || $admin_mode)
+		{
   		$group = 'Advanced';
   		$form['#attributes'] = array('class' => array('container-inline'));
   		$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false, '#weight' => 98);
