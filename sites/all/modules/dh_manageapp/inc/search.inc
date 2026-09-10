@@ -2145,7 +2145,10 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 	    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
 			'#theme_wrappers' => array('date_popup'), '#suffix' => '');
 		*/
-		$form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
+        if($admin_mode)
+            $form['sub'] = array('#type' => 'submit', '#value' => 'Schedule Bulk Email', '#weight' => 100);
+        else
+		  $form['sub'] = array('#type' => 'submit', '#value' => 'Search', '#weight' => 100);
 
 		if ($centre_id <> '' || $admin_mode)
 		{
