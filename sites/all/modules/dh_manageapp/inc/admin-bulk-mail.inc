@@ -362,11 +362,16 @@ function dh_admin_bulk_mail_log_row($abm_id, $app_id, $name, $email, $center, $s
   ))->execute();
 }
 
-/** Global unsubscribe footer (encrypted email → public abm-unsubscribe route). Mirrors the centre footer pattern. */
+/**
+ * Global unsubscribe footer. The link points to the PUBLIC applicant app
+ * (applicant.vridhamma.org/abm-unsubscribe/<token>), exactly like centre bulk mail
+ * uses applicant_url/bm-unsubscribe — NOT the DIPI admin app. The applicant handler
+ * shows a confirmation page (opt-out happens only on the button click there).
+ */
 function dh_admin_bulk_mail_unsub_footer($email) {
   $pass = variable_get('bulk_mail_auth_pass', '');
   $authcode = bin2hex(openssl_encrypt($email, "AES-128-ECB", $pass));
-  $url = url('abm-unsubscribe/' . $authcode, array('absolute' => TRUE));
+  $url = variable_get('applicant_url', '') . '/abm-unsubscribe/' . $authcode;
   return "<br><br><small>If you don't want to receive these emails, <a href='$url'>Unsubscribe</a></small>";
 }
 
@@ -404,20 +409,8 @@ function dh_admin_bulk_mail_consume($data) {
   }
 }
 
-function dh_admin_bulk_mail_unsubscribe($token) {
-  $pass = variable_get('bulk_mail_auth_pass', '');
-  $email = @openssl_decrypt(pack('H*', $token), "AES-128-ECB", $pass);
-  if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $exists = db_query("select abu_id from dh_admin_bulk_mail_unsubscribe where abu_email=:e", array(':e' => $email))->fetchField();
-    if (!$exists) {
-      try {
-        db_insert('dh_admin_bulk_mail_unsubscribe')->fields(array('abu_email' => $email, 'abu_created' => date('Y-m-d H:i:s')))->execute();
-      }
-      catch (\Exception $e) {
-        // Benign: a concurrent request already inserted this email (UNIQUE). Treat as success.
-      }
-    }
-    return '<h2>Unsubscribed</h2><p>' . check_plain($email) . ' will no longer receive these emails.</p>';
-  }
-  return '<h2>Invalid link</h2><p>This unsubscribe link is not valid.</p>';
-}
+// NOTE: the unsubscribe landing is intentionally NOT handled here. It lives in the
+// public applicant app (applicant.vridhamma.org/abm-unsubscribe.php) so recipients
+// never touch the DIPI admin app, and so it can show a confirmation page before
+// opting out — mirroring the centre bm-unsubscribe flow. The applicant handler writes
+// dh_admin_bulk_mail_unsubscribe (same DB), which the consumer above checks.
