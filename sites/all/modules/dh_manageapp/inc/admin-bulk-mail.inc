@@ -6,17 +6,27 @@ function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
   global $user;
   $rq = dh_bulk_mail_build_recipient_query($where);
   $now = date('Y-m-d H:i:s');
-  return db_insert('dh_admin_bulk_mail')->fields(array(
+  $fields = array(
     'abm_query' => $rq['query'],
     'abm_count' => $rq['count'],
     'abm_criteria' => dh_bulk_mail_clean_criteria($criteria),
     'abm_centres' => $centres_csv,
-    'abm_processed' => 0,   // draft
-    'abm_created' => $now,
     'abm_updated' => $now,
-    'abm_created_by' => $user->uid,
     'abm_updated_by' => $user->uid,
-  ))->execute();
+  );
+  // Reuse this session's still-unscheduled draft so repeated searches update one
+  // draft instead of accumulating orphans; otherwise insert a fresh draft.
+  $cur = isset($_SESSION['abm_working_draft']) ? $_SESSION['abm_working_draft'] : 0;
+  if ($cur && db_query("select abm_id from dh_admin_bulk_mail where abm_id=:id and abm_processed=0 and abm_deleted=0", array(':id' => $cur))->fetchField()) {
+    db_update('dh_admin_bulk_mail')->fields($fields)->condition('abm_id', $cur)->execute();
+    return $cur;
+  }
+  $fields['abm_processed'] = 0;
+  $fields['abm_created'] = $now;
+  $fields['abm_created_by'] = $user->uid;
+  $id = db_insert('dh_admin_bulk_mail')->fields($fields)->execute();
+  $_SESSION['abm_working_draft'] = $id;
+  return $id;
 }
 
 function dh_admin_bulk_mail_list() {
@@ -139,6 +149,10 @@ function dh_admin_bulk_mail_compose_form($form, &$form_state, $abm_id) {
 function dh_admin_bulk_mail_compose_form_validate($form, &$form_state) {
   // The test button uses #limit_validation_errors=>array(), so it won't reach here.
   if (isset($form_state['triggering_element']['#value']) && $form_state['triggering_element']['#value'] == 'Send test email') { return; }
+  $cnt = db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $form_state['abm_id']))->fetchField();
+  if ((int) $cnt <= 0) {
+    form_set_error('', 'This blast has 0 recipients — adjust the search criteria before scheduling.');
+  }
   $v = $form_state['values'];
   if (!filter_var($v['abm_from_email'], FILTER_VALIDATE_EMAIL)) {
     form_set_error('abm_from_email', 'A valid From email is required.');
@@ -163,6 +177,7 @@ function dh_admin_bulk_mail_compose_form_submit($form, &$form_state) {
     'abm_updated' => date('Y-m-d H:i:s'),
     'abm_updated_by' => $user->uid,
   ))->condition('abm_id', $form_state['abm_id'])->execute();
+  unset($_SESSION['abm_working_draft']); // scheduled -> next search starts a fresh draft
   drupal_set_message('Bulk email scheduled.');
   $form_state['redirect'] = 'admin-bulk-mail';
 }
@@ -392,7 +407,12 @@ function dh_admin_bulk_mail_unsubscribe($token) {
   if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $exists = db_query("select abu_id from dh_admin_bulk_mail_unsubscribe where abu_email=:e", array(':e' => $email))->fetchField();
     if (!$exists) {
-      db_insert('dh_admin_bulk_mail_unsubscribe')->fields(array('abu_email' => $email, 'abu_created' => date('Y-m-d H:i:s')))->execute();
+      try {
+        db_insert('dh_admin_bulk_mail_unsubscribe')->fields(array('abu_email' => $email, 'abu_created' => date('Y-m-d H:i:s')))->execute();
+      }
+      catch (\Exception $e) {
+        // Benign: a concurrent request already inserted this email (UNIQUE). Treat as success.
+      }
     }
     return '<h2>Unsubscribed</h2><p>' . check_plain($email) . ' will no longer receive these emails.</p>';
   }
