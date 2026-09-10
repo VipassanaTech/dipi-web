@@ -199,7 +199,11 @@ function dh_zero_select_centre($form, &$form_state)
 	{
 		$admin = '<h1>SiteAdmin</h1><ul><li><h2>'.l("Add Centre", "centre/add").'</h2></li>'.
 		'<li><h2>'.l("Manage User Mapping", "user-mapping").'</h2></li>'.
-		'<li><h2>'.l("Search", "search-app").'</h2></li></ul>';
+		'<li><h2>'.l("Search", "search-app").'</h2></li>';
+		if (user_access('admin mass mail')) {
+			$admin .= '<li><h2>'.l("Admin Bulk Email", "admin-bulk-mail").'</h2></li>';
+		}
+		$admin .= '</ul>';
 
 		$form['a'] = array('#markup' => $admin );
 		$q = "select c_id, c_name from dh_center order by c_name";
