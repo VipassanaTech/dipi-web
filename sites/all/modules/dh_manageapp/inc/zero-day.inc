@@ -939,7 +939,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	{
 		$base = $base_url."/teacher-list/$centre/$course";
 		$out .= '<div class="tl-toolbar no-print">';
-		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &middot; '
 			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Order:</b> '
 			.'<a class="'.($seating?'':'active').'" href="'.$base.'">Seniority</a> &middot; '
@@ -1156,7 +1156,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	if (!$is_pdf)
 	{
 		$out .= '<div class="ml-toolbar no-print">';
-		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &middot; '
 			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Columns:</b>';
 		foreach ($toggle as $key => $lbl)
@@ -2918,7 +2918,7 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	{
 		$base = $base_url."/day0-list/$centre/$course";
 		$out .= '<div class="day0-toolbar no-print">';
-		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Course page</a> &middot; '
+		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &middot; '
 			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Sort:</b> '
 			.'<a class="'.($by_conf?'':'active').'" href="'.$base.'">Name</a> &middot; '
