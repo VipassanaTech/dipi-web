@@ -13,6 +13,76 @@ function create_pdf_from_html($data, $outfile)
 	unlink($input);
 }
 
+/**
+ * Render HTML to an A4 PDF at the given orientation. Smart-shrinking is DISABLED
+ * so the page is exactly 96-dpi A4 with 6mm margins (printable 1080x750 CSS px
+ * landscape / 750x1080 portrait) — the caller scales content to fill via CSS
+ * zoom, which smart-shrinking (shrink-only, never enlarge) cannot do. Missing
+ * media (e.g. stripped no-print images) is ignored so a bad resource can't blank
+ * the page. Requires the patched-qt wkhtmltopdf (present on local and prod).
+ */
+function create_pdf_from_html_a4($html, $outfile, $orientation = 'Portrait')
+{
+	// tempnam() creates a 0-byte stub; we append .html and must remove BOTH so the
+	// stubs don't pile up in /tmp.
+	$stub = tempnam("/tmp", "DIPI-HTML");
+	$input = $stub.".html";
+	file_put_contents($input, $html);
+	$o = ($orientation === 'Landscape') ? 'Landscape' : 'Portrait';
+	// --javascript-delay lets the plan's name-shortening JS run so names are
+	// abbreviated exactly as on the page (jQuery is loaded from a CDN).
+	$cmd = "/usr/local/bin/wkhtmltopdf --page-size A4 --orientation ".$o
+		." -T 6mm -B 6mm -L 6mm -R 6mm --disable-smart-shrinking --javascript-delay 900"
+		." --load-error-handling ignore --load-media-error-handling ignore "
+		.escapeshellarg($input)." ".escapeshellarg($outfile)." 2>/dev/null";
+	exec($cmd);
+	@unlink($input);
+	@unlink($stub);
+}
+
+/**
+ * Render HTML on an oversized page (nothing clips), run its JS, and return the
+ * marked content's bounding box as array(width_pt, height_pt) via Ghostscript's
+ * bbox device. Used to measure a seating section's true rendered size so it can
+ * be zoomed to exactly fill an A4 sheet. Returns array(0, 0) on failure.
+ */
+function dh_html_content_bbox_pt($html)
+{
+	// tempnam() stubs must be removed too (see create_pdf_from_html_a4).
+	$hstub = tempnam("/tmp", "DIPI-MEAS");
+	$input = $hstub.".html";
+	file_put_contents($input, $html);
+	$pstub = tempnam("/tmp", "DIPI-MEAS");
+	$pdf = $pstub.".pdf";
+	// Very tall page so any real section fits on one page; width covers main+chowky.
+	$cmd = "/usr/local/bin/wkhtmltopdf --page-width 500mm --page-height 1500mm"
+		." -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --javascript-delay 900"
+		." --load-error-handling ignore --load-media-error-handling ignore "
+		.escapeshellarg($input)." ".escapeshellarg($pdf)." 2>/dev/null";
+	exec($cmd);
+	$box = array(0, 0);
+	$best = -1;
+	$out = array();
+	exec("gs -q -dBATCH -dNOPAUSE -sDEVICE=bbox ".escapeshellarg($pdf)." 2>&1", $out);
+	// Coordinates can be negative; a stray fragment may land on a later page, so
+	// keep the largest-area box (the real section content), not just the first.
+	foreach ($out as $line) {
+		if (preg_match('/HiResBoundingBox:\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)/', $line, $m)) {
+			$w = $m[3] - $m[1];
+			$h = $m[4] - $m[2];
+			if ($w > 0 && $h > 0 && $w * $h > $best) {
+				$best = $w * $h;
+				$box = array($w, $h);
+			}
+		}
+	}
+	@unlink($input);
+	@unlink($hstub);
+	@unlink($pdf);
+	@unlink($pstub);
+	return $box;
+}
+
 function fdf_create($filename, $fields)
 {
 	$Out = "%FDF-1.2\n%????\n";

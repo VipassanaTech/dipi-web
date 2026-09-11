@@ -482,6 +482,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['seating-section-pdf/%centre_id/%course_id'] = array( 'title' => t('Seating Section PDF'),
+	       'page callback' => 'dh_seating_section_pdf',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['day0-list/%centre_id/%course_id'] = array( 'title' => t('Day Zero List'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),

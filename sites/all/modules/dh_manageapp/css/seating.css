@@ -127,13 +127,14 @@ ul {
 }
 .plan-header .legend-note {
 	position: absolute;
-	right: 0;
+	left: 160px;           /* start right after the sample cell, not pushed to the far right */
+	right: auto;
 	top: 4px;
 	width: auto;
 	max-width: none;
 	margin: 0;
-	white-space: nowrap;   /* one line, at the top-right, above the title */
-	text-align: right;
+	white-space: nowrap;   /* one line, just right of the sample cell, above the title */
+	text-align: left;
 }
 
 /* A sample cell showing what each position in a cell means. Same shape/classes
@@ -387,3 +388,8 @@ ul {
 .dh-modal-btns button{padding:8px 15px;margin-left:8px;border-radius:5px;border:1px solid #bbb;background:#f3f3f3;cursor:pointer;font-size:14px}
 .dh-modal-btns .dh-modal-ok{background:#2e7d32;color:#fff;border-color:#2e7d32;font-weight:600}
 @media print{.dh-modal-ov{display:none !important}}
+
+/* Per-section "Print this section" link: opens a server-side, page-filling A4 PDF
+   of just that section (route seating-section-pdf/*). Screen-only. */
+.dh-print-section{display:inline-block;margin:6px 0 4px;padding:6px 12px;border:1px solid #2e7d32;background:#2e7d32;color:#fff !important;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none}
+.dh-print-section:hover{background:#276a2b;color:#fff !important;text-decoration:none}

@@ -1447,7 +1447,140 @@ function dh_seat_plan_header($title_html, $title_class = 'teacher-seat')
 		.'</div><div style="clear:both"></div>';
 }
 
-function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALSE)
+/**
+ * Print ONE section (Male, Female, or one group x gender) of a seating plan as a
+ * real A4 PDF, scaled to fill the sheet. Renders the WHOLE plan exactly as the
+ * on-screen page (identical HTML/CSS, so seat cells, name truncation and chowky
+ * labels are byte-for-byte the same) and only appends a stylesheet that hides the
+ * other sections + screen-only controls and zooms the requested section to fill.
+ * Orientation and zoom come from the section's measured content box; wkhtmltopdf
+ * honours CSS zoom, unlike the browser's own print. Route:
+ * seating-section-pdf/%centre_id/%course_id?sec=<id>&plan=main|group
+ */
+function dh_seating_section_pdf()
+{
+	$centre = (int) arg(1);
+	$course = (int) arg(2);
+	$sec = isset($_REQUEST['sec']) ? $_REQUEST['sec'] : '';
+	$plan = (isset($_REQUEST['plan']) && $_REQUEST['plan'] == 'group') ? 'group' : 'main';
+	if ($sec === '')
+		return MENU_NOT_FOUND;
+
+	// Mirror the seating dispatcher's combined-seat pairing.
+	$other = db_query("select c_combined_seat_course from dh_course where c_id=:c", array(':c' => $course))->fetchField();
+	$course_arg = ($other > 0) ? array($course, (int) $other) : array($course);
+
+	// Section id goes into both an XPath predicate and a CSS selector - keep it safe.
+	if (!preg_match('/^[A-Za-z0-9_]+$/', $sec))
+		return MENU_NOT_FOUND;
+
+	// Render the whole plan to HTML exactly as the on-screen page (same content,
+	// same CSS). We do NOT rebuild or re-serialise the section; we only ADD a
+	// stylesheet that hides the other sections and zooms the requested one to fill
+	// the sheet, so every seat cell renders byte-for-byte like the page.
+	if ($plan == 'group')
+		$html = dh_generate_group_seating_plan($centre, $course_arg, '', TRUE);
+	else
+		$html = dh_generate_seating_plan($centre, $course_arg, '', FALSE, TRUE);
+
+	// Measure the target section (read-only) to choose orientation + zoom.
+	$doc = new DOMDocument();
+	@$doc->loadHTML('<?xml encoding="utf-8"?>' . $html);
+	$xp = new DOMXPath($doc);
+	$nodes = $xp->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' seat-section ') and @data-section='" . $sec . "']");
+	if (!$nodes->length)
+		return MENU_NOT_FOUND;
+	$node = $nodes->item(0);
+	$sec_label = $node->getAttribute('data-section-label');
+
+	// Grid width from the bg-table inline styles (exact). A side chowky adds to the
+	// width; a "back" chowky stacks, so width = the widest grid. Used to cap the
+	// header so its fixed 1000px title can't balloon the section's measured width.
+	$isBack = $xp->query(".//*[contains(@class,'chowky-back')]", $node)->length > 0;
+	$widths = array();
+	foreach ($xp->query(".//ul[contains(@class,'bg-table')]", $node) as $ul)
+		$widths[] = preg_match('/width:(\d+)px/', $ul->getAttribute('style'), $m) ? (int) $m[1] : 0;
+	if (!$widths) $widths = array(760);
+	$cw = $isBack ? max($widths) : (array_sum($widths) + count($widths) * 15);   // +15px margin/grid
+
+	// Override stylesheet (optionally with a zoom). The page's own HTML/CSS AND
+	// scripts stay intact - the name-shortening JS must run so names abbreviate
+	// exactly as on the page. We only: hide the other sections + screen controls,
+	// keep the chowky beside the main grid (nowrap) while letting cell text wrap
+	// normally, and cap the header to the grid width.
+	$s = '.seat-section[data-section="' . $sec . '"]';
+	$mk_css = function ($zoom, $pad_top, $pad_left, $tw) use ($s) {
+		$z = ($zoom !== null) ? 'zoom:' . $zoom . ';' : '';
+		return '<style>'
+			. '.no-print,.dh-page-sep,.footer,.group-empty{display:none!important}'
+			. 'img{display:none!important}'
+			// A forced page-break (even on a display:none group page) spawns a phantom
+			// blank page - neutralise every break so only the shown section prints.
+			. '.seat-section,.group-page,.footer,.dh-page-sep{page-break-before:auto!important;page-break-after:auto!important}'
+			. '.seat-section{display:none!important}'
+			// Centre the section on the page with computed top+left pads (zoom scales
+			// from the top-left, so text-align centring would skew - pads are exact).
+			// position:relative keeps the absolute legend anchored to the section.
+			. 'body{margin:0;padding-top:' . $pad_top . 'pt;padding-left:' . $pad_left . 'pt}'
+			. $s . '{display:block!important;position:relative!important;page-break-before:auto!important;white-space:nowrap!important;margin:0!important;' . $z . '}'
+			. $s . ' .plan-header,' . $s . ' .plan-header-title,' . $s . ' .group-title{margin-top:0!important}'   // no top offset -> exact height
+			. $s . ' .main-div,' . $s . ' .chowky-div,' . $s . ' .plan-header{white-space:normal!important}'
+			. $s . ' .plan-header,' . $s . ' .plan-header-title,' . $s . ' .group-title{width:' . $tw . 'px!important;max-width:' . $tw . 'px!important;box-sizing:border-box}'
+			. '</style>';
+	};
+
+	// Pass 1: measure the real rendered section (scripts run, names shortened). The
+	// title is capped to the grid-sum width so its fixed 1000px can't inflate the
+	// measurement of a narrow section.
+	$meas_html = preg_replace('#</head>#i', $mk_css(null, 0, 0, $cw) . '</head>', $html, 1);
+	list($w_pt, $h_pt) = dh_html_content_bbox_pt($meas_html);
+
+	$long = 807.9; $short = 561.3;                    // A4 printable pt (6mm margins)
+	if ($w_pt > 1 && $h_pt > 1) {
+		$zl = min($long / $w_pt, $short / $h_pt);     // fill in landscape
+		$zp = min($short / $w_pt, $long / $h_pt);     // fill in portrait
+		// Use whichever orientation covers the most page area (largest zoom).
+		if ($zl >= $zp) { $orientation = 'Landscape'; $zoom = $zl; }
+		else            { $orientation = 'Portrait';  $zoom = $zp; }
+	} else {
+		$orientation = 'Landscape'; $zoom = 1;        // measurement failed: render 1:1
+	}
+	$zoom = $zoom * 0.95;                             // safety margin against clipping / pagination rounding
+	if ($zoom > 4)    $zoom = 4;
+	if ($zoom < 0.05) $zoom = 0.05;
+	$zoom = round($zoom, 3);
+
+	// Centre on the page: half the leftover printable width/height as top+left pads.
+	$page_w = ($orientation == 'Landscape') ? $long : $short;
+	$page_h = ($orientation == 'Landscape') ? $short : $long;
+	$pad_top  = ($page_h - $h_pt * $zoom) / 2;
+	$pad_left = ($page_w - $w_pt * $zoom) / 2;
+	if ($pad_top < 0)  $pad_top = 0;
+	if ($pad_left < 0) $pad_left = 0;
+	$pad_top  = round($pad_top, 1);
+	$pad_left = round($pad_left, 1);
+
+	// For the final render, let the title span the section's true measured width
+	// (px = pt / 0.75) instead of the narrower grid-sum, so a course name with room
+	// to spare doesn't wrap. Never narrower than the grid-sum.
+	$title_w = ($w_pt > 1) ? max($cw, (int) round($w_pt / 0.75)) : $cw;
+
+	$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
+	$stub = tempnam(sys_get_temp_dir(), 'DIPI-SEC');   // 0-byte stub; append .pdf, clean both
+	$tmp = $stub . '.pdf';
+	create_pdf_from_html_a4($full, $tmp, $orientation);
+
+	$base = dh_course_file_basename($centre, $course, 'seating');
+	$filename = $base . '_' . application_filename_part($sec_label) . '.pdf';
+	header('Content-Type: application/pdf');
+	header('Content-Disposition: inline; filename="' . $filename . '"');
+	header('Cache-Control: private');
+	if (file_exists($tmp)) { readfile($tmp); @unlink($tmp); }
+	@unlink($stub);
+	exit;
+}
+
+function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALSE, $return_html = FALSE)
 {
 	global $base_url;
 	if (!is_array($course))
@@ -1733,7 +1866,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$male_chowky_pos = dh_chowky_position(isset($ini[$male_section]['ChowkyPosition']) ? $ini[$male_section]['ChowkyPosition'] : '', $male_dir);
 
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
+	$out .= '<div class="seat-section" data-section="M" data-section-label="Male">';
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
+	$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
 	// Read-only surface (AT view): never persist seat labels or enable drag.
 	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
@@ -1741,6 +1876,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
+	$out .= '</div>';   // .seat-section (Male)
 	$out .= '<div class="footer"></div>';
 
 	if ($ini['LEFT']['gender'] == 'F')
@@ -1754,12 +1890,15 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$place = 'LEFT';
 
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
+	$out .= '<div class="seat-section" data-section="F" data-section-label="Female">';
 	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
+	$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
 	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts, 'F', 'Female');
 	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts, 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
+	$out .= '</div>';   // .seat-section (Female)
 	$out .= '<div class="footer"></div>';
 
 	$out .= '<script>
@@ -1806,6 +1945,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 </script>';
 
 	$out .= '</body></html>';
+
+	if ($return_html)
+		return $out;
 
 	if ($pdf <> '')
 		create_pdf_from_html($out, $pdf);
@@ -2412,7 +2554,7 @@ function dh_update_group_seating($centre, $course)
  * Because each group can have different dimensions, seat numbers here are local
  * to the group grid and need not match the main (full-hall) Seating Plan.
  */
-function dh_generate_group_seating_plan($centre, $course, $pdf = '')
+function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_html = FALSE)
 {
 	global $base_url;
 	if (!is_array($course))
@@ -2657,10 +2799,13 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			$page_class = $first ? '' : 'group-page';
 			$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before every group page
 			$first = false;
-			$out .= '<div class="'.$page_class.'">';
+			$sec_id  = 'g'.trim($g).'_'.$gender;
+			$sec_lbl = 'Group '.trim($g).' - '.ucfirst(strtolower($label));
+			$out .= '<div class="seat-section '.$page_class.'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'">';
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
 			$out .= dh_seat_plan_header('GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
+			$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
 
@@ -2677,8 +2822,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			$c_mr = isset($maxrow[$g][$gender]['chowky']) ? $maxrow[$g][$gender]['chowky'] : 0;
 
 			$gdir = dh_seat_direction($dims['seat_direction'], $dir[$gender]);
-			$sec_id  = 'g'.trim($g).'_'.$gender;
-			$sec_lbl = 'Group '.trim($g).' - '.ucfirst(strtolower($label));
+			// $sec_id / $sec_lbl computed above at the section wrapper.
 			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, array(), $sec_id, $sec_lbl);
 			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, array(), $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
@@ -2740,6 +2884,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 </script>';
 
 	$out .= '</body></html>';
+
+	if ($return_html)
+		return $out;
 
 	if ($pdf <> '')
 		create_pdf_from_html($out, $pdf);
