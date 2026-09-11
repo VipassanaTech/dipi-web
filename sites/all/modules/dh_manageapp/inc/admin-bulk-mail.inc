@@ -64,7 +64,11 @@ function dh_admin_bulk_mail_list() {
       $actions[] = l('Compose', 'admin-bulk-mail/' . $r->abm_id . '/compose');
       $actions[] = l('Edit criteria', 'admin-bulk-mail/' . $r->abm_id . '/edit-criteria');
     }
-    $actions[] = l('Log', 'admin-bulk-mail/' . $r->abm_id . '/show-log');
+    // Show Log only when there is something to show (any send activity recorded).
+    $has_log = ((int) $r->abm_sent + (int) $r->abm_failed + (int) $r->abm_skipped_unsub + (int) $r->abm_skipped_invalid) > 0;
+    if ($has_log) {
+      $actions[] = l('Log', 'admin-bulk-mail/' . $r->abm_id . '/show-log');
+    }
     if ($editable) {
       $actions[] = l('Delete', 'admin-bulk-mail/' . $r->abm_id . '/delete', array('attributes' => array('onclick' => 'return confirm("Delete this bulk email? This cannot be undone.");')));
     }
