@@ -2,7 +2,7 @@
 // sites/all/modules/dh_manageapp/inc/admin-bulk-mail.inc
 // Administrator (centre-independent) bulk email — self-contained subsystem.
 
-function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
+function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv, $abm_edit_id = 0) {
   global $user;
   $rq = dh_bulk_mail_build_recipient_query($where);
   $now = date('Y-m-d H:i:s');
@@ -14,6 +14,12 @@ function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
     'abm_updated' => $now,
     'abm_updated_by' => $user->uid,
   );
+  // Editing an existing Draft/Pending blast's criteria: update it in place, keeping
+  // its composed content + schedule; leave the session working-draft pointer alone.
+  if ($abm_edit_id) {
+    db_update('dh_admin_bulk_mail')->fields($fields)->condition('abm_id', $abm_edit_id)->execute();
+    return $abm_edit_id;
+  }
   // Reuse this session's still-unscheduled draft so repeated searches update one
   // draft instead of accumulating orphans; otherwise insert a fresh draft.
   $cur = isset($_SESSION['abm_working_draft']) ? $_SESSION['abm_working_draft'] : 0;
@@ -29,6 +35,23 @@ function dh_admin_bulk_mail_create_draft($where, $criteria, $centres_csv) {
   return $id;
 }
 
+/**
+ * Edit the criteria of an existing Draft/Pending blast: re-render the targeting form
+ * pre-filled from the saved criteria. The form's admin submit branch detects the
+ * abm_id from the path (arg2 == 'edit-criteria') and updates THIS blast in place.
+ */
+function dh_admin_bulk_mail_edit_criteria($abm_id) {
+  $abm = db_query("select * from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchAssoc();
+  if (!$abm) { drupal_not_found(); drupal_exit(); }
+  if (!in_array((int) $abm['abm_processed'], array(0, 1), TRUE)) {
+    drupal_set_message('This bulk email can no longer be edited (it is already processing or done).', 'warning');
+    drupal_goto('admin-bulk-mail');
+  }
+  $edit_data = $abm['abm_criteria'] ? (array) json_decode($abm['abm_criteria'], TRUE) : array();
+  $edit_data['abm_centres'] = ($abm['abm_centres'] !== '') ? array_filter(array_map('intval', explode(',', $abm['abm_centres']))) : array();
+  return drupal_get_form('dh_manageapp_search_form', $edit_data);
+}
+
 function dh_admin_bulk_mail_list() {
   $labels = array(0 => 'Draft', 1 => 'Pending', 2 => 'In-progress', 3 => 'Done', 4 => 'Failed', 5 => 'Cancelled');
   $rows = array();
@@ -36,11 +59,15 @@ function dh_admin_bulk_mail_list() {
   foreach ($res as $r) {
     $centres = $r->abm_centres !== '' ? (count(array_filter(explode(',', $r->abm_centres))) . ' centre(s)') : 'All';
     $actions = array();
-    if ($r->abm_processed == 0 || $r->abm_processed == 1) {
+    $editable = ($r->abm_processed == 0 || $r->abm_processed == 1); // Draft or Pending
+    if ($editable) {
       $actions[] = l('Compose', 'admin-bulk-mail/' . $r->abm_id . '/compose');
+      $actions[] = l('Edit criteria', 'admin-bulk-mail/' . $r->abm_id . '/edit-criteria');
     }
     $actions[] = l('Log', 'admin-bulk-mail/' . $r->abm_id . '/show-log');
-    $actions[] = l('Delete', 'admin-bulk-mail/' . $r->abm_id . '/delete');
+    if ($editable) {
+      $actions[] = l('Delete', 'admin-bulk-mail/' . $r->abm_id . '/delete', array('attributes' => array('onclick' => 'return confirm("Delete this bulk email? This cannot be undone.");')));
+    }
     $rows[] = array(
       check_plain($r->abm_name) === '' ? '(unnamed)' : check_plain($r->abm_name),
       $centres,

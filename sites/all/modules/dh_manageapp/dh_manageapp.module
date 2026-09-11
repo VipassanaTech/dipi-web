@@ -795,6 +795,12 @@ function dh_manageapp_menu()
 	  'access arguments' => array('admin mass mail'),
 	  'type' => MENU_CALLBACK,
 	);
+	$items['admin-bulk-mail/%abm_id/edit-criteria'] = array(
+	  'page callback' => 'dh_admin_bulk_mail_edit_criteria',
+	  'page arguments' => array(1),
+	  'access arguments' => array('admin mass mail'),
+	  'type' => MENU_CALLBACK,
+	);
 	$items['admin-bulk-mail/%abm_id/attach'] = array(
 	  'page callback' => 'dh_admin_bulk_mail_attach',
 	  'page arguments' => array(1),

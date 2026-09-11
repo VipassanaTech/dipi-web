@@ -1761,13 +1761,20 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     // bogus value like "c_center=new".
     $centre_id = 0;
   }
+  // Admin "edit criteria" of an existing blast: admin-bulk-mail/{abm_id}/edit-criteria
+  $abm_edit_id = ($admin_mode && arg(2) == 'edit-criteria') ? (int) arg(1) : 0;
 
-  if (arg(0) == "bulk-mail")
+  if (arg(0) == "bulk-mail" || $abm_edit_id)
   {
     $update_bm = 1;
-    $bm_id = arg(2);
-    $edit_data_status = explode( ', ', $edit_data['status'] );
-    $edit_data['status'] = array_combine($edit_data_status, $edit_data_status);
+    if (arg(0) == "bulk-mail") { $bm_id = arg(2); }
+    if ( !empty($edit_data['status']) ) {
+      $edit_data_status = explode( ', ', $edit_data['status'] );
+      $edit_data['status'] = array_combine($edit_data_status, $edit_data_status);
+    }
+    else {
+      $edit_data['status'] = array();
+    }
     if ( !empty($edit_data['lang_discourse']) ) {
       $edit_data_ld = explode( ', ', $edit_data['lang_discourse'] );
       $edit_data['lang_discourse'] = array_combine($edit_data_ld, $edit_data_ld);
@@ -1990,7 +1997,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       if (isset($storage['abm_centres']) && is_array($storage['abm_centres'])) {
         $centres_csv = implode(',', array_filter(array_map('intval', $storage['abm_centres'])));
       }
-      $abm_id = dh_admin_bulk_mail_create_draft($where, $storage, $centres_csv);
+      $abm_id = dh_admin_bulk_mail_create_draft($where, $storage, $centres_csv, $abm_edit_id);
       $cnt = (int) db_query("select abm_count from dh_admin_bulk_mail where abm_id=:id", array(':id' => $abm_id))->fetchField();
       $out = '<h2>' . l('Back to Admin Bulk Email', 'admin-bulk-mail') . '</h2>';
       $out .= '<p style="font-size:15px">This audience is <b>' . $cnt . '</b> recipient(s) (one email per unique address).</p>';
@@ -2100,7 +2107,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 				'#type' => 'select',
 				'#multiple' => 'multiple',
 				'#options' => $all_centres,
-				'#default_value' => array(),
+				'#default_value' => ($update_bm && isset($edit_data['abm_centres']) && is_array($edit_data['abm_centres'])) ? $edit_data['abm_centres'] : array(),
 				'#validated' => TRUE,
 				'#weight' => 0,
 				'#attributes' => array('id' => 'edit-abm-centres'),
