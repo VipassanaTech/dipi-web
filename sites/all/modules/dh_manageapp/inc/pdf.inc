@@ -68,6 +68,32 @@ function json_values_create($filename, $fields)
 }
 
 
+/**
+ * Rewrite a PDF's /Title metadata in place (via pdftk). Chrome's built-in PDF
+ * viewer uses /Title as the default download filename for INLINE pdfs, which
+ * overrides our Content-Disposition. Template-filled reports inherit the
+ * template's own Title (e.g. the D-11 template carries "Check Request"), so we
+ * rewrite it to the intended filename. No-op if pdftk fails or is missing.
+ */
+function dh_pdf_set_title($pdf_path, $title)
+{
+	$title = trim(preg_replace('/\s+/', ' ', (string) $title));
+	if ($title === '' || !file_exists($pdf_path)) {
+		return;
+	}
+	$info = tempnam(sys_get_temp_dir(), 'pdftitle');
+	file_put_contents($info, "InfoBegin\nInfoKey: Title\nInfoValue: " . $title . "\n");
+	$out = tempnam(sys_get_temp_dir(), 'pdftitled');
+	exec('pdftk ' . escapeshellarg($pdf_path) . ' update_info_utf8 ' . escapeshellarg($info) . ' output ' . escapeshellarg($out) . ' 2>/dev/null');
+	if (file_exists($out) && filesize($out) > 0) {
+		rename($out, $pdf_path);
+	}
+	elseif (file_exists($out)) {
+		unlink($out);
+	}
+	unlink($info);
+}
+
 function pdf_fill_form($fdf, $pdf, $out)
 {
     global $user;
@@ -218,6 +244,11 @@ function create_d11_report_pdf( $course_id )
 	$out_pdf = tempnam("/var/dipi", "report-D11-")."-".$course_id.".pdf";	
 	$out_uri = $uri."/reports/".$centre_id."/".$year."/report-Day11-".$course_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
+
+	// The D-11 template carries /Title "Check Request", which Chrome's inline PDF
+	// viewer would use as the download filename instead of our Content-Disposition.
+	// Rewrite it to the report name so the saved file follows the convention.
+	dh_pdf_set_title($out_pdf, dh_course_file_basename($centre_id, $course_id, 'day11-report'));
 
 	$ret = s3_put_file(variable_get('s3_bucket_name', ''), $out_pdf, str_replace("private:///", '', $out_uri) );
 	if (!$ret['success'])
