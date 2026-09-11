@@ -372,3 +372,18 @@ ul {
 {
 	background-color: LightBlue;
 }
+
+/* Section-aware "Store Seat Changes" confirm modal (js/seat-store-confirm.js).
+   Screen-only; carries no-print role via the overlay never printing. */
+.dh-modal-ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center}
+.dh-modal{background:#fff;max-width:470px;width:92%;border-radius:8px;padding:18px 22px;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#222;box-shadow:0 12px 44px rgba(0,0,0,.32)}
+.dh-modal h3{margin:0 0 8px;font-size:17px}
+.dh-modal p{margin:0 0 6px}
+.dh-modal-list{margin:12px 0;max-height:50vh;overflow:auto;border:1px solid #eee;border-radius:6px}
+.dh-modal-row{display:block;padding:9px 12px;border-bottom:1px solid #eee;cursor:pointer}
+.dh-modal-row:last-child{border-bottom:0}
+.dh-modal-row input{margin-right:9px;vertical-align:middle}
+.dh-modal-btns{text-align:right;margin-top:16px}
+.dh-modal-btns button{padding:8px 15px;margin-left:8px;border-radius:5px;border:1px solid #bbb;background:#f3f3f3;cursor:pointer;font-size:14px}
+.dh-modal-btns .dh-modal-ok{background:#2e7d32;color:#fff;border-color:#2e7d32;font-weight:600}
+@media print{.dh-modal-ov{display:none !important}}

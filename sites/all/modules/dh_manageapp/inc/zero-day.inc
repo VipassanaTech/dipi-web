@@ -1456,6 +1456,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$dl_name = dh_course_file_basename($centre, $course[0], 'seating');
 	$out = '<html><head><title>'.$dl_name.'</title><script src="https://code.jquery.com/jquery-1.12.4.js"></script>
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="'.$base_url.'/sites/all/modules/dh_manageapp/js/seat-store-confirm.js?v='.filemtime(drupal_get_path("module","dh_manageapp")."/js/seat-store-confirm.js").'"></script>
   <script>
   $( function() {
 
@@ -1540,77 +1541,64 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     original_array = [];
 
   $(".store-seat-changes").click( function(){
-    //console.log("inside click event");
-    $(this).off("click");
-    $(this).html("Processing... updated seating plan will be loaded soon.").css({
-    });
-    update_array = [];
-    current_path = window.location.pathname;
-    update_path = current_path.replace("seating", "seating-update");
+    var $btn = $(this);
+    var update_array = [];
+    var current_path = window.location.pathname;
+    var update_path = current_path.replace("seating", "seating-update");
     $(".ui-sortable li .s-app-id").each(function(){
-      closest_ul = $(this).closest("ul");
-      student_name = $(this).siblings(".s-name ").html();
-      application_id = $(this).attr("data-s-app-id");
-      col_per_row = $(this).attr("data-cols");
+      var closest_ul = $(this).closest("ul");
+      var application_id = $(this).attr("data-s-app-id");
+      var col_per_row = $(this).attr("data-cols");
       if(application_id)
       {
-        no_of_li = closest_ul.children("li").length;
-        current_li = $(this).closest("li").index()+1;
-        current_position = no_of_li - current_li + 1;
-        student_row = Math.ceil(current_position / col_per_row) - 1;
-        student_column = (current_position % col_per_row) - 1;
+        var no_of_li = closest_ul.children("li").length;
+        var current_li = $(this).closest("li").index()+1;
+        var current_position = no_of_li - current_li + 1;
+        var student_row = Math.ceil(current_position / col_per_row) - 1;
+        var student_column = (current_position % col_per_row) - 1;
         if(student_column == -1)
           student_column = col_per_row - 1 ;
-
-        // console.log("app_id: "+$(this).attr("data-s-app-id"));
-        // console.log("student_name: " + student_name);
-        // console.log("col per row: " + col_per_row);
-        // console.log("no_of_li: " + no_of_li);
-        // console.log("current_li: " + current_li);
-        // console.log("current_position: " + current_position);
-        //console.log("current_path: " + current_path);
-        //console.log("update_path: " + update_path);
-        //console.log("name: "+student_name+" id: "+application_id+" row: "+student_row+" column: "+student_column);
-
-        update_array.push([application_id, student_row, student_column]);
+        var $sec = $(this).closest("[data-section]");
+        update_array.push([application_id, student_row, student_column, $sec.attr("data-section") || "", $sec.attr("data-section-label") || ""]);
       }
     });
 
-    let originalMap = {};
-    original_array.forEach(row => {
-        originalMap[row[0]] = row;
+    var originalMap = {};
+    original_array.forEach(function(row){ originalMap[row[0]] = row; });
+
+    var changed = [];
+    update_array.forEach(function(row){
+      var id = row[0];
+      if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row.slice(0,3))) {
+        changed.push(row);
+      }
     });
 
-    let changed = [];
+    if (!changed.length) { alert("No seat changes to save."); return; }
 
-    update_array.forEach(row => {
-        let id = row[0];
-
-        if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row)) {
-            changed.push(row);
-        }
+    // Group the changed seats by section so the operator can confirm/deselect.
+    var secmap = {}, seclist = [];
+    changed.forEach(function(row){
+      var sid = row[3] || "?", slbl = row[4] || "Section";
+      if (!secmap[sid]) { secmap[sid] = { id: sid, label: slbl, count: 0 }; seclist.push(secmap[sid]); }
+      secmap[sid].count++;
     });
 
-    // console.log(changed);
-
-    $.getJSON( update_path, { u: JSON.stringify(changed) } )
+    dhSectionSaveConfirm(seclist, function(checkedIds){
+      var toSave = [];
+      changed.forEach(function(row){ if (checkedIds[row[3] || "?"]) toSave.push([row[0], row[1], row[2]]); });
+      if (!toSave.length) return;   // no section kept -> save nothing
+      $btn.off("click").html("Processing... updated seating plan will be loaded soon.");
+      $.getJSON( update_path, { u: JSON.stringify(toSave) } )
         .done(function( json ) {
-          if (json.status == "OK")
-          {
-            setTimeout(function() {
-              window.location = current_path;
-            }, 5000);
-          }
-          else
-          {
+          if (json.status == "OK") {
+            setTimeout(function() { window.location = current_path; }, 5000);
+          } else {
             alert("Update failed!\n"+json.msg);
           }
-          })
-          .fail(function() {
-            alert("Update failed fail!");
-          });
-
-      $(".store-seat-changes").on("click");
+        })
+        .fail(function() { alert("Update failed fail!"); });
+    });
   });
 
 	$(".sortable-m .drag-img").hide();
@@ -1748,8 +1736,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
 	// Read-only surface (AT view): never persist seat labels or enable drag.
 	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only);
-	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts);
-	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts);
+	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
+	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts, 'M', 'Male');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
@@ -1767,8 +1755,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
 	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
-	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts);
-	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts);
+	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts, 'F', 'Female');
+	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts, 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
@@ -2073,7 +2061,7 @@ function dh_allocate_seats($data, $cushion_cols, $special_rows = array(), $disab
  * @param $opts         ['write_seat'=>bool persist aa_seat (main plan only),
  *                       'drag'=>bool show the drag handle (main plan only)].
  */
-function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, $alpha, $opts = array())
+function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, $alpha, $opts = array(), $section = '', $section_label = '')
 {
 	if (count((array)$seats) <= 0)
 		return '';
@@ -2088,7 +2076,7 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 	$bg_cls = ($direction == LEFT_TO_RIGHT) ? 'bg-table-m' : 'bg-table-f';
 	$width  = ($cushion_cols * 142) + 6;
 
-	$ret = '<div class="'.$div.'">';
+	$ret = '<div class="'.$div.'"'.($section !== '' ? ' data-section="'.check_plain($section).'" data-section-label="'.check_plain($section_label).'"' : '').'>';
 	$out = '<ul class="'.$cls.'" style="width:'.$width.'px">';
 
 	for ($row = $rows - 1; $row >= 0; $row--)
@@ -2508,6 +2496,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	$dl_name = dh_course_file_basename($centre, (is_array($course) ? reset($course) : $course), 'seating');
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script><script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>';
+	$out .= '<script src="'.$base_url.'/sites/all/modules/dh_manageapp/js/seat-store-confirm.js?v='.filemtime(drupal_get_path("module","dh_manageapp")."/js/seat-store-confirm.js").'"></script>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '<style>.group-page{page-break-before: always;} .group-title{width:1000px;text-align:center;font-weight:bold;font-size:22px;margin-top:15px;} .group-empty{color:#888;padding:10px;}
 		/* Keep CW-/CH- seat numbers on one line so chowky cells do not overflow.
@@ -2569,12 +2558,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			}
 		});
 
-		$(".store-seat-changes").click(function(){
-			var btn = $(this);
-			btn.off("click").text("Processing... the seating plan will reload shortly.");
-			var update_array = [];
-			var current_path = window.location.pathname;
-			var update_path = current_path.replace("group-seating", "group-seating-update");
+		// Read each seat position: [app_id, row, col, section-id, section-label].
+		var dhGroupSeatPos = function(){
+			var arr = [];
 			$(".ui-sortable li .s-app-id").each(function(){
 				var closest_ul = $(this).closest("ul");
 				var application_id = $(this).attr("data-s-app-id");
@@ -2586,15 +2572,54 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 					var student_row = Math.ceil(current_position / col_per_row) - 1;
 					var student_column = (current_position % col_per_row) - 1;
 					if (student_column == -1) student_column = col_per_row - 1;
-					update_array.push([application_id, student_row, student_column]);
+					var $sec = $(this).closest("[data-section]");
+					arr.push([application_id, student_row, student_column, $sec.attr("data-section") || "", $sec.attr("data-section-label") || ""]);
 				}
 			});
-			$.getJSON(update_path, { u: JSON.stringify(update_array) })
-				.done(function(json){
-					if (json.status == "OK") { window.location = current_path; }
-					else { alert("Update failed!\n" + (json.msg || "")); btn.text("Store Seat Changes").on("click"); }
-				})
-				.fail(function(){ alert("Update failed!"); btn.text("Store Seat Changes"); });
+			return arr;
+		};
+		// Snapshot at load: lets us tell which sections actually changed, since the
+		// plan is often worked on by several people (one per section) at once.
+		var group_original = dhGroupSeatPos();
+
+		$(".store-seat-changes").click(function(){
+			var btn = $(this);
+			var current_path = window.location.pathname;
+			var update_path = current_path.replace("group-seating", "group-seating-update");
+			var update_array = dhGroupSeatPos();
+
+			var originalMap = {};
+			group_original.forEach(function(row){ originalMap[row[0]] = row.slice(0,3); });
+
+			var changed = [];
+			update_array.forEach(function(row){
+				var id = row[0];
+				if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row.slice(0,3))) {
+					changed.push(row);
+				}
+			});
+
+			if (!changed.length) { alert("No seat changes to save."); return; }
+
+			var secmap = {}, seclist = [];
+			changed.forEach(function(row){
+				var sid = row[3] || "?", slbl = row[4] || "Section";
+				if (!secmap[sid]) { secmap[sid] = { id: sid, label: slbl, count: 0 }; seclist.push(secmap[sid]); }
+				secmap[sid].count++;
+			});
+
+			dhSectionSaveConfirm(seclist, function(checkedIds){
+				var toSave = [];
+				changed.forEach(function(row){ if (checkedIds[row[3] || "?"]) toSave.push([row[0], row[1], row[2]]); });
+				if (!toSave.length) return;   // no section kept -> save nothing
+				btn.off("click").text("Processing... the seating plan will reload shortly.");
+				$.getJSON(update_path, { u: JSON.stringify(toSave) })
+					.done(function(json){
+						if (json.status == "OK") { window.location = current_path; }
+						else { alert("Update failed!\n" + (json.msg || "")); btn.text("Store Seat Changes").on("click"); }
+					})
+					.fail(function(){ alert("Update failed!"); btn.text("Store Seat Changes"); });
+			});
 		});
 	});
 	</script>';
@@ -2652,8 +2677,10 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 			$c_mr = isset($maxrow[$g][$gender]['chowky']) ? $maxrow[$g][$gender]['chowky'] : 0;
 
 			$gdir = dh_seat_direction($dims['seat_direction'], $dir[$gender]);
-			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha);
-			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha);
+			$sec_id  = 'g'.trim($g).'_'.$gender;
+			$sec_lbl = 'Group '.trim($g).' - '.ucfirst(strtolower($label));
+			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, array(), $sec_id, $sec_lbl);
+			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, array(), $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
 			$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $chowky_pos);
 			$out .= '<div style="clear:both"></div><div class="teacher-seat">TEACHER</div>';
