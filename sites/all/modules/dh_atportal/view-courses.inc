@@ -304,8 +304,8 @@ function at_view_course_applicants($c) {
   $cid = $c['course'];
   drupal_add_css(drupal_get_path('module', 'dh_atportal') . '/css/at-view.css');
 
-  // Export filename mirrors the main app's convention.
-  $fname = preg_replace('/\s+/', '-', $c['centre_name'] . '_' . $c['course_type'] . '_' . $c['start_date'] . '_to_' . $c['end_date']);
+  // Export filename mirrors the main app's convention (shared helper).
+  $fname = dh_course_file_basename($c['center'], $c['course']);
 
   $out  = '<div class="at-view">';
   $out .= _at_course_card($c);
@@ -433,8 +433,9 @@ function at_view_course_report($c) {
     return t('Report is unavailable.');
   }
   $pdf = create_d11_report_pdf($c['course']);
+  $filename = dh_course_file_basename($c['center'], $c['course'], 'day11-report').'.pdf';
   header("Content-type: application/pdf");
-  header("Content-Disposition: inline; filename=Day11-Report.pdf");
+  header('Content-Disposition: inline; filename="'.$filename.'"');
   $ret = s3_get_file(variable_get('s3_bucket_name', ''), $pdf, 'stream');
   if (!$ret['success']) {
     watchdog('S3PDF', $ret['message']);

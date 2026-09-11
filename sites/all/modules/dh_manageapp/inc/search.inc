@@ -2540,6 +2540,11 @@ function dh_application_view($app_id, $at_uid = 0)
 	), "dh_app_view_viewport");
 
 	$out  = $css.'<div class="app-view">';
+	// Make the browser's print/save-as-PDF default filename follow the app PDF
+	// convention: Centre_startdate_type_Applicant-Name.
+	$av_course = db_query("select a_course from dh_applicant where a_id=:id", array(':id' => $app_id))->fetchField();
+	$av_name = dh_course_file_basename($r['a_center'], $av_course).'_'.application_filename_part($r['fullname']);
+	$out .= '<script>document.title='.json_encode($av_name).';</script>';
 	$out .= '<div class="no-print"><button type="button" onclick="window.print()">Print</button></div>';
 	if ($r['a_photo'] != '')
 		$out .= '<img src="'.check_plain(file_create_url("show-photo/".$app_id)).'" alt="photo" style="float:right;max-width:140px;max-height:180px;border:1px solid #ccc;margin-left:12px" />';

@@ -1443,8 +1443,9 @@ function course_pdf()
 		$type = 'F';
 		$pdf = generate_course_pdf($course_id, $seating, $type);
 	}
+	$filename = dh_course_file_basename(arg(1), $course_id).'_'.(($type == 'M') ? 'Male' : 'Female').'.pdf';
 	header("Content-type: application/pdf");
-	header("Content-Disposition: inline; filename=course-".$type.".pdf");
+	header('Content-Disposition: inline; filename="'.$filename.'"');
 	$uri = "applications/".arg(1)."/".arg(2)."/course-".$type.".pdf";
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $uri, 'stream' );
 	if (!$ret['success'])

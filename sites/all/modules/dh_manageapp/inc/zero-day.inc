@@ -3453,7 +3453,7 @@ function dh_laundry_list($centre, $course)
 	$temp = explode("/", $course_name);
 
 
-	$filename = "Laundry-".trim($temp[1])."-".trim($temp[3])."-".trim($temp[2]).".xls";
+	$filename = dh_course_file_basename($centre, $course, 'laundry').'.xls';
 	header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 	header("Content-Disposition: attachment; filename=$filename");  //File name extension was wrong
 	header("Expires: 0");
@@ -3518,7 +3518,7 @@ function dh_valuable_list($centre, $course)
 	$temp = explode("/", $course_name);
 
 
-	$filename = "Valuable-".trim($temp[1])."-".trim($temp[3])."-".trim($temp[2]).".xls";
+	$filename = dh_course_file_basename($centre, $course, 'valuable').'.xls';
 	header("Content-Type:   application/vnd.ms-excel; charset=utf-8");
 	header("Content-Disposition: attachment; filename=$filename");  //File name extension was wrong
 	header("Expires: 0");
@@ -3562,7 +3562,8 @@ function dh_student_chit($centre, $course, $seating)
 	{
 		$max_cols[strtoupper($r['a_gender'])][$r['aa_seat_row']]  = $r['c'];
 	}	
-	$out = '<html><head>';
+	$dl_name = dh_course_file_basename($centre, $course, 'student-chit');
+	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css");</style>';
 	$out .= '</head><body>';
 	$title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
@@ -3669,7 +3670,8 @@ function dh_checking_slip($centre, $course, $seating)
   {
     $max_cols[strtoupper($r['a_gender'])][$r['aa_seat_row']]  = $r['c'];
   }
-  $out = '<html><head>';
+  $dl_name = dh_course_file_basename($centre, $course, 'checking-slip');
+  $out = '<html><head><title>'.$dl_name.'</title>';
   $out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/checking-slip.css");</style>';
   $out .= '</head><body>';
   $title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
