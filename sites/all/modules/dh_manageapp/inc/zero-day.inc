@@ -886,7 +886,9 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	// no meditation cells (cs_has_cells explicitly 0). Operators can toggle it back.
 	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
 	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
-	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css");</style>';
+	$dl_name = dh_course_file_basename($centre, $course, 'teacher-list');
+	$out = '<title>'.$dl_name.'</title>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -1100,7 +1102,9 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	// cells (cs_has_cells explicitly 0). Operators can toggle it back on.
 	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
 	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
-	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css");</style>';
+	$dl_name = dh_course_file_basename($centre, $course, 'manager-list');
+	$out = '<title>'.$dl_name.'</title>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -1373,10 +1377,12 @@ function dh_validate_seat_config($settings)
  * Print (or PDF) a "settings are not correct" page listing the problems, then
  * exit. Used by the seating plans when dh_validate_seat_config() fails.
  */
-function dh_seat_config_error_output($centre, $errors, $pdf = '')
+function dh_seat_config_error_output($centre, $errors, $pdf = '', $course = 0)
 {
 	global $base_url;
-	$out = '<html><head>';
+	$cid = is_array($course) ? reset($course) : $course;
+	$dl_name = $cid ? dh_course_file_basename($centre, $cid, 'seating') : 'seating';
+	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '</head><body>';
 	$out .= '<div class="helptext">';
@@ -1446,7 +1452,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	if (!is_array($course))
 		$course = array($course);
 
-	$out = '<html><head><script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+	$dl_name = dh_course_file_basename($centre, $course[0], 'seating');
+	$out = '<html><head><title>'.$dl_name.'</title><script src="https://code.jquery.com/jquery-1.12.4.js"></script>
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   <script>
   $( function() {
@@ -1663,7 +1670,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
 	$config_errors = dh_validate_seat_config($settings);
 	if (!empty($config_errors))
-		return dh_seat_config_error_output($centre, $config_errors, $pdf);
+		return dh_seat_config_error_output($centre, $config_errors, $pdf, $course);
 	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$ini = array();
 	if ($settings <> '')
@@ -2424,7 +2431,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 	$settings = db_query("select cs_seat_config from dh_center_setting where cs_center=$centre")->fetchField();
 	$config_errors = dh_validate_seat_config($settings);
 	if (!empty($config_errors))
-		return dh_seat_config_error_output($centre, $config_errors, $pdf);
+		return dh_seat_config_error_output($centre, $config_errors, $pdf, $course);
 	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$ini = array();
 	if ($settings <> '')
@@ -2496,7 +2503,8 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		return intval($a) - intval($b);
 	});
 
-	$out = '<html><head>';
+	$dl_name = dh_course_file_basename($centre, (is_array($course) ? reset($course) : $course), 'seating');
+	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script><script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style>';
 	$out .= '<style>.group-page{page-break-before: always;} .group-title{width:1000px;text-align:center;font-weight:bold;font-size:22px;margin-top:15px;} .group-empty{color:#888;padding:10px;}
@@ -2835,7 +2843,9 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 	global $base_url;
 	$is_pdf = ($pdf <> '');
 
-	$out = '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/day0-list.css");</style>';
+	$dl_name = dh_course_file_basename($centre, $course, '0-day');
+	$out = '<title>'.$dl_name.'</title>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/day0-list.css");</style>';
 
 	$temp = db_query("select c_name,td_val3 from dh_course c left join  dh_type_detail td on c.c_course_type=td.td_id where c_id=$course")->fetchAssoc();
 	$course_name = $temp['c_name'];
@@ -3121,7 +3131,8 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
 
 	}
-	$out = '<html><head>';
+	$dl_name = dh_course_file_basename($centre, $course, 'cell-list');
+	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
 	$out .= '</head><body>';
 	// Screen-only document title (in print, each table's repeating <thead> carries
@@ -3139,6 +3150,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 		($cols==1 ? '<b>1</b>' : l('1', $sort_base, array('query'=>$keep_sort))).
 		' &middot; '.
 		($cols==2 ? '<b>2</b>' : l('2', $sort_base, array('query'=>array('cols'=>2) + $keep_sort))).
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 	if ($has_fixed)
 		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the cell is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';

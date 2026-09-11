@@ -1936,9 +1936,7 @@ function _search_course()
 	}
 
 	$out = '<h3>'.$msg.' ('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Add Applicant", "app/add/$centre_id/$course_id").'</h3>';
-    $course_details = db_query("select co.c_start, co.c_end, td.td_val1, c.c_subdomain FROM dh_course co left join dh_type_detail td on co.c_course_type=td.td_id  left join dh_center c on co.c_center=c.c_id where co.c_id=:c_id", array(":c_id"=>$course_id))->fetchAssoc();
-    $course_name = "{$course_details['c_subdomain']}_{$course_details['td_val1']}_{$course_details['c_start']}_to_{$course_details['c_end']}";
-    $course_name = str_replace(' ', '-', $course_name);
+    $course_name = dh_course_file_basename($centre_id, $course_id);
 	$out .= dh_manageapp_search_results( $type, $where, $centre_id, false, $course_name );
 	$out .= '<h3>('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;</h3>';
 	return $out;
@@ -2848,6 +2846,39 @@ function application_filename_part($value)
 
     // Remove leading/trailing - or .
     return trim($value, '-.');
+}
+
+/**
+ * Build a download/print base filename for a course's reports, using the same
+ * convention as the application PDF (show_application_pdf): centre subdomain,
+ * course start date and course type. e.g. "Sota_15-Jan-2026_10-Day".
+ *
+ * @param int    $centre_id  Centre id (from the %centre_id route argument).
+ * @param int    $course_id  Course id (from the %course_id route argument).
+ * @param string $prefix     Optional report prefix, e.g. "0-day", "seating".
+ * @return string            Sanitised base name (no extension).
+ */
+function dh_course_file_basename($centre_id, $course_id, $prefix = '')
+{
+    $subdomain = db_query("select c_subdomain from dh_center where c_id=:id",
+        array(':id' => $centre_id))->fetchField();
+
+    $c = db_query("select DATE_FORMAT(co.c_start, '%d-%b-%Y') as start_date, td.td_val1
+        from dh_course co
+        left join dh_type_detail td on co.c_course_type=td.td_id
+        where co.c_id=:cid", array(':cid' => $course_id))->fetchAssoc();
+
+    $parts = array();
+    if ($prefix !== '') {
+        $parts[] = application_filename_part($prefix);
+    }
+    $parts[] = application_filename_part(ucfirst($subdomain));
+    $parts[] = application_filename_part($c['start_date']);
+    $parts[] = application_filename_part($c['td_val1']);
+
+    // Drop any empty parts (e.g. a course with no type set) so we never emit "__".
+    $parts = array_values(array_filter($parts, 'strlen'));
+    return implode('_', $parts);
 }
 
 

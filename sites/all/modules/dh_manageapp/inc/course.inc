@@ -1001,8 +1001,9 @@ function course_day11_report()
 {
 	$course_id = arg(2);
 	$pdf = create_d11_report_pdf($course_id);
+	$filename = dh_course_file_basename(arg(1), $course_id, 'day11-report').'.pdf';
 	header("Content-type: application/pdf");
-	header("Content-Disposition: inline; filename=Day11-Report.pdf");
+	header('Content-Disposition: inline; filename="'.$filename.'"');
 	//@readfile($pdf);
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $pdf, 'stream');
 	if (!$ret['success'])
