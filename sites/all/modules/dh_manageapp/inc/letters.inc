@@ -1102,6 +1102,13 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			$log .= " ($comment)";
 		logit($centre,  'Letter', $id, $log );
 
+		// Email accepted for this application -> clear any "Email Error" flag from
+		// a previous delivery failure. A real later bounce re-flags it via the
+		// webhook. Skipped for AT-directed letters (they email the AT, not the
+		// applicant) and for test-mode sends.
+		if ( !$test_mode && !in_array($event, array('R-ATReview', 'A-ATReview')) )
+			dh_clear_email_error($id, $centre);
+
 		if ($mg)
 		{
 			unset($mg);
@@ -1203,151 +1210,146 @@ function _get_letter_fields( $centre )
 }
 
 
+/**
+ * System uid used as the actor for automated email-status changes (webhook +
+ * successful-send clears).
+ */
+function _dh_email_system_uid()
+{
+	return db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+}
+
+/**
+ * Flag an application with the auto-managed "Email Error" system tag and record
+ * the failure reason in the application activity log. Used when Mailgun reports
+ * a delivery failure (bounced/dropped/failed/rejected/complained).
+ */
+function dh_mark_email_error($app_id, $centre_id, $reason = '')
+{
+	_dh_tag_mark_system($app_id, $centre_id, DH_EMAIL_ERROR_TAG, DH_EMAIL_ERROR_TAG_COLOR, _dh_email_system_uid());
+	if ($reason !== '')
+		logit($centre_id, 'Letter', $app_id, $reason);
+}
+
+/**
+ * Clear the "Email Error" tag once email works again for this application (a
+ * Mailgun 'delivered' event, or a subsequent successful send). Idempotent: a
+ * no-op if the application is not currently flagged.
+ */
+function dh_clear_email_error($app_id, $centre_id)
+{
+	_dh_tag_unmark_system($app_id, $centre_id, DH_EMAIL_ERROR_TAG, _dh_email_system_uid());
+}
+
+/**
+ * Apply one Mailgun delivery event to the referenced application (or AT
+ * application). Single point of truth shared by both webhook formats.
+ *  - failure   -> add "Email Error" tag + log the reason.
+ *  - delivered -> clear the tag.
+ * Both are guarded so we only act when the event is about the application's
+ * CURRENT email address. Test-mode events and events with no id are ignored.
+ */
+function _dh_mailgun_apply_event($app_id, $at_app_id, $event, $recipient, $test_mode, $desc)
+{
+	if ($test_mode == 1)
+		return;
+
+	$is_failure = in_array($event, array('bounced', 'dropped', 'failed', 'rejected', 'complained'));
+	$is_delivered = ($event == 'delivered');
+	if (!$is_failure && !$is_delivered)
+		return;
+
+	if ($app_id)
+	{
+		$row = db_query("select a_center, a_email from dh_applicant where a_id=:id", array(':id' => $app_id))->fetchAssoc();
+		if (!$row)
+			return;
+		// Only (un)flag when the event concerns the application's current address;
+		// a stale bounce for a since-corrected email must not touch it.
+		if ($recipient !== '' && $row['a_email'] !== $recipient)
+			return;
+		if ($is_failure)
+			dh_mark_email_error($app_id, $row['a_center'], $desc);
+		else
+			dh_clear_email_error($app_id, $row['a_center']);
+	}
+	elseif ($at_app_id && $is_failure)
+	{
+		// AT applications are not taggable; keep the existing course-teacher log.
+		log_course_teacher($at_app_id, $desc);
+	}
+}
+
+/**
+ * Mailgun webhook - legacy flat ($_POST) format. Parses and delegates to the
+ * shared handler. Kept working in case Mailgun still posts the old format.
+ */
 function mailgun_webhook()
 {
-	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-	$key = variable_get('mailgun_key', '');
-	//watchdog('WEBHOOK', print_r($_POST,true) );
-	//$post_data = json_decode( file_get_contents( 'php://input' ), true );
+	$key = variable_get('mailgun_webhook_signing_key', variable_get('mailgun_key', ''));
 	$post_data = $_POST;
-	#watchdog('WEBHOOK', print_r($post_data, true) );
-	//watchdog('WEBHOOK', print_r($_POST,true) );
-	if ($_SERVER['REQUEST_METHOD'] == 'POST') 
+	if ($_SERVER['REQUEST_METHOD'] == 'POST'
+		&& isset($post_data['timestamp'], $post_data['token'], $post_data['signature'])
+		&& hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
 	{
-		if(isset($post_data['timestamp']) && isset($post_data['token']) && isset($post_data['signature']) && hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
-		{
-			if (isset($post_data['app-id']))
-			{
-				switch($post_data['event'])
-				{
-					case 'delivered':
-						watchdog('WEBHOOK', "Test Mode: ".$post_data['test-mode'].", App id is ".$post_data['app-id']);
-						break;
-					case 'complained':
-					case 'bounced':
-					case 'dropped':
-					case 'failed':
-					case 'rejected':
-						if ($post_data['test-mode'] == 1)
-							break;
-						$desc = strtoupper($post_data['event'])." - ".$post_data['recipient'];
-						if (isset($post_data['error'])) $desc .= " ".$post_data['error'];
-						if (isset($post_data['reason'])) $desc .= " ".$post_data['reason'];
-						if (isset($post_data['notification'])) $desc .= " (".$post_data['notification'].") ";
-						if (isset($post_data['description'])) $desc .= " ".$post_data['description'];
-						$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['app-id'])->fetchAssoc();
-						$centre = $temp['a_center'];
-						$new_email = $temp['a_email'];
-						if ( $new_email == $post_data['recipient'] )
-						{
-							db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['app-id']);
-							logit($centre,  'Letter', $post_data['app-id'], $desc);
-						}
-						break;
-
-				}
-			}
-			elseif (isset($post_data['at-app-id']))
-			{
-				switch($post_data['event'])
-				{
-					case 'delivered':
-						watchdog('WEBHOOK', "Test Mode: ".$post_data['test-mode'].", AT App id is ".$post_data['at-app-id']);
-						break;
-					case 'complained':
-					case 'bounced':
-					case 'dropped':
-					case 'failed':
-					case 'rejected':
-						if ($post_data['test-mode'] == 1)
-							break;
-						$desc = strtoupper($post_data['event'])." - ".$post_data['recipient'];
-						if (isset($post_data['error'])) $desc .= " ".$post_data['error'];
-						if (isset($post_data['reason'])) $desc .= " ".$post_data['reason'];
-						if (isset($post_data['notification'])) $desc .= " (".$post_data['notification'].") ";
-						if (isset($post_data['description'])) $desc .= " ".$post_data['description'];
-						log_course_teacher($post_data['at-app-id'], $desc);
-						break;
-
-				}
-			}
-
-
-			/*}elseif($_POST['event'] == 'bounced'){
-				$subject = "[Mailgun] Bounced Email";
-				$body = "Recipient: " . $_POST['recipient'] . "\nDomain: " . $_POST['domain'] . "\nCode: " . $_POST['code'] . "\nError: " . $_POST['error'] . "\nNotification: " . $_POST['notification'] . "\n\nMessage-headers: " . $_POST['message-headers'] . "\n";
-				mail($to, $subject, $body, "From: " . $from,"-f". $from);
-			}elseif($_POST['event'] == 'dropped'){
-				$subject = "[Mailgun] Failed Email";
-				$body = "Recipient: " . $_POST['recipient'] . "\nDomain: " . $_POST['domain'] . "\nCode: " . $_POST['code'] . "\nReason: " . $_POST['reason'] . "\nDescription: " . $_POST['description'] . "\n\nMessage-headers: " . $_POST['message-headers'] . "\n";
-				mail($to, $subject, $body, "From: " . $from,"-f". $from);
-			}
-			*/
-		}
+		$event = isset($post_data['event']) ? $post_data['event'] : '';
+		$recipient = isset($post_data['recipient']) ? $post_data['recipient'] : '';
+		$test_mode = isset($post_data['test-mode']) ? $post_data['test-mode'] : 0;
+		$desc = strtoupper($event) . " - " . $recipient;
+		if (isset($post_data['error'])) $desc .= " " . $post_data['error'];
+		if (isset($post_data['reason'])) $desc .= " " . $post_data['reason'];
+		if (isset($post_data['notification'])) $desc .= " (" . $post_data['notification'] . ") ";
+		if (isset($post_data['description'])) $desc .= " " . $post_data['description'];
+		_dh_mailgun_apply_event(
+			isset($post_data['app-id']) ? $post_data['app-id'] : 0,
+			isset($post_data['at-app-id']) ? $post_data['at-app-id'] : 0,
+			$event, $recipient, $test_mode, $desc
+		);
 	}
-	header('X-PHP-Response-Code: 200', true, 200);	
+	header('X-PHP-Response-Code: 200', true, 200);
 	print "ok 200";
 }
 
+/**
+ * Mailgun webhook - current nested-JSON format (event-data + signature). This
+ * is the primary handler; point the Mailgun dashboard at /webhook3/mailgun.
+ * Signature is verified with the dedicated webhook signing key (falling back to
+ * the API key for backward-compatibility).
+ */
 function mailgun_webhook3()
 {
-	$UID_SYSTEM = db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
-	$key = variable_get('mailgun_key', '');
-	//watchdog('WEBHOOK', print_r($_POST,true) );
-	$post_data = json_decode( file_get_contents( 'php://input' ), true );
-	//$post_data = $_POST;
-	//watchdog('WEBHOOK', print_r($post_data, true) );
-	//watchdog('WEBHOOK', print_r($_POST,true) );
-	if(isset($post_data['signature']['timestamp']) && isset($post_data['signature']['token']) && isset($post_data['signature']['signature']) && hash_hmac('sha256', $post_data['signature']['timestamp'] . $post_data['signature']['token'], $key) === $post_data['signature']['signature'])
-	{
-		switch($post_data['event-data']['event'])
-		{
-			case 'delivered':
-				watchdog('WEBHOOK', "Test Mode: ".$post_data['user-variables']['test-mode'].", App id is ".$post_data['user-variables']['app-id']);
-				break;
-			case 'complained':
-			case 'bounced':
-			case 'dropped':
-			case 'failed':
-			case 'rejected':
-			case 'failed':
-				if (  (!isset($post_data['event-data']['user-variables']['app-id']))  && (!isset($post_data['event-data']['user-variables']['at-app-id'])) )
-					break;
-				if ($post_data['user-variables']['test-mode'] == 1)
-					break;
-				$desc = '(3) '.strtoupper($post_data['event-data']['event'])." - ".$post_data['event-data']['recipient'];
-				if (isset($post_data['event-data']['delivery-status']['code'])) $desc .= " ".$post_data['event-data']['delivery-status']['code'];
-				if (isset($post_data['event-data']['reason'])) $desc .= " ".$post_data['event-data']['reason'];
-				if (isset($post_data['event-data']['delivery-status']['message'])) $desc .= " (".$post_data['event-data']['delivery-status']['message'].") ";
-				if (isset($post_data['event-data']['delivery-status']['description'])) $desc .= " ".$post_data['event-data']['delivery-status']['description'];
-				break;
+	$key = variable_get('mailgun_webhook_signing_key', variable_get('mailgun_key', ''));
+	$post_data = json_decode(file_get_contents('php://input'), true);
 
-		}
-		if (isset($post_data['event-data']['user-variables']['app-id']))
-		{
-			$temp = db_query("select a_center, a_email from dh_applicant where a_id=".$post_data['event-data']['user-variables']['app-id'])->fetchAssoc();
-			$centre = $temp['a_center'];
-			$new_email = $temp['a_email'];
-			if ( $new_email == $post_data['event-data']['recipient'] )
-			{
-				db_query("update dh_applicant set a_status='Errors', a_updated = '".date('Y-m-d H:i:s')."', a_updated_by='".$UID_SYSTEM."' where a_id=".$post_data['event-data']['user-variables']['app-id']);
-				logit($centre,  'Letter', $post_data['event-data']['user-variables']['app-id'], $desc);
-			}
-		}
-		elseif (isset($post_data['event-data']['user-variables']['at-app-id']))
-		{
-			log_course_teacher($post_data['event-data']['user-variables']['at-app-id'], $desc);
-		}
-		else
-		{
-			watchdog('WEBHOOK3-NO-ID', print_r($post_data, true) );
-		}
+	$sig = isset($post_data['signature']) ? $post_data['signature'] : array();
+	$valid = isset($sig['timestamp'], $sig['token'], $sig['signature'])
+		&& hash_hmac('sha256', $sig['timestamp'] . $sig['token'], $key) === $sig['signature'];
+
+	if ($valid && isset($post_data['event-data']))
+	{
+		$ed = $post_data['event-data'];
+		$uv = isset($ed['user-variables']) ? $ed['user-variables'] : array();
+		$event = isset($ed['event']) ? $ed['event'] : '';
+		$recipient = isset($ed['recipient']) ? $ed['recipient'] : '';
+		$test_mode = isset($uv['test-mode']) ? $uv['test-mode'] : 0;
+
+		$desc = '(3) ' . strtoupper($event) . " - " . $recipient;
+		if (isset($ed['delivery-status']['code'])) $desc .= " " . $ed['delivery-status']['code'];
+		if (isset($ed['reason'])) $desc .= " " . $ed['reason'];
+		if (isset($ed['delivery-status']['message'])) $desc .= " (" . $ed['delivery-status']['message'] . ") ";
+		if (isset($ed['delivery-status']['description'])) $desc .= " " . $ed['delivery-status']['description'];
+
+		_dh_mailgun_apply_event(
+			isset($uv['app-id']) ? $uv['app-id'] : 0,
+			isset($uv['at-app-id']) ? $uv['at-app-id'] : 0,
+			$event, $recipient, $test_mode, $desc
+		);
 	}
 	else
 	{
-		watchdog('WEBHOOK3', print_r($post_data, true) );
+		watchdog('WEBHOOK3', 'Invalid signature or payload: ' . substr(print_r($post_data, true), 0, 2000));
 	}
-	header('X-PHP-Response-Code: 200', true, 200);	
+	header('X-PHP-Response-Code: 200', true, 200);
 	print "ok 200";
 }
 

@@ -275,10 +275,16 @@ function _dh_tag_pinned($uid, $centre_id)
 define('DH_AT_COMMENTS_TAG', 'AT Comments');
 define('DH_CENTER_COMMENT_TAG', 'Center Comment');
 define('DH_ATTENDED_TAG', 'Attended');
+define('DH_EMAIL_ERROR_TAG', 'Email Error');
 // All system tags share one colour so they read as one group (soft-tinted at
 // render). Indigo is deliberately NOT in _dh_tag_palette(), so no user tag can
 // share it and system tags are always visually distinct.
 define('DH_SYSTEM_TAG_COLOR', '#3f51b5');
+// The "Email Error" tag is auto-managed by the Mailgun webhook (added on a
+// delivery failure, cleared on delivery/next successful send). It gets its own
+// red so an email-delivery problem stands out from the ordinary indigo system
+// tags. Also kept out of _dh_tag_palette() so no user tag can reuse it.
+define('DH_EMAIL_ERROR_TAG_COLOR', '#c0392b');
 
 /**
  * Find (or lazily create) a per-centre system tag by name; returns t_id.

@@ -1181,6 +1181,7 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Mail Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['mailgun_primary_domain'] = array('#title' => 'Mailgun Primary Domain', '#type' => 'textfield', '#size' => 40, '#default_value' => variable_get('mailgun_primary_domain', ''));
  	$form[$group]['mailgun_key'] = array('#title' => 'Mailgun Key', '#type' => 'textfield', '#size' => 40, '#default_value' => variable_get('mailgun_key', ''));
+ 	$form[$group]['mailgun_webhook_signing_key'] = array('#title' => 'Mailgun Webhook Signing Key', '#type' => 'textfield', '#size' => 40, '#default_value' => variable_get('mailgun_webhook_signing_key', ''), '#description' => 'HTTP webhook signing key from the Mailgun dashboard (Webhooks). Used to verify delivery-event webhooks. Leave blank to fall back to the Mailgun Key.');
 
  	$group = 'SMS Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'SMS Settings' , '#collapsible' => true, '#collapsed' => false);
