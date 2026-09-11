@@ -748,7 +748,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	$attributes = array('id' => 'table-attending');
 
 	$nt = array("attributes" => array("target" => "_blank"));   // printable pages open in a new tab
-	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id, $nt).' | '.l("Manager List", "manager-list/".$centre."/".$course_id, $nt).' | '.l("Seating Plan", "seating/".$centre."/".$course_id, $nt).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1), "attributes" => array("target" => "_blank"))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id, $nt).'  ) </h3>';
+	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id, $nt).' | '.l("Manager List", "manager-list/".$centre."/".$course_id, $nt).' | '.l("Seating Plan", "seating/".$centre."/".$course_id, $nt).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1), "attributes" => array("target" => "_blank", "onclick" => 'return confirm("Regenerate will re-pack all seats and DESTROY the current saved seating plan. Continue?");'))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id, $nt).'  ) </h3>';
 	if (!isset($totals['new']['M']['Student'])) $totals['new']['M']['Student'] = 0;
   if (!isset($totals['new']['M']['Sevak'])) $totals['new']['M']['Sevak'] = 0;
   if (!isset($totals['new']['F']['Student'])) $totals['new']['F']['Student'] = 0;

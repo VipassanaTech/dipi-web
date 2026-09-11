@@ -77,7 +77,15 @@ function dh_course_dashboard()
 		if ( $key == 'View Applications')
 			$out .= '<h2><li>'.l($key, $val, array("query" => array("s" => '', 't' => '','g' => '', 'd' => $type))).'</li></h2>';
 		elseif ( in_array($key, array('Cell List', 'Seating Plan', 'Group-wise Seating'))  )
-			$out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).' ('.l('Regenerate', $val, array("query" => array("r" => 1), "attributes" => $attr)).') </li></h2>';
+		{
+			// Regenerate re-packs everything from the configuration and discards the
+			// current manually-arranged plan, so warn before it runs.
+			$regen_msg = ($key == 'Cell List')
+				? 'Regenerate will re-assign all cells and DESTROY the current saved cell list. Continue?'
+				: 'Regenerate will re-pack all seats and DESTROY the current saved '.($key == 'Group-wise Seating' ? 'group-wise seating plan' : 'seating plan').'. Continue?';
+			$regen_attr = array('onclick' => 'return confirm("'.$regen_msg.'");') + $attr;
+			$out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).' ('.l('Regenerate', $val, array("query" => array("r" => 1), "attributes" => $regen_attr)).') </li></h2>';
+		}
         elseif ( in_array($key, array('Generate Male PDF', 'Generate Female PDF'))  )
             $out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).'<br>('.l('Sort as Seating Plan', $val, array("query" => array("seating" => 1), "attributes" => $attr)).') </li></h2>';
 		else
