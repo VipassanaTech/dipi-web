@@ -747,7 +747,8 @@ function dh_manageapp_attended( $centre, $course_id )
 	$header = array('Update', 'ConfNo', 'Name', 'Gender', 'Type', 'Age', 'Teen/10D/STP', 'LC', 'RoomNo', 'Laundry', 'Valuable', 'Chowky', 'Chair', 'BackRest', 'Group', 'H' );
 	$attributes = array('id' => 'table-attending');
 
-	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id).' | '.l("Manager List", "manager-list/".$centre."/".$course_id).' | '.l("Seating Plan", "seating/".$centre."/".$course_id).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id).'  ) </h3>';
+	$nt = array("attributes" => array("target" => "_blank"));   // printable pages open in a new tab
+	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id, $nt).' | '.l("Manager List", "manager-list/".$centre."/".$course_id, $nt).' | '.l("Seating Plan", "seating/".$centre."/".$course_id, $nt).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1), "attributes" => array("target" => "_blank"))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id, $nt).'  ) </h3>';
 	if (!isset($totals['new']['M']['Student'])) $totals['new']['M']['Student'] = 0;
   if (!isset($totals['new']['M']['Sevak'])) $totals['new']['M']['Sevak'] = 0;
   if (!isset($totals['new']['F']['Student'])) $totals['new']['F']['Student'] = 0;
@@ -1693,6 +1694,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
+		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
     <button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
 	if ( is_array($course) )
@@ -2609,6 +2611,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '')
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
+		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
 		<button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
 
@@ -3142,7 +3145,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	$sort_base = 'cell-list/'.$centre.'/'.$course;
 	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
 	$keep_sort = ($sort == 'cell') ? array('sort' => 'cell') : array(); // preserve sort choice on column links
-	$out .= '<div class="cl-sort no-print">Sort by: '.
+	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
 		($sort=='name' ? '<b>Name</b>' : l('Name', $sort_base, array('query'=>array('sort'=>'name') + $keep_cols))).
 		' &middot; '.
 		($sort=='cell' ? '<b>Cell</b>' : l('Cell', $sort_base, array('query'=>array('sort'=>'cell') + $keep_cols))).
@@ -3570,6 +3573,7 @@ function dh_student_chit($centre, $course, $seating)
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$out .= $title;
   $student_chit_as_seating = $base_url."/student-chit/$centre/$course?seating=1";
+  $out .= '<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.$course.'" style="margin-right:10px">&#8592; Back to Course page</a>';
   $out .= '<button type="button" class="no-print remove-seat">Click to remove Seats</button>';
   $out .= ' <button type="button" class="no-print remove-cell">Click to remove Cells</button>';
   $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Student Chit in order of sitting plan.</a>';
@@ -3677,6 +3681,7 @@ function dh_checking_slip($centre, $course, $seating)
   $title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
       '<div align="center" class="title-head">'.$course_name.'</div></div>';
   $out .= $title;
+  $out .= '<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.$course.'" style="margin-right:10px">&#8592; Back to Course page</a>';
   $student_chit_as_seating = $base_url."/checking-slip/$centre/$course?seating=1";
   $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Checking Slip in order of sitting plan.</a>';
   $out .= '<div class="no-print">
