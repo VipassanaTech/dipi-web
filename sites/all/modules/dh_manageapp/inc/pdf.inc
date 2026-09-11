@@ -3,14 +3,18 @@
 
 function create_pdf_from_html($data, $outfile)
 {
-	$input = tempnam("/tmp", "DIPI-HTML").".html";
+	// tempnam() creates a 0-byte stub; we append .html and must remove BOTH so the
+	// stubs don't pile up in /tmp.
+	$stub = tempnam("/tmp", "DIPI-HTML");
+	$input = $stub.".html";
 	$handle = fopen($input, "w");
 	fwrite($handle, $data);
 	fclose($handle);
 
 	$cmd = "/usr/local/bin/wkhtmltopdf $input $outfile";
 	exec($cmd);
-	unlink($input);
+	@unlink($input);
+	@unlink($stub);
 }
 
 /**
@@ -311,7 +315,9 @@ function create_d11_report_pdf( $course_id )
 	}
 	*/	
 	//$out_pdf = $dir."/report-Day11-".$course_id.".pdf";
-	$out_pdf = tempnam("/var/dipi", "report-D11-")."-".$course_id.".pdf";	
+	$d11_stub = tempnam("/var/dipi", "report-D11-");
+	$out_pdf = $d11_stub."-".$course_id.".pdf";
+	@unlink($d11_stub);   // drop the unused 0-byte tempnam stub
 	$out_uri = $uri."/reports/".$centre_id."/".$year."/report-Day11-".$course_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 
@@ -457,7 +463,9 @@ function create_application_pdf( $application_id )
 		mkdir($dir, 0775, true);		
 	}*/
 	//$out_pdf = $dir."/app-".$application_id.".pdf";
-	$out_pdf = tempnam("/var/dipi", "app-")."-".$application_id.".pdf";
+	$app_stub = tempnam("/var/dipi", "app-");
+	$out_pdf = $app_stub."-".$application_id.".pdf";
+	@unlink($app_stub);   // drop the unused 0-byte tempnam stub
 	$out_uri = $uri."/applications/".$row['a_center']."/".$row['c_id']."/app-".$application_id.".pdf";
 	pdf_fill_form($fields, $template, $out_pdf);
 	if ($row['a_photo'] <> '')

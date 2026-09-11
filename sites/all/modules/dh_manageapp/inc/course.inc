@@ -1412,7 +1412,9 @@ function generate_course_pdf($course_id, $seating=0, $type = 'M')
 			//echo "Dir: $dirname\n";
 			//print_r($pdfs);
 			//chdir($dirname);
-			$out_pdf = tempnam("/var/dipi", "mega-").".pdf";
+			$mega_stub = tempnam("/var/dipi", "mega-");
+			$out_pdf = $mega_stub.".pdf";
+			@unlink($mega_stub);   // drop the unused 0-byte tempnam stub
 			// $cmd = "/usr/bin/pdfjoin ".implode(" " , $pdfs)." --outfile $out_pdf";
       $cmd = "pdftk ".implode(" " , $pdfs)." cat output $out_pdf";
 			//echo "$cmd\n";
