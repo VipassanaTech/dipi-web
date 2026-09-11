@@ -2831,10 +2831,23 @@ function show_application_pdf( $app_id )
 
 function application_filename_part($value)
 {
+    // Coerce to string and strip any invalid UTF-8 bytes up front: the /u regex
+    // below returns NULL (making the whole part empty) if the input is not valid
+    // UTF-8. Columns are utf8mb4, but a legacy row or odd import can still carry
+    // a stray byte, so scrub defensively.
+    $value = (string) $value;
+    if (function_exists('iconv')) {
+        $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+        if ($clean !== false) {
+            $value = $clean;
+        }
+    }
+
     // Trim whitespace
     $value = trim($value);
 
-    // Replace any whitespace sequence with -
+    // Replace any whitespace sequence with - (also neutralises CR/LF, so the
+    // result is always safe to place in a Content-Disposition header).
     $value = preg_replace('/\s+/', '-', $value);
 
     // Replace characters that are unsafe/problematic in filenames with -
@@ -2845,7 +2858,17 @@ function application_filename_part($value)
     $value = preg_replace('/-+/', '-', $value);
 
     // Remove leading/trailing - or .
-    return trim($value, '-.');
+    $value = trim($value, '-.');
+
+    // Cap the length so that several joined parts stay well under the 255-byte
+    // filesystem limit. mb_strcut keeps the cut on a UTF-8 character boundary so
+    // truncation can never reintroduce an invalid byte.
+    if (strlen($value) > 100) {
+        $value = function_exists('mb_strcut') ? mb_strcut($value, 0, 100, 'UTF-8') : substr($value, 0, 100);
+        $value = trim($value, '-.');
+    }
+
+    return $value;
 }
 
 /**
