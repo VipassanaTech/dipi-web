@@ -1796,6 +1796,13 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
     else {
       $edit_data['country'] = array();
     }
+    if ( !empty($edit_data['nationality']) ) {
+      $edit_data_n = explode( ', ', $edit_data['nationality'] );
+      $edit_data['nationality'] = array_combine($edit_data_n, $edit_data_n);
+    }
+    else {
+      $edit_data['nationality'] = array();
+    }
   }
 
 	//$q = "select td_val1, td_val1 from dh_type_detail where td_key='Appl_stat' order by td_val1";
@@ -1907,6 +1914,10 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		// State / City / Pin are country-specific: only applied when NOT multiple countries.
 		if ( !$multi_country && isset($storage['state']) && is_array($storage['state']) && count(array_filter($storage['state'])) > 0 )
 			$where .= " and s_name in ('".implode("', '", array_map('addslashes', array_filter($storage['state'])))."')";
+
+		// Nationality (ae.ae_nationality) — independent of country, so no multi-country guard.
+		if ( isset($storage['nationality']) && is_array($storage['nationality']) && count(array_filter($storage['nationality'])) > 0 )
+			$where .= " and ae.ae_nationality in ('".implode("', '", array_map('addslashes', array_filter($storage['nationality'])))."')";
 
 		if ( $storage['email'] <> '' )
 			$where .= " and a_email LIKE '".$storage['email']."%'";
@@ -2080,6 +2091,9 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 
 		$q = "select c_code, c_name from dh_country order by c_name";
 		$countries = db_query($q)->fetchAllKeyed();
+		// Nationality values are stored on dh_applicant_extra.ae_nationality as the
+		// nationality name (e.g. "Indian"), matching dh_country.c_nationality.
+		$nationalities = db_query("select distinct c_nationality, c_nationality from dh_country where c_nationality is not null and c_nationality <> '' order by c_nationality")->fetchAllKeyed();
 		// Country is a multi-select; no blank "Choose" option (select2 placeholder instead).
 		// States grouped by country code, for the dependent State dropdown (client-side cascade).
 		$states_by_country = array();
@@ -2127,6 +2141,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		// State is a dependent dropdown filled from the chosen Country (JS cascade).
 		// #validated => TRUE so a JS-populated value is accepted on submit.
 		$form['state'] = array('#title' => 'State', '#type' => 'select', '#multiple' => 'multiple', '#options' => array(), '#default_value' => ($update_bm && isset($edit_data['state']) && is_array($edit_data['state'])) ? $edit_data['state'] : array(), '#validated' => TRUE, '#weight' => 10, '#attributes' => array('id' => 'edit-state'));
+		$form['nationality'] = array('#title' => 'Nationality', '#type' => 'select', '#multiple' => 'multiple', '#options' => $nationalities, '#default_value' => ($update_bm && isset($edit_data['nationality']) && is_array($edit_data['nationality'])) ? $edit_data['nationality'] : array(), '#validated' => TRUE, '#weight' => 10.5, '#attributes' => array('id' => 'edit-nationality'));
 		$form['email'] = array('#title' => 'Email', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['email']:'', '#weight' => 11);
 		$form['mode'] = array('#title' => 'Application Mode', '#type' => 'select', '#default_value' => $update_bm?$edit_data['mode']:'', '#options' => $modes, '#weight' => 18 );
 		$langs = db_query("select l_name, l_name from dh_languages order by l_name")->fetchAllKeyed();
@@ -2240,6 +2255,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 					$("#edit-course").select2();
 					if ($("#edit-abm-centres").length) { $("#edit-abm-centres").select2({ placeholder: "All centres", allowClear: true, width: "260px" }); }
 					$("#edit-country").select2({ placeholder: "Choose country(ies)", allowClear: true, width: "220px" });
+          $("#edit-nationality").select2({ placeholder: "Choose nationality(ies)", allowClear: true, width: "220px" });
           $("#edit-app-status").select2();
           $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
           $("#edit-state").select2({ placeholder: "Choose state(s)", allowClear: true, width: "220px" });

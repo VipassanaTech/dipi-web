@@ -102,7 +102,7 @@ function _dh_abm_criteria_label($key) {
   $map = array(
     'f_name' => 'First Name', 'l_name' => 'Last Name', 'conf_no' => 'Confirmation No',
     'course' => 'Course', 'status' => 'Status', 'type' => 'Applicant Type', 'gender' => 'Gender',
-    'country' => 'Country', 'state' => 'State', 'email' => 'Email', 'mode' => 'Application Mode',
+    'country' => 'Country', 'state' => 'State', 'nationality' => 'Nationality', 'email' => 'Email', 'mode' => 'Application Mode',
     'lang_discourse' => 'Discourse Language', 'lang_discourse_op' => 'Discourse Language Match',
     'mobile' => 'Mobile', 'phone_home' => 'Phone Home', 'pin' => 'Pin Code', 'city' => 'City',
     'occupation' => 'Occupation', 'designation' => 'Designation', 'company' => 'Company',

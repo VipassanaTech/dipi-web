@@ -53,7 +53,7 @@ function dh_bulk_mail_preview_recipients($where, $limit = 25) {
  * implode multi-selects, drop internal keys, drop empties.
  */
 function dh_bulk_mail_clean_criteria($criteria) {
-  foreach (array('status', 'lang_discourse', 'state', 'country') as $k) {
+  foreach (array('status', 'lang_discourse', 'state', 'country', 'nationality') as $k) {
     if (isset($criteria[$k]) && is_array($criteria[$k])) {
       $criteria[$k] = implode(', ', $criteria[$k]);
     }
