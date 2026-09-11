@@ -1319,7 +1319,9 @@ function mailgun_webhook()
 function mailgun_webhook3()
 {
 	$key = variable_get('mailgun_webhook_signing_key', variable_get('mailgun_key', ''));
-	$post_data = json_decode(file_get_contents('php://input'), true);
+	$raw = file_get_contents('php://input');
+	watchdog('WEBHOOK3-RAW', substr($raw, 0, 5000)); // TEMP debug: capture real Mailgun payload shape
+	$post_data = json_decode($raw, true);
 
 	$sig = isset($post_data['signature']) ? $post_data['signature'] : array();
 	$valid = isset($sig['timestamp'], $sig['token'], $sig['signature'])
