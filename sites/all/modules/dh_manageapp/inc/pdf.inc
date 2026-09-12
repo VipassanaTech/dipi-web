@@ -121,7 +121,7 @@ function create_pdf_from_html_size($html, $outfile, $w_mm, $h_mm)
 function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov_pt, $canvas_h_pt)
 {
 	$tiles = array();
-	$hov = round($ov_pt / 2, 2);
+	$edge = 0;   // dotted line flush at the sheet's leading edge (page end)
 	for ($r = 0; $r < $rows; $r++) {
 		for ($c = 0; $c < $cols; $c++) {
 			$ox = -($c * ($tw_pt - $ov_pt));
@@ -138,8 +138,8 @@ function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov
 			// Dotted line on this sheet's own leading edge(s): left if it has a left
 			// neighbour, top if it has a top neighbour.
 			$draw = '';
-			if ($c > 0) $draw .= $hov.' 0 moveto '.$hov.' '.round($th_pt, 2).' lineto ';
-			if ($r > 0) $draw .= '0 '.round($th_pt - $hov, 2).' moveto '.round($tw_pt, 2).' '.round($th_pt - $hov, 2).' lineto ';
+			if ($c > 0) $draw .= $edge.' 0 moveto '.$edge.' '.round($th_pt, 2).' lineto ';
+			if ($r > 0) $draw .= '0 '.round($th_pt - $edge, 2).' moveto '.round($tw_pt, 2).' '.round($th_pt - $edge, 2).' lineto ';
 			if ($draw !== '') {
 				$tstub = tempnam("/tmp", "DIPI-TILE");
 				$tf = $tstub.".pdf";

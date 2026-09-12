@@ -1674,7 +1674,12 @@ function dh_seating_section_pdf()
 	}
 
 	$base = dh_course_file_basename($centre, $course, 'seating');
-	$filename = $base . '_' . application_filename_part($sec_label) . $name_suffix . '.pdf';
+	$title = $base . '_' . application_filename_part($sec_label) . $name_suffix;
+	$filename = $title . '.pdf';
+	// Set the PDF /Title too - Chrome's inline viewer uses it for the download name
+	// instead of Content-Disposition, and the tiled multi-sheet PDF has none (would
+	// otherwise fall back to the course id in the URL).
+	dh_pdf_set_title($tmp, $title);
 	header('Content-Type: application/pdf');
 	header('Content-Disposition: inline; filename="' . $filename . '"');
 	header('Cache-Control: private');
