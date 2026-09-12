@@ -121,7 +121,7 @@ function create_pdf_from_html_size($html, $outfile, $w_mm, $h_mm)
 function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov_pt, $canvas_h_pt)
 {
 	$tiles = array();
-	$edge = 0;   // dotted line flush at the sheet's leading edge (page end)
+	$edge = 8.5;   // dotted line ~3mm inside the sheet's leading edge
 	for ($r = 0; $r < $rows; $r++) {
 		for ($c = 0; $c < $cols; $c++) {
 			$ox = -($c * ($tw_pt - $ov_pt));
