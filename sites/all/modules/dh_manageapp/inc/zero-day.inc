@@ -1620,7 +1620,7 @@ function dh_seating_section_pdf()
 				$map .= '</table>';
 				$box = '<div style="text-align:center;font:bold 13pt Arial,sans-serif;color:#000">Sheet ' . $ord . ' of ' . $N
 					. '<div style="font:bold 8pt Arial;color:#2e7d32;margin-top:2pt">place in number order &#8595;</div>' . $map
-					. '<div style="font:7pt Arial;color:#c00;margin-top:2pt">&#9660; red line = join edge</div></div>';
+					. '<div style="font:7pt Arial;color:#1a4fd0;margin-top:2pt">line up the blue &#9670; &middot; dotted = trim/fold edge</div></div>';
 				$bw = max(90, $cols * 26 + 20);
 				$style = 'position:absolute;width:' . $bw . 'pt;left:' . round($c * ($tw - $ov) + $tw / 2 - $bw / 2, 1) . 'pt;';
 				$style .= ($r == 0) ? 'top:4pt;' : 'bottom:4pt;';
@@ -1632,24 +1632,33 @@ function dh_seating_section_pdf()
 		// meet there, so the SAME mark (showing both sheet numbers) prints on both -
 		// slide the sheets until the identical marks sit on top of each other, then
 		// tape. Red, in the outer band, off the plan.
-		// A red line at the EXACT seam (centre of the overlap strip) with an arrow
-		// pointing to it, in the top & bottom bands for a vertical seam / left & right
-		// bands for a horizontal one. The strip is shared, so the SAME line prints on
-		// both sheets - slide the sheets until the two red lines sit exactly on top of
-		// each other, then tape. (Which sheets meet where is shown by the layout map.)
-		for ($c = 1; $c < $cols; $c++) {                 // vertical seams: sheets side by side
-			$x = $c * ($tw - $ov) + $ov / 2;
-			$vline = 'position:absolute;left:' . round($x, 1) . 'pt;border-left:2.5pt solid #c00;height:30pt;';
-			$tri   = 'position:absolute;left:' . round($x - 8, 1) . 'pt;width:16pt;text-align:center;font:bold 12pt Arial;color:#c00;';
-			$labels .= '<div style="' . $tri . 'top:2pt;">&#9660;</div><div style="' . $vline . 'top:14pt;"></div>';
-			$labels .= '<div style="' . $tri . 'bottom:2pt;">&#9650;</div><div style="' . $vline . 'bottom:14pt;"></div>';
+		// Diamond registration + trim/fold guide, at each seam:
+		//  - a filled BLUE diamond centred on the seam (the later sheet's leading edge):
+		//    the earlier sheet prints the whole diamond, the later sheet only its half,
+		//    so laying the later sheet on top completes ONE clean diamond when aligned,
+		//    and shows a broken/doubled diamond when it is off. In the top & bottom
+		//    (or left & right) bands, so tilt shows too. Half-diagonal < overlap.
+		//  - a dotted grey line down the middle of the overlap strip: if the printer
+		//    leaves a blank border, trim or fold both sheets to this line before joining
+		//    (it lands ~4mm from each sheet's edge, the same spot on both).
+		$Wc = $best['Wc']; $Hc = $best['Hc'];
+		$ds = 30;                                     // filled diamond ~21pt half-diagonal (< 8mm overlap)
+		$dg = 'position:absolute;width:' . $ds . 'pt;height:' . $ds . 'pt;background:#1a4fd0;border:1.5pt solid #0a2f80;'
+			. 'transform:rotate(45deg);-webkit-transform:rotate(45deg);';
+		$off = round(24 - $ds / 2, 1);
+		for ($c = 1; $c < $cols; $c++) {              // vertical seams (sheets side by side)
+			$split = $c * ($tw - $ov);
+			$dx = round($split - $ds / 2, 1);
+			$labels .= '<div style="position:absolute;top:0;bottom:0;left:' . round($split + $ov / 2, 1) . 'pt;border-left:1pt dashed #888;"></div>';
+			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;top:' . $off . 'pt;"></div>';
+			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;bottom:' . $off . 'pt;"></div>';
 		}
-		for ($r = 1; $r < $rows; $r++) {                 // horizontal seams: sheets stacked
-			$y = $r * ($th - $ov) + $ov / 2;
-			$hline = 'position:absolute;top:' . round($y, 1) . 'pt;border-top:2.5pt solid #c00;width:30pt;';
-			$tri   = 'position:absolute;top:' . round($y - 8, 1) . 'pt;font:bold 12pt Arial;color:#c00;';
-			$labels .= '<div style="' . $tri . 'left:2pt;">&#9654;</div><div style="' . $hline . 'left:14pt;"></div>';
-			$labels .= '<div style="' . $tri . 'right:2pt;">&#9664;</div><div style="' . $hline . 'right:14pt;"></div>';
+		for ($r = 1; $r < $rows; $r++) {              // horizontal seams (sheets stacked)
+			$split = $r * ($th - $ov);
+			$dy = round($split - $ds / 2, 1);
+			$labels .= '<div style="position:absolute;left:0;right:0;top:' . round($split + $ov / 2, 1) . 'pt;border-top:1pt dashed #888;"></div>';
+			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;left:' . $off . 'pt;"></div>';
+			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;right:' . $off . 'pt;"></div>';
 		}
 		$full = preg_replace('#</body>#i', $labels . '</body>', $full, 1);
 
