@@ -87,6 +87,55 @@ function dh_html_content_bbox_pt($html)
 	return $box;
 }
 
+/**
+ * Render HTML to a single PDF page of an arbitrary size (mm), full-bleed (no
+ * margins). Used to build the big multi-sheet "canvas" that is then tiled into
+ * A4 pages. Runs JS (name shortening) like the A4 renderer.
+ */
+function create_pdf_from_html_size($html, $outfile, $w_mm, $h_mm)
+{
+	$stub = tempnam("/tmp", "DIPI-CANV");
+	$input = $stub.".html";
+	file_put_contents($input, $html);
+	$cmd = "/usr/local/bin/wkhtmltopdf --page-width ".$w_mm."mm --page-height ".$h_mm."mm"
+		." -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --javascript-delay 900"
+		." --load-error-handling ignore --load-media-error-handling ignore "
+		.escapeshellarg($input)." ".escapeshellarg($outfile)." 2>/dev/null";
+	exec($cmd);
+	@unlink($input);
+	@unlink($stub);
+}
+
+/**
+ * Tile one big PDF canvas page into cols x rows A4 pages using Ghostscript's
+ * PageOffset (crop-to-window), then merge in reading order with pdftk. Adjacent
+ * tiles share an $ov_pt overlap strip so nothing is lost to the printer's
+ * unprintable margin and centres can overlap-and-tape. Writes $out_pdf.
+ */
+function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov_pt, $canvas_h_pt)
+{
+	$tiles = array();
+	for ($r = 0; $r < $rows; $r++) {
+		for ($c = 0; $c < $cols; $c++) {
+			$ox = -($c * ($tw_pt - $ov_pt));
+			$oy = -($canvas_h_pt - $th_pt) + $r * ($th_pt - $ov_pt);
+			$tstub = tempnam("/tmp", "DIPI-TILE");
+			$tf = $tstub.".pdf";
+			$cmd = "gs -q -o ".escapeshellarg($tf)." -sDEVICE=pdfwrite -dFIXEDMEDIA"
+				." -dFirstPage=1 -dLastPage=1"
+				." -dDEVICEWIDTHPOINTS=".round($tw_pt)." -dDEVICEHEIGHTPOINTS=".round($th_pt)
+				." -c \"<</PageOffset [".round($ox, 2)." ".round($oy, 2)."]>> setpagedevice\""
+				." -f ".escapeshellarg($big_pdf)." 2>/dev/null";
+			exec($cmd);
+			$tiles[] = $tf;
+			@unlink($tstub);
+		}
+	}
+	$args = implode(' ', array_map('escapeshellarg', $tiles));
+	exec("pdftk ".$args." cat output ".escapeshellarg($out_pdf)." 2>/dev/null");
+	foreach ($tiles as $t) @unlink($t);
+}
+
 function fdf_create($filename, $fields)
 {
 	$Out = "%FDF-1.2\n%????\n";

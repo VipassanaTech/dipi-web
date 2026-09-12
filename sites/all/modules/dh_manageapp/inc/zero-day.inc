@@ -1463,6 +1463,9 @@ function dh_seating_section_pdf()
 	$course = (int) arg(2);
 	$sec = isset($_REQUEST['sec']) ? $_REQUEST['sec'] : '';
 	$plan = (isset($_REQUEST['plan']) && $_REQUEST['plan'] == 'group') ? 'group' : 'main';
+	// sheets: 1 = single A4 (default, unchanged); 2 or 4 = tile the plan across that
+	// many A4 sheets (bigger/readable, taped together).
+	$sheets = (isset($_REQUEST['sheets']) && in_array($_REQUEST['sheets'], array('2', '4'), true)) ? (int) $_REQUEST['sheets'] : 1;
 	if ($sec === '')
 		return MENU_NOT_FOUND;
 
@@ -1535,48 +1538,103 @@ function dh_seating_section_pdf()
 	$meas_html = preg_replace('#</head>#i', $mk_css(null, 0, 0, $cw) . '</head>', $html, 1);
 	list($w_pt, $h_pt) = dh_html_content_bbox_pt($meas_html);
 
-	$long = 807.9; $short = 561.3;                    // A4 printable pt (6mm margins)
-	if ($w_pt > 1 && $h_pt > 1) {
-		$zl = min($long / $w_pt, $short / $h_pt);     // fill in landscape
-		$zp = min($short / $w_pt, $long / $h_pt);     // fill in portrait
-		// Use whichever orientation covers the most page area (largest zoom).
-		if ($zl >= $zp) { $orientation = 'Landscape'; $zoom = $zl; }
-		else            { $orientation = 'Portrait';  $zoom = $zp; }
-	} else {
-		$orientation = 'Landscape'; $zoom = 1;        // measurement failed: render 1:1
-	}
-	$zoom = $zoom * 0.95;                             // safety margin against clipping / pagination rounding
-	if ($zoom > 4)    $zoom = 4;
-	if ($zoom < 0.05) $zoom = 0.05;
-	$zoom = round($zoom, 3);
-
-	// Centre on the page: half the leftover printable width/height as top+left pads.
-	$page_w = ($orientation == 'Landscape') ? $long : $short;
-	$page_h = ($orientation == 'Landscape') ? $short : $long;
-	$pad_top  = ($page_h - $h_pt * $zoom) / 2;
-	$pad_left = ($page_w - $w_pt * $zoom) / 2;
-	if ($pad_top < 0)  $pad_top = 0;
-	if ($pad_left < 0) $pad_left = 0;
-	$pad_top  = round($pad_top, 1);
-	$pad_left = round($pad_left, 1);
-
 	// For the final render, let the title span the section's true measured width
 	// (px = pt / 0.75) instead of the narrower grid-sum, so a course name with room
 	// to spare doesn't wrap. Never narrower than the grid-sum.
 	$title_w = ($w_pt > 1) ? max($cw, (int) round($w_pt / 0.75)) : $cw;
 
-	$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
-	$stub = tempnam(sys_get_temp_dir(), 'DIPI-SEC');   // 0-byte stub; append .pdf, clean both
-	$tmp = $stub . '.pdf';
-	create_pdf_from_html_a4($full, $tmp, $orientation);
+	$outstub = tempnam(sys_get_temp_dir(), 'DIPI-SEC');   // 0-byte stub; append .pdf, clean both
+	$tmp = $outstub . '.pdf';
+	$name_suffix = '';
+
+	if ($sheets == 1) {
+		// -------- single A4: fill + centre (unchanged behaviour) --------
+		$long = 807.9; $short = 561.3;                // A4 printable pt (6mm margins)
+		if ($w_pt > 1 && $h_pt > 1) {
+			$zl = min($long / $w_pt, $short / $h_pt); // fill in landscape
+			$zp = min($short / $w_pt, $long / $h_pt); // fill in portrait
+			if ($zl >= $zp) { $orientation = 'Landscape'; $zoom = $zl; }
+			else            { $orientation = 'Portrait';  $zoom = $zp; }
+		} else {
+			$orientation = 'Landscape'; $zoom = 1;
+		}
+		$zoom = $zoom * 0.95;
+		if ($zoom > 4)    $zoom = 4;
+		if ($zoom < 0.05) $zoom = 0.05;
+		$zoom = round($zoom, 3);
+		$page_w = ($orientation == 'Landscape') ? $long : $short;
+		$page_h = ($orientation == 'Landscape') ? $short : $long;
+		$pad_top  = round(max(0, ($page_h - $h_pt * $zoom) / 2), 1);
+		$pad_left = round(max(0, ($page_w - $w_pt * $zoom) / 2), 1);
+		$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
+		create_pdf_from_html_a4($full, $tmp, $orientation);
+	} else {
+		// -------- N A4 sheets: fill an overlapping tile-grid canvas, then tile --------
+		// Pick the grid + tile orientation that scales the plan largest; the canvas is
+		// (cols*tile - overlaps) so adjacent A4 windows share an 8mm strip.
+		$A4w = 595.28; $A4h = 841.89; $ov = 22.68;    // A4 pt; 8mm overlap
+		$grids = ($sheets == 4) ? array(array(2, 2), array(4, 1), array(1, 4)) : array(array(2, 1), array(1, 2));
+		$mrg = 25.5;   // ~9mm reserved outer band for the assembly labels (kept off the plan)
+		$best = null;
+		foreach ($grids as $g) {
+			foreach (array(array($A4w, $A4h), array($A4h, $A4w)) as $t) {   // portrait / landscape tile
+				$Wc = $g[0] * $t[0] - ($g[0] - 1) * $ov;
+				$Hc = $g[1] * $t[1] - ($g[1] - 1) * $ov;
+				// Fill within the margin band so the plan never reaches the outer edge.
+				$z = ($w_pt > 1 && $h_pt > 1) ? min(($Wc - 2 * $mrg) / $w_pt, ($Hc - 2 * $mrg) / $h_pt) : 1;
+				if ($best === null || $z > $best['z'])
+					$best = array('z' => $z, 'cols' => $g[0], 'rows' => $g[1], 'tw' => $t[0], 'th' => $t[1], 'Wc' => $Wc, 'Hc' => $Hc);
+			}
+		}
+		$zoom = $best['z'] * 0.95;
+		if ($zoom > 8)    $zoom = 8;
+		if ($zoom < 0.05) $zoom = 0.05;
+		$zoom = round($zoom, 3);
+		$pad_top  = round(max(0, ($best['Hc'] - $h_pt * $zoom) / 2), 1);
+		$pad_left = round(max(0, ($best['Wc'] - $w_pt * $zoom) / 2), 1);
+		$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
+
+		// Assembly labels: one small tag per sheet, placed in that tile's OUTER-frame
+		// corner (never on an interior seam) so it reads while sorting and lands on
+		// the poster's outer edge once taped. Sheet number = PDF page (reading order).
+		$cols = $best['cols']; $rows = $best['rows']; $tw = $best['tw']; $th = $best['th'];
+		$labels = '';
+		for ($r = 0; $r < $rows; $r++) {
+			for ($c = 0; $c < $cols; $c++) {
+				$ord = $r * $cols + $c + 1;
+				if ($cols > 1 && $rows > 1) $where = ($r == 0 ? 'Top' : 'Bottom') . '-' . ($c == 0 ? 'left' : 'right');
+				elseif ($rows == 1)         $where = 'column ' . ($c + 1) . ' of ' . $cols . ' (left&rarr;right)';
+				else                        $where = 'row ' . ($r + 1) . ' of ' . $rows . ' (top&rarr;bottom)';
+				$style = 'position:absolute;font:bold 9pt Arial,sans-serif;color:#888;white-space:nowrap;';
+				if ($r == 0)                $style .= 'top:5pt;';
+				elseif ($r == $rows - 1)    $style .= 'bottom:5pt;';
+				else                        $style .= 'top:' . round($r * ($th - $ov) + $th / 2 - 6, 1) . 'pt;';
+				if ($r == 0 || $r == $rows - 1) {
+					$style .= 'left:' . round($c * ($tw - $ov) + $tw / 2 - 70, 1) . 'pt;width:140pt;text-align:center;';
+				} else {
+					$style .= ($c == 0) ? 'left:6pt;' : 'right:6pt;';
+				}
+				$labels .= '<div style="' . $style . '">&#9635; Sheet ' . $ord . ' &middot; ' . $where . '</div>';
+			}
+		}
+		$full = preg_replace('#</body>#i', $labels . '</body>', $full, 1);
+
+		$canvstub = tempnam(sys_get_temp_dir(), 'DIPI-BIG');
+		$canv = $canvstub . '.pdf';
+		create_pdf_from_html_size($full, $canv, $best['Wc'] / 72 * 25.4, $best['Hc'] / 72 * 25.4);
+		dh_tile_pdf_to_a4($canv, $tmp, $best['cols'], $best['rows'], $best['tw'], $best['th'], $ov, $best['Hc']);
+		@unlink($canv);
+		@unlink($canvstub);
+		$name_suffix = '_' . $sheets . 'sheets';
+	}
 
 	$base = dh_course_file_basename($centre, $course, 'seating');
-	$filename = $base . '_' . application_filename_part($sec_label) . '.pdf';
+	$filename = $base . '_' . application_filename_part($sec_label) . $name_suffix . '.pdf';
 	header('Content-Type: application/pdf');
 	header('Content-Disposition: inline; filename="' . $filename . '"');
 	header('Cache-Control: private');
 	if (file_exists($tmp)) { readfile($tmp); @unlink($tmp); }
-	@unlink($stub);
+	@unlink($outstub);
 	exit;
 }
 
@@ -1813,6 +1871,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     <p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers. Print them and join with clear tape - the papers overlap a little so nothing is lost at the join.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
@@ -1868,7 +1927,11 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
 	$out .= '<div class="seat-section" data-section="M" data-section-label="Male">';
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
-	$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
+	$out .= '<div class="dh-print-bar no-print">'
+		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
+		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
+		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+		. '</div>';
 	// Read-only surface (AT view): never persist seat labels or enable drag.
 	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
@@ -1892,7 +1955,11 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
 	$out .= '<div class="seat-section" data-section="F" data-section-label="Female">';
 	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
-	$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
+	$out .= '<div class="dh-print-bar no-print">'
+		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
+		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
+		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+		. '</div>';
 	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts, 'F', 'Female');
 	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts, 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
@@ -2776,6 +2843,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		<p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
+		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers. Print them and join with clear tape - the papers overlap a little so nothing is lost at the join.</p>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
@@ -2805,7 +2873,11 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
 			$out .= dh_seat_plan_header('GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
-			$out .= l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('no-print', 'dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')));
+			$out .= '<div class="dh-print-bar no-print">'
+				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
+				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
+				. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+				. '</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
 
