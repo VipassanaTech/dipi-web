@@ -1921,7 +1921,17 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     <p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
-		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers. Print them and join with clear tape - the papers overlap a little so nothing is lost at the join.</p>
+		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
+        <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
+
+        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
+
+        <p><strong>Step 2:</strong> Join the pages using clear tape on both the front and back. Align the printed diamond marks carefully while joining the pages.</p>
+
+        <ul>
+          <li>For a <strong>2-page seating plan</strong>, join in this order: <strong>Page 1 → Page 2</strong></li>
+          <li>For a <strong>4-page seating plan</strong>, join in this order: <strong>Page 1 → Page 2 → Page 3 → Page 4</strong></li>
+        </ul>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
@@ -2893,7 +2903,17 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		<p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
-		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers. Print them and join with clear tape - the papers overlap a little so nothing is lost at the join.</p>
+		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
+        <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
+
+        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
+
+        <p><strong>Step 2:</strong> Join the pages using clear tape on both the front and back. Align the printed diamond marks carefully while joining the pages.</p>
+
+        <ul>
+          <li>For a <strong>2-page seating plan</strong>, join in this order: <strong>Page 1 → Page 2</strong></li>
+          <li>For a <strong>4-page seating plan</strong>, join in this order: <strong>Page 1 → Page 2 → Page 3 → Page 4</strong></li>
+        </ul>
 		<p>Note: All help text and buttons will be ignored on print.</p>
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
