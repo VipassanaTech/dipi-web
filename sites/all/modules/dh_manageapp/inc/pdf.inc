@@ -111,24 +111,50 @@ function create_pdf_from_html_size($html, $outfile, $w_mm, $h_mm)
  * PageOffset (crop-to-window), then merge in reading order with pdftk. Adjacent
  * tiles share an $ov_pt overlap strip so nothing is lost to the printer's
  * unprintable margin and centres can overlap-and-tape. Writes $out_pdf.
+ *
+ * A dotted grey trim/fold line is drawn ~ov/2 inside each sheet's LEADING (on-top)
+ * edge only - the left edge when it has a left neighbour, the top edge when it has
+ * a top neighbour. The matching edge on the neighbour is covered once the next
+ * sheet is laid on top, so it is deliberately left unmarked. Drawn in a second gs
+ * pass (no PageOffset) so line coordinates are the plain A4 page.
  */
 function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov_pt, $canvas_h_pt)
 {
 	$tiles = array();
+	$hov = round($ov_pt / 2, 2);
 	for ($r = 0; $r < $rows; $r++) {
 		for ($c = 0; $c < $cols; $c++) {
 			$ox = -($c * ($tw_pt - $ov_pt));
 			$oy = -($canvas_h_pt - $th_pt) + $r * ($th_pt - $ov_pt);
-			$tstub = tempnam("/tmp", "DIPI-TILE");
-			$tf = $tstub.".pdf";
-			$cmd = "gs -q -o ".escapeshellarg($tf)." -sDEVICE=pdfwrite -dFIXEDMEDIA"
+			$rstub = tempnam("/tmp", "DIPI-TILE");
+			$raw = $rstub.".pdf";
+			$cmd = "gs -q -o ".escapeshellarg($raw)." -sDEVICE=pdfwrite -dFIXEDMEDIA"
 				." -dFirstPage=1 -dLastPage=1"
 				." -dDEVICEWIDTHPOINTS=".round($tw_pt)." -dDEVICEHEIGHTPOINTS=".round($th_pt)
 				." -c \"<</PageOffset [".round($ox, 2)." ".round($oy, 2)."]>> setpagedevice\""
 				." -f ".escapeshellarg($big_pdf)." 2>/dev/null";
 			exec($cmd);
-			$tiles[] = $tf;
-			@unlink($tstub);
+
+			// Dotted line on this sheet's own leading edge(s): left if it has a left
+			// neighbour, top if it has a top neighbour.
+			$draw = '';
+			if ($c > 0) $draw .= $hov.' 0 moveto '.$hov.' '.round($th_pt, 2).' lineto ';
+			if ($r > 0) $draw .= '0 '.round($th_pt - $hov, 2).' moveto '.round($tw_pt, 2).' '.round($th_pt - $hov, 2).' lineto ';
+			if ($draw !== '') {
+				$tstub = tempnam("/tmp", "DIPI-TILE");
+				$tf = $tstub.".pdf";
+				$ep = "<< /EndPage { exch pop 2 ne dup { gsave 0.53 setgray [3 2] 0 setdash 1 setlinewidth ".$draw."stroke grestore } if } bind >>";
+				$cmd2 = "gs -q -o ".escapeshellarg($tf)." -sDEVICE=pdfwrite -dFIXEDMEDIA"
+					." -dDEVICEWIDTHPOINTS=".round($tw_pt)." -dDEVICEHEIGHTPOINTS=".round($th_pt)
+					." -c \"".$ep." setpagedevice\" -f ".escapeshellarg($raw)." 2>/dev/null";
+				exec($cmd2);
+				@unlink($raw); @unlink($rstub);
+				$tiles[] = $tf;
+				@unlink($tstub);
+			} else {
+				$tiles[] = $raw;
+				@unlink($rstub);
+			}
 		}
 	}
 	$args = implode(' ', array_map('escapeshellarg', $tiles));

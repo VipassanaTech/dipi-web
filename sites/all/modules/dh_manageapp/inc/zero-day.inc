@@ -1638,29 +1638,27 @@ function dh_seating_section_pdf()
 		//    so laying the later sheet on top completes ONE clean diamond when aligned,
 		//    and shows a broken/doubled diamond when it is off. In the top & bottom
 		//    (or left & right) bands, so tilt shows too. Half-diagonal < overlap.
-		//  - a dotted grey line down the middle of the overlap strip: if the printer
-		//    leaves a blank border, trim or fold both sheets to this line before joining
-		//    (it lands ~4mm from each sheet's edge, the same spot on both).
+		//  - a dotted grey line ~4mm inside each sheet's leading (top/left, on-top) edge
+		//    as a trim/fold guide for the printer's blank border. Drawn per-tile in
+		//    dh_tile_pdf_to_a4() so the covered/underneath edge is left unmarked.
 		$Wc = $best['Wc']; $Hc = $best['Hc'];
 		$ds = 30;                                     // filled diamond ~21pt half-diagonal (< 8mm overlap)
 		$dg = 'position:absolute;width:' . $ds . 'pt;height:' . $ds . 'pt;background:#1a4fd0;border:1.5pt solid #0a2f80;'
 			. 'transform:rotate(45deg);-webkit-transform:rotate(45deg);';
 		$off = round(24 - $ds / 2, 1);
-		// The dotted trim/fold line is drawn at the FAR side of the overlap (split+ov)
-		// so it prints only on the LATER (on-top) sheet's leading edge; on the earlier
-		// sheet it lands at the very paper edge (printer's unprintable margin) and
-		// doesn't show - no point marking an edge that the next sheet covers anyway.
+		// Only the blue diamonds are drawn on the shared canvas. The dotted trim/fold
+		// line is drawn per-tile in dh_tile_pdf_to_a4() - on each sheet's OWN leading
+		// (top/left, on-top) edge only - so the redundant line on the underneath edge
+		// of the neighbour is simply not drawn, without moving the ones that are kept.
 		for ($c = 1; $c < $cols; $c++) {              // vertical seams (sheets side by side)
 			$split = $c * ($tw - $ov);
 			$dx = round($split - $ds / 2, 1);
-			$labels .= '<div style="position:absolute;top:0;bottom:0;left:' . round($split + $ov, 1) . 'pt;border-left:1pt dashed #888;"></div>';
 			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;top:' . $off . 'pt;"></div>';
 			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;bottom:' . $off . 'pt;"></div>';
 		}
 		for ($r = 1; $r < $rows; $r++) {              // horizontal seams (sheets stacked)
 			$split = $r * ($th - $ov);
 			$dy = round($split - $ds / 2, 1);
-			$labels .= '<div style="position:absolute;left:0;right:0;top:' . round($split + $ov, 1) . 'pt;border-top:1pt dashed #888;"></div>';
 			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;left:' . $off . 'pt;"></div>';
 			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;right:' . $off . 'pt;"></div>';
 		}
