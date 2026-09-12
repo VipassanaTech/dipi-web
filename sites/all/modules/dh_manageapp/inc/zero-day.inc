@@ -1573,8 +1573,8 @@ function dh_seating_section_pdf()
 		// Pick the grid + tile orientation that scales the plan largest; the canvas is
 		// (cols*tile - overlaps) so adjacent A4 windows share an 8mm strip.
 		$A4w = 595.28; $A4h = 841.89; $ov = 22.68;    // A4 pt; 8mm overlap
-		$grids = ($sheets == 4) ? array(array(2, 2), array(4, 1), array(1, 4)) : array(array(2, 1), array(1, 2));
-		$mrg = 25.5;   // ~9mm reserved outer band for the assembly labels (kept off the plan)
+		$grids = ($sheets == 4) ? array(array(2, 2)) : array(array(2, 1), array(1, 2));   // 4 sheets = a simple 2x2
+		$mrg = 60;   // ~21mm reserved outer band for the layout map + join line/marks (off the plan)
 		$best = null;
 		foreach ($grids as $g) {
 			foreach (array(array($A4w, $A4h), array($A4h, $A4w)) as $t) {   // portrait / landscape tile
@@ -1594,28 +1594,62 @@ function dh_seating_section_pdf()
 		$pad_left = round(max(0, ($best['Wc'] - $w_pt * $zoom) / 2), 1);
 		$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
 
-		// Assembly labels: one small tag per sheet, placed in that tile's OUTER-frame
-		// corner (never on an interior seam) so it reads while sorting and lands on
-		// the poster's outer edge once taped. Sheet number = PDF page (reading order).
+		// Assembly aid. Every tile is in the top or bottom row (grids are 2x1/1x2/2x2),
+		// so labels sit in the top/bottom outer band - never on the plan or a seam.
 		$cols = $best['cols']; $rows = $best['rows']; $tw = $best['tw']; $th = $best['th'];
+		$N = $cols * $rows;
 		$labels = '';
+
+		// Per sheet: a big number + a small layout map (all sheets numbered in the
+		// order to place them; THIS sheet filled green) so the operator sees at a
+		// glance which sheet it is and where it goes.
 		for ($r = 0; $r < $rows; $r++) {
 			for ($c = 0; $c < $cols; $c++) {
 				$ord = $r * $cols + $c + 1;
-				if ($cols > 1 && $rows > 1) $where = ($r == 0 ? 'Top' : 'Bottom') . '-' . ($c == 0 ? 'left' : 'right');
-				elseif ($rows == 1)         $where = 'column ' . ($c + 1) . ' of ' . $cols . ' (left&rarr;right)';
-				else                        $where = 'row ' . ($r + 1) . ' of ' . $rows . ' (top&rarr;bottom)';
-				$style = 'position:absolute;font:bold 9pt Arial,sans-serif;color:#888;white-space:nowrap;';
-				if ($r == 0)                $style .= 'top:5pt;';
-				elseif ($r == $rows - 1)    $style .= 'bottom:5pt;';
-				else                        $style .= 'top:' . round($r * ($th - $ov) + $th / 2 - 6, 1) . 'pt;';
-				if ($r == 0 || $r == $rows - 1) {
-					$style .= 'left:' . round($c * ($tw - $ov) + $tw / 2 - 70, 1) . 'pt;width:140pt;text-align:center;';
-				} else {
-					$style .= ($c == 0) ? 'left:6pt;' : 'right:6pt;';
+				$map = '<table style="border-collapse:collapse;margin:2pt auto 0">';
+				for ($rr = 0; $rr < $rows; $rr++) {
+					$map .= '<tr>';
+					for ($cc = 0; $cc < $cols; $cc++) {
+						$n = $rr * $cols + $cc + 1;
+						$hl = ($rr == $r && $cc == $c);
+						$map .= '<td style="width:20pt;height:15pt;border:1.5pt solid #333;text-align:center;font:bold 10pt Arial;'
+							. ($hl ? 'background:#2e7d32;color:#fff' : 'background:#fff;color:#333') . '">' . $n . '</td>';
+					}
+					$map .= '</tr>';
 				}
-				$labels .= '<div style="' . $style . '">&#9635; Sheet ' . $ord . ' &middot; ' . $where . '</div>';
+				$map .= '</table>';
+				$box = '<div style="text-align:center;font:bold 13pt Arial,sans-serif;color:#000">Sheet ' . $ord . ' of ' . $N
+					. '<div style="font:bold 8pt Arial;color:#2e7d32;margin-top:2pt">place in number order &#8595;</div>' . $map
+					. '<div style="font:7pt Arial;color:#c00;margin-top:2pt">&#9660; red line = join edge</div></div>';
+				$bw = max(90, $cols * 26 + 20);
+				$style = 'position:absolute;width:' . $bw . 'pt;left:' . round($c * ($tw - $ov) + $tw / 2 - $bw / 2, 1) . 'pt;';
+				$style .= ($r == 0) ? 'top:4pt;' : 'bottom:4pt;';
+				$labels .= '<div style="' . $style . '">' . $box . '</div>';
 			}
+		}
+
+		// Join marks in each overlap strip: the strip is shared by the two sheets that
+		// meet there, so the SAME mark (showing both sheet numbers) prints on both -
+		// slide the sheets until the identical marks sit on top of each other, then
+		// tape. Red, in the outer band, off the plan.
+		// A red line at the EXACT seam (centre of the overlap strip) with an arrow
+		// pointing to it, in the top & bottom bands for a vertical seam / left & right
+		// bands for a horizontal one. The strip is shared, so the SAME line prints on
+		// both sheets - slide the sheets until the two red lines sit exactly on top of
+		// each other, then tape. (Which sheets meet where is shown by the layout map.)
+		for ($c = 1; $c < $cols; $c++) {                 // vertical seams: sheets side by side
+			$x = $c * ($tw - $ov) + $ov / 2;
+			$vline = 'position:absolute;left:' . round($x, 1) . 'pt;border-left:2.5pt solid #c00;height:30pt;';
+			$tri   = 'position:absolute;left:' . round($x - 8, 1) . 'pt;width:16pt;text-align:center;font:bold 12pt Arial;color:#c00;';
+			$labels .= '<div style="' . $tri . 'top:2pt;">&#9660;</div><div style="' . $vline . 'top:14pt;"></div>';
+			$labels .= '<div style="' . $tri . 'bottom:2pt;">&#9650;</div><div style="' . $vline . 'bottom:14pt;"></div>';
+		}
+		for ($r = 1; $r < $rows; $r++) {                 // horizontal seams: sheets stacked
+			$y = $r * ($th - $ov) + $ov / 2;
+			$hline = 'position:absolute;top:' . round($y, 1) . 'pt;border-top:2.5pt solid #c00;width:30pt;';
+			$tri   = 'position:absolute;top:' . round($y - 8, 1) . 'pt;font:bold 12pt Arial;color:#c00;';
+			$labels .= '<div style="' . $tri . 'left:2pt;">&#9654;</div><div style="' . $hline . 'left:14pt;"></div>';
+			$labels .= '<div style="' . $tri . 'right:2pt;">&#9664;</div><div style="' . $hline . 'right:14pt;"></div>';
 		}
 		$full = preg_replace('#</body>#i', $labels . '</body>', $full, 1);
 
