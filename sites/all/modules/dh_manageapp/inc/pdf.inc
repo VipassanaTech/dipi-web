@@ -243,6 +243,45 @@ function dh_pdf_set_title($pdf_path, $title)
 	unlink($info);
 }
 
+/**
+ * Echo already-generated PDF bytes to the browser with the correct /Title set.
+ * Chrome's inline PDF viewer takes the DOWNLOAD name from Content-Disposition but
+ * the PRINT (Save-as-PDF) name from the PDF /Title, falling back to the URL's last
+ * path segment when /Title is empty. PDFs streamed straight from S3 (course PDF,
+ * application PDF, clarification) carry no /Title, so print names them after the
+ * numeric id in the URL. Write the bytes to a temp file, stamp /Title to match the
+ * download name, stream, and clean up (stub + file). Callers still set their own
+ * Content-Type/Content-Disposition headers. Degrades to a plain echo if the title
+ * is empty or the temp write fails.
+ */
+function dh_pdf_echo_with_title($bytes, $title)
+{
+	if ($bytes === '' || $bytes === null) {
+		return;
+	}
+	$title = trim(preg_replace('/\s+/', ' ', (string) $title));
+	if ($title === '') {
+		print $bytes;
+		return;
+	}
+	// tempnam() makes a 0-byte stub; append .pdf and remove BOTH afterwards.
+	$stub = tempnam(sys_get_temp_dir(), 'DIPI-TITLE');
+	if ($stub === false) {
+		print $bytes;
+		return;
+	}
+	$tmp = $stub . '.pdf';
+	if (file_put_contents($tmp, $bytes) === false) {
+		@unlink($stub);
+		print $bytes;
+		return;
+	}
+	dh_pdf_set_title($tmp, $title);   // in-place; no-op if pdftk is unavailable
+	readfile($tmp);
+	@unlink($tmp);
+	@unlink($stub);
+}
+
 function pdf_fill_form($fdf, $pdf, $out)
 {
     global $user;

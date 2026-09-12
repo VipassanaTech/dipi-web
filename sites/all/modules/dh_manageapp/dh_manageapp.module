@@ -2810,11 +2810,12 @@ function show_application_pdf( $app_id )
 
     $r = db_query($q, array(':a_id'=>$app_id))->fetchAssoc();
 
-    $filename = ucfirst($r["c_subdomain"]) . '_'
+    $base = ucfirst($r["c_subdomain"]) . '_'
       . $r["start_date"] . '_'
       . application_filename_part($r["td_val1"]) . '_'
       . application_filename_part($r["a_f_name"]) . '-'
-      . application_filename_part($r["a_l_name"]).".pdf";
+      . application_filename_part($r["a_l_name"]);
+    $filename = $base.".pdf";
 
     $url = $r["a_uri"];
 
@@ -2830,7 +2831,9 @@ function show_application_pdf( $app_id )
 	//header('Cache-Control: max-age=1');
 	if (!$ret['success'])
 		watchdog('S3Debug', print_r($ret, true));
-	print($ret['data']);
+	// Set /Title too so Chrome's inline viewer uses this name on PRINT, not the
+	// app id from the URL (download already uses Content-Disposition above).
+	dh_pdf_echo_with_title($ret['data'], $base);
 	exit();
 
 }
@@ -2951,7 +2954,9 @@ function show_clarification( $app_id, $clarification_id )
 	header('Content-disposition:inline; filename="'.basename($url).'"');
 	header('Cache-Control: private');
 
-	print($ret['data']);
+	// Set /Title too so Chrome's inline viewer uses this name on PRINT, not the
+	// clarification id from the URL (download already uses Content-Disposition).
+	dh_pdf_echo_with_title($ret['data'], pathinfo(basename($url), PATHINFO_FILENAME));
 	exit();
 
 }

@@ -1461,14 +1461,17 @@ function course_pdf()
 		$type = 'F';
 		$pdf = generate_course_pdf($course_id, $seating, $type);
 	}
-	$filename = dh_course_file_basename(arg(1), $course_id).'_'.(($type == 'M') ? 'Male' : 'Female').'.pdf';
+	$base = dh_course_file_basename(arg(1), $course_id).'_'.(($type == 'M') ? 'Male' : 'Female');
+	$filename = $base.'.pdf';
 	header("Content-type: application/pdf");
 	header('Content-Disposition: inline; filename="'.$filename.'"');
 	$uri = "applications/".arg(1)."/".arg(2)."/course-".$type.".pdf";
 	$ret = s3_get_file(variable_get('s3_bucket_name', ''), $uri, 'stream' );
 	if (!$ret['success'])
 		watchdog('S3PDF', $ret['message']);
-	print($ret['data']);
+	// Set /Title too so Chrome's inline viewer uses this name on PRINT, not the
+	// course id from the URL (download already uses Content-Disposition above).
+	dh_pdf_echo_with_title($ret['data'], $base);
 	exit();
 	//@readfile($uri."/applications/".arg(1)."/".arg(2)."/course-".$type.".pdf");
 }
