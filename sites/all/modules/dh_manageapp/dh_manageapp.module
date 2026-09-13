@@ -42,6 +42,9 @@ function dh_manageapp_init()
 {
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/jquery.loading.min.js');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery.loading.min.css');
+	// Stop the non-responsive core admin toolbar from overlapping the site menu on
+	// phones (see admin-toolbar-mobile.css). Global: the toolbar shows on every page.
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/admin-toolbar-mobile.css');
 }
 
 function dh_manageapp_permission()

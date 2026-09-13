@@ -800,6 +800,7 @@ function _dh_tag_widget($app_id, $centre_id, $at_uid = 0)
 	// The "+ tag" picker uses jquery-confirm, which the detail page does not load
 	// on its own (the search page does). Load it here so the widget works.
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm.min.css');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm-responsive.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/jquery-confirm.min.js');
 
 	$assigned = _dh_tag_for_application($app_id, $at_uid);
@@ -1145,6 +1146,7 @@ function dh_tags_admin($centre_id)
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/tags.css');
 	// jquery-confirm powers the delete warning + the per-tag History dialog.
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm.min.css');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/jquery-confirm-responsive.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/jquery-confirm.min.js');
 	$palette = _dh_tag_palette();
 	$tags = _dh_tag_center_tags($centre_id);

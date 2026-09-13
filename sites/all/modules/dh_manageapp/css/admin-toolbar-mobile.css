@@ -1,0 +1,37 @@
+/* Mobile fix for the Drupal 7 core admin toolbar overlapping the site menu.
+ *
+ * The core toolbar (#toolbar) is position:fixed and the theme reserves only ~64px
+ * (body.toolbar-drawer{padding-top:65px}) with the site's main menu fixed just below
+ * it (.navbar-fixed-top{top:64px}). On a phone the toolbar wraps to ~124px, so it
+ * covers the main menu (higher z-index) and the top of the content - nothing is
+ * visible. Core toolbar.css has no responsive handling.
+ *
+ * On phones only, let the toolbar and the main navbar flow in normal document order
+ * (stacked, scrollable) instead of overlapping, and drop the fixed reserved padding.
+ * Desktop (>767px) is untouched. Loaded globally from dh_manageapp_init() so it
+ * applies wherever the toolbar shows, without editing the vendored tweme theme.
+ */
+@media (max-width: 767px) {
+  #toolbar {
+    position: static !important;
+    width: 100% !important;
+  }
+  /* Drop the reserved top padding. The drupal-bootstrap/tweme CSS reserves it with
+     !important rules (e.g. body.toolbar / body.navbar-is-fixed-top.toolbar at 6.4rem)
+     that load AFTER this module's CSS, so we must OUT-SPECIFY them - the html-prefixed
+     selectors below add an element to raise specificity, covering the toolbar,
+     toolbar-drawer and navbar-is-fixed-top states. */
+  html body.toolbar,
+  html body.toolbar-drawer,
+  html body.toolbar.toolbar-drawer,
+  html body.navbar-is-fixed-top.toolbar,
+  html body.navbar-is-fixed-top.toolbar-drawer {
+    padding-top: 0 !important;
+  }
+  /* Un-fix the site's main menu so it stacks below the (now in-flow) toolbar - but
+     ONLY when the admin toolbar is present (body.toolbar). A normal user without the
+     toolbar has no overlap, so their menu keeps its normal (sticky) behaviour. */
+  body.toolbar .navbar.navbar-fixed-top {
+    position: static !important;
+  }
+}

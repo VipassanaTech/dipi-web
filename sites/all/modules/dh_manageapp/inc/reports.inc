@@ -23,6 +23,7 @@ function dh_center_sms_report()
 	}
 
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );

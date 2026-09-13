@@ -23,6 +23,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	}
 
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 
 	// Searchable (type-to-filter) centre/course dropdowns in the Transfer/Add popup.
@@ -2667,6 +2668,7 @@ function dh_application_view($app_id, $at_uid = 0)
 	// Assets for editing one's own review comment inline (Edit link in the list).
 	drupal_add_js( libraries_get_path("ckeditor"). "/ckeditor.js");
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/review-edit.js");
 

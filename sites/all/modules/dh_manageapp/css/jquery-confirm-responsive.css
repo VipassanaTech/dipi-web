@@ -1,0 +1,46 @@
+/* Responsive overrides for jquery-confirm on small screens.
+ *
+ * jquery-confirm already sizes its OUTER box-container responsively via Bootstrap grid
+ * (col-xs-10 col-xs-offset-1), which fits a phone fine. The bug is that the inner
+ * .jconfirm-box sizes to its CONTENT - a select2 field with a long course name is
+ * ~373px - and breaks out of that container, so jquery-confirm's box overflows the
+ * viewport and the right-aligned button row (incl. Cancel) is pushed off-screen with
+ * no way to scroll to it.
+ *
+ * Fix (small screens only, so desktop dialogs are unchanged): cap the box and its
+ * select2 fields to their container (max-width:100%) so the box can never exceed the
+ * already-responsive column, and let the button row wrap so every button stays
+ * reachable. Loaded alongside jquery-confirm.min.css - do NOT edit the vendored file,
+ * so this survives library updates.
+ */
+@media (max-width: 600px) {
+  /* The layout table (.jconfirm-scrollpane) is display:table;width:100% - a CSS table
+     EXPANDS past its width to fit non-wrapping content (the select2 selection text is
+     white-space:nowrap), inflating the whole chain (row -> col container -> box) beyond
+     the viewport. table-layout:fixed makes it honour width:100% instead of growing to
+     content, so max-width:100% below can actually bind. */
+  .jconfirm .jconfirm-scrollpane {
+    table-layout: fixed;
+  }
+  /* Never let the content-sized box exceed its (responsive) Bootstrap column. */
+  .jconfirm .jconfirm-box {
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  .jconfirm .jconfirm-content,
+  .jconfirm .jconfirm-content .select2-container,
+  .jconfirm .jconfirm-content .select2-selection__rendered {
+    max-width: 100% !important;
+  }
+  /* Right-aligned, non-wrapping button row is what pushes Cancel off-screen. */
+  .jconfirm .jconfirm-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    text-align: left;
+  }
+  .jconfirm .jconfirm-buttons button {
+    flex: 1 1 auto;
+    margin: 0 !important;
+  }
+}

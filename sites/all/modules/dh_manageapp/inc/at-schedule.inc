@@ -12,6 +12,7 @@ function dh_manage_at_schedule()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
@@ -588,6 +589,7 @@ function dh_assign_teacher()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
 	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
