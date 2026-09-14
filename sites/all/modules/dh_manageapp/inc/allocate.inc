@@ -115,6 +115,7 @@ function dh_alloc_assign_batches($items, $pool) {
 
 /** Allocate a resource to a course's attendees. Returns rows written. */
 function dh_alloc_run($centre, $course, $desc, $mode) {
+  $course = (int) $course;
   $col = ($mode === 'group') ? $desc['group_col'] : $desc['main_col'];
   $fixed_col = $desc['fixed_col'];
   $cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c'=>$centre))->fetchField();
