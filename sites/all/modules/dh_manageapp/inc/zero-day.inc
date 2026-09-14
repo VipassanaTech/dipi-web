@@ -3880,142 +3880,19 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 /* ------------------------------------------------------------------------- *
  * Dining seat allocation.
  *
- * Two independent plans share this engine, writing different columns:
+ * Re-based onto the unified resource-allocation engine (allocate.inc). Two
+ * independent plans share the engine, writing different columns:
  *   generate_dining_list()       -> aa_dining        (default [MALE]/[FEMALE] ranges)
  *   generate_group_dining_list() -> aa_group_dining  (per-group [GENDER_n], fallback [GENDER])
- *
- * Unlike cells (which are shared in batches via aa_cell_group), each attendee
- * gets ONE unique dining seat. Config mirrors cells: per section an available
- * pool ("Cells") OR a separate Old/New split, plus a Reserved pool held back.
- * A row marked aa_dining_fixed with a non-empty value in the target column keeps
- * that value and reserves it out of its pool (out-of-range values are allowed) -
- * exactly the cell rule, applied per plan. Blank-but-fixed rows allocate normally.
- * Groups that fall back to the same default gender range share ONE pool, so their
- * seat numbers never collide.
+ * See docs/superpowers/specs/2026-09-13-unified-allocation-engine-design.md.
  * ------------------------------------------------------------------------- */
 
-/* Expand a range string like "1-40, 55, A1-A5" into an array of seat labels.
-   Mirrors the letter-prefix + numeric-range handling used by generate_cell_list. */
-function _dh_dining_expand($str)
-{
-	$out = array();
-	if ($str === '' || $str === null) return $out;
-	foreach (explode(",", $str) as $v)
-	{
-		$v = trim($v);
-		if ($v === '') continue;
-		$p = explode("-", $v);
-		if (count($p) > 1)
-		{
-			$prefix = preg_replace("/[0-9]/", "", $p[0]);
-			$start  = (int) preg_replace("/[A-Za-z-]/", "", $p[0]);
-			$end    = (int) preg_replace("/[A-Za-z-]/", "", $p[1]);
-			for ($i = $start; $i <= $end; $i++) $out[] = $prefix.$i;
-		}
-		else
-			$out[] = $p[0];
-	}
-	return $out;
+function generate_dining_list($centre, $course) {
+	return dh_alloc_run($centre, $course, dh_alloc_descriptor('dining'), 'default');
 }
-
-/* Build a pool descriptor for one INI section: array(sep, cells[], old[], new[], reserved[]). */
-function _dh_dining_pool($ini, $key)
-{
-	$sec = isset($ini[$key]) && is_array($ini[$key]) ? $ini[$key] : array();
-	$reserved = _dh_dining_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '');
-	$sep = (isset($sec['Old']) && $sec['Old'] !== '') || (isset($sec['New']) && $sec['New'] !== '');
-	if ($sep)
-		return array('sep' => true, 'cells' => array(),
-			'old' => _dh_dining_expand(isset($sec['Old']) ? $sec['Old'] : ''),
-			'new' => _dh_dining_expand(isset($sec['New']) ? $sec['New'] : ''),
-			'reserved' => $reserved);
-	return array('sep' => false, 'old' => array(), 'new' => array(),
-		'cells' => _dh_dining_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
-		'reserved' => $reserved);
+function generate_group_dining_list($centre, $course) {
+	return dh_alloc_run($centre, $course, dh_alloc_descriptor('dining'), 'group');
 }
-
-/* Core allocator. $mode = 'default' (writes aa_dining) or 'group' (writes aa_group_dining). */
-function _dh_dining_allocate($centre, $course, $mode)
-{
-	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
-	$cfg = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
-	$ini = ($cfg !== '' && $cfg !== null) ? parse_ini_string($cfg, true, INI_SCANNER_RAW) : array();
-	if (!is_array($ini)) $ini = array();
-
-	// Attendees (students) in the same seniority/course order as the cell list.
-	$q = "select aa_id, a_gender, a_old, aa_group, $col as cur, aa_dining_fixed
-		from dh_applicant
-		left join dh_applicant_course on a_id=ac_applicant
-		left join dh_applicant_attended on a_id=aa_applicant
-		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
-		where a_course='$course' and a_attended=1 and a_type='Student'
-		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
-			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
-			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
-			IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
-	$rows = db_query($q)->fetchAll();
-
-	// Effective INI section key for a row: group override if present, else gender.
-	$key_of = function($r) use ($mode, $ini) {
-		$g = (strtoupper($r->a_gender) == 'M') ? 'MALE' : 'FEMALE';
-		if ($mode === 'group')
-		{
-			$grp = (int) $r->aa_group;
-			if ($grp > 0 && isset($ini[$g.'_'.$grp])) return $g.'_'.$grp;
-		}
-		return $g;
-	};
-
-	// Pass 1: reserve out every fixed (non-empty) value from its pool.
-	$fixedvals = array();
-	foreach ($rows as $r)
-		if ($r->aa_dining_fixed && trim((string) $r->cur) !== '')
-			$fixedvals[$key_of($r)][] = trim((string) $r->cur);
-
-	// Build the seat queues per distinct pool key (config-reserved + fixed removed).
-	$queues = array();
-	foreach ($rows as $r)
-	{
-		$k = $key_of($r);
-		if (isset($queues[$k])) continue;
-		$p = _dh_dining_pool($ini, $k);
-		$remove = array_merge($p['reserved'], isset($fixedvals[$k]) ? $fixedvals[$k] : array());
-		$clean = function($arr) use ($remove) {
-			return array_values(array_filter($arr, function($x) use ($remove) {
-				return $x !== '' && !in_array($x, $remove);
-			}));
-		};
-		$queues[$k] = array('sep' => $p['sep'], 'old' => $clean($p['old']), 'new' => $clean($p['new']), 'cells' => $clean($p['cells']));
-	}
-
-	// Bucket rows by pool key then old/new, preserving order (old filled before new).
-	$buckets = array();
-	foreach ($rows as $r)
-		$buckets[$key_of($r)][$r->a_old ? 'old' : 'new'][] = $r;
-
-	$updates = array();
-	foreach ($buckets as $k => $on)
-		foreach (array('old', 'new') as $type)
-		{
-			if (empty($on[$type])) continue;
-			foreach ($on[$type] as $r)
-			{
-				if ($r->aa_dining_fixed && trim((string) $r->cur) !== '')
-					continue;   // keep the fixed value as-is
-				$slot = $queues[$k]['sep'] ? $type : 'cells';
-				$seat = !empty($queues[$k][$slot]) ? array_shift($queues[$k][$slot]) : '';
-				$updates[$r->aa_id] = ($seat === '') ? null : $seat;
-			}
-		}
-
-	foreach ($updates as $aa_id => $val)
-		db_update('dh_applicant_attended')->fields(array($col => $val))->condition('aa_id', $aa_id)->execute();
-
-	return count($updates);
-}
-
-function generate_dining_list($centre, $course)       { return _dh_dining_allocate($centre, $course, 'default'); }
-function generate_group_dining_list($centre, $course) { return _dh_dining_allocate($centre, $course, 'group'); }
 
 function dh_laundry_list($centre, $course)
 {
