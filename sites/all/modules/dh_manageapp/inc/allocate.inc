@@ -170,28 +170,36 @@ function dh_alloc_run($centre, $course, $desc, $mode) {
   }
 
   $batch_col = $desc['batch_col'];
-  $updates = array();      // aa_id => array(col=>val, [batch_col=>b])
+  $updates = array();
   foreach ($buckets as $k => $on) {
-    foreach (array('old','new') as $type) {
-      if (empty($on[$type])) continue;
-      $slot = $queues[$k]['sep'] ? $type : 'cells';
-      $pool = $queues[$k][$slot];
-      // keep only non-fixed rows for assignment; fixed keep their value
+    $old = isset($on['old']) ? $on['old'] : array();
+    $new = isset($on['new']) ? $on['new'] : array();
+    // sep: separate old/new pools. combined: old-then-new share ONE 'cells' pool.
+    if ($queues[$k]['sep']) {
+      $groups = array(array($old, $queues[$k]['old']), array($new, $queues[$k]['new']));
+    } else {
+      $groups = array(array(array_merge($old, $new), $queues[$k]['cells']));
+    }
+    foreach ($groups as $g) {
+      list($rows_g, $pool) = $g;
+      // fixed (non-empty) rows keep their value; only the rest get assigned.
       $assignable = array();
-      foreach ($on[$type] as $r) { if (!($r->fixed && trim((string)$r->cur) !== '')) $assignable[] = $r; }
+      foreach ($rows_g as $r) { if (!($r->fixed && trim((string)$r->cur) !== '')) $assignable[] = $r; }
       if ($desc['shareable']) {
-        $ids = array(); foreach ($assignable as $r) $ids[] = $r->aa_id;
+        $ids = array();
+        foreach ($assignable as $r) $ids[] = $r->aa_id;
         $map = dh_alloc_assign_batches($ids, $pool);
         foreach ($assignable as $r) {
-          list($seat,$b) = $map[$r->aa_id];
+          list($seat, $b) = $map[$r->aa_id];
           $f = array($col => ($seat === '' ? null : $seat));
           if ($batch_col) $f[$batch_col] = $b;
           $updates[$r->aa_id] = $f;
         }
       } else {
-        $q = $pool;
+        $i = 0; $n = count($pool);
         foreach ($assignable as $r) {
-          $seat = !empty($q) ? array_shift($q) : '';
+          $seat = ($i < $n) ? $pool[$i] : '';
+          $i++;
           $updates[$r->aa_id] = array($col => ($seat === '' ? null : $seat));
         }
       }
