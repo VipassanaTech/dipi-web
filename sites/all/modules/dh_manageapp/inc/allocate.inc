@@ -51,3 +51,26 @@ function dh_alloc_pool($ini, $key) {
     'cells'=>dh_alloc_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
     'reserved'=>$reserved);
 }
+
+/** True if the config defines any server section. */
+function dh_alloc_has_server_config($ini) {
+  if (!is_array($ini)) return false;
+  foreach ($ini as $k => $v) {
+    if (strpos($k, '_SERVER') !== false) return true;
+  }
+  return false;
+}
+
+/** Resolve the INI section key for one attendee, or null (server w/o section). */
+function dh_alloc_effective_key($ini, $gender, $group, $class, $mode) {
+  $base = (strtoupper($gender) === 'M') ? 'MALE' : 'FEMALE';
+  if ($class === 'server') $base .= '_SERVER';
+  if ($mode === 'group') {
+    $g = (int) $group;
+    if ($g > 0 && isset($ini[$base . '_' . $g])) return $base . '_' . $g;
+  }
+  if (isset($ini[$base])) return $base;
+  // Students always resolve to their base (pool may be empty -> blank);
+  // servers only when a server section exists.
+  return ($class === 'server') ? null : $base;
+}

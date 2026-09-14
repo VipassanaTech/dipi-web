@@ -29,4 +29,16 @@ ok($pf['sep']===true && $pf['old']===array('1','2') && $pf['new']===array('3','4
 $pmiss = dh_alloc_pool($ini,'MALE_1');
 ok($pmiss['cells']===array() && $pmiss['old']===array() && $pmiss['reserved']===array(), 'pool missing section');
 
+// Task 3 tests - effective key and server config
+$ini2 = array('MALE'=>array('Cells'=>'1'),'MALE_1'=>array('Cells'=>'D1'),'MALE_SERVER'=>array('Cells'=>'S1'));
+// student, default -> MALE ; group with override -> MALE_1 ; group w/o override -> MALE
+ok(dh_alloc_effective_key($ini2,'M',0,'student','default')==='MALE', 'student default');
+ok(dh_alloc_effective_key($ini2,'M',1,'student','group')==='MALE_1', 'student group override');
+ok(dh_alloc_effective_key($ini2,'M',2,'student','group')==='MALE', 'student group fallback');
+// server -> MALE_SERVER ; female server absent -> null
+ok(dh_alloc_effective_key($ini2,'M',0,'server','default')==='MALE_SERVER', 'server default');
+ok(dh_alloc_effective_key($ini2,'F',0,'server','default')===null, 'server absent -> null');
+ok(dh_alloc_has_server_config($ini2)===true, 'has server config');
+ok(dh_alloc_has_server_config(array('MALE'=>array()))===false, 'no server config');
+
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";
