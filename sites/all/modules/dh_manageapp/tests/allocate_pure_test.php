@@ -41,4 +41,11 @@ ok(dh_alloc_effective_key($ini2,'F',0,'server','default')===null, 'server absent
 ok(dh_alloc_has_server_config($ini2)===true, 'has server config');
 ok(dh_alloc_has_server_config(array('MALE'=>array()))===false, 'no server config');
 
+// Task 6 tests - validation
+$bad = array('MALE'=>array('Cells'=>'1-3','Reserved'=>'9'), 'FEMALE'=>array('Cells'=>'1,1,2','Reserved'=>''));
+$w = dh_alloc_validate($bad);
+ok(count(array_filter($w, function($s){return strpos($s,'MALE')!==false && stripos($s,'reserved')!==false;}))>0, 'flags out-of-range reserved');
+ok(count(array_filter($w, function($s){return strpos($s,'FEMALE')!==false && stripos($s,'duplicate')!==false;}))>0, 'flags duplicate');
+ok(dh_alloc_validate(array('MALE'=>array('Cells'=>'1-3','Reserved'=>'2')))===array(), 'clean config no warnings');
+
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";

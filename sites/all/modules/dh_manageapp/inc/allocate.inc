@@ -74,3 +74,25 @@ function dh_alloc_effective_key($ini, $gender, $group, $class, $mode) {
   // servers only when a server section exists.
   return ($class === 'server') ? null : $base;
 }
+
+/** Return human-readable warnings about a parsed config (empty = clean). */
+function dh_alloc_validate($ini) {
+  $warn = array();
+  if (!is_array($ini)) return $warn;
+  foreach ($ini as $key => $sec) {
+    if (!is_array($sec)) continue;
+    $avail = array_merge(
+      dh_alloc_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
+      dh_alloc_expand(isset($sec['Old']) ? $sec['Old'] : ''),
+      dh_alloc_expand(isset($sec['New']) ? $sec['New'] : '')
+    );
+    $counts = array_count_values($avail);
+    foreach ($counts as $v => $c) {
+      if ($c > 1) $warn[] = "[$key] duplicate value '$v' in available list.";
+    }
+    foreach (dh_alloc_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '') as $r) {
+      if ($r !== '' && !in_array($r, $avail)) $warn[] = "[$key] reserved value '$r' is outside the available range (has no effect).";
+    }
+  }
+  return $warn;
+}
