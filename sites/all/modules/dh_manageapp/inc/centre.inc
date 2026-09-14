@@ -557,6 +557,105 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	}
 
 
+	// ---- Dining Settings ----------------------------------------------------
+	// Same shape as Cell Settings (per-gender available/reserved + optional
+	// old/new split) but ALSO supports per-group ranges. A group with no range of
+	// its own falls back to the default gender range at allocation time. Serialized
+	// to cs_dining_config as INI: [MALE]/[FEMALE] defaults + [MALE_n]/[FEMALE_n]
+	// per-group overrides (see _dh_ma_diningcfg_ini / generate_dining_list).
+	$group = 'Dining Settings';
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => true,
+		'#description' => 'Optional. Tick below if this centre assigns numbered dining seats. Set the default Male/Female ranges; add a group range only for groups that dine on a different set of seats.');
+	$diniraw = (!$add && !empty($edit_data['cs_dining_config'])) ? parse_ini_string($edit_data['cs_dining_config'], true, INI_SCANNER_RAW) : array();
+	if (!is_array($diniraw)) $diniraw = array();
+	$has_dining = $add ? 0 : (isset($edit_data['cs_has_dining']) ? $edit_data['cs_has_dining'] : 0);
+	$form[$group]['cs_has_dining'] = array('#type' => 'checkbox', '#title' => 'This centre assigns dining seats',
+		'#default_value' => $has_dining, '#weight' => -10,
+		'#description' => 'Untick if this centre does not assign dining seats - the dining configuration below is then not needed.',
+		'#suffix' => '<div style="clear:both"></div>');
+
+	// Builds one cell-style dining sub-section (available/reserved + optional
+	// old/new split) for the given INI section key and field prefix.
+	$mk_dining = function($sec_key, $prefix, $title, $collapsed) use (&$diniraw, $range_help) {
+		$v_cells = isset($diniraw[$sec_key]['Cells'])    ? $diniraw[$sec_key]['Cells']    : '';
+		$v_res   = isset($diniraw[$sec_key]['Reserved']) ? $diniraw[$sec_key]['Reserved'] : '';
+		$v_old   = isset($diniraw[$sec_key]['Old'])      ? $diniraw[$sec_key]['Old']      : '';
+		$v_new   = isset($diniraw[$sec_key]['New'])      ? $diniraw[$sec_key]['New']      : '';
+		$sep     = ($v_old !== '' || $v_new !== '');
+		$s = array('#type' => 'fieldset', '#title' => $title, '#collapsible' => true, '#collapsed' => $collapsed,
+			'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
+		$s[$prefix.'cells'] = array('#type' => 'textfield', '#title' => 'Which dining seats are available?',
+			'#description' => $range_help, '#default_value' => $v_cells,
+			'#states' => array('visible' => array(':input[name="'.$prefix.'sep"]' => array('checked' => FALSE))));
+		$s[$prefix.'reserved'] = array('#type' => 'textfield', '#title' => 'Any dining seats to keep aside?',
+			'#description' => 'Held back, never auto-assigned. '.$range_help.' Leave blank if none.', '#default_value' => $v_res);
+		$s[$prefix.'sep'] = array('#type' => 'checkbox', '#title' => 'Use separate dining seats for old & new students', '#default_value' => $sep);
+		$s[$prefix.'old'] = array('#type' => 'textfield', '#title' => 'Dining seats for OLD students',
+			'#description' => $range_help, '#default_value' => $v_old,
+			'#states' => array('visible' => array(':input[name="'.$prefix.'sep"]' => array('checked' => TRUE))));
+		$s[$prefix.'new'] = array('#type' => 'textfield', '#title' => 'Dining seats for NEW students',
+			'#description' => $range_help, '#default_value' => $v_new,
+			'#states' => array('visible' => array(':input[name="'.$prefix.'sep"]' => array('checked' => TRUE))));
+		return $s;
+	};
+
+	// Default Male/Female (also used by any group without its own range).
+	$note_def = ' <span class="dhv-sec-note">&mdash; also used by any group without its own range</span>';
+	$form[$group]['dining_male']   = $mk_dining('MALE',   'diningcfg_male_',   'Male (Default)'.$note_def, false);
+	$form[$group]['dining_female'] = $mk_dining('FEMALE', 'diningcfg_female_', 'Female (Default)'.$note_def, false);
+
+	// Optional per-group overrides. Male/Female defaults above are always shown;
+	// a group range is ADDED on demand (like adding a group seating plan). All 18
+	// group fieldsets exist in the form but stay hidden until shown - JS reveals a
+	// group that already has saved data (edit mode) or one the operator adds, and
+	// "remove" hides + clears it so it serialises away (see _dh_ma_diningcfg_ini).
+	$form[$group]['dining_groups'] = array('#type' => 'fieldset', '#title' => 'Group-wise dining ranges (optional)',
+		'#collapsible' => true, '#collapsed' => true,
+		'#description' => 'Only for centres that seat some groups on a different set of dining seats. Groups you do not add here use the default Male/Female range above.',
+		'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
+	// Add-a-group control (populated + wired by the JS below).
+	$form[$group]['dining_groups']['add_ctl'] = array('#markup' =>
+		'<div class="dh-dining-add" style="margin:8px 0">'
+		. '<label style="margin-right:6px">Add a group range:</label>'
+		. '<select id="dh-dining-add-sel" class="form-control" style="width:auto;display:inline-block"></select> '
+		. '<button type="button" id="dh-dining-add-btn" class="btn btn-default">Add</button>'
+		. '<span class="dh-dining-add-none" style="color:#777;margin-left:8px;display:none">All groups added.</span>'
+		. '</div>', '#weight' => -5);
+	for ($n = 1; $n <= 9; $n++)
+		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+		{
+			$lbl = ($gk == 'male' ? 'Male' : 'Female').' (Group '.$n.')';
+			$sk = $sec.'_'.$n;   // INI section key, e.g. MALE_1
+			$fs = $mk_dining($sk, 'diningcfg_'.$gk.'_g'.$n.'_', $lbl, false);
+			$fs['#collapsible'] = false;
+			unset($fs['#states']);   // the parent fieldset carries the cs_has_dining state; JS controls per-group visibility
+			// Has saved data? (edit mode) -> shown on load, else hidden.
+			$has = isset($diniraw[$sk]) && is_array($diniraw[$sk])
+				&& (trim(implode('', $diniraw[$sk])) !== '');
+			$fs['#attributes']['class'][] = 'dh-dining-group';
+			$fs['#attributes']['data-dgroup'] = $gk.'_g'.$n;
+			$fs['#attributes']['data-has'] = $has ? '1' : '0';
+			$fs['#attributes']['data-label'] = $lbl;
+			$form[$group]['dining_groups']['dining_'.$gk.'_g'.$n] = $fs;
+		}
+	// JS: build the add-select, show groups-with-data, add/remove on demand.
+	drupal_add_js('(function ($) { Drupal.behaviors.dhDiningGroups = { attach: function (context) {'
+		. 'var wrap = document.getElementById("dh-dining-add-sel"); if (!wrap || wrap.dhDone) return; wrap.dhDone = 1;'
+		. 'var sel = wrap, btn = document.getElementById("dh-dining-add-btn"), none = document.querySelector(".dh-dining-add-none");'
+		. 'var groups = [].slice.call(document.querySelectorAll("fieldset.dh-dining-group"));'
+		. 'function opt(g){ var o=document.createElement("option"); o.value=g.getAttribute("data-dgroup"); o.text=g.getAttribute("data-label"); return o; }'
+		. 'function refreshNone(){ none.style.display = sel.options.length ? "none" : "inline"; btn.style.display = sel.options.length ? "" : "none"; }'
+		. 'function show(g){ g.style.display=""; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===g.getAttribute("data-dgroup")){ sel.remove(i); break; } } refreshNone(); }'
+		. 'function hide(g){ g.style.display="none"; var ins=g.querySelectorAll("input[type=text], input[type=checkbox]"); for(var i=0;i<ins.length;i++){ if(ins[i].type==="checkbox") ins[i].checked=false; else ins[i].value=""; } sel.add(opt(g)); refreshNone(); }'
+		. 'groups.forEach(function(g){'
+		. '  var lg=g.querySelector("legend"); if(lg && !g.dhRm){ g.dhRm=1; var a=document.createElement("a"); a.href="#"; a.textContent="✕ remove"; a.className="dh-dgroup-remove"; a.style.cssText="margin-left:10px;font-size:12px;color:#a00"; a.onclick=function(e){e.preventDefault(); hide(g);}; lg.appendChild(a); }'
+		. '  if (g.getAttribute("data-has")==="1"){ g.style.display=""; } else { g.style.display="none"; sel.add(opt(g)); }'
+		. '});'
+		. 'btn.onclick=function(){ if(!sel.value) return; var g=document.querySelector("fieldset.dh-dining-group[data-dgroup=\'"+sel.value+"\']"); if(g){ show(g); g.scrollIntoView({block:"center"}); } };'
+		. 'refreshNone();'
+		. '} }; })(jQuery);', array('type' => 'inline', 'scope' => 'footer'));
+
+
 	if ($add)
 		$action = 'Add Centre';
 	else
@@ -698,6 +797,12 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		? _dh_ma_cellcfg_ini($form_state['input'])   // cellcfg_* fields -> cs_cells_config (loop below)
 		: '';
 
+	// Same for the optional dining configuration (diningcfg_* fields).
+	$form_state['input']['cs_has_dining'] = empty($form_state['input']['cs_has_dining']) ? 0 : 1;
+	$form_state['input']['cs_dining_config'] = $form_state['input']['cs_has_dining']
+		? _dh_ma_diningcfg_ini($form_state['input'])
+		: '';
+
 	// Assemble the Seating Configuration INI from the friendly seatcfg_* fields.
 	$form_state['input']['cs_seat_config'] = _dh_ma_seatcfg_ini($form_state['input']);
 
@@ -763,6 +868,36 @@ function _dh_ma_cellcfg_ini($input)
 			$out .= "Cells = ".$get('cellcfg_'.$gk.'_cells')."\n";
 		$out .= "Reserved = ".$get('cellcfg_'.$gk.'_reserved')."\n\n";
 	}
+	return rtrim($out)."\n";
+}
+
+/* Assemble the Dining Configuration INI from the friendly diningcfg_* fields.
+   The two default sections ([MALE]/[FEMALE]) are always written; per-group
+   sections ([MALE_n]/[FEMALE_n]) are written only when they carry data, so a
+   blank group falls back to the default gender range at allocation time. */
+function _dh_ma_diningcfg_ini($input)
+{
+	$get = function($k) use ($input) { return isset($input[$k]) ? trim((string)$input[$k]) : ''; };
+	$block = function($sec, $prefix, $force) use ($get) {
+		$sep   = ($get($prefix.'sep') !== '');
+		$cells = $get($prefix.'cells');
+		$res   = $get($prefix.'reserved');
+		$old   = $get($prefix.'old');
+		$new   = $get($prefix.'new');
+		$has   = ($sep ? ($old !== '' || $new !== '') : ($cells !== '')) || $res !== '';
+		if (!$force && !$has) return '';
+		$out = "[$sec]\n";
+		if ($sep) { $out .= "Old = $old\n"; $out .= "New = $new\n"; }
+		else      { $out .= "Cells = $cells\n"; }
+		$out .= "Reserved = $res\n\n";
+		return $out;
+	};
+	$out = '';
+	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+		$out .= $block($sec, 'diningcfg_'.$gk.'_', true);
+	for ($n = 1; $n <= 9; $n++)
+		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+			$out .= $block($sec.'_'.$n, 'diningcfg_'.$gk.'_g'.$n.'_', false);
 	return rtrim($out)."\n";
 }
 

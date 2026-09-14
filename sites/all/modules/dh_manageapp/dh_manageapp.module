@@ -440,6 +440,16 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['dining-list/%centre_id/%course_id'] = array( 'title' => t('Dining List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['group-dining-list/%centre_id/%course_id'] = array( 'title' => t('Group-wise Dining List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['laundry-list/%centre_id/%course_id'] = array( 'title' => t('Laundry List'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),
@@ -2552,6 +2562,11 @@ function dh_app_update_attended()
 	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
 	if ($fields['aa_cell_fixed'])
 		$fields['aa_cell_group'] = '0';
+	// Dining seats: default + group-wise value, one shared fixed flag. A fixed
+	// value is kept and reserved-out when either dining list is regenerated.
+	$fields['aa_dining'] = isset($_REQUEST['dn']) ? $_REQUEST['dn'] : '';
+	$fields['aa_group_dining'] = isset($_REQUEST['gdn']) ? $_REQUEST['gdn'] : '';
+	$fields['aa_dining_fixed'] = (isset($_REQUEST['df']) && $_REQUEST['df'] == 'true')?1:0;
 	$fields['aa_chowky'] = ($_REQUEST['chow'] == 'true')?1:0;
 	$fields['aa_chair'] = ($_REQUEST['chai'] == 'true')?1:0;
 	$fields['aa_backrest'] = ($_REQUEST['back'] == 'true')?1:0;

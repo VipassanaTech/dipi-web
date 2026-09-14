@@ -115,7 +115,19 @@ function dh_manage_day_zero()
 			if (isset($_REQUEST['d']) && ($_REQUEST['d'] == 1))
 				$debug = 1;
 			return dh_cell_list(arg(1), arg(2), $debug);
-		break;		
+		break;
+		case 'dining-list':
+			zeroize_new_course_data(arg(1), arg(2));
+			if (isset($_REQUEST['r']))
+				generate_dining_list(arg(1), arg(2));
+			return dh_dining_list(arg(1), arg(2), 'default');
+		break;
+		case 'group-dining-list':
+			zeroize_new_course_data(arg(1), arg(2));
+			if (isset($_REQUEST['r']))
+				generate_group_dining_list(arg(1), arg(2));
+			return dh_dining_list(arg(1), arg(2), 'group');
+		break;
 		case 'laundry-list':
 			return dh_laundry_list(arg(1), arg(2));
 		break;		
@@ -497,6 +509,18 @@ function dh_zero_main()
 				"	      <label class=\"control-label\" for=\"cell-fixed\">Cell Fixed</label>"+
 				"	      <input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields ui-widget-content ui-corner-all\">"+
 				"      </div>"+
+				"	  <div class=\"form-item form-group\">"+
+				"      	<label class=\"control-label\" for=\"dining\">Dining No</label>"+
+				"      	<input type=\"text\" name=\"dining\" id=\"dining\" value=\"\" size=\"5\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
+				"      </div>"+
+				"	  <div class=\"form-item form-group\">"+
+				"      	<label class=\"control-label\" for=\"groupdining\">Group Dining No</label>"+
+				"      	<input type=\"text\" name=\"groupdining\" id=\"groupdining\" value=\"\" size=\"5\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
+				"      </div>"+
+				"	  <div class=\"form-item form-group\">"+
+				"	      <label class=\"control-label\" for=\"dining-fixed\">Dining Fixed</label>"+
+				"	      <input type=\"checkbox\" name=\"diningfixed\" id=\"dining-fixed\" value=\"1\" class=\"attending-fields ui-widget-content ui-corner-all\">"+
+				"      </div>"+
 				"      <div class=\"form-item form-group\">"+
 				"      	<label class=\"control-label\" for=\"group\">Group</label>"+
 				"      	<select name=\"group\" id=\"group\" class=\"form-control attending-fields select ui-widget-content ui-corner-all\">"+group+"</select>"+
@@ -597,7 +621,8 @@ function dh_zero_main()
 						          url: "/app-update-attended/" + cur_app_id ,
 						          method: "POST",
 						          data: {s: $("#section").val(), r: $("#room-no").val(), g: $("#group").val(),l: $("#laundry").val(), v: $("#valuable").val(),
-						          	c: $("#cell").val(), cf: $("#cell-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") , 
+						          	c: $("#cell").val(), cf: $("#cell-fixed").is(":checked") ,
+						          	dn: $("#dining").val(), gdn: $("#groupdining").val(), df: $("#dining-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") ,
 						          	chai: $("#special-seating-chair").is(":checked"), back:  $("#special-seating-backrest").is(":checked"),
 						          	comment: $("#comments").val(), a: $("#attending").is(":checked")  },
 						          dataType: "json",
@@ -652,6 +677,9 @@ function dh_zero_main()
 				    	$("#cell").val(temp[0]);
 				    	if (temp[1] == "1") $("#cell-fixed").prop("checked", true);
 				    	$("#comments").val(temp[2]);
+				    	$("#dining").val(temp[3]);
+				    	$("#groupdining").val(temp[4]);
+				    	if (temp[5] == "1") $("#dining-fixed").prop("checked", true);
 				    	//alert(temp[1]);
 				    }
 				});
@@ -698,7 +726,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	}
 
 	//$q = "select a_id, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and aa_acco IS NOT NULL order by a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_dining, aa_group_dining, aa_dining_fixed, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$rows = array();
 	$totals['new']['F']['Student'] = $totals['new']['F']['Sevak'] = $totals['old']['F']['Student'] = $totals['old']['F']['Sevak'] = $totals['new']['M']['Student'] = $totals['new']['M']['Sevak'] = $totals['old']['M']['Student'] = $totals['old']['M']['Sevak'] = 0;
@@ -733,7 +761,7 @@ function dh_manageapp_attended( $centre, $course_id )
 		$rs[] = $r['aa_chair']?'Yes':'No';
 		$rs[] = $r['aa_backrest']?'Yes':'No';
 		$rs[] = $r['aa_group'];
-		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment'];		
+		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment']."||".$r['aa_dining']."||".$r['aa_group_dining']."||".$r['aa_dining_fixed'];
 		$rows[] = array_values($rs);
 
 		$totals[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] += 1;
@@ -906,7 +934,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_group, aa_dining, aa_group_dining, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -922,13 +950,16 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		'city'     => array('City', 'tl-city'),
 		'courses'  => array('Courses', 'tl-courses'),
 		'cell'     => array('Cell', 'tl-cell'),
+		'dining'       => array('Dining', 'tl-dining'),
+		'group_dining' => array('Group Dining', 'tl-group_dining'),
 		'seat'     => array('Seat', 'tl-seat'),
 		'occ'      => array('Occupation', 'tl-occ'),
 		'edu'      => array('Education', 'tl-edu'),
 		'langs'    => array('Languages', 'tl-langs'),
 		'comments' => array('Comments', 'tl-comments'),
 	);
-	$toggle = array('cell' => 'Cell', 'langs' => 'Languages', 'comments' => 'Comments');
+	// Dining columns start hidden (off by default) - see the auto-toggle script below.
+	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'group_dining' => 'Group Dining', 'langs' => 'Languages', 'comments' => 'Comments');
 	$ncol = count($cols);
 
 	$out .= '<div class="header-teacher"><div class="title">Teacher List</div>'.
@@ -1043,6 +1074,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 						'city'     => check_plain(dh_day0_case($r['City'])),
 						'courses'  => trim($courses),
 						'cell'     => $cellno,
+						'dining'       => check_plain($r['aa_dining']),
+						'group_dining' => check_plain($r['aa_group_dining']),
 						'seat'     => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="tl-br" title="Backrest">BR</span>' : ''),
 						'occ'      => check_plain(dh_day0_case($r['a_occupation'])),
 						'edu'      => check_plain(trim($r['a_education'])),
@@ -1090,6 +1123,8 @@ document.addEventListener("click", function(e){
 </script>';
 	if ($hide_cell)
 		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
+	// Dining columns are off by default - hide both on load (operator can toggle on).
+	$out .= '<script>(function(){["dining","group_dining"].forEach(function(k){var b=document.querySelector(\'[data-toggle-col="\'+k+\'"]\');if(b)b.click();});})();</script>';
 	print $out;
 	exit;
 }
@@ -1128,7 +1163,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	}
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_group, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_group, aa_dining, aa_group_dining, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1142,11 +1177,14 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		'ename'   => array('Emergency Contact', 'ml-ename'),
 		'enum'    => array('Emergency No.', 'ml-enum'),
 		'cell'    => array('Cell', 'ml-cell'),
+		'dining'       => array('Dining', 'ml-dining'),
+		'group_dining' => array('Group Dining', 'ml-group_dining'),
 		'seat'    => array('Seat', 'ml-seat'),
 		'conf'    => array('Conf No', 'ml-conf'),
 		'set'     => array('Set', 'ml-set'),
 	);
-	$toggle = array('cell' => 'Cell');   // hide-able columns (screen only)
+	// Cell hide-able as before; dining columns hide-able and OFF by default (auto-toggle below).
+	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'group_dining' => 'Group Dining');
 	$ncol = count($cols);
 
 	$out .= '<div class="header-manager"><div class="title">Manager List</div>'.
@@ -1218,6 +1256,8 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 				'ename'   => $ename,
 				'enum'    => check_plain($r['a_emergency_num']),
 				'cell'    => $cellno,
+				'dining'       => check_plain($r['aa_dining']),
+				'group_dining' => check_plain($r['aa_group_dining']),
 				'seat'    => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="ml-br" title="Backrest">BR</span>' : ''),
 				'conf'    => check_plain($r['a_conf_no']),
 				'set'     => $code !== '' ? check_plain($code) : '',
@@ -1261,6 +1301,8 @@ document.addEventListener("click", function(e){
 </script>';
 	if ($hide_cell)
 		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
+	// Dining columns are off by default - hide both on load (operator can toggle on).
+	$out .= '<script>(function(){["dining","group_dining"].forEach(function(k){var b=document.querySelector(\'[data-toggle-col="\'+k+\'"]\');if(b)b.click();});})();</script>';
 	print $out;
 	exit;
 }
@@ -3737,6 +3779,243 @@ function generate_cell_list($centre, $course)
 	}
 	return $cells;
 }
+
+/* Dining list display - reuses cell-list.css (cl-* classes) for identical print
+   behaviour, but shows one dining seat per attendee (no cell batches). $mode:
+   'default' shows aa_dining, 'group' shows aa_group_dining. */
+function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
+{
+	global $base_url;
+	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
+	$title = ($mode === 'group') ? 'Group-wise Dining List' : 'Dining List';
+	$base_slug = ($mode === 'group') ? 'group-dining-list' : 'dining-list';
+	$file_slug = ($mode === 'group') ? 'group-dining' : 'dining';
+	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'seat') ? 'seat' : 'name';
+
+	$gender = array('M', 'F');
+	$data = array('M' => array(1 => array(), 0 => array()), 'F' => array(1 => array(), 0 => array()));
+	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
+	$q = "select a_id, aa_id, a_gender, a_old, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
+		aa_section, aa_acco, $col as seat, aa_dining_fixed
+		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
+		left join dh_applicant_attended on a_id=aa_applicant
+		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
+		where a_course='$course' and a_attended=1 and a_type='Student'
+		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
+			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
+			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
+			IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
+	$result = db_query($q);
+	$has_fixed = false;
+	while ($r = $result->fetchAssoc())
+	{
+		if ($r['aa_dining_fixed']) $has_fixed = true;
+		$room = $r['aa_section'].'-'.$r['aa_acco'];
+		if ($room === '-') $room = '';
+		$data[strtoupper($r['a_gender'])][$r['a_old'] ? 1 : 0][$r['a_id']] =
+			array('name' => $r['Full Name'], 'room' => $room, 'seat' => $r['seat'], 'fixed' => $r['aa_dining_fixed']);
+	}
+
+	$dl_name = dh_course_file_basename($centre, $course, $file_slug);
+	$out = '<html><head><title>'.$dl_name.'</title>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
+	$out .= '</head><body>';
+	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title.'</b></div>'.
+			'<div align="center" class="title-head">'.$course_name.'</div></div>';
+	$sort_base = $base_slug.'/'.$centre.'/'.$course;
+	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
+		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name')))).
+		' &middot; '.
+		($sort == 'seat' ? '<b>Dining Seat</b>' : l('Dining Seat', $sort_base, array('query' => array('sort' => 'seat')))).
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
+		'</div>';
+	if ($has_fixed)
+		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the dining seat is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';
+	$out .= '<table class="cl-doc"><thead><tr><td class="cl-doc-cell">'.
+		'<div class="cl-dt-main">'.$title.'</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
+		'</td></tr></thead><tbody><tr><td class="cl-doc-body">';
+	$out .= '<div class="main-div">';
+	$first = true;
+	foreach ($gender as $g)
+		for ($i = 1; $i >= 0; $i--)
+		{
+			if (empty($data[$g][$i])) continue;
+			$rowsd = $data[$g][$i];
+			if ($sort == 'seat')
+				uasort($rowsd, function($a, $b) { return strnatcasecmp($a['seat'], $b['seat']); });
+			else
+				uasort($rowsd, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
+			$keys = array_keys($rowsd);
+			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female');
+			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
+			$first = false;
+			$out .= '<table cellspacing="0" class="table-cell-list">';
+			$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
+			$out .= '<thead><tr><th colspan="4" class="cl-batch-title">'.$label.'</th></tr>'.
+				'<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr></thead><tbody>';
+			$idx = 0;
+			foreach ($keys as $k)
+			{
+				$idx++;
+				$out .= '<tr><td class="cl-idx">'.$idx.'</td>'.
+					'<td class="cl-name">'.check_plain($rowsd[$k]['name']).'</td>'.
+					'<td class="cl-room">'.check_plain($rowsd[$k]['room']).'</td>'.
+					'<td class="cl-cell">'.check_plain($rowsd[$k]['seat']).
+					(!empty($rowsd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="Fixed dining seat - kept when the list is regenerated">&#9679;</span>' : '').
+					'</td></tr>';
+			}
+			$out .= '</tbody></table></div>';
+		}
+	$out .= '</div></td></tr></tbody></table></html>';
+
+	if ($pdf <> '')
+		create_pdf_from_html($out, $pdf);
+	else
+	{
+		print $out;
+		exit;
+	}
+}
+
+/* ------------------------------------------------------------------------- *
+ * Dining seat allocation.
+ *
+ * Two independent plans share this engine, writing different columns:
+ *   generate_dining_list()       -> aa_dining        (default [MALE]/[FEMALE] ranges)
+ *   generate_group_dining_list() -> aa_group_dining  (per-group [GENDER_n], fallback [GENDER])
+ *
+ * Unlike cells (which are shared in batches via aa_cell_group), each attendee
+ * gets ONE unique dining seat. Config mirrors cells: per section an available
+ * pool ("Cells") OR a separate Old/New split, plus a Reserved pool held back.
+ * A row marked aa_dining_fixed with a non-empty value in the target column keeps
+ * that value and reserves it out of its pool (out-of-range values are allowed) -
+ * exactly the cell rule, applied per plan. Blank-but-fixed rows allocate normally.
+ * Groups that fall back to the same default gender range share ONE pool, so their
+ * seat numbers never collide.
+ * ------------------------------------------------------------------------- */
+
+/* Expand a range string like "1-40, 55, A1-A5" into an array of seat labels.
+   Mirrors the letter-prefix + numeric-range handling used by generate_cell_list. */
+function _dh_dining_expand($str)
+{
+	$out = array();
+	if ($str === '' || $str === null) return $out;
+	foreach (explode(",", $str) as $v)
+	{
+		$v = trim($v);
+		if ($v === '') continue;
+		$p = explode("-", $v);
+		if (count($p) > 1)
+		{
+			$prefix = preg_replace("/[0-9]/", "", $p[0]);
+			$start  = (int) preg_replace("/[A-Za-z-]/", "", $p[0]);
+			$end    = (int) preg_replace("/[A-Za-z-]/", "", $p[1]);
+			for ($i = $start; $i <= $end; $i++) $out[] = $prefix.$i;
+		}
+		else
+			$out[] = $p[0];
+	}
+	return $out;
+}
+
+/* Build a pool descriptor for one INI section: array(sep, cells[], old[], new[], reserved[]). */
+function _dh_dining_pool($ini, $key)
+{
+	$sec = isset($ini[$key]) && is_array($ini[$key]) ? $ini[$key] : array();
+	$reserved = _dh_dining_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '');
+	$sep = (isset($sec['Old']) && $sec['Old'] !== '') || (isset($sec['New']) && $sec['New'] !== '');
+	if ($sep)
+		return array('sep' => true, 'cells' => array(),
+			'old' => _dh_dining_expand(isset($sec['Old']) ? $sec['Old'] : ''),
+			'new' => _dh_dining_expand(isset($sec['New']) ? $sec['New'] : ''),
+			'reserved' => $reserved);
+	return array('sep' => false, 'old' => array(), 'new' => array(),
+		'cells' => _dh_dining_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
+		'reserved' => $reserved);
+}
+
+/* Core allocator. $mode = 'default' (writes aa_dining) or 'group' (writes aa_group_dining). */
+function _dh_dining_allocate($centre, $course, $mode)
+{
+	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
+	$cfg = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
+	$ini = ($cfg !== '' && $cfg !== null) ? parse_ini_string($cfg, true, INI_SCANNER_RAW) : array();
+	if (!is_array($ini)) $ini = array();
+
+	// Attendees (students) in the same seniority/course order as the cell list.
+	$q = "select aa_id, a_gender, a_old, aa_group, $col as cur, aa_dining_fixed
+		from dh_applicant
+		left join dh_applicant_course on a_id=ac_applicant
+		left join dh_applicant_attended on a_id=aa_applicant
+		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
+		where a_course='$course' and a_attended=1 and a_type='Student'
+		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
+			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
+			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
+			IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
+	$rows = db_query($q)->fetchAll();
+
+	// Effective INI section key for a row: group override if present, else gender.
+	$key_of = function($r) use ($mode, $ini) {
+		$g = (strtoupper($r->a_gender) == 'M') ? 'MALE' : 'FEMALE';
+		if ($mode === 'group')
+		{
+			$grp = (int) $r->aa_group;
+			if ($grp > 0 && isset($ini[$g.'_'.$grp])) return $g.'_'.$grp;
+		}
+		return $g;
+	};
+
+	// Pass 1: reserve out every fixed (non-empty) value from its pool.
+	$fixedvals = array();
+	foreach ($rows as $r)
+		if ($r->aa_dining_fixed && trim((string) $r->cur) !== '')
+			$fixedvals[$key_of($r)][] = trim((string) $r->cur);
+
+	// Build the seat queues per distinct pool key (config-reserved + fixed removed).
+	$queues = array();
+	foreach ($rows as $r)
+	{
+		$k = $key_of($r);
+		if (isset($queues[$k])) continue;
+		$p = _dh_dining_pool($ini, $k);
+		$remove = array_merge($p['reserved'], isset($fixedvals[$k]) ? $fixedvals[$k] : array());
+		$clean = function($arr) use ($remove) {
+			return array_values(array_filter($arr, function($x) use ($remove) {
+				return $x !== '' && !in_array($x, $remove);
+			}));
+		};
+		$queues[$k] = array('sep' => $p['sep'], 'old' => $clean($p['old']), 'new' => $clean($p['new']), 'cells' => $clean($p['cells']));
+	}
+
+	// Bucket rows by pool key then old/new, preserving order (old filled before new).
+	$buckets = array();
+	foreach ($rows as $r)
+		$buckets[$key_of($r)][$r->a_old ? 'old' : 'new'][] = $r;
+
+	$updates = array();
+	foreach ($buckets as $k => $on)
+		foreach (array('old', 'new') as $type)
+		{
+			if (empty($on[$type])) continue;
+			foreach ($on[$type] as $r)
+			{
+				if ($r->aa_dining_fixed && trim((string) $r->cur) !== '')
+					continue;   // keep the fixed value as-is
+				$slot = $queues[$k]['sep'] ? $type : 'cells';
+				$seat = !empty($queues[$k][$slot]) ? array_shift($queues[$k][$slot]) : '';
+				$updates[$r->aa_id] = ($seat === '') ? null : $seat;
+			}
+		}
+
+	foreach ($updates as $aa_id => $val)
+		db_update('dh_applicant_attended')->fields(array($col => $val))->condition('aa_id', $aa_id)->execute();
+
+	return count($updates);
+}
+
+function generate_dining_list($centre, $course)       { return _dh_dining_allocate($centre, $course, 'default'); }
+function generate_group_dining_list($centre, $course) { return _dh_dining_allocate($centre, $course, 'group'); }
 
 function dh_laundry_list($centre, $course)
 {

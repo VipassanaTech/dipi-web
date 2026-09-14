@@ -62,12 +62,13 @@ function dh_course_dashboard()
 			});
 		});})(jQuery);', "inline");
 	}
-	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Group-wise Seating' => 'group-seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
+	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell List' => 'cell-list/'.arg(1).'/'.arg(2), 'Dining List' => 'dining-list/'.arg(1).'/'.arg(2), 'Group-wise Dining List' => 'group-dining-list/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Group-wise Seating' => 'group-seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
 	// Reports, printable pages and file downloads open in a new tab so the
 	// operator keeps the course page open behind them; plain navigation
 	// (View Applications, Add Application, Assign Teacher, Zero Day) stays in place.
 	$new_tab = array('Day 0 List', 'Teachers List', 'Manager List', 'Cell List',
+		'Dining List', 'Group-wise Dining List',
 		'Seating Plan', 'Group-wise Seating', 'Laundry List', 'Valuable List',
 		'Student Chit', 'Checking Slip', 'Course Summary Report',
 		'Generate Male PDF', 'Generate Female PDF');
@@ -76,13 +77,16 @@ function dh_course_dashboard()
 		$attr = in_array($key, $new_tab) ? array('target' => '_blank') : array();
 		if ( $key == 'View Applications')
 			$out .= '<h2><li>'.l($key, $val, array("query" => array("s" => '', 't' => '','g' => '', 'd' => $type))).'</li></h2>';
-		elseif ( in_array($key, array('Cell List', 'Seating Plan', 'Group-wise Seating'))  )
+		elseif ( in_array($key, array('Cell List', 'Dining List', 'Group-wise Dining List', 'Seating Plan', 'Group-wise Seating'))  )
 		{
 			// Regenerate re-packs everything from the configuration and discards the
 			// current manually-arranged plan, so warn before it runs.
-			$regen_msg = ($key == 'Cell List')
-				? 'Regenerate will re-assign all cells and DESTROY the current saved cell list. Continue?'
-				: 'Regenerate will re-pack all seats and DESTROY the current saved '.($key == 'Group-wise Seating' ? 'group-wise seating plan' : 'seating plan').'. Continue?';
+			if ($key == 'Cell List')
+				$regen_msg = 'Regenerate will re-assign all cells and DESTROY the current saved cell list. Continue?';
+			elseif ($key == 'Dining List' || $key == 'Group-wise Dining List')
+				$regen_msg = 'Regenerate will re-assign dining seats and DESTROY the current saved '.($key == 'Group-wise Dining List' ? 'group-wise dining list' : 'dining list').'. Continue? (Fixed dining seats are kept.)';
+			else
+				$regen_msg = 'Regenerate will re-pack all seats and DESTROY the current saved '.($key == 'Group-wise Seating' ? 'group-wise seating plan' : 'seating plan').'. Continue?';
 			$regen_attr = array('onclick' => 'return confirm("'.$regen_msg.'");') + $attr;
 			$out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).' ('.l('Regenerate', $val, array("query" => array("r" => 1), "attributes" => $regen_attr)).') </li></h2>';
 		}
