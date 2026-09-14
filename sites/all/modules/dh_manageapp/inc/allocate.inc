@@ -35,3 +35,19 @@ function dh_alloc_expand($str) {
   }
   return $out;
 }
+
+/** Build a pool descriptor for one INI section. */
+function dh_alloc_pool($ini, $key) {
+  $sec = (isset($ini[$key]) && is_array($ini[$key])) ? $ini[$key] : array();
+  $reserved = dh_alloc_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '');
+  $sep = (isset($sec['Old']) && $sec['Old'] !== '') || (isset($sec['New']) && $sec['New'] !== '');
+  if ($sep) {
+    return array('sep'=>true, 'cells'=>array(),
+      'old'=>dh_alloc_expand(isset($sec['Old']) ? $sec['Old'] : ''),
+      'new'=>dh_alloc_expand(isset($sec['New']) ? $sec['New'] : ''),
+      'reserved'=>$reserved);
+  }
+  return array('sep'=>false, 'old'=>array(), 'new'=>array(),
+    'cells'=>dh_alloc_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
+    'reserved'=>$reserved);
+}
