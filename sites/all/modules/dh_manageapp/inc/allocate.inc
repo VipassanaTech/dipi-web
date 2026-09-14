@@ -96,3 +96,109 @@ function dh_alloc_validate($ini) {
   }
   return $warn;
 }
+
+/**
+ * Assign a shareable pool to an ordered list of items, cycling into batches.
+ * Returns map item => array(seat_or_'', batch_index). Empty pool -> all ('',0).
+ */
+function dh_alloc_assign_batches($items, $pool) {
+  $out = array();
+  $n = count($pool);
+  $i = 0;
+  foreach ($items as $it) {
+    if ($n === 0) { $out[$it] = array('', 0); continue; }
+    $out[$it] = array($pool[$i % $n], intdiv($i, $n));
+    $i++;
+  }
+  return $out;
+}
+
+/** Allocate a resource to a course's attendees. Returns rows written. */
+function dh_alloc_run($centre, $course, $desc, $mode) {
+  $col = ($mode === 'group') ? $desc['group_col'] : $desc['main_col'];
+  $fixed_col = $desc['fixed_col'];
+  $cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c'=>$centre))->fetchField();
+  $ini = ($cfg !== '' && $cfg !== null) ? parse_ini_string($cfg, true, INI_SCANNER_RAW) : array();
+  if (!is_array($ini)) $ini = array();
+  $servers = dh_alloc_has_server_config($ini);
+
+  // Attendees in seniority/course order (students; + servers when eligible).
+  $type_filter = $servers ? "and a_type in ('Student','Sevak')" : "and a_type='Student'";
+  $q = "select aa_id, a_gender, a_old, aa_group, a_type, $col as cur, $fixed_col as fixed
+    from dh_applicant
+    left join dh_applicant_course on a_id=ac_applicant
+    left join dh_applicant_attended on a_id=aa_applicant
+    left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
+    where a_course='$course' and a_attended=1 $type_filter
+    order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date('Y')."),
+      IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
+      IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
+      IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
+  $rows = db_query($q)->fetchAll();
+
+  $classof = function($r){ return (strtolower($r->a_type) === 'sevak') ? 'server' : 'student'; };
+  $keyof = function($r) use ($ini, $mode, $classof) {
+    return dh_alloc_effective_key($ini, $r->a_gender, $r->aa_group, $classof($r), $mode);
+  };
+
+  // Pass 1: reserve fixed (non-empty) values out of their pool.
+  $fixedvals = array();
+  foreach ($rows as $r) {
+    if ($r->fixed && trim((string)$r->cur) !== '') {
+      $k = $keyof($r);
+      if ($k !== null) $fixedvals[$k][] = trim((string)$r->cur);
+    }
+  }
+  // Build queues per distinct key (config-reserved + fixed removed).
+  $queues = array();
+  foreach ($rows as $r) {
+    $k = $keyof($r);
+    if ($k === null || isset($queues[$k])) continue;
+    $p = dh_alloc_pool($ini, $k);
+    $remove = array_merge($p['reserved'], isset($fixedvals[$k]) ? $fixedvals[$k] : array());
+    $clean = function($arr) use ($remove) {
+      return array_values(array_filter($arr, function($x) use ($remove) { return $x !== '' && !in_array($x, $remove); }));
+    };
+    $queues[$k] = array('sep'=>$p['sep'], 'old'=>$clean($p['old']), 'new'=>$clean($p['new']), 'cells'=>$clean($p['cells']));
+  }
+  // Bucket rows by key -> old/new preserving order.
+  $buckets = array();
+  foreach ($rows as $r) {
+    $k = $keyof($r);
+    if ($k === null) continue;
+    $buckets[$k][$r->a_old ? 'old' : 'new'][] = $r;
+  }
+
+  $batch_col = $desc['batch_col'];
+  $updates = array();      // aa_id => array(col=>val, [batch_col=>b])
+  foreach ($buckets as $k => $on) {
+    foreach (array('old','new') as $type) {
+      if (empty($on[$type])) continue;
+      $slot = $queues[$k]['sep'] ? $type : 'cells';
+      $pool = $queues[$k][$slot];
+      // keep only non-fixed rows for assignment; fixed keep their value
+      $assignable = array();
+      foreach ($on[$type] as $r) { if (!($r->fixed && trim((string)$r->cur) !== '')) $assignable[] = $r; }
+      if ($desc['shareable']) {
+        $ids = array(); foreach ($assignable as $r) $ids[] = $r->aa_id;
+        $map = dh_alloc_assign_batches($ids, $pool);
+        foreach ($assignable as $r) {
+          list($seat,$b) = $map[$r->aa_id];
+          $f = array($col => ($seat === '' ? null : $seat));
+          if ($batch_col) $f[$batch_col] = $b;
+          $updates[$r->aa_id] = $f;
+        }
+      } else {
+        $q = $pool;
+        foreach ($assignable as $r) {
+          $seat = !empty($q) ? array_shift($q) : '';
+          $updates[$r->aa_id] = array($col => ($seat === '' ? null : $seat));
+        }
+      }
+    }
+  }
+  foreach ($updates as $aa_id => $fields) {
+    db_update('dh_applicant_attended')->fields($fields)->condition('aa_id', $aa_id)->execute();
+  }
+  return count($updates);
+}
