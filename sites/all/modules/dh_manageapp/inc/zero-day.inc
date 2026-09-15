@@ -429,7 +429,14 @@ function dh_zero_main()
 
 			function load_editor()
 			{
-				app_table = $("#table-applicants").DataTable({
+				// DataTables errors if initialised on an empty/placeholder table (a
+				// course with no pending applicants renders an empty list), and that
+				// error would abort the rest of this setup - which is why the attended
+				// list could lose its Update buttons. Only enhance a table that has real
+				// data rows (the theme empty-row is a single colspan cell), and guard
+				// each table independently so one empty table cannot stop the other.
+				function dhHasData(sel){ var $t = $(sel); if (!$t.length || $.fn.dataTable.isDataTable($t)) return false; return $t.find("tbody > tr").filter(function(){ return $(this).children("td").length > 1; }).length > 0; }
+				if (dhHasData("#table-applicants")) app_table = $("#table-applicants").DataTable({
 				    "columnDefs": [{
 				      "targets": 0,
 				      "data": null,
@@ -438,7 +445,7 @@ function dh_zero_main()
 				    }]
 
 				});
-				att_table = $("#table-attending").DataTable({
+				if (dhHasData("#table-attending")) att_table = $("#table-attending").DataTable({
 				    "columnDefs": [{
 				      "targets": 0,
 				      "data": null,
