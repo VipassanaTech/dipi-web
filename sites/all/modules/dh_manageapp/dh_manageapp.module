@@ -17,6 +17,7 @@ include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
 include_once(dirname(__FILE__)."/inc/referral.inc");
 include_once(dirname(__FILE__)."/inc/at-schedule.inc");
+include_once(dirname(__FILE__)."/inc/workbench.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
 include_once dirname(__FILE__) . "/inc/seating.inc";
@@ -448,6 +449,12 @@ function dh_manageapp_menu()
 
 	$items['group-dining-list/%centre_id/%course_id'] = array( 'title' => t('Group-wise Dining List'),
 	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['dining-workbench/%centre_id/%course_id'] = array( 'title' => t('Dining Review & Edit'),
+	       'page callback' => 'dh_dining_workbench',
+	       'page arguments' => array(1, 2),
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 

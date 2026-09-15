@@ -1,0 +1,153 @@
+/* Dining Review & Edit workbench — compact editable grid grouped by
+   class / gender / old-new / AT-group. Screen-first, with a print mode
+   that hides the toolbar and validation panel. */
+
+body, table, td, th, div {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #222;
+}
+
+.wb-header {
+	width: 900px;
+	margin: 0 auto 6px;
+}
+.wb-header .title {
+	text-align: center;
+	font-weight: bold;
+	font-size: 20px;
+	margin-bottom: 1px;
+}
+.wb-header .title-head {
+	text-align: center;
+	font-size: 14px;
+	color: #555;
+	margin-bottom: 2px;
+}
+
+/* ---- Toolbar (sticky so it stays visible while scrolling the grid) ---- */
+.wb-bar {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	width: 900px;
+	margin: 0 auto 10px;
+	padding: 8px 10px;
+	background: #f5f5f5;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 13px;
+	text-align: center;
+}
+.wb-bar a {
+	color: #06c;
+	text-decoration: none;
+}
+.wb-bar a:hover {
+	text-decoration: underline;
+}
+.wb-bar button {
+	font-size: 13px;
+	padding: 4px 10px;
+	margin: 0 2px;
+	cursor: pointer;
+}
+
+/* ---- Validation panel ---- */
+.wb-warn {
+	width: 878px;
+	margin: 0 auto 12px;
+	padding: 8px 10px;
+	background: #fff8e1;
+	border: 1px solid #e6c200;
+	border-radius: 4px;
+	font-size: 13px;
+	color: #6b5900;
+}
+.wb-warn-title {
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+.wb-warn ul {
+	margin: 0;
+	padding-left: 18px;
+}
+
+/* ---- Grid layout ---- */
+.wb-main-div {
+	width: 900px;
+	margin: 0 auto;
+}
+.wb-class-title {
+	font-size: 18px;
+	font-weight: bold;
+	border-bottom: 2px solid #333;
+	padding-bottom: 4px;
+	margin: 16px 0 8px;
+}
+.wb-bucket {
+	margin-bottom: 14px;
+}
+.wb-bucket-title {
+	font-size: 15px;
+	font-weight: bold;
+	color: #333;
+	margin: 10px 0 4px;
+}
+.wb-group-block {
+	margin-bottom: 8px;
+}
+.wb-group-title {
+	font-size: 12px;
+	font-weight: bold;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: #777;
+	margin: 4px 0 2px;
+}
+
+table.wb-grid {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 4px;
+}
+table.wb-grid th {
+	font-size: 11px;
+	font-weight: bold;
+	text-transform: uppercase;
+	color: #777;
+	text-align: left;
+	padding: 3px 6px;
+	border-bottom: 1.5px solid #333;
+}
+table.wb-grid td {
+	font-size: 13px;
+	padding: 3px 6px;
+	border-bottom: 1px solid #eee;
+	vertical-align: middle;
+}
+table.wb-grid td.wb-idx {
+	color: #999;
+	text-align: right;
+	width: 2.5em;
+}
+table.wb-grid td.wb-room {
+	color: #666;
+	white-space: nowrap;
+}
+
+.wb-main, .wb-group {
+	width: 5em;
+	font-size: 13px;
+	padding: 2px 4px;
+	box-sizing: border-box;
+}
+.wb-fixed {
+	cursor: pointer;
+}
+
+@media print {
+	@page { margin: 10mm; }
+	html, body { margin: 0 !important; }
+	.no-print { display: none !important; }
+	.wb-bar { position: static; }
+}
