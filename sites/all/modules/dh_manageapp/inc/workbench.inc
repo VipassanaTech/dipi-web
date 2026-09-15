@@ -106,7 +106,6 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 		'<button type="button" id="wb-clear">Clear non-fixed</button> '.
 		'<button type="button" id="wb-save">Save all</button>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 
 	$out .= '<div class="wb-warn no-print"'.(empty($warnings) ? ' style="display:none"' : '').'>';
