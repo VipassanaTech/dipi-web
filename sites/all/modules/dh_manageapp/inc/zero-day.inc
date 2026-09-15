@@ -486,71 +486,43 @@ function dh_zero_main()
 				});
 				var out = "" +
 				"<div id=\"dialog-form\" title=\"Student Attended\">"+
-				"  <label class=\"control-label title-applicant-name\">"+name+
-				"      	&nbsp;&nbsp;&nbsp;Attending&nbsp;<input type=\"checkbox\" name=\"attending\" id=\"attending\" value=\"1\" class=\"text ui-widget-content ui-corner-all\" checked=checked >"+
-				" </label>"+
+				"  <div class=\"zd-head\"><span class=\"title-applicant-name\">"+name+"</span>"+
+				"    <label class=\"zd-attend\">Attending <input type=\"checkbox\" name=\"attending\" id=\"attending\" value=\"1\" checked=checked></label>"+
+				"  </div>"+
 				"  <p class=\"validateTips\"></p>"+
-				"	<form class=\"form-inline\">"+
-				"	<fieldset>"+
-				"	  <div class=\"form-item form-group\">"+
-				"	      <label class=\"control-label\" for=\"section\">Room Section</label>"+
-				"	      <select name=\"section\" id=\"section\" class=\"form-control attending-fields select ui-widget-content ui-corner-all\">"+s+"</select>"+
-				"      </div>"+
-				"      <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"room-no\">Room No</label>"+
-				"      	<select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields select ui-widget-content ui-corner-all\"><option value=\"\">Choose</option></select>"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"laundry\">Laundry</label>"+
-				"      	<input type=\"text\" name=\"laundry\" id=\"laundry\" size=\"5\" value=\"\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"valuable\">Valuable</label>"+
-				"      	<input type=\"text\" name=\"valuable\" id=\"valuable\" size=\"5\" value=\"\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"cell\">CellNo</label>"+
-				"      	<input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" size=\"5\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"	      <label class=\"control-label\" for=\"cell-fixed\">Cell Fixed</label>"+
-				"	      <input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"dining\">Dining No</label>"+
-				"      	<input type=\"text\" name=\"dining\" id=\"dining\" value=\"\" size=\"5\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"groupdining\">Group Dining No</label>"+
-				"      	<input type=\"text\" name=\"groupdining\" id=\"groupdining\" value=\"\" size=\"5\" class=\"form-control attending-fields text ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"	      <label class=\"control-label\" for=\"dining-fixed\">Dining Fixed</label>"+
-				"	      <input type=\"checkbox\" name=\"diningfixed\" id=\"dining-fixed\" value=\"1\" class=\"attending-fields ui-widget-content ui-corner-all\">"+
-				"      </div>"+
-				"      <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\" for=\"group\">Group</label>"+
-				"      	<select name=\"group\" id=\"group\" class=\"form-control attending-fields select ui-widget-content ui-corner-all\">"+group+"</select>"+
-				"      </div>"+
-				"      <div class=\"form-item form-group\">"+
-				"      	<label class=\"control-label\">Special Seating</label>"+
-				"		<div class=\"form-radios\" >"+
-				"      		<label><input type=\"radio\" id=\"special-seating-none\" name=\"specialseat\" class=\"attending-fields select ui-widget-content ui-corner-all\" >"+
-				"      	 	None</label>" +
-				"      		<label><input type=\"radio\" id=\"special-seating-chowky\" name=\"specialseat\" class=\"attending-fields select ui-widget-content ui-corner-all\" >"+
-				"      	 	Chowky</label>" +
-				"      		<label><input type=\"radio\" id=\"special-seating-chair\" name=\"specialseat\" class=\"attending-fields select ui-widget-content ui-corner-all\" >"+
-				"      	 	Chair</label>" +
-				"      		<label><input type=\"radio\" id=\"special-seating-backrest\" name=\"specialseat\" class=\"attending-fields select ui-widget-content ui-corner-all\" >"+
-				"      	 	BackRest</label>" +
-				"	   </div>"+
-				"	  <div class=\"form-item form-group\">"+
-				"	      <label class=\"control-label\" for=\"comments\">Comments</label>"+
-				"	      <textarea name=\"comments\" id=\"comments\" rows=\"4\" class=\"form-control attending-fields\">"+
-				"    	  </textarea>"+
-				"      </div>"+
-				"	</fieldset>"+
-				"	</form>"+
+				"  <form class=\"zd-form\">"+
+				"    <div class=\"zd-grid\">"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Room</div><div class=\"zd-fields\">"+
+				"        <div class=\"zd-field\"><label for=\"section\">Section</label><select name=\"section\" id=\"section\" class=\"form-control attending-fields\">"+s+"</select></div>"+
+				"        <div class=\"zd-field\"><label for=\"room-no\">Room No</label><select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields\"><option value=\"\">Choose</option></select></div>"+
+				"      </div></div>"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Cell</div><div class=\"zd-fields\">"+
+				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field zd-check\"><label for=\"cell-fixed\">Fixed</label><input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
+				"      </div></div>"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Dining</div><div class=\"zd-fields\">"+
+				"        <div class=\"zd-field\"><label for=\"dining\">Dining No</label><input type=\"text\" name=\"dining\" id=\"dining\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field\"><label for=\"groupdining\">Group Dining No</label><input type=\"text\" name=\"groupdining\" id=\"groupdining\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field zd-check\"><label for=\"dining-fixed\">Fixed</label><input type=\"checkbox\" name=\"diningfixed\" id=\"dining-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
+				"      </div></div>"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Lists</div><div class=\"zd-fields\">"+
+				"        <div class=\"zd-field\"><label for=\"laundry\">Laundry</label><input type=\"text\" name=\"laundry\" id=\"laundry\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field\"><label for=\"valuable\">Valuable</label><input type=\"text\" name=\"valuable\" id=\"valuable\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"      </div></div>"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Group</div><div class=\"zd-fields\">"+
+				"        <div class=\"zd-field\"><label for=\"group\">Group</label><select name=\"group\" id=\"group\" class=\"form-control attending-fields\">"+group+"</select></div>"+
+				"      </div></div>"+
+				"      <div class=\"zd-group zd-group-wide\"><div class=\"zd-group-title\">Special Seating</div><div class=\"zd-fields zd-radios\">"+
+				"        <label><input type=\"radio\" id=\"special-seating-none\" name=\"specialseat\" class=\"attending-fields\"> None</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-chowky\" name=\"specialseat\" class=\"attending-fields\"> Chowky</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-chair\" name=\"specialseat\" class=\"attending-fields\"> Chair</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-backrest\" name=\"specialseat\" class=\"attending-fields\"> BackRest</label>"+
+				"      </div></div>"+
+				"    </div>"+
+				"    <div class=\"zd-group zd-comments\"><div class=\"zd-group-title\">Comments</div>"+
+				"      <textarea name=\"comments\" id=\"comments\" rows=\"3\" class=\"form-control attending-fields\"></textarea>"+
+				"    </div>"+
+				"  </form>"+
 				"</div>";
 
 				return out;
@@ -618,9 +590,10 @@ function dh_zero_main()
 				    var sections = get_sections( cur_gender );
 				    //console.log(sections);
 				    var d = $("#dialog-div").html( attended_dialog({applicant_name: data[2], sections: sections })).dialog({
-				      	height: 460,
-				      	width: 900,
+				      	height: "auto",
+				      	width: Math.min(900, $(window).width() - 30),
 				      	modal: true,
+			      	dialogClass: "zd-dialog",
 				      	buttons: {
 				        	"Update": function() { 
 					        	$(".ui-dialog-buttonset").loading({zIndex: 9999});
@@ -714,6 +687,7 @@ function dh_zero_main()
 	';
 	drupal_add_js($js, 'inline');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-wide{grid-column:1/-1}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-grid{grid-template-columns:1fr}}', array('type' => 'inline'));
 
 	$out .= '<div id="dialog-div"></div><div id="attended-list">'.dh_manageapp_attended($centre_id, $course_id).'</div>';
 
