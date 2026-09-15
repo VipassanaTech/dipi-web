@@ -638,21 +638,72 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 			$fs['#attributes']['data-label'] = $lbl;
 			$form[$group]['dining_groups']['dining_'.$gk.'_g'.$n] = $fs;
 		}
-	// JS: build the add-select, show groups-with-data, add/remove on demand.
+
+	// Optional server dining config - a separate opt-in add-on, entirely blank by
+	// default. Same Male/Female default + group-override shape as the student
+	// ranges above, but written to [MALE_SERVER]/[FEMALE_SERVER] +
+	// [MALE_SERVER_n]/[FEMALE_SERVER_n] (see _dh_ma_diningcfg_ini). When this whole
+	// subsection is left empty, the allocator seats servers on the student ranges
+	// (see dh_alloc_has_server_config / dh_alloc_effective_key).
+	$form[$group]['dining_server'] = array('#type' => 'fieldset', '#title' => 'Server dining ranges (optional)',
+		'#collapsible' => true, '#collapsed' => true,
+		'#description' => 'Only if course servers dine on a different set of dining seats than students. Leave this whole section blank to seat servers on the student ranges above.',
+		'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
+	$form[$group]['dining_server']['dining_male_server']   = $mk_dining('MALE_SERVER',   'diningcfg_male_server_',   'Male servers (default)', false);
+	$form[$group]['dining_server']['dining_female_server'] = $mk_dining('FEMALE_SERVER', 'diningcfg_female_server_', 'Female servers (default)', false);
+
+	// Optional per-group server overrides. Mirrors the student "dining_groups"
+	// add-on-demand block above: all 18 group fieldsets exist in the form but stay
+	// hidden until shown - JS reveals a group that already has saved data (edit
+	// mode) or one the operator adds, and "remove" hides + clears it so it
+	// serialises away (see _dh_ma_diningcfg_ini).
+	$form[$group]['dining_server']['add_ctl'] = array('#markup' =>
+		'<div class="dh-dining-add" style="margin:8px 0">'
+		. '<label style="margin-right:6px">Add a server group range:</label>'
+		. '<select id="dh-dining-add-sel-server" class="form-control" style="width:auto;display:inline-block"></select> '
+		. '<button type="button" id="dh-dining-add-btn-server" class="btn btn-default">Add</button>'
+		. '<span class="dh-dining-add-none-server" style="color:#777;margin-left:8px;display:none">All groups added.</span>'
+		. '</div>', '#weight' => -5);
+	for ($n = 1; $n <= 9; $n++)
+		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+		{
+			$lbl = ($gk == 'male' ? 'Male' : 'Female').' servers (Group '.$n.')';
+			$sk = $sec.'_SERVER_'.$n;   // INI section key, e.g. MALE_SERVER_1
+			$fs = $mk_dining($sk, 'diningcfg_'.$gk.'_server_g'.$n.'_', $lbl, false);
+			$fs['#collapsible'] = false;
+			unset($fs['#states']);   // the parent fieldset carries the cs_has_dining state; JS controls per-group visibility
+			// Has saved data? (edit mode) -> shown on load, else hidden.
+			$has = isset($diniraw[$sk]) && is_array($diniraw[$sk])
+				&& (trim(implode('', $diniraw[$sk])) !== '');
+			$fs['#attributes']['class'][] = 'dh-dining-group-server';
+			$fs['#attributes']['data-dgroup'] = $gk.'_server_g'.$n;
+			$fs['#attributes']['data-has'] = $has ? '1' : '0';
+			$fs['#attributes']['data-label'] = $lbl;
+			$form[$group]['dining_server']['dining_'.$gk.'_server_g'.$n] = $fs;
+		}
+
+	// JS: build the add-select, show groups-with-data, add/remove on demand. One
+	// wiring call per group container (student ranges, server ranges) - each
+	// operates only on its own select/button/fieldset-class trio so the two add-
+	// on-demand controls never interfere with each other.
 	drupal_add_js('(function ($) { Drupal.behaviors.dhDiningGroups = { attach: function (context) {'
-		. 'var wrap = document.getElementById("dh-dining-add-sel"); if (!wrap || wrap.dhDone) return; wrap.dhDone = 1;'
-		. 'var sel = wrap, btn = document.getElementById("dh-dining-add-btn"), none = document.querySelector(".dh-dining-add-none");'
-		. 'var groups = [].slice.call(document.querySelectorAll("fieldset.dh-dining-group"));'
-		. 'function opt(g){ var o=document.createElement("option"); o.value=g.getAttribute("data-dgroup"); o.text=g.getAttribute("data-label"); return o; }'
-		. 'function refreshNone(){ none.style.display = sel.options.length ? "none" : "inline"; btn.style.display = sel.options.length ? "" : "none"; }'
-		. 'function show(g){ g.style.display=""; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===g.getAttribute("data-dgroup")){ sel.remove(i); break; } } refreshNone(); }'
-		. 'function hide(g){ g.style.display="none"; var ins=g.querySelectorAll("input[type=text], input[type=checkbox]"); for(var i=0;i<ins.length;i++){ if(ins[i].type==="checkbox") ins[i].checked=false; else ins[i].value=""; } sel.add(opt(g)); refreshNone(); }'
-		. 'groups.forEach(function(g){'
-		. '  var lg=g.querySelector("legend"); if(lg && !g.dhRm){ g.dhRm=1; var a=document.createElement("a"); a.href="#"; a.textContent="✕ remove"; a.className="dh-dgroup-remove"; a.style.cssText="margin-left:10px;font-size:12px;color:#a00"; a.onclick=function(e){e.preventDefault(); hide(g);}; lg.appendChild(a); }'
-		. '  if (g.getAttribute("data-has")==="1"){ g.style.display=""; } else { g.style.display="none"; sel.add(opt(g)); }'
-		. '});'
-		. 'btn.onclick=function(){ if(!sel.value) return; var g=document.querySelector("fieldset.dh-dining-group[data-dgroup=\'"+sel.value+"\']"); if(g){ show(g); g.scrollIntoView({block:"center"}); } };'
-		. 'refreshNone();'
+		. 'function wire(selId, btnId, noneSel, groupSel) {'
+		. '  var wrap = document.getElementById(selId); if (!wrap || wrap.dhDone) return; wrap.dhDone = 1;'
+		. '  var sel = wrap, btn = document.getElementById(btnId), none = document.querySelector(noneSel);'
+		. '  var groups = [].slice.call(document.querySelectorAll(groupSel));'
+		. '  function opt(g){ var o=document.createElement("option"); o.value=g.getAttribute("data-dgroup"); o.text=g.getAttribute("data-label"); return o; }'
+		. '  function refreshNone(){ none.style.display = sel.options.length ? "none" : "inline"; btn.style.display = sel.options.length ? "" : "none"; }'
+		. '  function show(g){ g.style.display=""; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===g.getAttribute("data-dgroup")){ sel.remove(i); break; } } refreshNone(); }'
+		. '  function hide(g){ g.style.display="none"; var ins=g.querySelectorAll("input[type=text], input[type=checkbox]"); for(var i=0;i<ins.length;i++){ if(ins[i].type==="checkbox") ins[i].checked=false; else ins[i].value=""; } sel.add(opt(g)); refreshNone(); }'
+		. '  groups.forEach(function(g){'
+		. '    var lg=g.querySelector("legend"); if(lg && !g.dhRm){ g.dhRm=1; var a=document.createElement("a"); a.href="#"; a.textContent="✕ remove"; a.className="dh-dgroup-remove"; a.style.cssText="margin-left:10px;font-size:12px;color:#a00"; a.onclick=function(e){e.preventDefault(); hide(g);}; lg.appendChild(a); }'
+		. '    if (g.getAttribute("data-has")==="1"){ g.style.display=""; } else { g.style.display="none"; sel.add(opt(g)); }'
+		. '  });'
+		. '  btn.onclick=function(){ if(!sel.value) return; var g=document.querySelector(groupSel+"[data-dgroup=\'"+sel.value+"\']"); if(g){ show(g); g.scrollIntoView({block:"center"}); } };'
+		. '  refreshNone();'
+		. '}'
+		. 'wire("dh-dining-add-sel", "dh-dining-add-btn", ".dh-dining-add-none", "fieldset.dh-dining-group");'
+		. 'wire("dh-dining-add-sel-server", "dh-dining-add-btn-server", ".dh-dining-add-none-server", "fieldset.dh-dining-group-server");'
 		. '} }; })(jQuery);', array('type' => 'inline', 'scope' => 'footer'));
 
 
@@ -898,6 +949,12 @@ function _dh_ma_diningcfg_ini($input)
 	for ($n = 1; $n <= 9; $n++)
 		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
 			$out .= $block($sec.'_'.$n, 'diningcfg_'.$gk.'_g'.$n.'_', false);
+	// Optional server sections — written only when non-empty (servers are opt-in).
+	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+		$out .= $block($sec.'_SERVER', 'diningcfg_'.$gk.'_server_', false);
+	for ($n = 1; $n <= 9; $n++)
+		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
+			$out .= $block($sec.'_SERVER_'.$n, 'diningcfg_'.$gk.'_server_g'.$n.'_', false);
 	return rtrim($out)."\n";
 }
 
