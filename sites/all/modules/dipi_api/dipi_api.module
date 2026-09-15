@@ -3366,7 +3366,7 @@ function _check_cred($data)
         {
             $ret['Success'] = true;
             $ret['Message'] = "Crednetials match";
-	    watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
+	    // watchdog("atapp cred", "cred-string: $cred return-array: ".print_r($ret, true));
             return $ret;
         }
         else
