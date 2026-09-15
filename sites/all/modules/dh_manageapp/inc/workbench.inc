@@ -10,7 +10,10 @@
  * aa_dining_fixed, leaving the other plan's values untouched. "Auto-fill"
  * re-runs the engine for the active plan (respecting Fixed rows) via
  * ?plan=<plan>&fill=1. "Clear non-fixed" and duplicate-seat highlighting are
- * client-side only. See docs/superpowers/plans/2026-09-13-unified-allocation-engine-p2.md.
+ * client-side only. Each dining-seat cell is a select2 picker whose options are
+ * that row's section (range + keep-aside) minus seats already taken by other
+ * rows in the section (rebuilt on open); tags:true still allows a manual value.
+ * See docs/superpowers/plans/2026-09-13-unified-allocation-engine-p2.md.
  */
 
 /**
@@ -38,6 +41,27 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	if (!is_array($ini)) $ini = array();
 	$warnings = dh_alloc_validate($ini);
 	$has_server = dh_alloc_has_server_config($ini);
+
+	$mode = ($plan === 'group') ? 'group' : 'main';
+	// Option lists (range seats + keep-aside) per effective INI section, for the
+	// dining-seat select2 pickers. Registered as they are used and emitted once as
+	// WB_OPTS; the picker for a row offers its own section's seats.
+	$wb_opts = array();
+	$opts_for = function($key) use (&$wb_opts, $ini) {
+		if ($key === NULL || $key === '') return array();
+		if (isset($wb_opts[$key])) return $wb_opts[$key];
+		$sec = (isset($ini[$key]) && is_array($ini[$key])) ? $ini[$key] : array();
+		$all = array_merge(
+			dh_alloc_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
+			dh_alloc_expand(isset($sec['Old']) ? $sec['Old'] : ''),
+			dh_alloc_expand(isset($sec['New']) ? $sec['New'] : ''),
+			dh_alloc_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '')   // keep-aside seats too
+		);
+		$seen = array(); $u = array();
+		foreach ($all as $v) { if ($v !== '' && !isset($seen[$v])) { $seen[$v] = TRUE; $u[] = $v; } }
+		$wb_opts[$key] = $u;
+		return $u;
+	};
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
@@ -82,7 +106,10 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 
 	$title = dh_course_file_basename($centre, $course, 'dining-workbench');
 	$out = '<html><head><title>'.$title.'</title>';
+	$out .= '<link rel="stylesheet" href="'.$base_url.'/sites/all/modules/dh_manageapp/css/select2.min.css">';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/workbench.css");</style>';
+	$out .= '<style>.wb-grid td .select2-container{min-width:120px}'.
+		'.select2-container.wb-dup .select2-selection{border-color:#d00 !important;background:#ffe6e6 !important}</style>';
 	$out .= '</head><body>';
 
 	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>Dining Review &amp; Edit</b></div>'.
@@ -136,6 +163,11 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 				{
 					$group_label = $grp > 0 ? 'Group '.$grp : 'No Group';
 					$block_key = check_plain($class.'|'.$g.'|'.$old.'|'.$grp);
+					// The seats offered by this bucket's pickers = its effective
+					// section's range + keep-aside (main mode ignores the group).
+					$seckey = dh_alloc_effective_key($ini, $g, $grp, ($class === 'Sevak' ? 'server' : 'student'), $mode);
+					$opts_for($seckey);
+					$sec_attr = check_plain((string) $seckey);
 					$out .= '<div class="wb-group-block"><div class="wb-group-title">'.check_plain($group_label).'</div>';
 					$out .= '<table class="wb-grid"><thead><tr>'.
 						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th><th>Fixed</th>'.
@@ -145,11 +177,19 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 					{
 						$idx++;
 						$aa_id = (int) $row['aa_id'];
+						$val = (string) $row['val'];
+						// A <select> (upgraded to select2 in JS). Starts with just the
+						// blank + current value; the section's full seat list is added
+						// lazily on first open (keeps a ~300-row page fast).
+						$sel = '<select class="wb-val" data-aa="'.$aa_id.'" data-sec="'.$sec_attr.'">'.
+							'<option value=""></option>';
+						if ($val !== '') $sel .= '<option value="'.check_plain($val).'" selected="selected">'.check_plain($val).'</option>';
+						$sel .= '</select>';
 						$out .= '<tr data-aa="'.$aa_id.'" data-block="'.$block_key.'">'.
 							'<td class="wb-idx">'.$idx.'</td>'.
 							'<td class="wb-name">'.check_plain($row['name']).'</td>'.
 							'<td class="wb-room">'.check_plain($row['room']).'</td>'.
-							'<td><input type="text" class="wb-val" data-aa="'.$aa_id.'" value="'.check_plain($row['val']).'"></td>'.
+							'<td>'.$sel.'</td>'.
 							'<td><input type="checkbox" class="wb-fixed" data-aa="'.$aa_id.'"'.($row['fixed'] ? ' checked' : '').'></td>'.
 							'</tr>';
 					}
@@ -163,8 +203,10 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$out .= '</div>';
 
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script>';
+	$out .= '<script src="'.$base_url.'/sites/all/modules/dh_manageapp/js/select2.min.js"></script>';
 	$out .= '<script>(function($){'.
 		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.', WB_PLAN="'.$plan.'";'.
+		'var WB_OPTS='.drupal_json_encode($wb_opts).';'.
 		'function wbCheckDupes(){'.
 			// Scope dedup to each row's data-block (class|gender|old-new|group): a
 			// group with its own range legitimately reuses seat numbers other groups
@@ -182,7 +224,8 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 				'var block=$(this).closest("tr[data-block]").data("block")||"";'.
 				'var v=$.trim($(this).val());'.
 				'var isDup = v!=="" && (blocks[block]||{})[v]>1;'.
-				'$(this).toggleClass("wb-dup", isDup);'.
+				// the <select> is hidden by select2; mirror the flag onto its container.
+				'$(this).toggleClass("wb-dup", isDup).next(".select2-container").toggleClass("wb-dup", isDup);'.
 				'if (isDup) dupes++;'.
 			'});'.
 			'return dupes;'.
@@ -213,11 +256,33 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 			'$("#wb-clear").on("click", function(){'.
 				'$("tr[data-aa]").each(function(){'.
 					'var $tr=$(this);'.
-					'if (!$tr.find(".wb-fixed").is(":checked")) $tr.find(".wb-val").val("");'.
+					'if (!$tr.find(".wb-fixed").is(":checked")) $tr.find(".wb-val").val("").trigger("change");'.
 				'});'.
 				'wbUpdateWarn();'.
 			'});'.
-			'$(document).on("input", ".wb-val", wbUpdateWarn);'.
+			// Upgrade each dining-seat <select> to select2. On every open, rebuild the
+			// option list from WB_OPTS[section] (that section: range + keep-aside)
+			// MINUS seats already taken by other rows in the same section, so the
+			// picker only offers UNUSED seats (plus this row own current value).
+			// tags:true still allows a manual/out-of-range value.
+			'function wbUsedInSection($s, sec){'.
+				'var used={};'.
+				'$(".wb-val").each(function(){ if(this!==$s[0] && $(this).attr("data-sec")===sec){ var v=$(this).val(); if(v){ used[v]=1; } } });'.
+				'return used;'.
+			'}'.
+			'$(".wb-val").each(function(){'.
+				'var $s=$(this);'.
+				'$s.select2({tags:true, width:"150px", placeholder:"\\u2014", allowClear:true});'.
+				'$s.on("select2:opening", function(){'.
+					'var sec=$s.attr("data-sec"), all=WB_OPTS[sec]||[], cur=$s.val();'.
+					'var used=wbUsedInSection($s, sec), added={};'.
+					'var html="<option value=\\"\\"></option>";'.
+					'if(cur){ html+="<option value=\\""+cur+"\\" selected=\\"selected\\">"+cur+"</option>"; added[cur]=1; }'.
+					'for(var i=0;i<all.length;i++){ var v=String(all[i]); if(!used[v] && !added[v]){ html+="<option value=\\""+v+"\\">"+v+"</option>"; added[v]=1; } }'.
+					'$s.html(html);'.
+				'});'.
+			'});'.
+			'$(document).on("change", ".wb-val", wbUpdateWarn);'.
 			'wbUpdateWarn();'.
 		'});'.
 	'})(jQuery);</script>';
