@@ -2,10 +2,11 @@
 /**
  * Dining "Review & Edit" workbench — grouped editable grid.
  *
- * Render-only page (Task 2 of the unified-allocation-engine P2 work). The
- * toolbar buttons (Auto-fill Main / Auto-fill Group-wise / Clear non-fixed /
- * Save all) are inert until Tasks 3-4 wire up the client-side JS + save
- * endpoint. See docs/superpowers/sdd/2026-09-13-unified-allocation-engine-p2/.
+ * Task 2 (render) + Task 3 (bulk save) of the unified-allocation-engine P2
+ * work: "Save all" posts every row to dining-workbench-save/%centre/%course,
+ * which writes via _dh_workbench_write_rows(). The Auto-fill/Clear buttons
+ * are still inert pending Task 4. See
+ * docs/superpowers/sdd/2026-09-13-unified-allocation-engine-p2/.
  */
 
 /**
@@ -132,9 +133,87 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 		$out .= '</div>';
 	}
 	$out .= '</div>';
+
+	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script>';
+	$out .= '<script>(function($){'.
+		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.';'.
+		'$(function(){'.
+			'$("#wb-save").on("click", function(){'.
+				'var rows=[];'.
+				'$("tr[data-aa]").each(function(){'.
+					'var $tr=$(this), aa=$tr.data("aa");'.
+					'rows.push({'.
+						'aa: aa,'.
+						'dn: $tr.find(".wb-main").val(),'.
+						'gdn: $tr.find(".wb-group").val(),'.
+						'df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0'.
+					'});'.
+				'});'.
+				'$.post("/dining-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows}, function(r){'.
+					'if (r && r.status) { alert("Saved "+r.saved+" row(s)."); }'.
+					'else { alert("Save failed."); }'.
+				'}, "json").fail(function(){ alert("Save failed."); });'.
+			'});'.
+		'});'.
+	'})(jQuery);</script>';
+
 	$out .= '</body></html>';
 
 	if ($return) return $out;
 	print $out;
+	exit;
+}
+
+/**
+ * Write posted dining-workbench rows for one course, rejecting any aa_id
+ * that doesn't belong to it (the security guard: a caller can't smuggle
+ * writes into another course's attended rows). Returns the accepted count.
+ */
+function _dh_workbench_write_rows($centre, $course, $rows)
+{
+	$course = (int) $course;
+	$valid = array();
+	$result = db_query("select aa_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=:c", array(':c' => $course));
+	foreach ($result as $r) $valid[(int) $r->aa_id] = TRUE;
+
+	$n = 0;
+	if (!is_array($rows)) return 0;
+	foreach ($rows as $row)
+	{
+		$aa = isset($row['aa']) ? (int) $row['aa'] : 0;
+		if (!$aa || empty($valid[$aa])) continue;
+
+		$dn = isset($row['dn']) ? $row['dn'] : '';
+		$gdn = isset($row['gdn']) ? $row['gdn'] : '';
+		$df = !empty($row['df']);
+
+		db_update('dh_applicant_attended')->fields(array(
+			'aa_dining' => ($dn === '' ? NULL : $dn),
+			'aa_group_dining' => ($gdn === '' ? NULL : $gdn),
+			'aa_dining_fixed' => $df ? 1 : 0,
+		))->condition('aa_id', $aa)->execute();
+		$n++;
+	}
+	return $n;
+}
+
+/**
+ * Bulk-save page callback for the dining workbench's "Save all" button.
+ * Locked like dh_app_update_attended() to avoid concurrent-save races.
+ */
+function dh_dining_workbench_save($centre, $course)
+{
+	$rows = isset($_POST['rows']) ? $_POST['rows'] : array();
+
+	if ( !dh_manageapp_lock_acquire("dh_dining_workbench_save", 10.0, 10) )
+	{
+		drupal_json_output(array('status' => 0, 'msg' => 'Unable to get lock'));
+		exit;
+	}
+
+	$n = _dh_workbench_write_rows($centre, $course, $rows);
+	lock_release("dh_dining_workbench_save");
+
+	drupal_json_output(array('status' => 1, 'saved' => $n));
 	exit;
 }

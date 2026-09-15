@@ -458,6 +458,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['dining-workbench-save/%centre_id/%course_id'] = array( 'title' => t('Dining Review & Edit - Save'),
+	       'page callback' => 'dh_dining_workbench_save',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['laundry-list/%centre_id/%course_id'] = array( 'title' => t('Laundry List'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),
