@@ -2,10 +2,13 @@
 /**
  * Dining "Review & Edit" workbench — grouped editable grid.
  *
- * Task 2 (render) + Task 3 (bulk save) of the unified-allocation-engine P2
- * work: "Save all" posts every row to dining-workbench-save/%centre/%course,
- * which writes via _dh_workbench_write_rows(). The Auto-fill/Clear buttons
- * are still inert pending Task 4. See
+ * Task 2 (render) + Task 3 (bulk save) + Task 4 (auto-fill/clear/live
+ * validation) of the unified-allocation-engine P2 work: "Save all" posts
+ * every row to dining-workbench-save/%centre/%course, which writes via
+ * _dh_workbench_write_rows(). "Auto-fill Main"/"Auto-fill Group-wise" hit
+ * this same page with ?fill=main / ?fill=group, which re-run the engine
+ * (respecting Fixed rows) before the grid is queried and rendered. "Clear
+ * non-fixed" and duplicate-seat highlighting are client-side only. See
  * docs/superpowers/sdd/2026-09-13-unified-allocation-engine-p2/.
  */
 
@@ -18,6 +21,14 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 {
 	global $base_url;
 	$course = (int) $course;
+
+	if (isset($_REQUEST['fill']))
+	{
+		if ($_REQUEST['fill'] === 'group')
+			generate_group_dining_list($centre, $course);
+		else
+			generate_dining_list($centre, $course);
+	}
 
 	$cfg = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
 	$ini = ($cfg !== '' && $cfg !== NULL) ? parse_ini_string($cfg, TRUE, INI_SCANNER_RAW) : array();
@@ -88,6 +99,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 		foreach ($warnings as $w) $out .= '<li>'.check_plain($w).'</li>';
 		$out .= '</ul>';
 	}
+	$out .= '<div id="wb-dup-count"></div>';
 	$out .= '</div>';
 
 	$out .= '<div class="wb-main-div">';
@@ -137,6 +149,35 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script>';
 	$out .= '<script>(function($){'.
 		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.';'.
+		'function wbCheckDupes(selector){'.
+			'var counts={};'.
+			'$(selector).each(function(){'.
+				'var v=$.trim($(this).val());'.
+				'if (v==="") return;'.
+				'counts[v]=(counts[v]||0)+1;'.
+			'});'.
+			'var dupes=0;'.
+			'$(selector).each(function(){'.
+				'var v=$.trim($(this).val());'.
+				'var isDup = v!=="" && counts[v]>1;'.
+				'$(this).toggleClass("wb-dup", isDup);'.
+				'if (isDup) dupes++;'.
+			'});'.
+			'return dupes;'.
+		'}'.
+		'function wbUpdateWarn(){'.
+			'var mainDupes=wbCheckDupes(".wb-main");'.
+			'var groupDupes=wbCheckDupes(".wb-group");'.
+			'var total=mainDupes+groupDupes;'.
+			'var $box=$(".wb-warn"), $dup=$("#wb-dup-count");'.
+			'if (total>0){'.
+				'$dup.text("Duplicate seat values: "+total+" (Main: "+mainDupes+", Group: "+groupDupes+")");'.
+				'$box.show();'.
+			'} else {'.
+				'$dup.text("");'.
+				'if ($box.find(".wb-warn-title").length===0) $box.hide();'.
+			'}'.
+		'}'.
 		'$(function(){'.
 			'$("#wb-save").on("click", function(){'.
 				'var rows=[];'.
@@ -154,6 +195,28 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 					'else { alert("Save failed."); }'.
 				'}, "json").fail(function(){ alert("Save failed."); });'.
 			'});'.
+			'$("#wb-fill-main").on("click", function(){'.
+				'if (confirm("Re-fill all non-fixed dining seats from the centre ranges? Unsaved edits will be lost.")){'.
+					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?fill=main";'.
+				'}'.
+			'});'.
+			'$("#wb-fill-group").on("click", function(){'.
+				'if (confirm("Re-fill all non-fixed dining seats from the centre ranges? Unsaved edits will be lost.")){'.
+					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?fill=group";'.
+				'}'.
+			'});'.
+			'$("#wb-clear").on("click", function(){'.
+				'$("tr[data-aa]").each(function(){'.
+					'var $tr=$(this);'.
+					'if (!$tr.find(".wb-fixed").is(":checked")){'.
+						'$tr.find(".wb-main").val("");'.
+						'$tr.find(".wb-group").val("");'.
+					'}'.
+				'});'.
+				'wbUpdateWarn();'.
+			'});'.
+			'$(document).on("input", ".wb-main, .wb-group", wbUpdateWarn);'.
+			'wbUpdateWarn();'.
 		'});'.
 	'})(jQuery);</script>';
 
@@ -183,8 +246,8 @@ function _dh_workbench_write_rows($centre, $course, $rows)
 		$aa = isset($row['aa']) ? (int) $row['aa'] : 0;
 		if (!$aa || empty($valid[$aa])) continue;
 
-		$dn = isset($row['dn']) ? $row['dn'] : '';
-		$gdn = isset($row['gdn']) ? $row['gdn'] : '';
+		$dn = isset($row['dn']) ? (string) $row['dn'] : '';
+		$gdn = isset($row['gdn']) ? (string) $row['gdn'] : '';
 		$df = !empty($row['df']);
 
 		db_update('dh_applicant_attended')->fields(array(
