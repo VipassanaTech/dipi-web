@@ -36,19 +36,27 @@ function dh_alloc_expand($str) {
   return $out;
 }
 
-/** Build a pool descriptor for one INI section. */
+/** Build a pool descriptor for one INI section.
+ *  A "<Key>Rev = 1" flag reverses that range's expanded order (e.g. "1-100"
+ *  with CellsRev becomes 100,99,...,1). Reserved has no reverse - it is only a
+ *  set removed from the pool, never auto-assigned. */
 function dh_alloc_pool($ini, $key) {
   $sec = (isset($ini[$key]) && is_array($ini[$key])) ? $ini[$key] : array();
+  $expand = function($k) use ($sec) {
+    $arr = dh_alloc_expand(isset($sec[$k]) ? $sec[$k] : '');
+    if (!empty($sec[$k.'Rev'])) $arr = array_reverse($arr);
+    return $arr;
+  };
   $reserved = dh_alloc_expand(isset($sec['Reserved']) ? $sec['Reserved'] : '');
   $sep = (isset($sec['Old']) && $sec['Old'] !== '') || (isset($sec['New']) && $sec['New'] !== '');
   if ($sep) {
     return array('sep'=>true, 'cells'=>array(),
-      'old'=>dh_alloc_expand(isset($sec['Old']) ? $sec['Old'] : ''),
-      'new'=>dh_alloc_expand(isset($sec['New']) ? $sec['New'] : ''),
+      'old'=>$expand('Old'),
+      'new'=>$expand('New'),
       'reserved'=>$reserved);
   }
   return array('sep'=>false, 'old'=>array(), 'new'=>array(),
-    'cells'=>dh_alloc_expand(isset($sec['Cells']) ? $sec['Cells'] : ''),
+    'cells'=>$expand('Cells'),
     'reserved'=>$reserved);
 }
 
