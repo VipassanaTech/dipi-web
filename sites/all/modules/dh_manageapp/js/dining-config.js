@@ -104,12 +104,21 @@
 
   function scaffold(host) {
     var help =
-      '<div class="dc-help"><ul>' +
-      '<li>Enter dining-seat numbers as ranges: <b>1-40, 55, 60-70</b>. Leave a box blank for none.</li>' +
+      '<div class="dc-help">' +
+      '<div class="dc-help-title">How to type a range</div>' +
+      '<p>Type a list separated by commas. Each part is one seat, or a <b>start-end</b> range:</p>' +
+      '<table class="dc-help-eg">' +
+      '<tr><td><code>1-40</code></td><td>1, 2, 3 … 40</td></tr>' +
+      '<tr><td><code>1-40, 55, 60-70</code></td><td>1…40, then 55, then 60…70</td></tr>' +
+      '<tr><td><code>55</code></td><td>just that one seat</td></tr>' +
+      '<tr><td><code>A1-A5</code></td><td>A1, A2, A3, A4, A5 (letters are kept)</td></tr>' +
+      '</table>' +
+      '<ul>' +
+      '<li>Ranges go <b>low to high</b> only. For high-to-low, tick the <b>⟲ reverse</b> box (1-100 → 100, 99 … 1).</li>' +
+      '<li>Do not mix letters in one range (write <code>A1-A5, B1-B5</code>, not <code>A1-B5</code>). Leave a box blank for none.</li>' +
       '<li><b>Keep aside</b> — seats held back from auto-assignment (assign them by hand).</li>' +
       '<li>Tick <b>split</b> to seat <b>New</b> and <b>Old</b> students on different seats (the combined "Dining seats" is then not used).</li>' +
       '<li><b>Sevak</b> — separate seats for course servers (always treated as old). Leave blank to not seat servers.</li>' +
-      '<li><b>⟲ reverse</b> — assign that range from the highest number down (e.g. 1-100 → 100, 99, …).</li>' +
       '<li><b>Group</b> rows override the Default for that group only; groups you do not add use the Default range.</li>' +
       '</ul></div>';
     host.html(

@@ -37,9 +37,14 @@
 #dh-diningcfg .dc-add { margin: 12px 0 4px; }
 #dh-diningcfg .dc-add-sel { padding: 4px 8px; }
 
-#dh-diningcfg .dc-help { margin-top: 10px; font-size: 12px; color: #666; }
-#dh-diningcfg .dc-help ul { margin: 4px 0 0 18px; padding: 0; }
+#dh-diningcfg .dc-help { margin-top: 12px; font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 8px; }
+#dh-diningcfg .dc-help-title { font-weight: 600; color: #444; margin-bottom: 2px; }
+#dh-diningcfg .dc-help p { margin: 2px 0; }
+#dh-diningcfg .dc-help ul { margin: 6px 0 0 18px; padding: 0; }
 #dh-diningcfg .dc-help li { margin: 2px 0; }
+#dh-diningcfg .dc-help-eg { border-collapse: collapse; margin: 4px 0; }
+#dh-diningcfg .dc-help-eg td { padding: 2px 12px 2px 0; vertical-align: top; }
+#dh-diningcfg .dc-help-eg code { background: #f2f2f2; border: 1px solid #e2e2e2; border-radius: 3px; padding: 1px 5px; color: #333; }
 
 /* Narrow screens: let the table scroll rather than break the page. */
 @media (max-width: 700px) {
