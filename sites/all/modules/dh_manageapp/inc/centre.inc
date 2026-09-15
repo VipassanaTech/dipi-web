@@ -557,171 +557,38 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	}
 
 
-	// ---- Dining Settings ----------------------------------------------------
-	// Same shape as Cell Settings (per-gender available/reserved + optional
-	// old/new split) but ALSO supports per-group ranges. A group with no range of
-	// its own falls back to the default gender range at allocation time. Serialized
-	// to cs_dining_config as INI: [MALE]/[FEMALE] defaults + [MALE_n]/[FEMALE_n]
-	// per-group overrides (see _dh_ma_diningcfg_ini / generate_dining_list).
+	// ---- Dining Settings (visual table editor) ------------------------------
+	// A JS table over the raw INI (mirrors the Course Configuration editor):
+	// rows = Default + group ranges added via a "+" dropdown; columns = Male /
+	// Female. "split" reveals New/Old (students) and greys the combined range;
+	// Sevak (servers) and Keep-aside are always-visible sub-rows; each range cell
+	// has a reverse toggle. dining-config.js assembles the exact cs_dining_config
+	// INI the engine reads, so the backend is unchanged (see inc/allocate.inc).
 	$group = 'Dining Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => true,
-		'#description' => 'Optional. Tick below if this centre assigns numbered dining seats. Set the default Male/Female ranges; add a group range only for groups that dine on a different set of seats.');
-	$diniraw = (!$add && !empty($edit_data['cs_dining_config'])) ? parse_ini_string($edit_data['cs_dining_config'], true, INI_SCANNER_RAW) : array();
-	if (!is_array($diniraw)) $diniraw = array();
+		'#description' => 'Optional. Tick below if this centre assigns numbered dining seats, then set the ranges in the table.');
 	$has_dining = $add ? 0 : (isset($edit_data['cs_has_dining']) ? $edit_data['cs_has_dining'] : 0);
 	$form[$group]['cs_has_dining'] = array('#type' => 'checkbox', '#title' => 'This centre assigns dining seats',
 		'#default_value' => $has_dining, '#weight' => -10,
-		'#description' => 'Untick if this centre does not assign dining seats - the dining configuration below is then not needed.',
+		'#description' => 'Untick if this centre does not assign dining seats - the dining table below is then not needed.',
 		'#suffix' => '<div style="clear:both"></div>');
 
-	// Compact dining cards. The theme floats .form-item left (staircasing fields
-	// into a 2-col mess); we stack them one per row, put each range box + its
-	// "reverse" checkbox on one line (.dhv-range), fold rarely-used fields into a
-	// native <details> (.dhv-adv), and cap input width. Scoped to .dhv-dining-sec
-	// so the rest of the centre form is untouched; !important + scoped selectors
-	// out-specify the CDN drupal-bootstrap sheet (loads later).
-	drupal_add_css(
-		'.dhv-dining-sec{margin-bottom:10px !important;}'.
-		'.dhv-dining-sec > .panel-heading{padding:7px 12px !important;}'.
-		'.dhv-dining-sec > .panel-heading .panel-title{font-size:15px;}'.
-		'.dhv-dining-sec .panel-body{padding:8px 12px !important;}'.
-		'.dhv-dining-sec .form-item{float:none !important;clear:both;width:100% !important;margin:5px 0 !important;}'.
-		'.dhv-dining-sec .form-item > label{font-weight:600;margin-bottom:1px;}'.
-		'.dhv-dining-sec .form-control{max-width:340px;}'.
-		'.dhv-dining-sec .dhv-range{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}'.
-		'.dhv-dining-sec .dhv-range > .form-item{width:auto !important;clear:none !important;margin:5px 0 !important;}'.
-		'.dhv-dining-sec .dhv-range .form-type-checkbox{margin-bottom:6px !important;white-space:nowrap;}'.
-		'.dhv-dining-sec .dhv-range .form-type-checkbox label{font-weight:400;}'.
-		'.dhv-dining-sec .dhv-adv{margin-top:8px;border-top:1px dashed #ccc;padding-top:4px;}'.
-		'.dhv-dining-sec .dhv-adv > summary{cursor:pointer;color:#2569ba;font-size:13px;margin:4px 0;}'.
-		'.dhv-dining-sec .dhv-adv[open] > summary{margin-bottom:8px;}'.
-		'.dhv-dining-sec .dhv-note{font-size:12px;color:#777;margin:2px 0 6px;}',
-		array('type' => 'inline'));
+	// Group options for the "+ Add group" dropdown (1..9); the Default row is
+	// always present. dining-config.js reads/writes the raw INI textarea.
+	$ding_groups = array();
+	for ($n = 1; $n <= 9; $n++) $ding_groups[] = array('key' => (string) $n, 'label' => 'Group '.$n);
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/dining-config.js');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/dining-config.css');
 
-	// Builds one compact dining card: the main "Dining seats" range on the card
-	// face, then a folded <details> "Advanced" with keep-aside, New, Old and a
-	// single Server range. Every AUTO-ASSIGNED range box carries a "reverse"
-	// checkbox (keep-aside has none - it is never auto-assigned). Servers are
-	// always old, so Server is one range (no old/new). All fields resolve to the
-	// same diningcfg_* names the INI serializer/engine already use; the student
-	// section is $sec_key/$prefix, the server section $srv_key/$srv_prefix.
-	$mk_dining = function($sec_key, $prefix, $srv_key, $srv_prefix, $title, $collapsed) use (&$diniraw, $range_help) {
-		$g = function($sec, $k) use (&$diniraw) { return isset($diniraw[$sec][$k]) ? $diniraw[$sec][$k] : ''; };
-		$v_cells = $g($sec_key, 'Cells'); $r_cells = $g($sec_key, 'CellsRev') !== '';
-		$v_res   = $g($sec_key, 'Reserved');
-		$v_old   = $g($sec_key, 'Old');   $r_old = $g($sec_key, 'OldRev') !== '';
-		$v_new   = $g($sec_key, 'New');   $r_new = $g($sec_key, 'NewRev') !== '';
-		$v_srv   = $g($srv_key, 'Cells'); $r_srv = $g($srv_key, 'CellsRev') !== '';
-		$adv_open = ($v_res !== '' || $v_old !== '' || $v_new !== '' || $v_srv !== '');
-		// A "reverse" checkbox that closes the current .dhv-range row.
-		$rev = function($checked, $suffix = '</div>') {
-			return array('#type' => 'checkbox', '#title' => 'reverse',
-				'#default_value' => $checked ? 1 : 0, '#suffix' => $suffix);
-		};
-
-		$s = array('#type' => 'fieldset', '#title' => $title, '#collapsible' => true, '#collapsed' => $collapsed,
-			'#attributes' => array('class' => array('dhv-dining-sec')),
-			'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
-
-		// Range fields carry no #description (it would inflate the flex row and
-		// drop the reverse box below the input) - format guidance is a placeholder,
-		// and the one multi-line hint is a note element instead.
-		$ph = array('placeholder' => 'e.g. 1-40, 55, 60-70');
-
-		// Card face: the range everyone uses (leave New/Old blank to use it).
-		$s[$prefix.'cells'] = array('#type' => 'textfield', '#title' => 'Dining seats',
-			'#default_value' => $v_cells, '#attributes' => $ph,
-			'#prefix' => '<div class="dhv-range">');
-		$s[$prefix.'cells_rev'] = $rev($r_cells);
-
-		// Advanced (folded; auto-opens if any advanced value is set). Keep-aside
-		// opens the <details>; it has no reverse (never auto-assigned).
-		$s[$prefix.'reserved'] = array('#type' => 'textfield',
-			'#title' => 'Any dining seats to keep aside from auto assignment?',
-			'#description' => 'Held back, never auto-assigned. Leave blank if none.',
-			'#default_value' => $v_res, '#attributes' => $ph,
-			'#prefix' => '<details class="dhv-adv"'.($adv_open ? ' open' : '').'><summary>Advanced</summary>');
-		$s[$prefix.'splitnote'] = array('#markup' =>
-			'<div class="dhv-note">Fill <b>New</b> &amp; <b>Old</b> only to seat new &amp; old students on different seats; otherwise leave both blank and everyone uses <b>Dining seats</b> above.</div>');
-		$s[$prefix.'new'] = array('#type' => 'textfield', '#title' => 'New students',
-			'#default_value' => $v_new, '#attributes' => $ph, '#prefix' => '<div class="dhv-range">');
-		$s[$prefix.'new_rev'] = $rev($r_new);
-		$s[$prefix.'old'] = array('#type' => 'textfield', '#title' => 'Old students',
-			'#default_value' => $v_old, '#attributes' => $ph, '#prefix' => '<div class="dhv-range">');
-		$s[$prefix.'old_rev'] = $rev($r_old);
-		$s[$srv_prefix.'cells'] = array('#type' => 'textfield', '#title' => 'Servers',
-			'#default_value' => $v_srv, '#attributes' => $ph, '#prefix' => '<div class="dhv-range">');
-		$s[$srv_prefix.'cells_rev'] = $rev($r_srv, '</div></details>');
-		return $s;
-	};
-
-	// Default Male/Female (also used by any group without its own range).
-	$note_def = ' <span class="dhv-sec-note">&mdash; also used by any group without its own range</span>';
-	$form[$group]['dining_male']   = $mk_dining('MALE',   'diningcfg_male_',   'MALE_SERVER',   'diningcfg_male_server_',   'Male (Default)'.$note_def, false);
-	$form[$group]['dining_female'] = $mk_dining('FEMALE', 'diningcfg_female_', 'FEMALE_SERVER', 'diningcfg_female_server_', 'Female (Default)'.$note_def, false);
-
-	// Optional per-group overrides. Male/Female defaults above are always shown;
-	// a group range is ADDED on demand (like adding a group seating plan). All 18
-	// group fieldsets exist in the form but stay hidden until shown - JS reveals a
-	// group that already has saved data (edit mode) or one the operator adds, and
-	// "remove" hides + clears it so it serialises away (see _dh_ma_diningcfg_ini).
-	$form[$group]['dining_groups'] = array('#type' => 'fieldset', '#title' => 'Group-wise dining ranges (optional)',
-		'#collapsible' => true, '#collapsed' => true,
-		'#description' => 'Only for centres that seat some groups on a different set of dining seats. Groups you do not add here use the default Male/Female range above.',
+	// Visual editor + hidden raw INI store, shown only when the centre assigns
+	// dining seats. dining-config.js hides the textarea and drives the table.
+	$form[$group]['dining_wrap'] = array('#type' => 'container',
 		'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
-	// Add-a-group control (populated + wired by the JS below).
-	$form[$group]['dining_groups']['add_ctl'] = array('#markup' =>
-		'<div class="dh-dining-add" style="margin:8px 0">'
-		. '<label style="margin-right:6px">Add a group range:</label>'
-		. '<select id="dh-dining-add-sel" class="form-control" style="width:auto;display:inline-block"></select> '
-		. '<button type="button" id="dh-dining-add-btn" class="btn btn-default">Add</button>'
-		. '<span class="dh-dining-add-none" style="color:#777;margin-left:8px;display:none">All groups added.</span>'
-		. '</div>', '#weight' => -5);
-	for ($n = 1; $n <= 9; $n++)
-		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-		{
-			$lbl = ($gk == 'male' ? 'Male' : 'Female').' (Group '.$n.')';
-			$sk = $sec.'_'.$n;              // student INI section key, e.g. MALE_1
-			$srv_k = $sec.'_SERVER_'.$n;    // server INI section key, e.g. MALE_SERVER_1
-			$fs = $mk_dining($sk, 'diningcfg_'.$gk.'_g'.$n.'_', $srv_k, 'diningcfg_'.$gk.'_server_g'.$n.'_', $lbl, false);
-			$fs['#collapsible'] = false;
-			unset($fs['#states']);   // the parent fieldset carries the cs_has_dining state; JS controls per-group visibility
-			// Has saved data? (edit mode) -> shown on load, else hidden. Server data
-			// now lives inside the same card, so it counts too.
-			$has = (isset($diniraw[$sk]) && is_array($diniraw[$sk]) && trim(implode('', $diniraw[$sk])) !== '')
-				|| (isset($diniraw[$srv_k]) && is_array($diniraw[$srv_k]) && trim(implode('', $diniraw[$srv_k])) !== '');
-			$fs['#attributes']['class'][] = 'dh-dining-group';
-			$fs['#attributes']['data-dgroup'] = $gk.'_g'.$n;
-			$fs['#attributes']['data-has'] = $has ? '1' : '0';
-			$fs['#attributes']['data-label'] = $lbl;
-			$form[$group]['dining_groups']['dining_'.$gk.'_g'.$n] = $fs;
-		}
-
-	// (Server dining ranges are no longer a separate section - each card above
-	// carries its own "Servers" range inside Advanced, written to the same
-	// [MALE_SERVER]/[FEMALE_SERVER] + [*_SERVER_n] INI sections.)
-
-	// JS: build the add-select, show groups-with-data, add/remove on demand for
-	// the student group cards (each card now also holds that group's server
-	// range, so one wiring call covers both).
-	drupal_add_js('(function ($) { Drupal.behaviors.dhDiningGroups = { attach: function (context) {'
-		. 'function wire(selId, btnId, noneSel, groupSel) {'
-		. '  var wrap = document.getElementById(selId); if (!wrap || wrap.dhDone) return; wrap.dhDone = 1;'
-		. '  var sel = wrap, btn = document.getElementById(btnId), none = document.querySelector(noneSel);'
-		. '  var groups = [].slice.call(document.querySelectorAll(groupSel));'
-		. '  function opt(g){ var o=document.createElement("option"); o.value=g.getAttribute("data-dgroup"); o.text=g.getAttribute("data-label"); return o; }'
-		. '  function refreshNone(){ none.style.display = sel.options.length ? "none" : "inline"; btn.style.display = sel.options.length ? "" : "none"; }'
-		. '  function show(g){ g.style.display=""; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===g.getAttribute("data-dgroup")){ sel.remove(i); break; } } refreshNone(); }'
-		. '  function hide(g){ g.style.display="none"; var ins=g.querySelectorAll("input[type=text], input[type=checkbox]"); for(var i=0;i<ins.length;i++){ if(ins[i].type==="checkbox") ins[i].checked=false; else ins[i].value=""; } sel.add(opt(g)); refreshNone(); }'
-		. '  groups.forEach(function(g){'
-		. '    var lg=g.querySelector("legend"); if(lg && !g.dhRm){ g.dhRm=1; var a=document.createElement("a"); a.href="#"; a.textContent="✕ remove"; a.className="dh-dgroup-remove"; a.style.cssText="margin-left:10px;font-size:12px;color:#a00"; a.onclick=function(e){e.preventDefault(); hide(g);}; lg.appendChild(a); }'
-		. '    if (g.getAttribute("data-has")==="1"){ g.style.display=""; } else { g.style.display="none"; sel.add(opt(g)); }'
-		. '  });'
-		. '  btn.onclick=function(){ if(!sel.value) return; var g=document.querySelector(groupSel+"[data-dgroup=\'"+sel.value+"\']"); if(g){ show(g); g.scrollIntoView({block:"center"}); } };'
-		. '  refreshNone();'
-		. '}'
-		. 'wire("dh-dining-add-sel", "dh-dining-add-btn", ".dh-dining-add-none", "fieldset.dh-dining-group");'
-		. '} }; })(jQuery);', array('type' => 'inline', 'scope' => 'footer'));
+	$form[$group]['dining_wrap']['dining_visual'] = array(
+		'#markup' => '<div id="dh-diningcfg" data-groups="'.check_plain(json_encode($ding_groups)).'"></div>');
+	$form[$group]['dining_wrap']['cs_dining_config'] = array('#type' => 'textarea',
+		'#title' => 'Dining Configuration (raw)', '#rows' => 8,
+		'#default_value' => $add ? '' : $edit_data['cs_dining_config']);
 
 
 	if ($add)
@@ -865,11 +732,11 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		? _dh_ma_cellcfg_ini($form_state['input'])   // cellcfg_* fields -> cs_cells_config (loop below)
 		: '';
 
-	// Same for the optional dining configuration (diningcfg_* fields).
+	// Optional dining configuration: the visual editor (dining-config.js) has
+	// already assembled the raw INI into the cs_dining_config textarea, so just
+	// gate it on the checkbox (empty it when the centre assigns no dining seats).
 	$form_state['input']['cs_has_dining'] = empty($form_state['input']['cs_has_dining']) ? 0 : 1;
-	$form_state['input']['cs_dining_config'] = $form_state['input']['cs_has_dining']
-		? _dh_ma_diningcfg_ini($form_state['input'])
-		: '';
+	if (!$form_state['input']['cs_has_dining']) $form_state['input']['cs_dining_config'] = '';
 
 	// Assemble the Seating Configuration INI from the friendly seatcfg_* fields.
 	$form_state['input']['cs_seat_config'] = _dh_ma_seatcfg_ini($form_state['input']);
@@ -939,50 +806,9 @@ function _dh_ma_cellcfg_ini($input)
 	return rtrim($out)."\n";
 }
 
-/* Assemble the Dining Configuration INI from the friendly diningcfg_* fields.
-   The two default sections ([MALE]/[FEMALE]) are always written; per-group
-   sections ([MALE_n]/[FEMALE_n]) are written only when they carry data, so a
-   blank group falls back to the default gender range at allocation time. */
-function _dh_ma_diningcfg_ini($input)
-{
-	$get = function($k) use ($input) { return isset($input[$k]) ? trim((string)$input[$k]) : ''; };
-	$block = function($sec, $prefix, $force) use ($get) {
-		$cells = $get($prefix.'cells');
-		$res   = $get($prefix.'reserved');
-		$old   = $get($prefix.'old');
-		$new   = $get($prefix.'new');
-		// The old/new checkbox is gone; the split is inferred from the data. A
-		// "*_rev" checkbox writes a "<Key>Rev = 1" flag the engine reverses on.
-		$sep   = ($old !== '' || $new !== '');
-		$has   = ($sep ? true : ($cells !== '')) || $res !== '';
-		if (!$force && !$has) return '';
-		$out = "[$sec]\n";
-		if ($sep) {
-			$out .= "Old = $old\n";
-			if ($get($prefix.'old_rev') !== '') $out .= "OldRev = 1\n";
-			$out .= "New = $new\n";
-			if ($get($prefix.'new_rev') !== '') $out .= "NewRev = 1\n";
-		} else {
-			$out .= "Cells = $cells\n";
-			if ($get($prefix.'cells_rev') !== '') $out .= "CellsRev = 1\n";
-		}
-		$out .= "Reserved = $res\n\n";
-		return $out;
-	};
-	$out = '';
-	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-		$out .= $block($sec, 'diningcfg_'.$gk.'_', true);
-	for ($n = 1; $n <= 9; $n++)
-		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-			$out .= $block($sec.'_'.$n, 'diningcfg_'.$gk.'_g'.$n.'_', false);
-	// Optional server sections — written only when non-empty (servers are opt-in).
-	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-		$out .= $block($sec.'_SERVER', 'diningcfg_'.$gk.'_server_', false);
-	for ($n = 1; $n <= 9; $n++)
-		foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-			$out .= $block($sec.'_SERVER_'.$n, 'diningcfg_'.$gk.'_server_g'.$n.'_', false);
-	return rtrim($out)."\n";
-}
+/* (The Dining Configuration INI is now assembled client-side by
+   js/dining-config.js into the cs_dining_config textarea; the old
+   _dh_ma_diningcfg_ini() PHP serialiser was removed with that redesign.) */
 
 /* Assemble the Seating Configuration INI ([RIGHT] = Male, [LEFT] = Female) from
    the friendly seatcfg_* fields. A side is written only when it has a seats-per-
