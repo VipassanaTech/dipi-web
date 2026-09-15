@@ -93,6 +93,11 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$sw_main  = ($plan === 'main')  ? '<b>Main</b>'       : l('Main',       $sw, array('query' => array('plan' => 'main')));
 	$sw_group = ($plan === 'group') ? '<b>Group-wise</b>' : l('Group-wise', $sw, array('query' => array('plan' => 'group')));
 
+	// Clean printable list for the ACTIVE plan (main -> dining-list,
+	// group -> group-dining-list). Opens in a new tab so the workbench stays put.
+	$list_path = ($plan === 'group') ? 'group-dining-list/'.$centre.'/'.$course : 'dining-list/'.$centre.'/'.$course;
+	$list_link = l('Printable list', $list_path, array('attributes' => array('target' => '_blank')));
+
 	$out .= '<div class="wb-bar no-print">'.
 		'<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="wb-plan-switch">Plan: '.$sw_main.' | '.$sw_group.'</span>'.
@@ -100,6 +105,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 		'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
 		'<button type="button" id="wb-clear">Clear non-fixed</button> '.
 		'<button type="button" id="wb-save">Save all</button>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 
