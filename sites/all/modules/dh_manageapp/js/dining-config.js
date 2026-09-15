@@ -118,7 +118,7 @@
       '<li>Do not mix letters in one range (write <code>A1-A5, B1-B5</code>, not <code>A1-B5</code>). Leave a box blank for none.</li>' +
       '<li><b>Keep aside</b> — seats held back from auto-assignment (assign them by hand).</li>' +
       '<li>Tick <b>split</b> to seat <b>New</b> and <b>Old</b> students on different seats (the combined "Dining seats" is then not used).</li>' +
-      '<li><b>Sevak</b> — separate seats for course servers (always treated as old). Leave blank to not seat servers.</li>' +
+      '<li><b>Sevak</b> — separate seats for course servers. Leave blank to not seat servers.</li>' +
       '<li><b>Group</b> rows override the Default for that group only; groups you do not add use the Default range.</li>' +
       '</ul></div>';
     host.html(
