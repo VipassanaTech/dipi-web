@@ -574,6 +574,17 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#description' => 'Untick if this centre does not assign dining seats - the dining configuration below is then not needed.',
 		'#suffix' => '<div style="clear:both"></div>');
 
+	// Stack the dining fields one per row (the theme floats .form-item left,
+	// which staircases the OLD/NEW/reserved fields into a confusing 2-col mess),
+	// and lay OLD & NEW side-by-side under their checkbox. Scoped to
+	// .dhv-dining-sec so the rest of the centre form is untouched; !important +
+	// scoped selectors out-specify the CDN drupal-bootstrap sheet (loads later).
+	drupal_add_css(
+		'.dhv-dining-sec .form-item{float:none !important;clear:both;width:100% !important;margin-left:0 !important;margin-right:0 !important;}'.
+		'.dhv-dining-sec .dhv-oldnew{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}'.
+		'.dhv-dining-sec .dhv-oldnew > .form-item{flex:1 1 220px;width:auto !important;clear:none !important;}',
+		array('type' => 'inline'));
+
 	// Builds one cell-style dining sub-section (available/reserved + optional
 	// old/new split) for the given INI section key and field prefix.
 	$mk_dining = function($sec_key, $prefix, $title, $collapsed) use (&$diniraw, $range_help) {
@@ -583,6 +594,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		$v_new   = isset($diniraw[$sec_key]['New'])      ? $diniraw[$sec_key]['New']      : '';
 		$sep     = ($v_old !== '' || $v_new !== '');
 		$s = array('#type' => 'fieldset', '#title' => $title, '#collapsible' => true, '#collapsed' => $collapsed,
+			'#attributes' => array('class' => array('dhv-dining-sec')),
 			'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
 		$s[$prefix.'cells'] = array('#type' => 'textfield', '#title' => 'Which dining seats are available?',
 			'#description' => $range_help, '#default_value' => $v_cells,
@@ -590,11 +602,14 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		$s[$prefix.'reserved'] = array('#type' => 'textfield', '#title' => 'Any dining seats to keep aside?',
 			'#description' => 'Held back, never auto-assigned. '.$range_help.' Leave blank if none.', '#default_value' => $v_res);
 		$s[$prefix.'sep'] = array('#type' => 'checkbox', '#title' => 'Use separate dining seats for old & new students', '#default_value' => $sep);
+		// OLD & NEW sit side-by-side in a flex row (see .dhv-oldnew CSS above).
 		$s[$prefix.'old'] = array('#type' => 'textfield', '#title' => 'Dining seats for OLD students',
 			'#description' => $range_help, '#default_value' => $v_old,
+			'#prefix' => '<div class="dhv-oldnew">',
 			'#states' => array('visible' => array(':input[name="'.$prefix.'sep"]' => array('checked' => TRUE))));
 		$s[$prefix.'new'] = array('#type' => 'textfield', '#title' => 'Dining seats for NEW students',
 			'#description' => $range_help, '#default_value' => $v_new,
+			'#suffix' => '</div>',
 			'#states' => array('visible' => array(':input[name="'.$prefix.'sep"]' => array('checked' => TRUE))));
 		return $s;
 	};
