@@ -2,29 +2,32 @@
 /**
  * Dining "Review & Edit" workbench — grouped editable grid.
  *
- * Task 2 (render) + Task 3 (bulk save) + Task 4 (auto-fill/clear/live
- * validation) of the unified-allocation-engine P2 work: "Save all" posts
- * every row to dining-workbench-save/%centre/%course, which writes via
- * _dh_workbench_write_rows(). "Auto-fill Main"/"Auto-fill Group-wise" hit
- * this same page with ?fill=main / ?fill=group, which re-run the engine
- * (respecting Fixed rows) before the grid is queried and rendered. "Clear
- * non-fixed" and duplicate-seat highlighting are client-side only. See
- * docs/superpowers/sdd/2026-09-13-unified-allocation-engine-p2/.
+ * A course uses ONE dining plan — either the default (Main) or the group-wise
+ * plan — so the workbench shows a SINGLE dining column plus a switch to flip
+ * between them (?plan=main|group, default main). "Save all" posts every row to
+ * dining-workbench-save/%centre/%course with the active plan; the write touches
+ * only that plan's column (aa_dining or aa_group_dining) plus the shared
+ * aa_dining_fixed, leaving the other plan's values untouched. "Auto-fill"
+ * re-runs the engine for the active plan (respecting Fixed rows) via
+ * ?plan=<plan>&fill=1. "Clear non-fixed" and duplicate-seat highlighting are
+ * client-side only. See docs/superpowers/plans/2026-09-13-unified-allocation-engine-p2.md.
  */
 
 /**
  * Build (and normally print) the dining review-and-edit workbench for one
- * course. Mirrors dh_dining_list()'s $return/print-and-exit pattern in
- * inc/zero-day.inc so the page fn is unit-testable.
+ * course. Mirrors dh_dining_list()'s $return/print-and-exit pattern so the page
+ * fn is unit-testable.
  */
 function dh_dining_workbench($centre, $course, $return = FALSE)
 {
 	global $base_url;
 	$course = (int) $course;
+	// A course uses one plan at a time; the workbench shows one and switches.
+	$plan = (isset($_REQUEST['plan']) && $_REQUEST['plan'] === 'group') ? 'group' : 'main';
 
 	if (isset($_REQUEST['fill']))
 	{
-		if ($_REQUEST['fill'] === 'group')
+		if ($plan === 'group')
 			generate_group_dining_list($centre, $course);
 		else
 			generate_dining_list($centre, $course);
@@ -52,7 +55,8 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 			IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
 	$result = db_query($q);
 
-	// data[class][gender][old-flag][group] = ordered list of attendee rows.
+	// data[class][gender][old-flag][group] = ordered list of attendee rows. Each
+	// row carries only the ACTIVE plan's value ('val').
 	$data = array();
 	$classes = array('Student' => TRUE);
 	if ($has_server) $classes['Sevak'] = TRUE;
@@ -68,11 +72,13 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 			'aa_id' => $r['aa_id'],
 			'name' => $r['name'],
 			'room' => $room,
-			'main' => $r['aa_dining'],
-			'group_val' => $r['aa_group_dining'],
+			'val' => ($plan === 'group') ? $r['aa_group_dining'] : $r['aa_dining'],
 			'fixed' => $r['aa_dining_fixed'],
 		);
 	}
+
+	$plan_name = ($plan === 'group') ? 'Group-wise' : 'Main';
+	$col_label = ($plan === 'group') ? 'Group Dining Seat' : 'Dining Seat';
 
 	$title = dh_course_file_basename($centre, $course, 'dining-workbench');
 	$out = '<html><head><title>'.$title.'</title>';
@@ -82,11 +88,16 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>Dining Review &amp; Edit</b></div>'.
 			'<div align="center" class="title-head">'.check_plain($course_name).'</div></div>';
 
+	// Plan switch: a course uses one plan; show that one, switch to the other.
+	$sw = 'dining-workbench/'.$centre.'/'.$course;
+	$sw_main  = ($plan === 'main')  ? '<b>Main</b>'       : l('Main',       $sw, array('query' => array('plan' => 'main')));
+	$sw_group = ($plan === 'group') ? '<b>Group-wise</b>' : l('Group-wise', $sw, array('query' => array('plan' => 'group')));
+
 	$out .= '<div class="wb-bar no-print">'.
 		'<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="wb-plan-switch">Plan: '.$sw_main.' | '.$sw_group.'</span>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.
-		'<button type="button" id="wb-fill-main">Auto-fill Main</button> '.
-		'<button type="button" id="wb-fill-group">Auto-fill Group-wise</button> '.
+		'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
 		'<button type="button" id="wb-clear">Clear non-fixed</button> '.
 		'<button type="button" id="wb-save">Save all</button>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
@@ -122,7 +133,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 					$block_key = check_plain($class.'|'.$g.'|'.$old.'|'.$grp);
 					$out .= '<div class="wb-group-block"><div class="wb-group-title">'.check_plain($group_label).'</div>';
 					$out .= '<table class="wb-grid"><thead><tr>'.
-						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>Main</th><th>Group</th><th>Fixed</th>'.
+						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th><th>Fixed</th>'.
 						'</tr></thead><tbody>';
 					$idx = 0;
 					foreach ($rows as $row)
@@ -133,8 +144,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 							'<td class="wb-idx">'.$idx.'</td>'.
 							'<td class="wb-name">'.check_plain($row['name']).'</td>'.
 							'<td class="wb-room">'.check_plain($row['room']).'</td>'.
-							'<td><input type="text" class="wb-main" data-aa="'.$aa_id.'" value="'.check_plain($row['main']).'"></td>'.
-							'<td><input type="text" class="wb-group" data-aa="'.$aa_id.'" value="'.check_plain($row['group_val']).'"></td>'.
+							'<td><input type="text" class="wb-val" data-aa="'.$aa_id.'" value="'.check_plain($row['val']).'"></td>'.
 							'<td><input type="checkbox" class="wb-fixed" data-aa="'.$aa_id.'"'.($row['fixed'] ? ' checked' : '').'></td>'.
 							'</tr>';
 					}
@@ -149,83 +159,60 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script>';
 	$out .= '<script>(function($){'.
-		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.';'.
-		'function wbCheckDupes(selector){'.
-			// Group inputs by their row's data-block (class|gender|old-new|group) so
-			// dedup is scoped to the same seating pool — different groups/genders
-			// legitimately reuse the same seat numbers, that is not a duplicate.
+		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.', WB_PLAN="'.$plan.'";'.
+		'function wbCheckDupes(){'.
+			// Scope dedup to each row's data-block (class|gender|old-new|group): a
+			// group with its own range legitimately reuses seat numbers other groups
+			// use, so a page-wide check would false-flag those.
 			'var blocks={};'.
-			'$(selector).each(function(){'.
-				'var $tr=$(this).closest("tr[data-block]");'.
-				'var block=$tr.data("block")||"";'.
+			'$(".wb-val").each(function(){'.
+				'var block=$(this).closest("tr[data-block]").data("block")||"";'.
 				'if (!blocks[block]) blocks[block]={};'.
 				'var v=$.trim($(this).val());'.
 				'if (v==="") return;'.
 				'blocks[block][v]=(blocks[block][v]||0)+1;'.
 			'});'.
 			'var dupes=0;'.
-			'$(selector).each(function(){'.
-				'var $tr=$(this).closest("tr[data-block]");'.
-				'var block=$tr.data("block")||"";'.
+			'$(".wb-val").each(function(){'.
+				'var block=$(this).closest("tr[data-block]").data("block")||"";'.
 				'var v=$.trim($(this).val());'.
-				'var counts=blocks[block]||{};'.
-				'var isDup = v!=="" && counts[v]>1;'.
+				'var isDup = v!=="" && (blocks[block]||{})[v]>1;'.
 				'$(this).toggleClass("wb-dup", isDup);'.
 				'if (isDup) dupes++;'.
 			'});'.
 			'return dupes;'.
 		'}'.
 		'function wbUpdateWarn(){'.
-			'var mainDupes=wbCheckDupes(".wb-main");'.
-			'var groupDupes=wbCheckDupes(".wb-group");'.
-			'var total=mainDupes+groupDupes;'.
+			'var total=wbCheckDupes();'.
 			'var $box=$(".wb-warn"), $dup=$("#wb-dup-count");'.
-			'if (total>0){'.
-				'$dup.text("Duplicate seat values: "+total+" (Main: "+mainDupes+", Group: "+groupDupes+")");'.
-				'$box.show();'.
-			'} else {'.
-				'$dup.text("");'.
-				'if ($box.find(".wb-warn-title").length===0) $box.hide();'.
-			'}'.
+			'if (total>0){ $dup.text("Duplicate seat values: "+total); $box.show(); }'.
+			'else { $dup.text(""); if ($box.find(".wb-warn-title").length===0) $box.hide(); }'.
 		'}'.
 		'$(function(){'.
 			'$("#wb-save").on("click", function(){'.
 				'var rows=[];'.
 				'$("tr[data-aa]").each(function(){'.
-					'var $tr=$(this), aa=$tr.data("aa");'.
-					'rows.push({'.
-						'aa: aa,'.
-						'dn: $tr.find(".wb-main").val(),'.
-						'gdn: $tr.find(".wb-group").val(),'.
-						'df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0'.
-					'});'.
+					'var $tr=$(this);'.
+					'rows.push({ aa: $tr.data("aa"), val: $tr.find(".wb-val").val(), df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0 });'.
 				'});'.
-				'$.post("/dining-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows}, function(r){'.
+				'$.post("/dining-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows, plan: WB_PLAN}, function(r){'.
 					'if (r && r.status) { alert("Saved "+r.saved+" row(s)."); }'.
 					'else { alert("Save failed."); }'.
 				'}, "json").fail(function(){ alert("Save failed."); });'.
 			'});'.
-			'$("#wb-fill-main").on("click", function(){'.
-				'if (confirm("Re-fill all non-fixed dining seats from the centre ranges? Unsaved edits will be lost.")){'.
-					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?fill=main";'.
-				'}'.
-			'});'.
-			'$("#wb-fill-group").on("click", function(){'.
-				'if (confirm("Re-fill all non-fixed dining seats from the centre ranges? Unsaved edits will be lost.")){'.
-					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?fill=group";'.
+			'$("#wb-fill").on("click", function(){'.
+				'if (confirm("Re-fill all non-fixed "+WB_PLAN+" dining seats from the centre ranges? Unsaved edits will be lost.")){'.
+					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?plan="+WB_PLAN+"&fill=1";'.
 				'}'.
 			'});'.
 			'$("#wb-clear").on("click", function(){'.
 				'$("tr[data-aa]").each(function(){'.
 					'var $tr=$(this);'.
-					'if (!$tr.find(".wb-fixed").is(":checked")){'.
-						'$tr.find(".wb-main").val("");'.
-						'$tr.find(".wb-group").val("");'.
-					'}'.
+					'if (!$tr.find(".wb-fixed").is(":checked")) $tr.find(".wb-val").val("");'.
 				'});'.
 				'wbUpdateWarn();'.
 			'});'.
-			'$(document).on("input", ".wb-main, .wb-group", wbUpdateWarn);'.
+			'$(document).on("input", ".wb-val", wbUpdateWarn);'.
 			'wbUpdateWarn();'.
 		'});'.
 	'})(jQuery);</script>';
@@ -238,13 +225,17 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 }
 
 /**
- * Write posted dining-workbench rows for one course, rejecting any aa_id
- * that doesn't belong to it (the security guard: a caller can't smuggle
- * writes into another course's attended rows). Returns the accepted count.
+ * Write posted dining-workbench rows for one course into the ACTIVE plan's
+ * column only (aa_dining for 'main', aa_group_dining for 'group') plus the
+ * shared aa_dining_fixed; the other plan's column is left untouched. Rejects
+ * any aa_id that doesn't belong to the course (security guard). Returns the
+ * accepted count.
  */
-function _dh_workbench_write_rows($centre, $course, $rows)
+function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main')
 {
 	$course = (int) $course;
+	$col = ($plan === 'group') ? 'aa_group_dining' : 'aa_dining';
+
 	$valid = array();
 	$result = db_query("select aa_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=:c", array(':c' => $course));
 	foreach ($result as $r) $valid[(int) $r->aa_id] = TRUE;
@@ -256,13 +247,11 @@ function _dh_workbench_write_rows($centre, $course, $rows)
 		$aa = isset($row['aa']) ? (int) $row['aa'] : 0;
 		if (!$aa || empty($valid[$aa])) continue;
 
-		$dn = isset($row['dn']) ? (string) $row['dn'] : '';
-		$gdn = isset($row['gdn']) ? (string) $row['gdn'] : '';
+		$val = isset($row['val']) ? (string) $row['val'] : '';
 		$df = !empty($row['df']);
 
 		db_update('dh_applicant_attended')->fields(array(
-			'aa_dining' => ($dn === '' ? NULL : $dn),
-			'aa_group_dining' => ($gdn === '' ? NULL : $gdn),
+			$col => ($val === '' ? NULL : $val),
 			'aa_dining_fixed' => $df ? 1 : 0,
 		))->condition('aa_id', $aa)->execute();
 		$n++;
@@ -277,6 +266,7 @@ function _dh_workbench_write_rows($centre, $course, $rows)
 function dh_dining_workbench_save($centre, $course)
 {
 	$rows = isset($_POST['rows']) ? $_POST['rows'] : array();
+	$plan = (isset($_POST['plan']) && $_POST['plan'] === 'group') ? 'group' : 'main';
 
 	if ( !dh_manageapp_lock_acquire("dh_dining_workbench_save", 10.0, 10) )
 	{
@@ -284,7 +274,7 @@ function dh_dining_workbench_save($centre, $course)
 		exit;
 	}
 
-	$n = _dh_workbench_write_rows($centre, $course, $rows);
+	$n = _dh_workbench_write_rows($centre, $course, $rows, $plan);
 	lock_release("dh_dining_workbench_save");
 
 	drupal_json_output(array('status' => 1, 'saved' => $n));
