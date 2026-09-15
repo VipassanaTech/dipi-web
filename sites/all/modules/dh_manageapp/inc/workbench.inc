@@ -119,6 +119,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 				foreach ($data[$class][$g][$old] as $grp => $rows)
 				{
 					$group_label = $grp > 0 ? 'Group '.$grp : 'No Group';
+					$block_key = check_plain($class.'|'.$g.'|'.$old.'|'.$grp);
 					$out .= '<div class="wb-group-block"><div class="wb-group-title">'.check_plain($group_label).'</div>';
 					$out .= '<table class="wb-grid"><thead><tr>'.
 						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>Main</th><th>Group</th><th>Fixed</th>'.
@@ -128,7 +129,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 					{
 						$idx++;
 						$aa_id = (int) $row['aa_id'];
-						$out .= '<tr data-aa="'.$aa_id.'">'.
+						$out .= '<tr data-aa="'.$aa_id.'" data-block="'.$block_key.'">'.
 							'<td class="wb-idx">'.$idx.'</td>'.
 							'<td class="wb-name">'.check_plain($row['name']).'</td>'.
 							'<td class="wb-room">'.check_plain($row['room']).'</td>'.
@@ -150,15 +151,24 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$out .= '<script>(function($){'.
 		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.';'.
 		'function wbCheckDupes(selector){'.
-			'var counts={};'.
+			// Group inputs by their row's data-block (class|gender|old-new|group) so
+			// dedup is scoped to the same seating pool — different groups/genders
+			// legitimately reuse the same seat numbers, that is not a duplicate.
+			'var blocks={};'.
 			'$(selector).each(function(){'.
+				'var $tr=$(this).closest("tr[data-block]");'.
+				'var block=$tr.data("block")||"";'.
+				'if (!blocks[block]) blocks[block]={};'.
 				'var v=$.trim($(this).val());'.
 				'if (v==="") return;'.
-				'counts[v]=(counts[v]||0)+1;'.
+				'blocks[block][v]=(blocks[block][v]||0)+1;'.
 			'});'.
 			'var dupes=0;'.
 			'$(selector).each(function(){'.
+				'var $tr=$(this).closest("tr[data-block]");'.
+				'var block=$tr.data("block")||"";'.
 				'var v=$.trim($(this).val());'.
+				'var counts=blocks[block]||{};'.
 				'var isDup = v!=="" && counts[v]>1;'.
 				'$(this).toggleClass("wb-dup", isDup);'.
 				'if (isDup) dupes++;'.

@@ -144,6 +144,10 @@ table.wb-grid td.wb-room {
 .wb-fixed {
 	cursor: pointer;
 }
+.wb-dup {
+	background: #ffd6d6 !important;
+	outline: 2px solid #c0392b;
+}
 
 @media print {
 	@page { margin: 10mm; }
