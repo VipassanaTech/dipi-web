@@ -321,6 +321,20 @@ input.throbbing {
 .cc-examples .cc-ex-list li { margin: 0 0 7px; }
 .cc-examples .cc-ex-list li:last-child { margin-bottom: 0; }
 
+/* Collapsible per-type blocks (each course type is its own <tbody>). */
+.cc-table tbody.cc-block { border-top: 2px solid #e5e5e5; }
+.cc-table tbody.cc-block:first-child { border-top: none; }
+.cc-table .cc-blockhead td { text-align: left; padding-top: 10px; padding-bottom: 10px; }
+.cc-table .cc-blocklabel { cursor: pointer; user-select: none; }
+.cc-table .cc-blocklabel b { font-size: 15px; color: #222; }
+.cc-table .cc-toggle { display: inline-block; width: 18px; height: 18px; line-height: 16px; text-align: center;
+  border: 1px solid #ccc; border-radius: 3px; font-weight: bold; margin-right: 6px; }
+.cc-table tbody.cc-collapsed .cc-toggle { color: #1a8a1a; border-color: #9c9; }
+.cc-table tbody:not(.cc-collapsed) .cc-toggle { color: #c0392b; border-color: #e0a0a0; }
+.cc-table .cc-colhead th { color: #333; font-weight: 600; }
+.cc-table .cc-colhead2 th { color: #888; font-weight: 500; font-size: 12.5px; padding-top: 2px; }
+.cc-table .cc-basiclabel { color: #888; font-weight: normal; }
+
 .summary-block .table-responsive {
 	display: inline-block;
 	margin-right: 35px;

@@ -51,29 +51,40 @@
       '" data-kind="' + kind + '" value="' + (v || '') + '" size="4" />';
   }
 
-  // Build the <tr> group (main row + 3 New/Old/Sevak sub-rows) for one course type.
+  // Build one course type as its own <tbody>: a clickable header row (collapsed
+  // by default) + per-block column headers + the "All" limits row + New/Old/Sevak.
   function rowHtml(t, sec) {
     sec = sec || {};
     var adv = hasSplit(sec);
-    var html = '<tr class="cc-type" data-tk="' + t.key + '">' +
-      '<td class="cc-tname"><a class="cc-rm" title="Remove this course type">×</a> ' + t.label + '</td>';
+    var h = '<tbody class="cc-block cc-collapsed" data-tk="' + t.key + '">';
+    h += '<tr class="cc-blockhead" data-tk="' + t.key + '"><td class="cc-tname cc-blocklabel" colspan="7">' +
+      '<span class="cc-toggle" title="Expand">+</span> <b>' + t.label + '</b>' +
+      ' <a class="cc-rm" title="Remove this course type">×</a></td></tr>';
+    // per-block column headers (Male/Female, then Waitlist at / Full at)
+    h += '<tr class="cc-brow cc-colhead"><td class="cc-tname"></td><th colspan="2">Male</th>' +
+      '<td class="cc-gap"></td><th colspan="2">Female</th><td></td></tr>';
+    h += '<tr class="cc-brow cc-colhead2"><td class="cc-tname"></td><th>Waitlist at</th><th>Full at</th>' +
+      '<td class="cc-gap"></td><th>Waitlist at</th><th>Full at</th><td></td></tr>';
+    // "All applicants" limits + split toggle
+    h += '<tr class="cc-brow cc-type" data-tk="' + t.key + '"><td class="cc-tname cc-basiclabel">All</td>';
     GENDERS.forEach(function (g, gi) {
-      html += '<td class="cc-basic">' + inp(g.k, '', 'Waitlist', sec['Waitlist-' + g.k]) + '</td>' +
+      h += '<td class="cc-basic">' + inp(g.k, '', 'Waitlist', sec['Waitlist-' + g.k]) + '</td>' +
         '<td class="cc-basic">' + inp(g.k, '', 'MaxApps', sec['MaxApps-' + g.k]) + '</td>';
-      if (gi === 0) { html += '<td class="cc-gap"></td>'; }
+      if (gi === 0) { h += '<td class="cc-gap"></td>'; }
     });
-    html += '<td class="cc-advcell"><label><input type="checkbox" class="cc-adv-cb"' + (adv ? ' checked' : '') + '> split</label></td></tr>';
+    h += '<td class="cc-advcell"><label><input type="checkbox" class="cc-adv-cb"' + (adv ? ' checked' : '') + '> split</label></td></tr>';
     ATYPES.forEach(function (a) {
-      html += '<tr class="cc-adv-row" data-tk="' + t.key + '"' + (adv ? '' : ' style="display:none"') + '>' +
+      h += '<tr class="cc-brow cc-adv-row" data-tk="' + t.key + '">' +
         '<td class="cc-atype">└ ' + a.label + '</td>';
       GENDERS.forEach(function (g, gi) {
-        html += '<td>' + inp(g.k, a.k, 'Waitlist', sec['Waitlist-' + g.k + '-' + a.k]) + '</td>' +
+        h += '<td>' + inp(g.k, a.k, 'Waitlist', sec['Waitlist-' + g.k + '-' + a.k]) + '</td>' +
           '<td>' + inp(g.k, a.k, 'MaxApps', sec['MaxApps-' + g.k + '-' + a.k]) + '</td>';
-        if (gi === 0) { html += '<td class="cc-gap"></td>'; }
+        if (gi === 0) { h += '<td class="cc-gap"></td>'; }
       });
-      html += '<td></td></tr>';
+      h += '<td></td></tr>';
     });
-    return html;
+    h += '</tbody>';
+    return h;
   }
 
   function scaffold(host) {
@@ -94,10 +105,7 @@
       'waitlisted manually only after AT review (R-AT Review, A-AT Review).</li>' +
       '</ul></div>';
     host.html(
-      '<table class="cc-table"><thead>' +
-      '<tr><th class="cc-tname"></th><th colspan="2">Male</th><th class="cc-gap"></th><th colspan="2">Female</th><th></th></tr>' +
-      '<tr><th></th><th>Waitlist at</th><th>Full at</th><th class="cc-gap"></th><th>Waitlist at</th><th>Full at</th><th></th></tr>' +
-      '</thead><tbody></tbody></table>' +
+      '<table class="cc-table"></table>' +
       '<div class="cc-empty">No limits set yet. Add a course type below to set fill / waitlist limits.</div>' +
       '<div class="cc-add"><select class="cc-add-sel"></select></div>' +
       '<div class="cc-msg" role="alert"></div>' +
@@ -126,24 +134,24 @@
   }
 
   function restripe(host) {
-    var i = 0;
-    host.find('tbody .cc-type').each(function () {
-      var tk = String($(this).data('tk')), alt = (i % 2) === 1;
-      $(this).toggleClass('cc-alt', alt);
-      host.find('tbody .cc-adv-row[data-tk="' + tk + '"]').toggleClass('cc-alt', alt);
-      i++;
-    });
-    host.find('.cc-empty').toggle(i === 0);
-    host.find('.cc-table').toggle(i > 0);   // hide the empty header table until a type is added
+    var n = host.find('tbody.cc-block').length;
+    host.find('.cc-empty').toggle(n === 0);
+    host.find('.cc-table').toggle(n > 0);
   }
 
-  function applyAdvState(host) {
-    host.find('.cc-type').each(function () {
-      var $t = $(this), tk = $t.data('tk'), adv = $t.find('.cc-adv-cb').is(':checked');
-      $t.find('.cc-basic .cc-in').prop('disabled', adv).toggleClass('cc-off', adv);
-      host.find('.cc-adv-row[data-tk="' + tk + '"]').toggle(adv);
+  // Show/hide a block's body per collapse state; within an expanded block the
+  // New/Old/Sevak rows show only when "split" is on, and the "All" row greys out.
+  function updateBlock($b) {
+    var collapsed = $b.hasClass('cc-collapsed');
+    var adv = $b.find('.cc-adv-cb').is(':checked');
+    $b.find('.cc-brow').each(function () {
+      var $r = $(this), isAdv = $r.hasClass('cc-adv-row');
+      $r.toggle(!collapsed && (!isAdv || adv));
     });
+    $b.find('.cc-type .cc-basic .cc-in').prop('disabled', adv).toggleClass('cc-off', adv);
+    $b.find('.cc-toggle').text(collapsed ? '+' : '−').attr('title', collapsed ? 'Expand' : 'Collapse');
   }
+  function applyAdvState(host) { host.find('tbody.cc-block').each(function () { updateBlock($(this)); }); }
 
   function assemble(host) {
     var out = [];
@@ -179,7 +187,7 @@
     host.find('.cc-in').removeClass('cc-err');
     host.find('tbody .cc-type').each(function () {
       var $t = $(this), tk = $t.data('tk'), adv = $t.find('.cc-adv-cb').is(':checked');
-      var label = $t.find('.cc-tname').text().replace(/^\s*×\s*/, '').trim();
+      var label = $t.closest('tbody.cc-block').find('.cc-blocklabel b').text().trim();
       GENDERS.forEach(function (g) {
         function pair(tp, subLabel) {
           var scope = adv ? host.find('.cc-adv-row[data-tk="' + tk + '"]') : $t;
@@ -216,7 +224,7 @@
     Object.keys(ini).forEach(function (k) {
       if (!hasData(ini[k])) { return; }   // skip empty course types
       var t = byKey[k] || { key: k, label: k };
-      host.find('tbody').append(rowHtml(t, ini[k]));
+      host.find('.cc-table').append(rowHtml(t, ini[k]));
     });
     applyAdvState(host);
     restripe(host);
@@ -227,6 +235,14 @@
 
     function sync() { $ta.val(assemble(host)); validate(host); }
 
+    // Expand/collapse a course type by clicking its header (not the remove ×).
+    host.on('click', '.cc-blocklabel', function (e) {
+      if ($(e.target).closest('.cc-rm').length) { return; }
+      var $b = $(this).closest('tbody.cc-block');
+      $b.toggleClass('cc-collapsed');
+      updateBlock($b);
+    });
+
     host.on('input', '.cc-in', function () { this.value = this.value.replace(/[^0-9]/g, ''); sync(); });
     // On blur: strip leading zeros and clear a bare 0 (0 is not a valid limit).
     host.on('change', '.cc-in', function () { var n = parseInt(this.value, 10); this.value = (n > 0) ? String(n) : ''; sync(); });
@@ -234,24 +250,24 @@
     host.on('change', '.cc-add-sel', function () {
       var k = this.value; if (!k) { return; }
       var t = byKey[k] || { key: k, label: k };
-      host.find('tbody').append(rowHtml(t, {}));
+      host.find('.cc-table').append(rowHtml(t, {}));
+      var $b = host.find('tbody.cc-block[data-tk="' + k + '"]').removeClass('cc-collapsed');
+      updateBlock($b);
       restripe(host); rebuildAddSelect(host); sync();
     });
     host.on('click', '.cc-rm', function () {
-      var $type = $(this).closest('.cc-type');
-      var tk = String($type.data('tk'));
-      var $rows = host.find('tbody tr[data-tk="' + tk + '"]');
+      var $b = $(this).closest('tbody.cc-block');
       // Only confirm when the type actually has limits set (removing an empty
-      // just-added row is harmless and needs no prompt).
+      // just-added block is harmless and needs no prompt).
       var hasVal = false;
-      $rows.find('.cc-in').each(function () { if (num(this) !== '') { hasVal = true; } });
+      $b.find('.cc-in').each(function () { if (num(this) !== '') { hasVal = true; } });
       if (hasVal) {
-        var label = $type.find('.cc-tname').text().replace(/^\s*×\s*/, '').trim();
+        var label = $b.find('.cc-blocklabel b').text().trim();
         if (!window.confirm('Remove "' + label + '"? Its Waitlist / Full limits will be cleared when you save.')) {
           return;
         }
       }
-      $rows.remove();
+      $b.remove();
       restripe(host); rebuildAddSelect(host); sync();
     });
 
