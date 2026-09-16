@@ -491,12 +491,20 @@ function dh_zero_main()
 				"  </div>"+
 				"  <p class=\"validateTips\"></p>"+
 				"  <form class=\"zd-form\">"+
-				"    <div class=\"zd-grid\">"+
+				"    <div class=\"zd-row\">"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Room &amp; Group</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"section\">Section</label><select name=\"section\" id=\"section\" class=\"form-control attending-fields\">"+s+"</select></div>"+
 				"        <div class=\"zd-field\"><label for=\"room-no\">Room No</label><select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields\"><option value=\"\">Choose</option></select></div>"+
 				"        <div class=\"zd-field\"><label for=\"group\">Group</label><select name=\"group\" id=\"group\" class=\"form-control attending-fields\">"+group+"</select></div>"+
 				"      </div></div>"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Special Seating</div><div class=\"zd-fields zd-radios\">"+
+				"        <label><input type=\"radio\" id=\"special-seating-none\" name=\"specialseat\" class=\"attending-fields\"> None</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-chowky\" name=\"specialseat\" class=\"attending-fields\"> Chowky</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-chair\" name=\"specialseat\" class=\"attending-fields\"> Chair</label>"+
+				"        <label><input type=\"radio\" id=\"special-seating-backrest\" name=\"specialseat\" class=\"attending-fields\"> BackRest</label>"+
+				"      </div></div>"+
+				"    </div>"+
+				"    <div class=\"zd-row\">"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Cell</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" class=\"form-control attending-fields\"></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"cell-fixed\">Fixed</label><input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
@@ -509,12 +517,6 @@ function dh_zero_main()
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Lists</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"laundry\">Laundry</label><input type=\"text\" name=\"laundry\" id=\"laundry\" value=\"\" class=\"form-control attending-fields\"></div>"+
 				"        <div class=\"zd-field\"><label for=\"valuable\">Valuable</label><input type=\"text\" name=\"valuable\" id=\"valuable\" value=\"\" class=\"form-control attending-fields\"></div>"+
-				"      </div></div>"+
-				"      <div class=\"zd-group zd-group-wide\"><div class=\"zd-group-title\">Special Seating</div><div class=\"zd-fields zd-radios\">"+
-				"        <label><input type=\"radio\" id=\"special-seating-none\" name=\"specialseat\" class=\"attending-fields\"> None</label>"+
-				"        <label><input type=\"radio\" id=\"special-seating-chowky\" name=\"specialseat\" class=\"attending-fields\"> Chowky</label>"+
-				"        <label><input type=\"radio\" id=\"special-seating-chair\" name=\"specialseat\" class=\"attending-fields\"> Chair</label>"+
-				"        <label><input type=\"radio\" id=\"special-seating-backrest\" name=\"specialseat\" class=\"attending-fields\"> BackRest</label>"+
 				"      </div></div>"+
 				"    </div>"+
 				"    <div class=\"zd-group zd-comments\"><div class=\"zd-group-title\">Comments</div>"+
@@ -685,7 +687,7 @@ function dh_zero_main()
 	';
 	drupal_add_js($js, 'inline');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
-	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-wide{grid-column:1/-1}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-grid{grid-template-columns:1fr}}', array('type' => 'inline'));
+	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}#dialog-form .zd-row>.zd-group{flex:1 1 200px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-row{flex-direction:column}}', array('type' => 'inline'));
 
 	$out .= '<div id="dialog-div"></div><div id="attended-list">'.dh_manageapp_attended($centre_id, $course_id).'</div>';
 
