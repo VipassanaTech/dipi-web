@@ -442,6 +442,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['group-cell-list/%centre_id/%course_id'] = array( 'title' => t('Group-wise Cell List'),
+	       'page callback' => 'dh_manage_day_zero',
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['dining-list/%centre_id/%course_id'] = array( 'title' => t('Dining List'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),

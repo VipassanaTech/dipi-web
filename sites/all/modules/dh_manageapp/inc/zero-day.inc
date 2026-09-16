@@ -114,7 +114,14 @@ function dh_manage_day_zero()
 			$debug = 0 ;
 			if (isset($_REQUEST['d']) && ($_REQUEST['d'] == 1))
 				$debug = 1;
-			return dh_cell_list(arg(1), arg(2), $debug);
+			return dh_cell_list(arg(1), arg(2), $debug, '', 'main');
+		break;
+		case 'group-cell-list':
+			zeroize_new_course_data(arg(1), arg(2));
+			if (isset($_REQUEST['r']))
+				generate_group_cell_list(arg(1), arg(2));
+			$debug = (isset($_REQUEST['d']) && $_REQUEST['d'] == 1) ? 1 : 0;
+			return dh_cell_list(arg(1), arg(2), $debug, '', 'group');
 		break;
 		case 'dining-list':
 			zeroize_new_course_data(arg(1), arg(2));
@@ -3437,9 +3444,14 @@ function dh_cell_list_pair($cd, $keys, $idx)
 			.'</td>';
 }
 
-function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
+function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 {
 	global $base_url;
+	// Plan-aware (mirrors dh_dining_list): 'main' shows aa_cell, 'group' shows the
+	// group-wise aa_group_cell. Batch grouping (aa_cell_batch) is shared.
+	$col = ($mode === 'group') ? 'aa_group_cell' : 'aa_cell';
+	$title_txt = ($mode === 'group') ? 'Group-wise Cell List' : 'Cell List';
+	$slug = ($mode === 'group') ? 'group-cell-list' : 'cell-list';
 	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
 	// Sort order within each batch: 'name' (default) or 'cell' (natural cell order).
 	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'cell') ? 'cell' : 'name';
@@ -3448,7 +3460,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, aa_cell, aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, $col as aa_cell, aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
 	while($r = $result->fetchAssoc())
@@ -3473,15 +3485,15 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] = $r['Age'];
 
 	}
-	$dl_name = dh_course_file_basename($centre, $course, 'cell-list');
+	$dl_name = dh_course_file_basename($centre, $course, $slug);
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
 	$out .= '</head><body>';
 	// Screen-only document title (in print, each table's repeating <thead> carries
 	// the title onto every page - see the batch loop below).
-	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>Cell List</b></div>'.
+	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title_txt.'</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
-	$sort_base = 'cell-list/'.$centre.'/'.$course;
+	$sort_base = $slug.'/'.$centre.'/'.$course;
 	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
 	$keep_sort = ($sort == 'cell') ? array('sort' => 'cell') : array(); // preserve sort choice on column links
 	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
@@ -3500,7 +3512,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	// top of every page (the reliable running-header technique). All the batches go
 	// in its single body cell.
 	$out .= '<table class="cl-doc"><thead><tr><td class="cl-doc-cell">'.
-		'<div class="cl-dt-main">Cell List</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
+		'<div class="cl-dt-main">'.$title_txt.'</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
 		'</td></tr></thead><tbody><tr><td class="cl-doc-body">';
 	$out .= '<div class="main-div">';
 	$first = true;
