@@ -2589,6 +2589,7 @@ function dh_app_update_attended()
 	$fields['aa_laundry'] = $_REQUEST['l'];
 	$fields['aa_valuable'] = $_REQUEST['v'];
 	$fields['aa_cell'] = $_REQUEST['c'];
+	$fields['aa_group_cell'] = isset($_REQUEST['gc']) ? $_REQUEST['gc'] : '';
 
 	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
 	if ($fields['aa_cell_fixed'])

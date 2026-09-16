@@ -514,6 +514,7 @@ function dh_zero_main()
 				"    <div class=\"zd-row\">"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Cell</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field\"><label for=\"groupcell\">Group Cell No</label><input type=\"text\" name=\"groupcell\" id=\"groupcell\" value=\"\" class=\"form-control attending-fields\"></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"cell-fixed\">Fixed</label><input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Dining</div><div class=\"zd-fields\">"+
@@ -608,7 +609,7 @@ function dh_zero_main()
 						          url: "/app-update-attended/" + cur_app_id ,
 						          method: "POST",
 						          data: {s: $("#section").val(), r: $("#room-no").val(), g: $("#group").val(),l: $("#laundry").val(), v: $("#valuable").val(),
-						          	c: $("#cell").val(), cf: $("#cell-fixed").is(":checked") ,
+						          	c: $("#cell").val(), gc: $("#groupcell").val(), cf: $("#cell-fixed").is(":checked") ,
 						          	dn: $("#dining").val(), gdn: $("#groupdining").val(), df: $("#dining-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") ,
 						          	chai: $("#special-seating-chair").is(":checked"), back:  $("#special-seating-backrest").is(":checked"),
 						          	comment: $("#comments").val(), a: $("#attending").is(":checked")  },
@@ -663,6 +664,7 @@ function dh_zero_main()
 				    	temp = data[15].split("||");
 				    	$("#cell").val(temp[0]);
 				    	if (temp[1] == "1") $("#cell-fixed").prop("checked", true);
+				    	$("#groupcell").val(temp[6]);
 				    	$("#comments").val(temp[2]);
 				    	$("#dining").val(temp[3]);
 				    	$("#groupdining").val(temp[4]);
@@ -714,7 +716,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	}
 
 	//$q = "select a_id, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and aa_acco IS NOT NULL order by a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_comment, aa_dining, aa_group_dining, aa_dining_fixed, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_group_cell, aa_comment, aa_dining, aa_group_dining, aa_dining_fixed, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$rows = array();
 	$totals['new']['F']['Student'] = $totals['new']['F']['Sevak'] = $totals['old']['F']['Student'] = $totals['old']['F']['Sevak'] = $totals['new']['M']['Student'] = $totals['new']['M']['Sevak'] = $totals['old']['M']['Student'] = $totals['old']['M']['Sevak'] = 0;
@@ -749,7 +751,7 @@ function dh_manageapp_attended( $centre, $course_id )
 		$rs[] = $r['aa_chair']?'Yes':'No';
 		$rs[] = $r['aa_backrest']?'Yes':'No';
 		$rs[] = $r['aa_group'];
-		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment']."||".$r['aa_dining']."||".$r['aa_group_dining']."||".$r['aa_dining_fixed'];
+		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment']."||".$r['aa_dining']."||".$r['aa_group_dining']."||".$r['aa_dining_fixed']."||".$r['aa_group_cell'];
 		$rows[] = array_values($rs);
 
 		$totals[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] += 1;
