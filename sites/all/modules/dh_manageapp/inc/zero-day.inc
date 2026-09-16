@@ -492,9 +492,10 @@ function dh_zero_main()
 				"  <p class=\"validateTips\"></p>"+
 				"  <form class=\"zd-form\">"+
 				"    <div class=\"zd-grid\">"+
-				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Room</div><div class=\"zd-fields\">"+
+				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Room &amp; Group</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"section\">Section</label><select name=\"section\" id=\"section\" class=\"form-control attending-fields\">"+s+"</select></div>"+
 				"        <div class=\"zd-field\"><label for=\"room-no\">Room No</label><select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields\"><option value=\"\">Choose</option></select></div>"+
+				"        <div class=\"zd-field\"><label for=\"group\">Group</label><select name=\"group\" id=\"group\" class=\"form-control attending-fields\">"+group+"</select></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Cell</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" class=\"form-control attending-fields\"></div>"+
@@ -508,9 +509,6 @@ function dh_zero_main()
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Lists</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"laundry\">Laundry</label><input type=\"text\" name=\"laundry\" id=\"laundry\" value=\"\" class=\"form-control attending-fields\"></div>"+
 				"        <div class=\"zd-field\"><label for=\"valuable\">Valuable</label><input type=\"text\" name=\"valuable\" id=\"valuable\" value=\"\" class=\"form-control attending-fields\"></div>"+
-				"      </div></div>"+
-				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Group</div><div class=\"zd-fields\">"+
-				"        <div class=\"zd-field\"><label for=\"group\">Group</label><select name=\"group\" id=\"group\" class=\"form-control attending-fields\">"+group+"</select></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group zd-group-wide\"><div class=\"zd-group-title\">Special Seating</div><div class=\"zd-fields zd-radios\">"+
 				"        <label><input type=\"radio\" id=\"special-seating-none\" name=\"specialseat\" class=\"attending-fields\"> None</label>"+
