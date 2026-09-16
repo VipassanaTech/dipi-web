@@ -1,0 +1,59 @@
+/* Visual Dining Configuration editor (js/dining-config.js). Scoped to
+   .dh-alloccfg so it never touches the rest of the centre form. */
+.dh-alloccfg { margin: 8px 0 4px; }
+
+.dh-alloccfg .dc-table { border-collapse: collapse; width: auto; max-width: 100%; }
+.dh-alloccfg .dc-table th,
+.dh-alloccfg .dc-table td { padding: 4px 10px; vertical-align: middle; text-align: left; }
+.dh-alloccfg .dc-colhead th { font-size: 12px; color: #666; font-weight: 600; text-align: left; padding-bottom: 0; }
+.dh-alloccfg .dc-rowlabel { min-width: 210px; }
+
+/* one block (Default / a group) = a tbody; separate them with a top border. */
+.dh-alloccfg tbody.dc-block { border-top: 2px solid #e2e2e2; }
+.dh-alloccfg tbody.dc-block:first-of-type { border-top: none; }
+.dh-alloccfg .dc-blockhead td { padding-top: 8px; padding-bottom: 8px; }
+.dh-alloccfg .dc-blocklabel { cursor: pointer; user-select: none; }
+.dh-alloccfg .dc-blocklabel b { font-size: 15px; }
+.dh-alloccfg .dc-toggle {
+  display: inline-block; width: 18px; height: 18px; line-height: 16px; text-align: center;
+  border: 1px solid #ccc; border-radius: 3px; font-weight: bold; margin-right: 6px; }
+.dh-alloccfg tbody.dc-collapsed .dc-toggle { color: #1a8a1a; border-color: #9c9; }
+.dh-alloccfg tbody:not(.dc-collapsed) .dc-toggle { color: #c00; border-color: #e0a0a0; }
+.dh-alloccfg .dc-defnote { color: #888; font-weight: 400; font-size: 12px; }
+.dh-alloccfg .dc-rowlabel { white-space: nowrap; color: #333; }
+.dh-alloccfg .dc-sub { color: #555; padding-left: 14px; }
+.dh-alloccfg .dc-row-sevak td,
+.dh-alloccfg .dc-row-res td { padding-bottom: 4px; }
+
+/* a range cell: input + tiny reverse toggle side by side */
+.dh-alloccfg .dc-cell { display: flex; align-items: center; gap: 6px; }
+.dh-alloccfg .dc-in { width: 150px; max-width: 40vw; padding: 4px 6px; border: 1px solid #bbb; border-radius: 4px; }
+.dh-alloccfg .dc-in.dc-off { background: #f0f0f0; color: #aaa; }
+.dh-alloccfg .dc-rev { display: inline-flex; align-items: center; gap: 2px; font-size: 15px; color: #2569ba;
+  cursor: pointer; user-select: none; line-height: 1; margin: 0; font-weight: 400; }
+.dh-alloccfg .dc-rev input { margin: 0 1px 0 0; }
+.dh-alloccfg .dc-rev input:disabled + span { opacity: .4; }
+
+.dh-alloccfg .dc-splitcell { color: #333; }
+.dh-alloccfg .dc-splitcell label { font-weight: 400; white-space: nowrap; margin: 0; cursor: pointer; }
+
+.dh-alloccfg .dc-rm { color: #a00; cursor: pointer; font-weight: bold; margin-right: 4px; text-decoration: none; }
+.dh-alloccfg .dc-rm:hover { color: #d00; }
+
+.dh-alloccfg .dc-add { margin: 12px 0 4px; }
+.dh-alloccfg .dc-add-sel { padding: 4px 8px; }
+
+.dh-alloccfg .dc-help { margin-top: 12px; font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 8px; }
+.dh-alloccfg .dc-help-title { font-weight: 600; color: #444; margin-bottom: 2px; }
+.dh-alloccfg .dc-help p { margin: 2px 0; }
+.dh-alloccfg .dc-help ul { margin: 6px 0 0 18px; padding: 0; }
+.dh-alloccfg .dc-help li { margin: 2px 0; }
+.dh-alloccfg .dc-help-eg { border-collapse: collapse; margin: 4px 0; }
+.dh-alloccfg .dc-help-eg td { padding: 2px 12px 2px 0; vertical-align: top; }
+.dh-alloccfg .dc-help-eg code { background: #f2f2f2; border: 1px solid #e2e2e2; border-radius: 3px; padding: 1px 5px; color: #333; }
+
+/* Narrow screens: let the table scroll rather than break the page. */
+@media (max-width: 700px) {
+  .dh-alloccfg { overflow-x: auto; }
+  .dh-alloccfg .dc-in { width: 110px; }
+}

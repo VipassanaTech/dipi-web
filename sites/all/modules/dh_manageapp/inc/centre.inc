@@ -516,45 +516,32 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		}
 
 
+	// ---- Cell Settings (same visual table editor as dining) -----------------
+	// Cells can be used by servers too, so cells use the full dining flow: the
+	// same alloc-config.js table over cs_cells_config (Main + group blocks,
+	// Male/Female, split->Old/New, keep-aside, Sevak, reverse). See inc/allocate.inc.
 	$group = 'Cell Settings';
 	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false,
-		'#description' => 'Tell us which meditation cells your centre has - the technical configuration is built for you.');
-	// Pre-fill the friendly fields by parsing any existing config (edit mode).
-	$cini = (!$add && !empty($edit_data['cs_cells_config'])) ? parse_ini_string($edit_data['cs_cells_config'], true, INI_SCANNER_RAW) : array();
-	if (!is_array($cini)) $cini = array();
-	// Some centres have no meditation cells at all. When unticked, the cell
-	// configuration below is hidden and its validation is skipped.
+		'#description' => 'Tick below if this centre has meditation cells, then set the ranges in the table.');
 	$has_cells = $add ? 1 : (isset($edit_data['cs_has_cells']) ? $edit_data['cs_has_cells'] : 1);
 	$form[$group]['cs_has_cells'] = array('#type' => 'checkbox', '#title' => 'This centre has meditation cells',
 		'#default_value' => $has_cells, '#weight' => -10,
-		'#description' => 'Untick if this centre has no meditation cells - the cell configuration below is then not needed.',
-		// The theme floats this form-item, so the Male fieldset wraps up beside it.
-		// Clear the float so the cell fieldsets sit on their own rows below.
+		'#description' => 'Untick if this centre has no meditation cells - the cell table below is then not needed.',
 		'#suffix' => '<div style="clear:both"></div>');
-	$range_help = 'Separate cell numbers with commas, and use a hyphen for a range. Example: 1-40, 55, 60-65 (letters are fine too, e.g. A1-A20, B1-B10).';
-	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-	{
-		$v_cells = isset($cini[$sec]['Cells'])    ? $cini[$sec]['Cells']    : '';
-		$v_res   = isset($cini[$sec]['Reserved']) ? $cini[$sec]['Reserved'] : '';
-		$v_old   = isset($cini[$sec]['Old'])      ? $cini[$sec]['Old']      : '';
-		$v_new   = isset($cini[$sec]['New'])      ? $cini[$sec]['New']      : '';
-		$sep     = ($v_old !== '' || $v_new !== '');   // separate old/new pools were used
-		$sub = 'cell_'.$gk;
-		$form[$group][$sub] = array('#type' => 'fieldset', '#title' => ($gk == 'male' ? 'Male' : 'Female'),
-			'#states' => array('visible' => array(':input[name="cs_has_cells"]' => array('checked' => TRUE))));
-		$form[$group][$sub]['cellcfg_'.$gk.'_cells'] = array('#type' => 'textfield', '#title' => 'Which cells are available?',
-			'#description' => $range_help, '#default_value' => $v_cells,
-			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => FALSE))));
-		$form[$group][$sub]['cellcfg_'.$gk.'_reserved'] = array('#type' => 'textfield', '#title' => 'Any cells to keep aside?',
-			'#description' => 'Held back, never auto-assigned. '.$range_help.' Leave blank if none.', '#default_value' => $v_res);
-		$form[$group][$sub]['cellcfg_'.$gk.'_sep'] = array('#type' => 'checkbox', '#title' => 'Use separate cells for old & new students', '#default_value' => $sep);
-		$form[$group][$sub]['cellcfg_'.$gk.'_old'] = array('#type' => 'textfield', '#title' => 'Cells for OLD students',
-			'#description' => $range_help, '#default_value' => $v_old,
-			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => TRUE))));
-		$form[$group][$sub]['cellcfg_'.$gk.'_new'] = array('#type' => 'textfield', '#title' => 'Cells for NEW students',
-			'#description' => $range_help, '#default_value' => $v_new,
-			'#states' => array('visible' => array(':input[name="cellcfg_'.$gk.'_sep"]' => array('checked' => TRUE))));
-	}
+
+	$cell_groups = array();
+	for ($n = 1; $n <= 9; $n++) $cell_groups[] = array('key' => (string) $n, 'label' => 'Group '.$n);
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/alloc-config.js');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/alloc-config.css');
+	$form[$group]['cell_wrap'] = array('#type' => 'container',
+		'#states' => array('visible' => array(':input[name="cs_has_cells"]' => array('checked' => TRUE))));
+	$form[$group]['cell_wrap']['cell_visual'] = array(
+		'#markup' => '<div id="dh-cellcfg" class="dh-alloccfg" data-ta="cs_cells_config"'
+			. ' data-mainlabel="Cell numbers" data-unit="cell"'
+			. ' data-groups="'.check_plain(json_encode($cell_groups)).'"></div>');
+	$form[$group]['cell_wrap']['cs_cells_config'] = array('#type' => 'textarea',
+		'#title' => 'Cells Configuration (raw)', '#rows' => 8,
+		'#default_value' => $add ? '' : $edit_data['cs_cells_config']);
 
 
 	// ---- Dining Settings (visual table editor) ------------------------------
@@ -577,15 +564,17 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	// always present. dining-config.js reads/writes the raw INI textarea.
 	$ding_groups = array();
 	for ($n = 1; $n <= 9; $n++) $ding_groups[] = array('key' => (string) $n, 'label' => 'Group '.$n);
-	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/dining-config.js');
-	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/dining-config.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp') . '/js/alloc-config.js');
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp') . '/css/alloc-config.css');
 
 	// Visual editor + hidden raw INI store, shown only when the centre assigns
-	// dining seats. dining-config.js hides the textarea and drives the table.
+	// dining seats. alloc-config.js hides the textarea and drives the table.
 	$form[$group]['dining_wrap'] = array('#type' => 'container',
 		'#states' => array('visible' => array(':input[name="cs_has_dining"]' => array('checked' => TRUE))));
 	$form[$group]['dining_wrap']['dining_visual'] = array(
-		'#markup' => '<div id="dh-diningcfg" data-groups="'.check_plain(json_encode($ding_groups)).'"></div>');
+		'#markup' => '<div id="dh-diningcfg" class="dh-alloccfg" data-ta="cs_dining_config"'
+			. ' data-mainlabel="Dining seats" data-unit="dining seat"'
+			. ' data-groups="'.check_plain(json_encode($ding_groups)).'"></div>');
 	$form[$group]['dining_wrap']['cs_dining_config'] = array('#type' => 'textarea',
 		'#title' => 'Dining Configuration (raw)', '#rows' => 8,
 		'#default_value' => $add ? '' : $edit_data['cs_dining_config']);
@@ -724,17 +713,15 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	if (arg(1) <> 'add')
 		$centre_id = arg(1);
 
-	// Normalise the "has cells" checkbox to 0/1 (an unticked checkbox is absent
-	// from the POST) so it always persists. Only build the Cells Configuration
-	// INI when the centre actually has cells; otherwise store an empty config.
+	// Cells + dining both use the visual editor (alloc-config.js), which has
+	// already assembled the raw INI into their hidden textareas. Just normalise
+	// the "has" checkbox (an unticked checkbox is absent from POST) and clear the
+	// config when the centre has none.
 	$form_state['input']['cs_has_cells'] = empty($form_state['input']['cs_has_cells']) ? 0 : 1;
-	$form_state['input']['cs_cells_config'] = $form_state['input']['cs_has_cells']
-		? _dh_ma_cellcfg_ini($form_state['input'])   // cellcfg_* fields -> cs_cells_config (loop below)
-		: '';
+	if (!$form_state['input']['cs_has_cells']) $form_state['input']['cs_cells_config'] = '';
 
-	// Optional dining configuration: the visual editor (dining-config.js) has
-	// already assembled the raw INI into the cs_dining_config textarea, so just
-	// gate it on the checkbox (empty it when the centre assigns no dining seats).
+	// Optional dining configuration: same as cells - the visual editor already
+	// assembled cs_dining_config; gate it on the checkbox.
 	$form_state['input']['cs_has_dining'] = empty($form_state['input']['cs_has_dining']) ? 0 : 1;
 	if (!$form_state['input']['cs_has_dining']) $form_state['input']['cs_dining_config'] = '';
 
@@ -784,31 +771,10 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	drupal_goto("centre/$centre_id");
 }
 
-/* Assemble the Cells Configuration INI from the friendly per-gender fields. When
-   "separate old/new" is ticked, write Old/New pools; otherwise a combined Cells
-   pool. Reserved is always written. */
-function _dh_ma_cellcfg_ini($input)
-{
-	$get = function($k) use ($input) { return isset($input[$k]) ? trim($input[$k]) : ''; };
-	$out = '';
-	foreach (array('male' => 'MALE', 'female' => 'FEMALE') as $gk => $sec)
-	{
-		$out .= "[$sec]\n";
-		if (!empty($input['cellcfg_'.$gk.'_sep']))
-		{
-			$out .= "Old = ".$get('cellcfg_'.$gk.'_old')."\n";
-			$out .= "New = ".$get('cellcfg_'.$gk.'_new')."\n";
-		}
-		else
-			$out .= "Cells = ".$get('cellcfg_'.$gk.'_cells')."\n";
-		$out .= "Reserved = ".$get('cellcfg_'.$gk.'_reserved')."\n\n";
-	}
-	return rtrim($out)."\n";
-}
-
-/* (The Dining Configuration INI is now assembled client-side by
-   js/dining-config.js into the cs_dining_config textarea; the old
-   _dh_ma_diningcfg_ini() PHP serialiser was removed with that redesign.) */
+/* (Cells + Dining Configuration INI are now assembled client-side by
+   js/alloc-config.js into the cs_cells_config / cs_dining_config textareas; the
+   old _dh_ma_cellcfg_ini() / _dh_ma_diningcfg_ini() PHP serialisers were removed
+   when both moved to the shared visual table editor.) */
 
 /* Assemble the Seating Configuration INI ([RIGHT] = Male, [LEFT] = Female) from
    the friendly seatcfg_* fields. A side is written only when it has a seats-per-
@@ -899,20 +865,9 @@ function dh_ma_centre_form_validate($form, &$form_state)
 		}
 	}
 
-	// --- Cell Settings: each gender needs cells defined (skipped for no-cell centres). ---
-	if (empty($in['cs_has_cells']))
-		return;
-	foreach (array('male' => 'Male', 'female' => 'Female') as $gk => $lbl)
-	{
-		if (!empty($in['cellcfg_'.$gk.'_sep']))
-		{
-			if (trim(isset($in['cellcfg_'.$gk.'_old']) ? $in['cellcfg_'.$gk.'_old'] : '') === ''
-			 && trim(isset($in['cellcfg_'.$gk.'_new']) ? $in['cellcfg_'.$gk.'_new'] : '') === '')
-				form_set_error('cellcfg_'.$gk.'_old', "$lbl cell settings: enter the cells for old and/or new students.");
-		}
-		else if (trim(isset($in['cellcfg_'.$gk.'_cells']) ? $in['cellcfg_'.$gk.'_cells'] : '') === '')
-			form_set_error('cellcfg_'.$gk.'_cells', "$lbl cell settings: enter which cells are available.");
-	}
+	// (Cell Settings validation dropped: cells now use the same visual table
+	// editor as dining, which assembles cs_cells_config directly - no cellcfg_*
+	// fields to validate.)
 }
 
 
