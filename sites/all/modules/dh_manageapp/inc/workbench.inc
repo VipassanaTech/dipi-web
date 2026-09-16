@@ -1,8 +1,11 @@
 <?php
 /**
- * Dining "Review & Edit" workbench — grouped editable grid.
+ * Allocation "Review & Edit" workbench — grouped editable grid, shared by Dining
+ * AND Cells (dh_alloc_workbench($centre,$course,$resource); dh_dining_workbench /
+ * dh_cell_workbench are thin wrappers). Resource-parameterized via the engine
+ * descriptor (config field + main/group/fixed columns); labels switch Cell/Dining.
  *
- * A course uses ONE dining plan — either the default (Main) or the group-wise
+ * A course uses ONE plan — either the default (Main) or the group-wise
  * plan — so the workbench shows a SINGLE dining column plus a switch to flip
  * between them (?plan=main|group, default main). "Save all" posts every row to
  * dining-workbench-save/%centre/%course with the active plan; the write touches
@@ -21,22 +24,21 @@
  * course. Mirrors dh_dining_list()'s $return/print-and-exit pattern so the page
  * fn is unit-testable.
  */
-function dh_dining_workbench($centre, $course, $return = FALSE)
+function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FALSE)
 {
 	global $base_url;
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$course = (int) $course;
+	$desc = dh_alloc_descriptor($resource);
+	$rlabel  = ($resource === 'cell') ? 'Cell' : 'Dining';
+	$maincol = $desc['main_col']; $groupcol = $desc['group_col']; $fixedcol = $desc['fixed_col'];
 	// A course uses one plan at a time; the workbench shows one and switches.
 	$plan = (isset($_REQUEST['plan']) && $_REQUEST['plan'] === 'group') ? 'group' : 'main';
 
 	if (isset($_REQUEST['fill']))
-	{
-		if ($plan === 'group')
-			generate_group_dining_list($centre, $course);
-		else
-			generate_dining_list($centre, $course);
-	}
+		dh_alloc_run($centre, $course, $desc, $plan);
 
-	$cfg = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
+	$cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
 	$ini = ($cfg !== '' && $cfg !== NULL) ? parse_ini_string($cfg, TRUE, INI_SCANNER_RAW) : array();
 	if (!is_array($ini)) $ini = array();
 	$warnings = dh_alloc_validate($ini);
@@ -66,7 +68,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
 	$type_filter = $has_server ? "and a_type in ('Student','Sevak')" : "and a_type='Student'";
-	$q = "select aa_id, a_gender, a_old, aa_group, a_type, aa_dining, aa_group_dining, aa_dining_fixed,
+	$q = "select aa_id, a_gender, a_old, aa_group, a_type, $maincol as vmain, $groupcol as vgroup, $fixedcol as vfixed,
 			aa_section, aa_acco, concat(a_f_name, ' ', a_m_name, ' ', a_l_name) as name
 		from dh_applicant
 		left join dh_applicant_course on a_id=ac_applicant
@@ -96,15 +98,16 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 			'aa_id' => $r['aa_id'],
 			'name' => $r['name'],
 			'room' => $room,
-			'val' => ($plan === 'group') ? $r['aa_group_dining'] : $r['aa_dining'],
-			'fixed' => $r['aa_dining_fixed'],
+			'val' => ($plan === 'group') ? $r['vgroup'] : $r['vmain'],
+			'fixed' => $r['vfixed'],
 		);
 	}
 
 	$plan_name = ($plan === 'group') ? 'Group-wise' : 'Main';
-	$col_label = ($plan === 'group') ? 'Group Dining Seat' : 'Dining Seat';
+	$unit = ($resource === 'cell') ? 'Cell No' : 'Dining Seat';
+	$col_label = ($plan === 'group') ? ('Group '.$unit) : $unit;
 
-	$title = dh_course_file_basename($centre, $course, 'dining-workbench');
+	$title = dh_course_file_basename($centre, $course, $resource.'-workbench');
 	$out = '<html><head><title>'.$title.'</title>';
 	$out .= '<link rel="stylesheet" href="'.$base_url.'/sites/all/modules/dh_manageapp/css/select2.min.css">';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/workbench.css");</style>';
@@ -112,17 +115,18 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 		'.select2-container.wb-dup .select2-selection{border-color:#d00 !important;background:#ffe6e6 !important}</style>';
 	$out .= '</head><body>';
 
-	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>Dining Review &amp; Edit</b></div>'.
+	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>'.check_plain($rlabel).' Review &amp; Edit</b></div>'.
 			'<div align="center" class="title-head">'.check_plain($course_name).'</div></div>';
 
 	// Plan switch: a course uses one plan; show that one, switch to the other.
-	$sw = 'dining-workbench/'.$centre.'/'.$course;
+	$sw = $resource.'-workbench/'.$centre.'/'.$course;
 	$sw_main  = ($plan === 'main')  ? '<b>Main</b>'       : l('Main',       $sw, array('query' => array('plan' => 'main')));
 	$sw_group = ($plan === 'group') ? '<b>Group-wise</b>' : l('Group-wise', $sw, array('query' => array('plan' => 'group')));
 
-	// Clean printable list for the ACTIVE plan (main -> dining-list,
-	// group -> group-dining-list). Opens in a new tab so the workbench stays put.
-	$list_path = ($plan === 'group') ? 'group-dining-list/'.$centre.'/'.$course : 'dining-list/'.$centre.'/'.$course;
+	// Clean printable list for the ACTIVE plan + resource (cell-list/dining-list,
+	// group-* for the group plan). Opens in a new tab so the workbench stays put.
+	$list_slug = ($plan === 'group' ? 'group-' : '').($resource === 'cell' ? 'cell-list' : 'dining-list');
+	$list_path = $list_slug.'/'.$centre.'/'.$course;
 	$list_link = l('Printable list', $list_path, array('attributes' => array('target' => '_blank')));
 
 	$out .= '<div class="wb-bar no-print">'.
@@ -205,7 +209,7 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	$out .= '<script src="https://code.jquery.com/jquery-1.12.4.js"></script>';
 	$out .= '<script src="'.$base_url.'/sites/all/modules/dh_manageapp/js/select2.min.js"></script>';
 	$out .= '<script>(function($){'.
-		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.', WB_PLAN="'.$plan.'";'.
+		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.', WB_PLAN="'.$plan.'", WB_RES="'.$resource.'", WB_UNIT="'.($resource==="cell"?"cells":"dining seats").'";'.
 		'var WB_OPTS='.drupal_json_encode($wb_opts).';'.
 		'function wbCheckDupes(){'.
 			// Scope dedup to each row's data-block (class|gender|old-new|group): a
@@ -243,14 +247,14 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 					'var $tr=$(this);'.
 					'rows.push({ aa: $tr.data("aa"), val: $tr.find(".wb-val").val(), df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0 });'.
 				'});'.
-				'$.post("/dining-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows, plan: WB_PLAN}, function(r){'.
+				'$.post("/"+WB_RES+"-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows, plan: WB_PLAN}, function(r){'.
 					'if (r && r.status) { alert("Saved "+r.saved+" row(s)."); }'.
 					'else { alert("Save failed."); }'.
 				'}, "json").fail(function(){ alert("Save failed."); });'.
 			'});'.
 			'$("#wb-fill").on("click", function(){'.
-				'if (confirm("Re-fill all non-fixed "+WB_PLAN+" dining seats from the centre ranges? Unsaved edits will be lost.")){'.
-					'location = "/dining-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?plan="+WB_PLAN+"&fill=1";'.
+				'if (confirm("Re-fill all non-fixed "+WB_PLAN+" "+WB_UNIT+" from the centre ranges? Unsaved edits will be lost.")){'.
+					'location = "/"+WB_RES+"-workbench/"+WB_CENTRE+"/"+WB_COURSE+"?plan="+WB_PLAN+"&fill=1";'.
 				'}'.
 			'});'.
 			'$("#wb-clear").on("click", function(){'.
@@ -294,6 +298,10 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
 	exit;
 }
 
+/* Route wrappers (keep the resource-specific callbacks + unit-test entry points). */
+function dh_dining_workbench($centre, $course, $return = FALSE) { return dh_alloc_workbench($centre, $course, 'dining', $return); }
+function dh_cell_workbench($centre, $course, $return = FALSE)   { return dh_alloc_workbench($centre, $course, 'cell', $return); }
+
 /**
  * Write posted dining-workbench rows for one course into the ACTIVE plan's
  * column only (aa_dining for 'main', aa_group_dining for 'group') plus the
@@ -301,10 +309,13 @@ function dh_dining_workbench($centre, $course, $return = FALSE)
  * any aa_id that doesn't belong to the course (security guard). Returns the
  * accepted count.
  */
-function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main')
+function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main', $resource = 'dining')
 {
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$course = (int) $course;
-	$col = ($plan === 'group') ? 'aa_group_dining' : 'aa_dining';
+	$desc = dh_alloc_descriptor($resource);
+	$col = ($plan === 'group') ? $desc['group_col'] : $desc['main_col'];
+	$fixedcol = $desc['fixed_col'];
 
 	$valid = array();
 	$result = db_query("select aa_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=:c", array(':c' => $course));
@@ -322,7 +333,7 @@ function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main')
 
 		db_update('dh_applicant_attended')->fields(array(
 			$col => ($val === '' ? NULL : $val),
-			'aa_dining_fixed' => $df ? 1 : 0,
+			$fixedcol => $df ? 1 : 0,
 		))->condition('aa_id', $aa)->execute();
 		$n++;
 	}
@@ -333,20 +344,22 @@ function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main')
  * Bulk-save page callback for the dining workbench's "Save all" button.
  * Locked like dh_app_update_attended() to avoid concurrent-save races.
  */
-function dh_dining_workbench_save($centre, $course)
+function dh_alloc_workbench_save($centre, $course, $resource = 'dining')
 {
 	$rows = isset($_POST['rows']) ? $_POST['rows'] : array();
 	$plan = (isset($_POST['plan']) && $_POST['plan'] === 'group') ? 'group' : 'main';
 
-	if ( !dh_manageapp_lock_acquire("dh_dining_workbench_save", 10.0, 10) )
+	if ( !dh_manageapp_lock_acquire("dh_alloc_workbench_save", 10.0, 10) )
 	{
 		drupal_json_output(array('status' => 0, 'msg' => 'Unable to get lock'));
 		exit;
 	}
 
-	$n = _dh_workbench_write_rows($centre, $course, $rows, $plan);
-	lock_release("dh_dining_workbench_save");
+	$n = _dh_workbench_write_rows($centre, $course, $rows, $plan, $resource);
+	lock_release("dh_alloc_workbench_save");
 
 	drupal_json_output(array('status' => 1, 'saved' => $n));
 	exit;
 }
+function dh_dining_workbench_save($centre, $course) { return dh_alloc_workbench_save($centre, $course, 'dining'); }
+function dh_cell_workbench_save($centre, $course)   { return dh_alloc_workbench_save($centre, $course, 'cell'); }

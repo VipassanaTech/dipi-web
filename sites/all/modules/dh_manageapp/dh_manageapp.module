@@ -469,6 +469,18 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	$items['cell-workbench/%centre_id/%course_id'] = array( 'title' => t('Cell Review & Edit'),
+	       'page callback' => 'dh_cell_workbench',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
+	$items['cell-workbench-save/%centre_id/%course_id'] = array( 'title' => t('Cell Review & Edit - Save'),
+	       'page callback' => 'dh_cell_workbench_save',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['laundry-list/%centre_id/%course_id'] = array( 'title' => t('Laundry List'),
 	       'page callback' => 'dh_manage_day_zero',
 	       'access arguments' => array('access zero day'),
