@@ -3586,6 +3586,15 @@ function generate_cell_list($centre, $course)
 	return dh_alloc_run($centre, $course, dh_alloc_descriptor('cell'), 'main');
 }
 
+/* Group-wise cell allocation (mirrors generate_group_dining_list): writes
+   aa_group_cell from per-group [MALE_n]/[FEMALE_n] cell sections, falling back
+   to the default MALE/FEMALE range for groups without their own. */
+function generate_group_cell_list($centre, $course)
+{
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	return dh_alloc_run($centre, $course, dh_alloc_descriptor('cell'), 'group');
+}
+
 function _dh_generate_cell_list_legacy($centre, $course)
 {
 	$settings = db_query("select cs_cells_config from dh_center_setting where cs_center=$centre")->fetchAssoc();
