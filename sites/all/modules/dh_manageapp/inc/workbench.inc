@@ -31,9 +31,11 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$course = (int) $course;
 	$desc = dh_alloc_descriptor($resource);
 	$rlabel  = ($resource === 'cell') ? 'Cell' : 'Dining';
-	$maincol = $desc['main_col']; $groupcol = $desc['group_col']; $fixedcol = $desc['fixed_col'];
+	$maincol = $desc['main_col']; $groupcol = $desc['group_col'];
 	// A course uses one plan at a time; the workbench shows one and switches.
 	$plan = (isset($_REQUEST['plan']) && $_REQUEST['plan'] === 'group') ? 'group' : 'main';
+	// Fixed flag is per plan (main vs group each have their own).
+	$fixedcol = ($plan === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
 
 	if (isset($_REQUEST['fill']))
 		dh_alloc_run($centre, $course, $desc, $plan);
@@ -317,7 +319,7 @@ function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main', $reso
 	$course = (int) $course;
 	$desc = dh_alloc_descriptor($resource);
 	$col = ($plan === 'group') ? $desc['group_col'] : $desc['main_col'];
-	$fixedcol = $desc['fixed_col'];
+	$fixedcol = ($plan === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
 
 	$valid = array();
 	$result = db_query("select aa_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=:c", array(':c' => $course));

@@ -2590,6 +2590,7 @@ function dh_app_update_attended()
 	$fields['aa_valuable'] = $_REQUEST['v'];
 	$fields['aa_cell'] = $_REQUEST['c'];
 	$fields['aa_group_cell'] = isset($_REQUEST['gc']) ? $_REQUEST['gc'] : '';
+	$fields['aa_group_cell_fixed'] = (isset($_REQUEST['gcf']) && $_REQUEST['gcf'] == 'true')?1:0;
 
 	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
 	if ($fields['aa_cell_fixed'])
@@ -2599,6 +2600,7 @@ function dh_app_update_attended()
 	$fields['aa_dining'] = isset($_REQUEST['dn']) ? $_REQUEST['dn'] : '';
 	$fields['aa_group_dining'] = isset($_REQUEST['gdn']) ? $_REQUEST['gdn'] : '';
 	$fields['aa_dining_fixed'] = (isset($_REQUEST['df']) && $_REQUEST['df'] == 'true')?1:0;
+	$fields['aa_group_dining_fixed'] = (isset($_REQUEST['gdf']) && $_REQUEST['gdf'] == 'true')?1:0;
 	$fields['aa_chowky'] = ($_REQUEST['chow'] == 'true')?1:0;
 	$fields['aa_chair'] = ($_REQUEST['chai'] == 'true')?1:0;
 	$fields['aa_backrest'] = ($_REQUEST['back'] == 'true')?1:0;

@@ -8,11 +8,13 @@
 function dh_alloc_descriptor($resource) {
   if ($resource === 'cell') {
     return array('resource'=>'cell','name'=>'Cell','has'=>'cs_has_cells','config'=>'cs_cells_config',
-      'main_col'=>'aa_cell','group_col'=>'aa_group_cell','fixed_col'=>'aa_cell_fixed',
+      'main_col'=>'aa_cell','group_col'=>'aa_group_cell',
+      'fixed_col'=>'aa_cell_fixed','group_fixed_col'=>'aa_group_cell_fixed',
       'batch_col'=>'aa_cell_batch','shareable'=>true);
   }
   return array('resource'=>'dining','name'=>'Dining','has'=>'cs_has_dining','config'=>'cs_dining_config',
-    'main_col'=>'aa_dining','group_col'=>'aa_group_dining','fixed_col'=>'aa_dining_fixed',
+    'main_col'=>'aa_dining','group_col'=>'aa_group_dining',
+    'fixed_col'=>'aa_dining_fixed','group_fixed_col'=>'aa_group_dining_fixed',
     'batch_col'=>'aa_dining_batch','shareable'=>false);
 }
 
@@ -138,7 +140,7 @@ function dh_alloc_assign_batches($items, $pool) {
 function dh_alloc_run($centre, $course, $desc, $mode) {
   $course = (int) $course;
   $col = ($mode === 'group') ? $desc['group_col'] : $desc['main_col'];
-  $fixed_col = $desc['fixed_col'];
+  $fixed_col = ($mode === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
   $batch_col = $desc['batch_col'];
   $cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c'=>$centre))->fetchField();
   $ini = ($cfg !== '' && $cfg !== null) ? parse_ini_string($cfg, true, INI_SCANNER_RAW) : array();

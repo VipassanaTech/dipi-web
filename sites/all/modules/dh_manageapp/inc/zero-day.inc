@@ -584,11 +584,13 @@ function dh_zero_main()
 				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><select name=\"cell\" id=\"cell\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field\"><label for=\"groupcell\">Group Cell No</label><select name=\"groupcell\" id=\"groupcell\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"cell-fixed\">Fixed</label><input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
+				"        <div class=\"zd-field zd-check\"><label for=\"groupcell-fixed\">Group Fixed</label><input type=\"checkbox\" name=\"groupcellfixed\" id=\"groupcell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Dining</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"dining\">Dining No</label><select name=\"dining\" id=\"dining\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field\"><label for=\"groupdining\">Group Dining No</label><select name=\"groupdining\" id=\"groupdining\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"dining-fixed\">Fixed</label><input type=\"checkbox\" name=\"diningfixed\" id=\"dining-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
+				"        <div class=\"zd-field zd-check\"><label for=\"groupdining-fixed\">Group Fixed</label><input type=\"checkbox\" name=\"groupdiningfixed\" id=\"groupdining-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Lists</div><div class=\"zd-fields\">"+
 				"        <div class=\"zd-field\"><label for=\"laundry\">Laundry</label><input type=\"text\" name=\"laundry\" id=\"laundry\" value=\"\" class=\"form-control attending-fields\"></div>"+
@@ -677,8 +679,8 @@ function dh_zero_main()
 						          url: "/app-update-attended/" + cur_app_id ,
 						          method: "POST",
 						          data: {s: $("#section").val(), r: $("#room-no").val(), g: $("#group").val(),l: $("#laundry").val(), v: $("#valuable").val(),
-						          	c: $("#cell").val(), gc: $("#groupcell").val(), cf: $("#cell-fixed").is(":checked") ,
-						          	dn: $("#dining").val(), gdn: $("#groupdining").val(), df: $("#dining-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") ,
+						          	c: $("#cell").val(), gc: $("#groupcell").val(), cf: $("#cell-fixed").is(":checked") , gcf: $("#groupcell-fixed").is(":checked") ,
+						          	dn: $("#dining").val(), gdn: $("#groupdining").val(), df: $("#dining-fixed").is(":checked") , gdf: $("#groupdining-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") ,
 						          	chai: $("#special-seating-chair").is(":checked"), back:  $("#special-seating-backrest").is(":checked"),
 						          	comment: $("#comments").val(), a: $("#attending").is(":checked")  },
 						          dataType: "json",
@@ -731,8 +733,10 @@ function dh_zero_main()
 				    	$("#room-no").val(def_room);
 				    	temp = data[15].split("||");
 				    	if (temp[1] == "1") $("#cell-fixed").prop("checked", true);
+				    	if (temp[7] == "1") $("#groupcell-fixed").prop("checked", true);
 				    	$("#comments").val(temp[2]);
 				    	if (temp[5] == "1") $("#dining-fixed").prop("checked", true);
+				    	if (temp[8] == "1") $("#groupdining-fixed").prop("checked", true);
 				    }
 				    cur_is_server = (t.attr("id")=="table-attending") ? /sevak|server/i.test((data[4]||"")+"") : false;
 				    var cur_group = parseInt($("#group").val(),10)||0;
@@ -792,7 +796,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	}
 
 	//$q = "select a_id, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and aa_acco IS NOT NULL order by a_f_name, a_m_name, a_l_name";
-	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_group_cell, aa_comment, aa_dining, aa_group_dining, aa_dining_fixed, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_type, a_center, a_gender, a_old, a_conf_no as 'ConfNo', concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_uri, ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_cell, aa_cell_fixed, aa_group_cell, aa_group_cell_fixed, aa_comment, aa_dining, aa_group_dining, aa_dining_fixed, aa_group_dining_fixed, aa_valuable, aa_chowky, aa_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course_id' and a_attended=1 order by a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$rows = array();
 	$totals['new']['F']['Student'] = $totals['new']['F']['Sevak'] = $totals['old']['F']['Student'] = $totals['old']['F']['Sevak'] = $totals['new']['M']['Student'] = $totals['new']['M']['Sevak'] = $totals['old']['M']['Student'] = $totals['old']['M']['Sevak'] = 0;
@@ -827,7 +831,7 @@ function dh_manageapp_attended( $centre, $course_id )
 		$rs[] = $r['aa_chair']?'Yes':'No';
 		$rs[] = $r['aa_backrest']?'Yes':'No';
 		$rs[] = $r['aa_group'];
-		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment']."||".$r['aa_dining']."||".$r['aa_group_dining']."||".$r['aa_dining_fixed']."||".$r['aa_group_cell'];
+		$rs[] = $r['aa_cell']."||".$r['aa_cell_fixed']."||".$r['aa_comment']."||".$r['aa_dining']."||".$r['aa_group_dining']."||".$r['aa_dining_fixed']."||".$r['aa_group_cell']."||".$r['aa_group_cell_fixed']."||".$r['aa_group_dining_fixed'];
 		$rows[] = array_values($rs);
 
 		$totals[$r['a_old']?'old':'new'][strtoupper($r['a_gender'])][$r['a_type']] += 1;
@@ -3528,6 +3532,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	// Plan-aware (mirrors dh_dining_list): 'main' shows aa_cell, 'group' shows the
 	// group-wise aa_group_cell. Batch grouping (aa_cell_batch) is shared.
 	$col = ($mode === 'group') ? 'aa_group_cell' : 'aa_cell';
+	$fixcol = ($mode === 'group') ? 'aa_group_cell_fixed' : 'aa_cell_fixed';
 	$title_txt = ($mode === 'group') ? 'Group-wise Cell List' : 'Cell List';
 	$slug = ($mode === 'group') ? 'group-cell-list' : 'cell-list';
 	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
@@ -3538,7 +3543,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, $col as aa_cell, aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
 	while($r = $result->fetchAssoc())
@@ -3876,6 +3881,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 {
 	global $base_url;
 	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
+	$dfix = ($mode === 'group') ? 'aa_group_dining_fixed' : 'aa_dining_fixed';
 	$title = ($mode === 'group') ? 'Group-wise Dining List' : 'Dining List';
 	$base_slug = ($mode === 'group') ? 'group-dining-list' : 'dining-list';
 	$file_slug = ($mode === 'group') ? 'group-dining' : 'dining';
@@ -3885,7 +3891,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$data = array('M' => array(1 => array(), 0 => array()), 'F' => array(1 => array(), 0 => array()));
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	$q = "select a_id, aa_id, a_gender, a_old, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
-		aa_section, aa_acco, $col as seat, aa_dining_fixed
+		aa_section, aa_acco, $col as seat, $dfix as aa_dining_fixed
 		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
 		left join dh_applicant_attended on a_id=aa_applicant
 		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
