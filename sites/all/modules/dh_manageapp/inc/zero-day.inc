@@ -434,6 +434,31 @@ function dh_zero_main()
 
 	$acco_json = json_encode(dh_get_acco($centre_id, $course_id));
 	$alloted_json = json_encode(dh_get_alloted($centre_id, $course_id));
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	// Per-section option lists (range + keep-aside) for the popup select2 pickers.
+	$zd_secopts = function($cfgfield) use ($centre_id) {
+		$cfg = db_query("select ".$cfgfield." from dh_center_setting where cs_center=:c", array(':c'=>$centre_id))->fetchField();
+		$ini = ($cfg !== '' && $cfg !== NULL) ? parse_ini_string($cfg, TRUE, INI_SCANNER_RAW) : array();
+		if (!is_array($ini)) $ini = array();
+		$out = array();
+		foreach ($ini as $sec => $vals) {
+			if (!is_array($vals)) continue;
+			$all = array_merge(
+				dh_alloc_expand(isset($vals['Cells']) ? $vals['Cells'] : ''),
+				dh_alloc_expand(isset($vals['Old']) ? $vals['Old'] : ''),
+				dh_alloc_expand(isset($vals['New']) ? $vals['New'] : ''),
+				dh_alloc_expand(isset($vals['Reserved']) ? $vals['Reserved'] : '')
+			);
+			$seen = array(); $u = array();
+			foreach ($all as $v) { if ($v !== '' && !isset($seen[$v])) { $seen[$v] = TRUE; $u[] = $v; } }
+			if ($u) $out[$sec] = $u;
+		}
+		return $out;
+	};
+	$cellopts_json = json_encode($zd_secopts('cs_cells_config'));
+	$diningopts_json = json_encode($zd_secopts('cs_dining_config'));
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 
 
 	$out .= '<div id="applicant-list">'.dh_manageapp_list( $centre_id, $course_id ).'</div>';
@@ -442,9 +467,52 @@ function dh_zero_main()
 		(function ($) {
 			var acco = '.$acco_json.';
 			var alloted = '.$alloted_json.';
+			var CELL_OPTS = '.$cellopts_json.';
+			var DINING_OPTS = '.$diningopts_json.';
 			var cur_gender = "";
+			var cur_is_server = false;
 			var cur_app_id = "";
 			var app_table, att_table, def_room;
+
+			// --- popup cell/dining select2 pickers (same idea as the workbench) ---
+			function zdSecKey(resource, plan, gender, group, isServer){
+				var base=(gender==="M"?"MALE":"FEMALE")+(isServer?"_SERVER":"");
+				var O=(resource==="cell")?CELL_OPTS:DINING_OPTS;
+				if(plan==="group"){ var k=base+"_"+group; if(group>0 && O[k]!==undefined) return k; }
+				if(O[base]!==undefined) return base;
+				return isServer?null:base;
+			}
+			function zdUsed(resource, plan, sec){
+				var used={};
+				if(!att_table || !sec) return used;
+				var idx=(resource==="cell")?(plan==="group"?6:0):(plan==="group"?4:3);
+				att_table.rows().every(function(){
+					var d=this.data();
+					var g=(d[3]==="Male")?"M":"F";
+					var grp=parseInt(d[14],10)||0;
+					var isS=/sevak|server/i.test((d[4]||"")+"");
+					if(zdSecKey(resource,plan,g,grp,isS)!==sec) return;
+					var packed=((d[15]||"")+"").split("||");
+					var v=(packed[idx]||"").trim();
+					if(v) used[v]=1;
+				});
+				return used;
+			}
+			function zdInitPicker($sel, resource, plan, cur, gender, group, isServer){
+				if($sel.hasClass("select2-hidden-accessible")) $sel.select2("destroy");
+				var sec=zdSecKey(resource,plan,gender,group,isServer);
+				var O=(resource==="cell")?CELL_OPTS:DINING_OPTS;
+				var all=(sec && O[sec])?O[sec]:[];
+				var used=zdUsed(resource,plan,sec);
+				cur=(cur||"").toString().trim();
+				var added={};
+				$sel.empty();
+				$sel.append(new Option("",""));
+				if(cur){ $sel.append(new Option(cur,cur,true,true)); added[cur]=1; }
+				for(var i=0;i<all.length;i++){ var v=String(all[i]); if(!used[v] && !added[v]){ $sel.append(new Option(v,v)); added[v]=1; } }
+				$sel.select2({tags:true, width:"100%", allowClear:true, placeholder:"—", dropdownParent:$sel.closest(".ui-dialog")});
+				if(cur) $sel.val(cur).trigger("change.select2");
+			}
 
 			function load_editor()
 			{
@@ -513,13 +581,13 @@ function dh_zero_main()
 				"    </div>"+
 				"    <div class=\"zd-row\">"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Cell</div><div class=\"zd-fields\">"+
-				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><input type=\"text\" name=\"cell\" id=\"cell\" value=\"\" class=\"form-control attending-fields\"></div>"+
-				"        <div class=\"zd-field\"><label for=\"groupcell\">Group Cell No</label><input type=\"text\" name=\"groupcell\" id=\"groupcell\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field\"><label for=\"cell\">Cell No</label><select name=\"cell\" id=\"cell\" class=\"form-control attending-fields\"></select></div>"+
+				"        <div class=\"zd-field\"><label for=\"groupcell\">Group Cell No</label><select name=\"groupcell\" id=\"groupcell\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"cell-fixed\">Fixed</label><input type=\"checkbox\" name=\"cellfixed\" id=\"cell-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Dining</div><div class=\"zd-fields\">"+
-				"        <div class=\"zd-field\"><label for=\"dining\">Dining No</label><input type=\"text\" name=\"dining\" id=\"dining\" value=\"\" class=\"form-control attending-fields\"></div>"+
-				"        <div class=\"zd-field\"><label for=\"groupdining\">Group Dining No</label><input type=\"text\" name=\"groupdining\" id=\"groupdining\" value=\"\" class=\"form-control attending-fields\"></div>"+
+				"        <div class=\"zd-field\"><label for=\"dining\">Dining No</label><select name=\"dining\" id=\"dining\" class=\"form-control attending-fields\"></select></div>"+
+				"        <div class=\"zd-field\"><label for=\"groupdining\">Group Dining No</label><select name=\"groupdining\" id=\"groupdining\" class=\"form-control attending-fields\"></select></div>"+
 				"        <div class=\"zd-field zd-check\"><label for=\"dining-fixed\">Fixed</label><input type=\"checkbox\" name=\"diningfixed\" id=\"dining-fixed\" value=\"1\" class=\"attending-fields\"></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Lists</div><div class=\"zd-fields\">"+
@@ -557,7 +625,7 @@ function dh_zero_main()
 
 			function get_rooms( section, gender, default_room = "" )
 			{
-				var rooms = acco[gender][section].slice();
+				var rooms = (acco[gender] && acco[gender][section]) ? acco[gender][section].slice() : [];
 				if (alloted[gender][section])
 				{
 					$.each(alloted[gender][section], function(key, item) 
@@ -662,19 +730,27 @@ function dh_zero_main()
 				    	$("#group").val(data[14]);
 				    	$("#room-no").val(def_room);
 				    	temp = data[15].split("||");
-				    	$("#cell").val(temp[0]);
 				    	if (temp[1] == "1") $("#cell-fixed").prop("checked", true);
-				    	$("#groupcell").val(temp[6]);
 				    	$("#comments").val(temp[2]);
-				    	$("#dining").val(temp[3]);
-				    	$("#groupdining").val(temp[4]);
 				    	if (temp[5] == "1") $("#dining-fixed").prop("checked", true);
-				    	//alert(temp[1]);
 				    }
+				    cur_is_server = (t.attr("id")=="table-attending") ? /sevak|server/i.test((data[4]||"")+"") : false;
+				    var cur_group = parseInt($("#group").val(),10)||0;
+				    var packed = (t.attr("id")=="table-attending" && data[15]) ? (data[15]+"").split("||") : [];
+				    zdInitPicker($("#cell"),"cell","main", packed[0]||"", cur_gender, cur_group, cur_is_server);
+				    zdInitPicker($("#groupcell"),"cell","group", packed[6]||"", cur_gender, cur_group, cur_is_server);
+				    zdInitPicker($("#dining"),"dining","main", packed[3]||"", cur_gender, cur_group, cur_is_server);
+				    zdInitPicker($("#groupdining"),"dining","group", packed[4]||"", cur_gender, cur_group, cur_is_server);
 				});
 
 				$(document).on("change", "input[type=checkbox][name=attending]", function(){
 					check_attending();
+				});
+
+				$(document).on("change", "#group", function(){
+					var grp=parseInt($(this).val(),10)||0;
+					zdInitPicker($("#groupcell"),"cell","group", $("#groupcell").val()||"", cur_gender, grp, cur_is_server);
+					zdInitPicker($("#groupdining"),"dining","group", $("#groupdining").val()||"", cur_gender, grp, cur_is_server);
 				});
 
 				$(document).on("change", "#section", function(){
@@ -696,7 +772,7 @@ function dh_zero_main()
 	';
 	drupal_add_js($js, 'inline');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
-	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}#dialog-form .zd-row>.zd-group{flex:1 1 200px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-row{flex-direction:column}}', array('type' => 'inline'));
+	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}#dialog-form .zd-row>.zd-group{flex:1 1 200px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .zd-field .select2-container{min-width:130px}.zd-dialog .select2-dropdown{z-index:10001}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-row{flex-direction:column}}', array('type' => 'inline'));
 
 	$out .= '<div id="dialog-div"></div><div id="attended-list">'.dh_manageapp_attended($centre_id, $course_id).'</div>';
 
