@@ -5,8 +5,8 @@
 #dh-diningcfg .dc-table { border-collapse: collapse; width: auto; max-width: 100%; }
 #dh-diningcfg .dc-table th,
 #dh-diningcfg .dc-table td { padding: 4px 10px; vertical-align: middle; text-align: left; }
-#dh-diningcfg .dc-table thead th { font-size: 13px; color: #555; font-weight: 600; border-bottom: 1px solid #ddd; }
-#dh-diningcfg .dc-table thead th:first-child { min-width: 220px; }
+#dh-diningcfg .dc-colhead th { font-size: 12px; color: #666; font-weight: 600; text-align: left; padding-bottom: 0; }
+#dh-diningcfg .dc-rowlabel { min-width: 210px; }
 
 /* one block (Default / a group) = a tbody; separate them with a top border. */
 #dh-diningcfg tbody.dc-block { border-top: 2px solid #e2e2e2; }

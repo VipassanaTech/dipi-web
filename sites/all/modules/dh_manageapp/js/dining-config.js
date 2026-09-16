@@ -60,6 +60,13 @@
     return h + '</div></td>';
   }
 
+  // Per-block Male/Female column header (shown inside each block when expanded,
+  // instead of one common header far above the collapsed sections).
+  function colHeadTr(gid) {
+    return '<tr class="dc-brow dc-colhead" data-gid="' + esc(gid) + '">' +
+      '<td class="dc-rowlabel"></td><th>Male</th><th>Female</th><td></td></tr>';
+  }
+
   function rowTr(gid, row, ini) {
     var r = ROWS[row];
     var cls = 'dc-brow ' + r.cls + (row === 'New' || row === 'Old' ? ' dc-split' : '');
@@ -97,13 +104,14 @@
   function blockHtml(gid, label, ini) {
     var split = blockSplit(ini, gid);
     var rm = gid ? ' <a class="dc-rm" title="Remove this group">×</a>' : '';
-    var note = gid ? '' : ' <span class="dc-defnote">— used by any group without its own range</span>';
+    var note = gid ? '' : ' <span class="dc-defnote">— also used by any group without its own range</span>';
     var head = '<tr class="dc-blockhead" data-gid="' + esc(gid) + '">' +
       '<td class="dc-rowlabel dc-blocklabel" colspan="4">' +
         '<span class="dc-toggle" title="Expand">+</span> <b>' + esc(label) + '</b>' + note + rm +
       '</td></tr>';
     return '<tbody class="dc-block dc-collapsed" data-gid="' + esc(gid) + '">' +
       head +
+      colHeadTr(gid) +
       mainRowTr(gid, ini, split) +
       rowTr(gid, 'reserved', ini) +
       rowTr(gid, 'sevak', ini) +
@@ -129,13 +137,11 @@
       '<li><b>Keep aside</b> — seats held back from auto-assignment (assign them by hand).</li>' +
       '<li>Tick <b>split</b> to seat <b>New</b> and <b>Old</b> students on different seats (the combined "Dining seats" is then not used).</li>' +
       '<li><b>Sevak</b> — separate seats for course servers. Leave blank to not seat servers.</li>' +
-      '<li><b>Group</b> rows override the Default for that group only; groups you do not add use the Default range.</li>' +
+      '<li><b>Group</b> rows override the Main range for that group only; groups you do not add use the Main range.</li>' +
       '<li>Each section is collapsed &mdash; click the <b>+</b> on a section heading to expand it (<b>&minus;</b> to collapse).</li>' +
       '</ul></div>';
     host.html(
-      '<table class="dc-table"><thead>' +
-      '<tr><th class="dc-rowlabel"></th><th>Male</th><th>Female</th><th></th></tr>' +
-      '</thead></table>' +
+      '<table class="dc-table"></table>' +
       '<div class="dc-add"><select class="dc-add-sel"></select></div>' +
       help
     );
@@ -212,8 +218,8 @@
     var byKey = {}; groups.forEach(function (t) { byKey[String(t.key)] = t; });
     var $table = host.find('.dc-table');
 
-    // Default block is always present.
-    $table.append(blockHtml('', 'Default', ini));
+    // Main block is always present.
+    $table.append(blockHtml('', 'Main', ini));
     // Group blocks that already have saved data.
     groups.forEach(function (t) {
       if (blockHasData(ini, String(t.key))) { $table.append(blockHtml(String(t.key), t.label, ini)); }
