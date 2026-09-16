@@ -3524,9 +3524,9 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 				continue;
 			$num_batches = count($data[$g][$i]);   // only label "Batch N" when there is more than one
 			$cat_first = true;                     // first batch of this category starts a new page
-			foreach( $data[$g][$i] as $cell_group => $cell_data )
+			foreach( $data[$g][$i] as $batch => $cell_data )
 			{
-				//$out .= '<div class="title-info">'.$g.' Batch '.$cell_group.'</div>';
+				//$out .= '<div class="title-info">'.$g.' Batch '.$batch.'</div>';
 				if ( ! $debug )
 				{
 					if ($sort == 'cell')
@@ -3536,8 +3536,8 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 				}
 				$keys = array_keys($cell_data);
 				$n = count($keys);
-				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($num_batches > 1 ? ' Batch '.($cell_group+1) : '').
-					' ('.$age_range[$g][$i][$cell_group]['lower'].'&ndash;'.$age_range[$g][$i][$cell_group]['upper'].' yrs)';
+				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($num_batches > 1 ? ' Batch '.($batch+1) : '').
+					' ('.$age_range[$g][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$i][$batch]['upper'].' yrs)';
 				if ($cols == 2) { $rows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
 				else            { $rows = $n;                 $colspan = 4; }  // one entry per row
 				{
