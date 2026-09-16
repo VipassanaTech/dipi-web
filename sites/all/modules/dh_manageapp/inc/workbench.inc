@@ -92,7 +92,10 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		if (!isset($classes[$class])) continue;
 		$g = strtoupper($r['a_gender']);
 		$old = $r['a_old'] ? 1 : 0;
-		$grp = (int) $r['aa_group'];
+		// Groups only matter in the group-wise plan; in Main everyone in a
+		// gender/old bucket shares one section, so collapse to a single block
+		// (keeps seniority order) and show no group heading.
+		$grp = ($plan === 'group') ? (int) $r['aa_group'] : 0;
 		$room = trim($r['aa_section'].'-'.$r['aa_acco'], '-');
 		$data[$class][$g][$old][$grp][] = array(
 			'aa_id' => $r['aa_id'],
@@ -165,14 +168,13 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 				$out .= '<div class="wb-bucket"><div class="wb-bucket-title">'.$bucket_label.'</div>';
 				foreach ($data[$class][$g][$old] as $grp => $rows)
 				{
-					$group_label = $grp > 0 ? 'Group '.$grp : 'No Group';
 					$block_key = check_plain($class.'|'.$g.'|'.$old.'|'.$grp);
 					// The seats offered by this bucket's pickers = its effective
 					// section's range + keep-aside (main mode ignores the group).
 					$seckey = dh_alloc_effective_key($ini, $g, $grp, ($class === 'Sevak' ? 'server' : 'student'), $mode);
 					$opts_for($seckey);
 					$sec_attr = check_plain((string) $seckey);
-					$out .= '<div class="wb-group-block"><div class="wb-group-title">'.check_plain($group_label).'</div>';
+					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp : 'No Group').'</div>' : '');
 					$out .= '<table class="wb-grid"><thead><tr>'.
 						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th><th>Fixed</th>'.
 						'</tr></thead><tbody>';
