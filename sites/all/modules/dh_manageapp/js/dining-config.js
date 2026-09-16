@@ -62,7 +62,7 @@
 
   function rowTr(gid, row, ini) {
     var r = ROWS[row];
-    var cls = r.cls + (row === 'New' || row === 'Old' ? ' dc-split' : '');
+    var cls = 'dc-brow ' + r.cls + (row === 'New' || row === 'Old' ? ' dc-split' : '');
     var lead = (row === 'main')
       ? ''
       : '<span class="dc-sub">└ ' + r.label + '</span>';
@@ -78,23 +78,33 @@
     return html;
   }
 
-  // a whole block (Default or one group) = a <tbody> with its rows.
-  function blockHtml(gid, label, ini) {
-    var split = blockSplit(ini, gid);
-    var rm = gid ? '<a class="dc-rm" title="Remove this group">×</a> ' : '';
-    var note = gid ? '' : ' <span class="dc-defnote">— used by any group without its own range</span>';
-    // header row (main): block label in the first cell, main range cells, split toggle
-    var head = '<tr class="dc-row-main dc-head" data-gid="' + esc(gid) + '">' +
-      '<td class="dc-rowlabel dc-blocklabel">' + rm + '<b>' + esc(label) + '</b>' + note + '</td>';
+  // The "Dining seats" (combined) row + the split toggle. Part of the body, so
+  // it hides when the block is collapsed.
+  function mainRowTr(gid, ini, split) {
+    var html = '<tr class="dc-brow dc-row-main" data-gid="' + esc(gid) + '">' +
+      '<td class="dc-rowlabel"><span class="dc-sub">Dining seats</span></td>';
     GEN.forEach(function (g) {
       var sec = ini[secKey(g.ini, gid, false)] || {};
-      head += cell(gid, 'main', g.k, sec.Cells || '', sec.CellsRev);
+      html += cell(gid, 'main', g.k, sec.Cells || '', sec.CellsRev);
     });
-    head += '<td class="dc-splitcell"><label><input type="checkbox" class="dc-split-cb" data-gid="' + esc(gid) + '"' +
+    html += '<td class="dc-splitcell"><label><input type="checkbox" class="dc-split-cb" data-gid="' + esc(gid) + '"' +
       (split ? ' checked' : '') + '> split</label></td></tr>';
+    return html;
+  }
 
-    return '<tbody class="dc-block" data-gid="' + esc(gid) + '">' +
+  // a whole block (Default or one group) = a <tbody>: a clickable header row
+  // (collapsed by default) + the body rows (shown when expanded).
+  function blockHtml(gid, label, ini) {
+    var split = blockSplit(ini, gid);
+    var rm = gid ? ' <a class="dc-rm" title="Remove this group">×</a>' : '';
+    var note = gid ? '' : ' <span class="dc-defnote">— used by any group without its own range</span>';
+    var head = '<tr class="dc-blockhead" data-gid="' + esc(gid) + '">' +
+      '<td class="dc-rowlabel dc-blocklabel" colspan="4">' +
+        '<span class="dc-toggle" title="Expand">+</span> <b>' + esc(label) + '</b>' + note + rm +
+      '</td></tr>';
+    return '<tbody class="dc-block dc-collapsed" data-gid="' + esc(gid) + '">' +
       head +
+      mainRowTr(gid, ini, split) +
       rowTr(gid, 'reserved', ini) +
       rowTr(gid, 'sevak', ini) +
       rowTr(gid, 'New', ini) +
@@ -120,6 +130,7 @@
       '<li>Tick <b>split</b> to seat <b>New</b> and <b>Old</b> students on different seats (the combined "Dining seats" is then not used).</li>' +
       '<li><b>Sevak</b> — separate seats for course servers. Leave blank to not seat servers.</li>' +
       '<li><b>Group</b> rows override the Default for that group only; groups you do not add use the Default range.</li>' +
+      '<li>Each section is collapsed &mdash; click the <b>+</b> on a section heading to expand it (<b>&minus;</b> to collapse).</li>' +
       '</ul></div>';
     host.html(
       '<table class="dc-table"><thead>' +
@@ -147,11 +158,18 @@
     host.find('.dc-add').toggle($sel.find('option').length > 1);
   }
 
-  function applyBlock($b) {
+  // Show/hide a block's body per its collapsed state; within an expanded block,
+  // New/Old rows show only when "split" is on, and the combined row greys out.
+  function updateBlock($b) {
+    var collapsed = $b.hasClass('dc-collapsed');
     var split = $b.find('.dc-split-cb').is(':checked');
+    $b.find('.dc-brow').each(function () {
+      var $r = $(this), isSplit = $r.hasClass('dc-row-split');
+      $r.toggle(!collapsed && (!isSplit || split));
+    });
     $b.find('.dc-row-main .dc-in').prop('disabled', split).toggleClass('dc-off', split);
     $b.find('.dc-row-main .dc-revcb').prop('disabled', split);
-    $b.find('.dc-row-split').toggle(split);
+    $b.find('.dc-toggle').text(collapsed ? '+' : '−').attr('title', collapsed ? 'Expand' : 'Collapse');
   }
 
   function assemble(host) {
@@ -201,7 +219,8 @@
       if (blockHasData(ini, String(t.key))) { $table.append(blockHtml(String(t.key), t.label, ini)); }
     });
 
-    host.find('tbody.dc-block').each(function () { applyBlock($(this)); });
+    // Every block starts collapsed (clean view); click the header to expand.
+    host.find('tbody.dc-block').each(function () { updateBlock($(this)); });
     rebuildAddSelect(host);
 
     // Hide the raw INI textarea (kept in the DOM so it still submits).
@@ -209,15 +228,23 @@
 
     function sync() { $ta.val(assemble(host)); }
 
+    // Expand/collapse a section by clicking its header (but not the remove ×).
+    host.on('click', '.dc-blocklabel', function (e) {
+      if ($(e.target).closest('.dc-rm').length) { return; }
+      var $b = $(this).closest('tbody.dc-block');
+      $b.toggleClass('dc-collapsed');
+      updateBlock($b);
+    });
     host.on('input', '.dc-in', sync);
     host.on('change', '.dc-revcb', sync);
-    host.on('change', '.dc-split-cb', function () { applyBlock($(this).closest('tbody.dc-block')); sync(); });
+    host.on('change', '.dc-split-cb', function () { updateBlock($(this).closest('tbody.dc-block')); sync(); });
     host.on('change', '.dc-add-sel', function () {
       var k = this.value; if (!k) { return; }
       var t = byKey[k] || { key: k, label: 'Group ' + k };
       $table.append(blockHtml(String(t.key), t.label, {}));
-      var $b = host.find('tbody.dc-block[data-gid="' + k + '"]');
-      applyBlock($b);
+      // A freshly added group opens expanded so its ranges can be entered.
+      var $b = host.find('tbody.dc-block[data-gid="' + k + '"]').removeClass('dc-collapsed');
+      updateBlock($b);
       rebuildAddSelect(host); sync();
     });
     host.on('click', '.dc-rm', function () {

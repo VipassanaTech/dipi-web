@@ -11,8 +11,14 @@
 /* one block (Default / a group) = a tbody; separate them with a top border. */
 #dh-diningcfg tbody.dc-block { border-top: 2px solid #e2e2e2; }
 #dh-diningcfg tbody.dc-block:first-of-type { border-top: none; }
-#dh-diningcfg .dc-head td { padding-top: 8px; }
+#dh-diningcfg .dc-blockhead td { padding-top: 8px; padding-bottom: 8px; }
+#dh-diningcfg .dc-blocklabel { cursor: pointer; user-select: none; }
 #dh-diningcfg .dc-blocklabel b { font-size: 15px; }
+#dh-diningcfg .dc-toggle {
+  display: inline-block; width: 18px; height: 18px; line-height: 16px; text-align: center;
+  border: 1px solid #ccc; border-radius: 3px; font-weight: bold; margin-right: 6px; }
+#dh-diningcfg tbody.dc-collapsed .dc-toggle { color: #1a8a1a; border-color: #9c9; }
+#dh-diningcfg tbody:not(.dc-collapsed) .dc-toggle { color: #c00; border-color: #e0a0a0; }
 #dh-diningcfg .dc-defnote { color: #888; font-weight: 400; font-size: 12px; }
 #dh-diningcfg .dc-rowlabel { white-space: nowrap; color: #333; }
 #dh-diningcfg .dc-sub { color: #555; padding-left: 14px; }
