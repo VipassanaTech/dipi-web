@@ -3577,7 +3577,16 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	}
 }
 
+/* Cells now use the shared allocation engine (same code as dining). Thin
+   wrapper over dh_alloc_run() with the 'cell' descriptor; the old hand-rolled
+   allocator is kept as _dh_generate_cell_list_legacy() for the parity test. */
 function generate_cell_list($centre, $course)
+{
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	return dh_alloc_run($centre, $course, dh_alloc_descriptor('cell'), 'main');
+}
+
+function _dh_generate_cell_list_legacy($centre, $course)
 {
 	$settings = db_query("select cs_cells_config from dh_center_setting where cs_center=$centre")->fetchAssoc();
 

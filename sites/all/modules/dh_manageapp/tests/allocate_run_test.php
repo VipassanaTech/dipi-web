@@ -31,11 +31,15 @@ ok($kept==='9999', 'fixed out-of-range value kept');
 $only=db_query("select count(*) from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and aa.aa_dining='9999'")->fetchField();
 ok($only==1, 'fixed value reserved out for others');
 
-// group override: MALE_1 has 80 D-seats, 160 in group -> 80 blank, values are D*
+// group override: MALE_1 has 80 D-seats; with more people than seats the pool
+// now CYCLES into batches (cell-style) -> everyone gets a D-seat and seats repeat.
 $ng=dh_alloc_run($centre,$course,$desc,'group');
 ok($ng>0, "group wrote $ng rows");
-$blank=db_query("select count(*) from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and aa.aa_group=1 and (aa.aa_group_dining is null or aa.aa_group_dining='')")->fetchField();
-ok($blank>0, 'group pool exhaustion leaves blanks');
+$g1_blank=db_query("select count(*) from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and aa.aa_group=1 and (aa.aa_group_dining is null or aa.aa_group_dining='')")->fetchField();
+$g1_filled=db_query("select count(*) from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and aa.aa_group=1 and aa.aa_group_dining like 'D%'")->fetchField();
+$g1_rep=db_query("select count(*) from (select aa_group_dining from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and aa.aa_group=1 and aa.aa_group_dining is not null group by aa_group_dining having count(*)>1) t")->fetchField();
+ok($g1_filled>0 && $g1_blank==0, 'group pool cycles: everyone seated (no blanks)');
+ok($g1_rep>0, 'group pool exhaustion now CYCLES: D-seats repeat across batches');
 
 // regression: old+new must share the combined pool (no duplicate male seats)
 $old_ids = db_query("select a_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_gender='M' and a.a_type='Student' limit 5")->fetchCol();

@@ -121,11 +121,25 @@ function dh_alloc_assign_batches($items, $pool) {
   return $out;
 }
 
-/** Allocate a resource to a course's attendees. Returns rows written. */
+/**
+ * Allocate a resource to a course's attendees. ONE cell-style batch algorithm,
+ * shared by cells AND dining:
+ *  - seniority order, per gender/group section, old/new aware;
+ *  - a combined "Cells" range is split into an old-portion (the first cells, one
+ *    per non-fixed old student) and a new-portion (the rest); Old/New ranges are
+ *    used directly when the section is split;
+ *  - config-Reserved (keep-aside) and any Fixed value are removed from the pool;
+ *    Fixed rows keep their value and consume neither a slot nor a batch step;
+ *  - when a group has more people than pool seats the pool CYCLES into batches
+ *    (recorded in batch_col when the resource has one - aa_cell_group for cells;
+ *    dining has no batch column so the seat number simply repeats).
+ * Returns rows written. See docs/.../unified-allocation-engine-design.md.
+ */
 function dh_alloc_run($centre, $course, $desc, $mode) {
   $course = (int) $course;
   $col = ($mode === 'group') ? $desc['group_col'] : $desc['main_col'];
   $fixed_col = $desc['fixed_col'];
+  $batch_col = $desc['batch_col'];
   $cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c'=>$centre))->fetchField();
   $ini = ($cfg !== '' && $cfg !== null) ? parse_ini_string($cfg, true, INI_SCANNER_RAW) : array();
   if (!is_array($ini)) $ini = array();
@@ -149,28 +163,14 @@ function dh_alloc_run($centre, $course, $desc, $mode) {
   $keyof = function($r) use ($ini, $mode, $classof) {
     return dh_alloc_effective_key($ini, $r->a_gender, $r->aa_group, $classof($r), $mode);
   };
+  $isfixed = function($r){ return $r->fixed && trim((string)$r->cur) !== ''; };
 
-  // Pass 1: reserve fixed (non-empty) values out of their pool.
+  // Fixed (non-empty) values are reserved out of their section's pool.
   $fixedvals = array();
   foreach ($rows as $r) {
-    if ($r->fixed && trim((string)$r->cur) !== '') {
-      $k = $keyof($r);
-      if ($k !== null) $fixedvals[$k][] = trim((string)$r->cur);
-    }
+    if ($isfixed($r)) { $k = $keyof($r); if ($k !== null) $fixedvals[$k][] = trim((string)$r->cur); }
   }
-  // Build queues per distinct key (config-reserved + fixed removed).
-  $queues = array();
-  foreach ($rows as $r) {
-    $k = $keyof($r);
-    if ($k === null || isset($queues[$k])) continue;
-    $p = dh_alloc_pool($ini, $k);
-    $remove = array_merge($p['reserved'], isset($fixedvals[$k]) ? $fixedvals[$k] : array());
-    $clean = function($arr) use ($remove) {
-      return array_values(array_filter($arr, function($x) use ($remove) { return $x !== '' && !in_array($x, $remove); }));
-    };
-    $queues[$k] = array('sep'=>$p['sep'], 'old'=>$clean($p['old']), 'new'=>$clean($p['new']), 'cells'=>$clean($p['cells']));
-  }
-  // Bucket rows by key -> old/new preserving order.
+  // Bucket rows by section key -> old/new, preserving seniority order.
   $buckets = array();
   foreach ($rows as $r) {
     $k = $keyof($r);
@@ -178,42 +178,45 @@ function dh_alloc_run($centre, $course, $desc, $mode) {
     $buckets[$k][$r->a_old ? 'old' : 'new'][] = $r;
   }
 
-  $batch_col = $desc['batch_col'];
   $updates = array();
+  // Assign one old/new group around its pool, cycling into batches. Fixed rows
+  // keep their value and neither take a seat nor advance the batch counter.
+  $assign = function($group_rows, $pool) use (&$updates, $col, $batch_col, $isfixed) {
+    $n = count($pool); $batch = 0; $count = 0;
+    foreach ($group_rows as $r) {
+      if ($n > 0 && $count >= $n) { $batch++; $count = 0; }
+      if ($isfixed($r)) continue;
+      $seat = ($n > 0) ? $pool[$count] : '';
+      $f = array($col => ($seat === '' ? null : $seat));
+      if ($batch_col) $f[$batch_col] = $batch;
+      $updates[$r->aa_id] = $f;
+      $count++;
+    }
+  };
+
   foreach ($buckets as $k => $on) {
     $old = isset($on['old']) ? $on['old'] : array();
     $new = isset($on['new']) ? $on['new'] : array();
-    // sep: separate old/new pools. combined: old-then-new share ONE 'cells' pool.
-    if ($queues[$k]['sep']) {
-      $groups = array(array($old, $queues[$k]['old']), array($new, $queues[$k]['new']));
+    $p = dh_alloc_pool($ini, $k);
+    $remove = array_merge($p['reserved'], isset($fixedvals[$k]) ? $fixedvals[$k] : array());
+    $clean = function($arr) use ($remove) {
+      return array_values(array_filter($arr, function($x) use ($remove) { return $x !== '' && !in_array($x, $remove); }));
+    };
+    if ($p['sep']) {
+      $old_pool = $clean($p['old']);
+      $new_pool = $clean($p['new']);
     } else {
-      $groups = array(array(array_merge($old, $new), $queues[$k]['cells']));
+      $cells = $clean($p['cells']);
+      // Split the combined pool: old students take the first cells (one per
+      // non-fixed old student), new students take the remainder.
+      $need_old = 0; foreach ($old as $r) { if (!$isfixed($r)) $need_old++; }
+      $old_pool = array_slice($cells, 0, $need_old);
+      $new_pool = array_slice($cells, $need_old);
     }
-    foreach ($groups as $g) {
-      list($rows_g, $pool) = $g;
-      // fixed (non-empty) rows keep their value; only the rest get assigned.
-      $assignable = array();
-      foreach ($rows_g as $r) { if (!($r->fixed && trim((string)$r->cur) !== '')) $assignable[] = $r; }
-      if ($desc['shareable']) {
-        $ids = array();
-        foreach ($assignable as $r) $ids[] = $r->aa_id;
-        $map = dh_alloc_assign_batches($ids, $pool);
-        foreach ($assignable as $r) {
-          list($seat, $b) = $map[$r->aa_id];
-          $f = array($col => ($seat === '' ? null : $seat));
-          if ($batch_col) $f[$batch_col] = $b;
-          $updates[$r->aa_id] = $f;
-        }
-      } else {
-        $i = 0; $n = count($pool);
-        foreach ($assignable as $r) {
-          $seat = ($i < $n) ? $pool[$i] : '';
-          $i++;
-          $updates[$r->aa_id] = array($col => ($seat === '' ? null : $seat));
-        }
-      }
-    }
+    $assign($old, $old_pool);
+    $assign($new, $new_pool);
   }
+
   foreach ($updates as $aa_id => $fields) {
     db_update('dh_applicant_attended')->fields($fields)->condition('aa_id', $aa_id)->execute();
   }
