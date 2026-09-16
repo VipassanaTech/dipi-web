@@ -915,7 +915,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_group, aa_dining, aa_group_dining, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, aa_cell, aa_cell_batch, aa_dining, aa_group_dining, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -1028,8 +1028,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 						if (!empty($r[$f]))
 							$courses .= '<b>'.$cl.':</b>'.check_plain($r[$f]).' ';
 
-					if ($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
-						$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_group']+1).')');
+					if ($r['aa_cell_batch'] !== null && $r['aa_cell_batch'] >= 1)
+						$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_batch']+1).')');
 					else
 						$cellno = check_plain($r['aa_cell']);
 
@@ -1144,7 +1144,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	}
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_group, aa_dining, aa_group_dining, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, aa_cell, aa_cell_batch, aa_dining, aa_group_dining, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1222,8 +1222,8 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 			// Relation words (Son/Wife/Brother...) are always safe to title-case.
 			$ename = ($en !== '') ? check_plain(dh_day0_case($en)).($er !== '' ? ' ('.check_plain(mb_convert_case($er, MB_CASE_TITLE, 'UTF-8')).')' : '') : '';
 
-			if ($r['aa_cell_group'] !== null && $r['aa_cell_group'] >= 1)
-				$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_group']+1).')');
+			if ($r['aa_cell_batch'] !== null && $r['aa_cell_batch'] >= 1)
+				$cellno = check_plain($r['aa_cell'].' ('.($r['aa_cell_batch']+1).')');
 			else
 				$cellno = check_plain($r['aa_cell']);
 
@@ -3448,7 +3448,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 	$gender = array('M', 'F');
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, aa_cell, aa_cell_fixed, IFNULL(aa_cell_group,0) as 'aa_cell_group' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, aa_cell, aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
 	while($r = $result->fetchAssoc())
@@ -3460,17 +3460,17 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '' )
 		if ($room === '-') $room = '';
 		// Key by the unique applicant id, NOT aa_cell: several students can share a
 		// cell value (or have a blank cell), which would collapse them to one entry.
-		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
-		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]) )
+		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
+		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]) )
 		{
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] = 0;
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] = $r['Age'];
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] = 0;
 		}
-		if ( $r['Age'] > $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] )
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['upper'] = $r['Age'];
+		if ( $r['Age'] > $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] )
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] = $r['Age'];
 
-		if ( $r['Age'] < $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] )
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_group']]['lower'] = $r['Age'];
+		if ( $r['Age'] < $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] )
+			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] = $r['Age'];
 
 	}
 	$dl_name = dh_course_file_basename($centre, $course, 'cell-list');
@@ -3733,7 +3733,7 @@ function _dh_generate_cell_list_legacy($centre, $course)
 				continue;
 			}
 			$cells[$batch][$g][$cell_alloc['Old'][$g][$keys[$count]]] = $r['Full Name']." - ".$r['a_old'];
-			db_update('dh_applicant_attended')->fields(array('aa_cell_group' => $batch, 'aa_cell' => $cell_alloc['Old'][$g][$keys[$count]]))->condition('aa_id', $r['aa_id'])->execute();
+			db_update('dh_applicant_attended')->fields(array('aa_cell_batch' => $batch, 'aa_cell' => $cell_alloc['Old'][$g][$keys[$count]]))->condition('aa_id', $r['aa_id'])->execute();
 			$count++;
 		}
 		if ( isset($_REQUEST['d']) && ($_REQUEST['d'] == 1) )
@@ -3762,7 +3762,7 @@ function _dh_generate_cell_list_legacy($centre, $course)
 				continue;
 			}			
 			$cells[$batch][$g][$cell_alloc['New'][$g][$keys[$count]]] = $r['Full Name']." - ".$r['a_old'];
-			db_update('dh_applicant_attended')->fields(array('aa_cell_group' => $batch, 'aa_cell' => $cell_alloc['New'][$g][$keys[$count]] ))->condition('aa_id', $r['aa_id'])->execute();
+			db_update('dh_applicant_attended')->fields(array('aa_cell_batch' => $batch, 'aa_cell' => $cell_alloc['New'][$g][$keys[$count]] ))->condition('aa_id', $r['aa_id'])->execute();
 			$count++;
 		}
 
@@ -4013,7 +4013,7 @@ function dh_student_chit($centre, $course, $seating)
   if($seating)
     $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -4122,7 +4122,7 @@ function dh_checking_slip($centre, $course, $seating)
   if($seating)
     $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
 
-  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_group, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, aa_cell, aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
   $result = db_query($q);
   while($r = $result->fetchAssoc())

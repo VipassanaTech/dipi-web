@@ -2575,7 +2575,7 @@ function dh_app_update_attended()
 
 	$fields['aa_cell_fixed'] = ($_REQUEST['cf'] == 'true')?1:0;
 	if ($fields['aa_cell_fixed'])
-		$fields['aa_cell_group'] = '0';
+		$fields['aa_cell_batch'] = '0';
 	// Dining seats: default + group-wise value, one shared fixed flag. A fixed
 	// value is kept and reserved-out when either dining list is regenerated.
 	$fields['aa_dining'] = isset($_REQUEST['dn']) ? $_REQUEST['dn'] : '';

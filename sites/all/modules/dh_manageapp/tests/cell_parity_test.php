@@ -14,17 +14,17 @@ $centre=5; $course=9900002;
 // --- snapshot originals to restore at the end ---
 $orig = db_query("select cs_cells_config, cs_has_cells from dh_center_setting where cs_center=$centre")->fetchObject();
 $orig_rows = array();
-foreach (db_query("select aa.aa_id, aa.aa_cell, aa.aa_cell_group, aa.aa_cell_fixed from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course") as $r)
-  $orig_rows[$r->aa_id] = array($r->aa_cell, $r->aa_cell_group, $r->aa_cell_fixed);
+foreach (db_query("select aa.aa_id, aa.aa_cell, aa.aa_cell_batch, aa.aa_cell_fixed from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course") as $r)
+  $orig_rows[$r->aa_id] = array($r->aa_cell, $r->aa_cell_batch, $r->aa_cell_fixed);
 
 function snap($course){
   $out=array();
-  foreach (db_query("select aa.aa_id, aa.aa_cell, aa.aa_cell_group from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_type='Student'") as $r)
-    $out[$r->aa_id] = $r->aa_cell.'|'.$r->aa_cell_group;
+  foreach (db_query("select aa.aa_id, aa.aa_cell, aa.aa_cell_batch from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=$course and a.a_type='Student'") as $r)
+    $out[$r->aa_id] = $r->aa_cell.'|'.$r->aa_cell_batch;
   return $out;
 }
 function clearcells($course){
-  db_query("update dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant set aa.aa_cell=null, aa.aa_cell_group=0, aa.aa_cell_fixed=0 where a.a_course=$course");
+  db_query("update dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant set aa.aa_cell=null, aa.aa_cell_batch=0, aa.aa_cell_fixed=0 where a.a_course=$course");
 }
 function setcfg($centre,$cfg){
   db_update('dh_center_setting')->fields(array('cs_cells_config'=>$cfg,'cs_has_cells'=>1))->condition('cs_center',$centre)->execute();
@@ -59,6 +59,6 @@ parity('combined tiny overflow', $centre,$course, "[MALE]\nCells = 1-3\n\n[FEMAL
 setcfg($centre, ''); // reset then apply orig
 db_update('dh_center_setting')->fields(array('cs_cells_config'=>(string)$orig->cs_cells_config,'cs_has_cells'=>(int)$orig->cs_has_cells))->condition('cs_center',$centre)->execute();
 foreach($orig_rows as $aa=>$v)
-  db_update('dh_applicant_attended')->fields(array('aa_cell'=>$v[0],'aa_cell_group'=>$v[1],'aa_cell_fixed'=>$v[2]))->condition('aa_id',$aa)->execute();
+  db_update('dh_applicant_attended')->fields(array('aa_cell'=>$v[0],'aa_cell_batch'=>$v[1],'aa_cell_fixed'=>$v[2]))->condition('aa_id',$aa)->execute();
 echo "-- originals restored --\n";
 echo empty($GLOBALS['f'])?"ALL PASS\n":"FAILURES\n";

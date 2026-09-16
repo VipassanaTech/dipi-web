@@ -9,11 +9,11 @@ function dh_alloc_descriptor($resource) {
   if ($resource === 'cell') {
     return array('resource'=>'cell','name'=>'Cell','has'=>'cs_has_cells','config'=>'cs_cells_config',
       'main_col'=>'aa_cell','group_col'=>'aa_group_cell','fixed_col'=>'aa_cell_fixed',
-      'batch_col'=>'aa_cell_group','shareable'=>true);
+      'batch_col'=>'aa_cell_batch','shareable'=>true);
   }
   return array('resource'=>'dining','name'=>'Dining','has'=>'cs_has_dining','config'=>'cs_dining_config',
     'main_col'=>'aa_dining','group_col'=>'aa_group_dining','fixed_col'=>'aa_dining_fixed',
-    'batch_col'=>null,'shareable'=>false);
+    'batch_col'=>'aa_dining_batch','shareable'=>false);
 }
 
 /** Expand "1-40, 55, A1-A5" into an array of labels (letter-prefix aware). */
@@ -131,7 +131,7 @@ function dh_alloc_assign_batches($items, $pool) {
  *  - config-Reserved (keep-aside) and any Fixed value are removed from the pool;
  *    Fixed rows keep their value and consume neither a slot nor a batch step;
  *  - when a group has more people than pool seats the pool CYCLES into batches
- *    (recorded in batch_col when the resource has one - aa_cell_group for cells;
+ *    (recorded in batch_col when the resource has one - aa_cell_batch for cells;
  *    dining has no batch column so the seat number simply repeats).
  * Returns rows written. See docs/.../unified-allocation-engine-design.md.
  */
