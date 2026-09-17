@@ -10,12 +10,12 @@ function dh_alloc_descriptor($resource) {
     return array('resource'=>'cell','name'=>'Cell','has'=>'cs_has_cells','config'=>'cs_cells_config',
       'main_col'=>'aa_cell','group_col'=>'aa_group_cell',
       'fixed_col'=>'aa_cell_fixed','group_fixed_col'=>'aa_group_cell_fixed',
-      'batch_col'=>'aa_cell_batch','shareable'=>true);
+      'batch_col'=>'aa_cell_batch');
   }
   return array('resource'=>'dining','name'=>'Dining','has'=>'cs_has_dining','config'=>'cs_dining_config',
     'main_col'=>'aa_dining','group_col'=>'aa_group_dining',
     'fixed_col'=>'aa_dining_fixed','group_fixed_col'=>'aa_group_dining_fixed',
-    'batch_col'=>'aa_dining_batch','shareable'=>false);
+    'batch_col'=>'aa_dining_batch');
 }
 
 /** Expand "1-40, 55, A1-A5" into an array of labels (letter-prefix aware). */

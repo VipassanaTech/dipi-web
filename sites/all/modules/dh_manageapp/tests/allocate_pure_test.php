@@ -6,9 +6,9 @@ function ok($c,$m){ echo ($c?"PASS":"FAIL")." - $m\n"; if(!$c){$GLOBALS['fail']=
 
 // descriptor
 $d = dh_alloc_descriptor('dining');
-ok($d['main_col']==='aa_dining' && $d['group_col']==='aa_group_dining' && $d['shareable']===false, 'dining descriptor');
+ok($d['main_col']==='aa_dining' && $d['group_col']==='aa_group_dining', 'dining descriptor');
 $c = dh_alloc_descriptor('cell');
-ok($c['main_col']==='aa_cell' && $c['batch_col']==='aa_cell_batch' && $c['shareable']===true, 'cell descriptor');
+ok($c['main_col']==='aa_cell' && $c['batch_col']==='aa_cell_batch', 'cell descriptor');
 
 // expand: single, comma, hyphen range, letter-prefixed range, blanks
 ok(dh_alloc_expand('') === array(), 'expand empty');
