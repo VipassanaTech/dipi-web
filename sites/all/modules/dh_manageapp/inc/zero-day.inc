@@ -999,6 +999,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cp = is_array($course) ? reset($course) : $course;
 	$cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
+	$diningcol = (dh_course_plan($cp, 'dining') === 'group') ? 'aa_group_dining' : 'aa_dining';
 	$sgrp = (dh_course_plan($cp, 'seat') === 'group');
 	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
 	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
@@ -1009,7 +1010,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -1025,16 +1026,15 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		'city'     => array('City', 'tl-city'),
 		'courses'  => array('Courses', 'tl-courses'),
 		'cell'     => array('Cell', 'tl-cell'),
-		'dining'       => array('Dining', 'tl-dining'),
-		'group_dining' => array('Group Dining', 'tl-group_dining'),
+		'dining'   => array('Dining', 'tl-dining'),
 		'seat'     => array('Seat', 'tl-seat'),
 		'occ'      => array('Occupation', 'tl-occ'),
 		'edu'      => array('Education', 'tl-edu'),
 		'langs'    => array('Languages', 'tl-langs'),
 		'comments' => array('Comments', 'tl-comments'),
 	);
-	// Dining columns start hidden (off by default) - see the auto-toggle script below.
-	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'group_dining' => 'Group Dining', 'langs' => 'Languages', 'comments' => 'Comments');
+	// Dining column starts hidden (off by default) - see the auto-toggle script below.
+	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'langs' => 'Languages', 'comments' => 'Comments');
 	$ncol = count($cols);
 
 	$out .= '<div class="header-teacher"><div class="title">Teacher List</div>'.
@@ -1149,8 +1149,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 						'city'     => check_plain(dh_day0_case($r['City'])),
 						'courses'  => trim($courses),
 						'cell'     => $cellno,
-						'dining'       => check_plain($r['aa_dining']),
-						'group_dining' => check_plain($r['aa_group_dining']),
+						'dining'   => check_plain($r['aa_dining']),
 						'seat'     => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="tl-br" title="Backrest">BR</span>' : ''),
 						'occ'      => check_plain(dh_day0_case($r['a_occupation'])),
 						'edu'      => check_plain(trim($r['a_education'])),
@@ -1198,8 +1197,8 @@ document.addEventListener("click", function(e){
 </script>';
 	if ($hide_cell)
 		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
-	// Dining columns are off by default - hide both on load (operator can toggle on).
-	$out .= '<script>(function(){["dining","group_dining"].forEach(function(k){var b=document.querySelector(\'[data-toggle-col="\'+k+\'"]\');if(b)b.click();});})();</script>';
+	// Dining column is off by default (operator can toggle on).
+	$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="dining"]\');if(b)b.click();})();</script>';
 	print $out;
 	exit;
 }
@@ -1242,11 +1241,12 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cp = is_array($course) ? reset($course) : $course;
 	$cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
+	$diningcol = (dh_course_plan($cp, 'dining') === 'group') ? 'aa_group_dining' : 'aa_dining';
 	$sgrp = (dh_course_plan($cp, 'seat') === 'group');
 	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
 	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
 	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
-	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, $seatlbl as aa_seat, $seatrow as aa_seat_row, $seatcol as aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, $seatrow as aa_seat_row, $seatcol as aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1260,14 +1260,13 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		'ename'   => array('Emergency Contact', 'ml-ename'),
 		'enum'    => array('Emergency No.', 'ml-enum'),
 		'cell'    => array('Cell', 'ml-cell'),
-		'dining'       => array('Dining', 'ml-dining'),
-		'group_dining' => array('Group Dining', 'ml-group_dining'),
+		'dining'  => array('Dining', 'ml-dining'),
 		'seat'    => array('Seat', 'ml-seat'),
 		'conf'    => array('Conf No', 'ml-conf'),
 		'set'     => array('Set', 'ml-set'),
 	);
-	// Cell hide-able as before; dining columns hide-able and OFF by default (auto-toggle below).
-	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'group_dining' => 'Group Dining');
+	// Cell hide-able as before; the (single, plan-aware) Dining column is hide-able and OFF by default.
+	$toggle = array('cell' => 'Cell', 'dining' => 'Dining');
 	$ncol = count($cols);
 
 	$out .= '<div class="header-manager"><div class="title">Manager List</div>'.
@@ -1339,8 +1338,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 				'ename'   => $ename,
 				'enum'    => check_plain($r['a_emergency_num']),
 				'cell'    => $cellno,
-				'dining'       => check_plain($r['aa_dining']),
-				'group_dining' => check_plain($r['aa_group_dining']),
+				'dining'  => check_plain($r['aa_dining']),
 				'seat'    => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="ml-br" title="Backrest">BR</span>' : ''),
 				'conf'    => check_plain($r['a_conf_no']),
 				'set'     => $code !== '' ? check_plain($code) : '',
@@ -1384,8 +1382,8 @@ document.addEventListener("click", function(e){
 </script>';
 	if ($hide_cell)
 		$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="cell"]\');if(b)b.click();})();</script>';
-	// Dining columns are off by default - hide both on load (operator can toggle on).
-	$out .= '<script>(function(){["dining","group_dining"].forEach(function(k){var b=document.querySelector(\'[data-toggle-col="\'+k+\'"]\');if(b)b.click();});})();</script>';
+	// Dining column is off by default (operator can toggle on).
+	$out .= '<script>(function(){var b=document.querySelector(\'[data-toggle-col="dining"]\');if(b)b.click();})();</script>';
 	print $out;
 	exit;
 }
