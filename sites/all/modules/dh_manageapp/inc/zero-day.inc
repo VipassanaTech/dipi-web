@@ -3624,9 +3624,11 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 		for ($i = 1; $i >= 0; $i--)
 		{
 			if (empty($data[$g][$cl][$i])) continue;
-			$num_batches = count($data[$g][$cl][$i]);   // label "Batch N" only when more than one
+			$batches = $data[$g][$cl][$i];
+			ksort($batches, SORT_NUMERIC);              // Batch 1 before Batch 2, ...
+			$num_batches = count($batches);             // label "Batch N" only when more than one
 			$cat_first = true;                           // first batch of a category starts a new page
-			foreach ($data[$g][$cl][$i] as $batch => $seat_data)
+			foreach ($batches as $batch => $seat_data)
 			{
 				if (!$debug)
 				{
