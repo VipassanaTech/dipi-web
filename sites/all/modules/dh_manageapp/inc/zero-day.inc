@@ -995,16 +995,21 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	if (!isset($teacher['F']))
 		$teacher['F'][1] = $teacher['M'][1];
 
-	$orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_bhante,0) desc, IFNULL(t_full_t,0) desc, IFNULL(t_sat,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
-	if ($seating)
-		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
-
-	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	// Cell column follows the course's plan (Main/Group), set on the course page.
+	// Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cp = is_array($course) ? reset($course) : $course;
 	$cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$sgrp = (dh_course_plan($cp, 'seat') === 'group');
+	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
+	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
+	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
+
+	$orderby = " order by a_gender, aa_group, a_type desc, IFNULL(ac_teacher,0) desc, IFNULL(t_bhante,0) desc, IFNULL(t_full_t,0) desc, IFNULL(t_sat,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc ";
+	if ($seating)
+		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
+
+	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -1233,11 +1238,15 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	}
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	// Cell column follows the course's plan (Main/Group), set on the course page.
+	// Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cp = is_array($course) ? reset($course) : $course;
 	$cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
-	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, aa_seat, aa_seat_row, aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$sgrp = (dh_course_plan($cp, 'seat') === 'group');
+	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
+	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
+	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, aa_dining, aa_group_dining, $seatlbl as aa_seat, $seatrow as aa_seat_row, $seatcol as aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -2454,6 +2463,9 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 		$max_row = max(array_keys($seats));
 	$rows = $max_row + 1;
 	$write_seat = !empty($opts['write_seat']);
+	// Which column the computed label is cached into: aa_seat (main plan) or
+	// aa_group_seat (group plan). Whitelisted - it goes into SQL.
+	$write_col  = (!empty($opts['write_col']) && in_array($opts['write_col'], array('aa_seat', 'aa_group_seat'), true)) ? $opts['write_col'] : 'aa_seat';
 	$drag       = !empty($opts['drag']);
 
 	$counter = $rows * $cushion_cols;
@@ -2489,7 +2501,7 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 					$aa_seat = $s_no_val;
 					if ($r['aa_chowky']) $aa_seat = 'CW-'.$aa_seat;
 					if ($r['aa_chair'])  $aa_seat = 'CH-'.$aa_seat;
-					db_query("update dh_applicant_attended aa left join dh_applicant a on a.a_id = aa.aa_applicant set aa_seat=:aa_seat where a_id=:a_id",
+					db_query("update dh_applicant_attended aa left join dh_applicant a on a.a_id = aa.aa_applicant set `$write_col`=:aa_seat where a_id=:a_id",
 						array(":aa_seat" => $aa_seat, ":a_id" => $r['a_id']));
 				}
 
@@ -3081,8 +3093,11 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 
 			$gdir = dh_seat_direction($dims['seat_direction'], $dir[$gender]);
 			// $sec_id / $sec_lbl computed above at the section wrapper.
-			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, array(), $sec_id, $sec_lbl);
-			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, array(), $sec_id, $sec_lbl);
+			// Cache the computed group seat label into aa_group_seat (same server-side
+			// label logic as the main plan writes to aa_seat), so reports can show it.
+			$gopts = array('write_seat' => true, 'write_col' => 'aa_group_seat');
+			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts, $sec_id, $sec_lbl);
+			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts, $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
 			$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $chowky_pos);
 			$out .= '<div style="clear:both"></div><div class="teacher-seat">TEACHER</div>';
@@ -4052,17 +4067,21 @@ function dh_student_chit($centre, $course, $seating)
 	$data['M'][0] = array(); $data['F'][0] = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
-	// Cell column follows the course's plan (Main/Group), set on the course page.
+	// Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cp = is_array($course) ? reset($course) : $course;
 	$cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
 	$cellfix = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell_fixed' : 'aa_cell_fixed';
+	$sgrp = (dh_course_plan($cp, 'seat') === 'group');
+	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
+	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
+	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
 
   $orderby = " order by a_gender, a_f_name, a_l_name ";
   if($seating)
-    $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+    $orderby = " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -4070,12 +4089,12 @@ function dh_student_chit($centre, $course, $seating)
 		$data[strtoupper($r['a_gender'])][] = $r;
 	}
 	$max_cols = array('M' => array(), 'F' => array());
-	$q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, aa_seat_row";
+	$q = "SELECT a_gender, $seatrow as aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, $seatrow";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
 		$max_cols[strtoupper($r['a_gender'])][$r['aa_seat_row']]  = $r['c'];
-	}	
+	}
 	$dl_name = dh_course_file_basename($centre, $course, 'student-chit');
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css");</style>';
@@ -4167,17 +4186,21 @@ function dh_checking_slip($centre, $course, $seating)
   $data['M'][0] = array(); $data['F'][0] = array();
   $course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
-  // Cell column follows the course's plan (Main/Group), set on the course page.
+  // Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
   module_load_include('inc', 'dh_manageapp', 'inc/allocate');
   $cp = is_array($course) ? reset($course) : $course;
   $cellcol = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell' : 'aa_cell';
   $cellfix = (dh_course_plan($cp, 'cell') === 'group') ? 'aa_group_cell_fixed' : 'aa_cell_fixed';
+  $sgrp = (dh_course_plan($cp, 'seat') === 'group');
+  $seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
+  $seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
+  $seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
 
   $orderby = " order by a_gender, a_f_name, a_l_name ";
   if($seating)
-    $orderby = " order by aa_chowky_chair desc, aa_seat_row asc, aa_seat_col asc ";
+    $orderby = " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', aa_seat_col, aa_seat_row, aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
   $result = db_query($q);
   while($r = $result->fetchAssoc())
@@ -4185,7 +4208,7 @@ function dh_checking_slip($centre, $course, $seating)
     $data[strtoupper($r['a_gender'])][] = $r;
   }
   $max_cols = array('M' => array(), 'F' => array());
-  $q = "SELECT a_gender, aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, aa_seat_row";
+  $q = "SELECT a_gender, $seatrow as aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, $seatrow";
   $result = db_query($q);
   while($r = $result->fetchAssoc())
   {
