@@ -3546,7 +3546,7 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 	$file_slug  = $iscell ? $route_slug : (($mode === 'group' ? 'group-' : '').'dining');
 	$fix_title  = $iscell ? 'Fixed cell - kept when the list is regenerated' : 'Fixed dining seat - kept when the list is regenerated';
 	$fix_word   = $iscell ? 'cell' : 'dining seat';
-	$show_age   = $iscell;   // cell list shows the age range per section; dining does not
+	$show_age   = TRUE;   // both cell and dining lists show the age range per section
 
 	// Only list servers when this centre configures a _SERVER range for this
 	// resource (mirrors the engine, which allocates to servers only then).

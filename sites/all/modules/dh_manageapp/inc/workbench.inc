@@ -160,6 +160,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.
 		'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
 		'<button type="button" id="wb-clear">Clear non-fixed</button> '.
+		'<button type="button" id="wb-unfix">Clear all fixed</button> '.
 		'<button type="button" id="wb-save">Save all</button>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
 		'</div>';
@@ -309,6 +310,11 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					'if (!$tr.find(".wb-fixed").is(":checked")) $tr.find(".wb-val").val("").trigger("change");'.
 				'});'.
 				'wbUpdateWarn();'.
+			'});'.
+			'$("#wb-unfix").on("click", function(){'.
+				'if (confirm("Untick every Fixed checkbox? Seat values are kept; click Save all to persist.")){'.
+					'$(".wb-fixed:checked").prop("checked", false);'.
+				'}'.
 			'});'.
 			// Upgrade each dining-seat <select> to select2. On every open, rebuild the
 			// option list from WB_OPTS[section] (that section: range + keep-aside)
