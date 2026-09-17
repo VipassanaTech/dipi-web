@@ -121,6 +121,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 
 	$plan_name = ($plan === 'group') ? 'Group-wise' : 'Main';
 	$unit = ($resource === 'cell') ? 'Cell No' : 'Dining Seat';
+	$unit_plural = ($resource === 'cell') ? 'cells' : 'dining seats';
 	$col_label = ($plan === 'group') ? ('Group '.$unit) : $unit;
 
 	$title = dh_course_file_basename($centre, $course, $resource.'-workbench');
@@ -159,8 +160,9 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="wb-plan-switch">Plan: '.$sw_main.' | '.$sw_group.'</span>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.
 		'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
-		'<button type="button" id="wb-clear">Clear non-fixed</button> '.
-		'<button type="button" id="wb-unfix">Clear all fixed</button> '.
+		'<button type="button" id="wb-clear">Clear non-fixed '.$unit_plural.'</button> '.
+		'<button type="button" id="wb-clearall">Clear all '.$unit_plural.'</button> '.
+		'<button type="button" id="wb-unfix">Clear all fixed checkboxes</button> '.
 		'<button type="button" id="wb-save">Save all</button>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
 		'</div>';
@@ -310,6 +312,12 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					'if (!$tr.find(".wb-fixed").is(":checked")) $tr.find(".wb-val").val("").trigger("change");'.
 				'});'.
 				'wbUpdateWarn();'.
+			'});'.
+			'$("#wb-clearall").on("click", function(){'.
+				'if (confirm("Clear ALL "+WB_UNIT+" (fixed and non-fixed)? Seat values are emptied; click Save all to persist.")){'.
+					'$(".wb-val").val("").trigger("change");'.
+					'wbUpdateWarn();'.
+				'}'.
 			'});'.
 			'$("#wb-unfix").on("click", function(){'.
 				'if (confirm("Untick every Fixed checkbox? Seat values are kept; click Save all to persist.")){'.
