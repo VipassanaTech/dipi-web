@@ -62,18 +62,18 @@ function dh_course_dashboard()
 			});
 		});})(jQuery);', "inline");
 	}
-	// Cells/Dining show only when the centre uses them (cs_has_*). Seating is one
-	// link that points at the plan this course uses (c_seat_plan). See
-	// dh_course_plan() in inc/allocate.inc.
+	// Cell/Dining Workbench show only when the centre uses them (cs_has_*). Both
+	// Seating Plan and Group-wise Seating stay as editing tools (unchanged); the
+	// course-page plan selector below only drives which plan the reports use.
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
 	$cflags = db_query("select cs_has_cells, cs_has_dining from dh_center_setting where cs_center=:c", array(':c' => arg(1)))->fetchAssoc();
 	$has_cells  = !empty($cflags['cs_has_cells']);
 	$has_dining = !empty($cflags['cs_has_dining']);
-	$seat_route = (dh_course_plan(arg(2), 'seat') === 'group' ? 'group-seating' : 'seating').'/'.arg(1).'/'.arg(2);
 	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2) );
 	if ($has_cells)  $modules['Cell Workbench']   = 'cell-workbench/'.arg(1).'/'.arg(2);
 	if ($has_dining) $modules['Dining Workbench'] = 'dining-workbench/'.arg(1).'/'.arg(2);
-	$modules['Seating Plan'] = $seat_route;
+	$modules['Seating Plan'] = 'seating/'.arg(1).'/'.arg(2);
+	$modules['Group-wise Seating'] = 'group-seating/'.arg(1).'/'.arg(2);
 	$modules += array( 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
 	// Reports, printable pages and file downloads open in a new tab so the
