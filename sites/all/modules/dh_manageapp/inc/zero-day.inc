@@ -3522,154 +3522,152 @@ function dh_cell_list_pair($cd, $keys, $idx, $valkey = 'cell', $fixtitle = 'Fixe
 			.'</td>';
 }
 
-function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
+/**
+ * Unified printable seat list for cells AND dining. One code path; the resource
+ * descriptor supplies the columns/config and a few labels differ. $mode is
+ * 'main' or 'group'. Cells additionally show the age range per section.
+ */
+function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $debug = 0, $pdf = '')
 {
 	global $base_url;
-	// Plan-aware (mirrors dh_dining_list): 'main' shows aa_cell, 'group' shows the
-	// group-wise aa_group_cell. Batch grouping (aa_cell_batch) is shared.
-	$col = ($mode === 'group') ? 'aa_group_cell' : 'aa_cell';
-	$fixcol = ($mode === 'group') ? 'aa_group_cell_fixed' : 'aa_cell_fixed';
-	// Only list servers when this centre configures a cell _SERVER range (mirrors
-	// the allocation engine, which allocates cells to servers only in that case).
 	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
-	$cfg_srv = db_query("select cs_cells_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
+	$desc = dh_alloc_descriptor($resource);
+	$iscell = ($resource === 'cell');
+	$mode = ($mode === 'group') ? 'group' : 'main';
+	$col = ($mode === 'group') ? $desc['group_col'] : $desc['main_col'];
+	$fixcol = ($mode === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
+	$batchcol = $desc['batch_col'];
+
+	// Per-resource labels / slugs; everything else below is shared.
+	$noun       = $iscell ? 'Cell' : 'Dining Seat';                 // column header + sort label
+	$sort_key   = $iscell ? 'cell' : 'seat';                        // ?sort=<key> = natural value order
+	$title_txt  = ($mode === 'group' ? 'Group-wise ' : '').($iscell ? 'Cell List' : 'Dining List');
+	$route_slug = ($mode === 'group' ? 'group-' : '').($iscell ? 'cell-list' : 'dining-list');
+	$file_slug  = $iscell ? $route_slug : (($mode === 'group' ? 'group-' : '').'dining');
+	$fix_title  = $iscell ? 'Fixed cell - kept when the list is regenerated' : 'Fixed dining seat - kept when the list is regenerated';
+	$fix_word   = $iscell ? 'cell' : 'dining seat';
+	$show_age   = $iscell;   // cell list shows the age range per section; dining does not
+
+	// Only list servers when this centre configures a _SERVER range for this
+	// resource (mirrors the engine, which allocates to servers only then).
+	$cfg_srv = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
 	$ini_srv = ($cfg_srv !== '' && $cfg_srv !== null) ? parse_ini_string($cfg_srv, true, INI_SCANNER_RAW) : array();
 	$type_filter = dh_alloc_has_server_config(is_array($ini_srv) ? $ini_srv : array()) ? '' : " and a_type='Student'";
-	$title_txt = ($mode === 'group') ? 'Group-wise Cell List' : 'Cell List';
-	$slug = ($mode === 'group') ? 'group-cell-list' : 'cell-list';
-	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
-	// Sort order within each batch: 'name' (default) or 'cell' (natural cell order).
-	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'cell') ? 'cell' : 'name';
-	// Layout: 1 column (default, full names) or 2 columns (denser).
+
+	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == $sort_key) ? $sort_key : 'name';
 	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
 	$gender = array('M', 'F');
 	$data = array('M' => array(), 'F' => array());
+	$age_range = array();
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, a_type, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1 $type_filter order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+
+	$q = "select a_id, aa_id, a_gender, a_old, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, a_type, $col as val, $fixcol as fixed, IFNULL($batchcol,0) as batch
+		from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
+		where a_course='$course' and a_attended=1 $type_filter
+		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."), IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
-	while($r = $result->fetchAssoc())
+	while ($r = $result->fetchAssoc())
 	{
-		if ($r['aa_cell_fixed']) $has_fixed = true;
+		if ($r['fixed']) $has_fixed = true;
 		$name = $r['Full Name'];
 		if ($debug) $name .= ' ('.$r['Age'].')';
 		$room = $r['aa_section'].'-'.$r['aa_acco'];
 		if ($room === '-') $room = '';
-		// Servers (Sevak) are shown as a separate group after the students, so bucket
-		// by class (student/server) as well as gender/old/batch.
+		// Servers (Sevak) are a separate group after the students; bucket by class,
+		// gender, old/new and batch. Key by applicant id so shared/blank values
+		// never collapse two people into one entry.
 		$G = strtoupper($r['a_gender']);
 		$cl = (strtolower($r['a_type']) === 'sevak') ? 'server' : 'student';
-		$b = $r['aa_cell_batch'];
-		// Key by the unique applicant id, NOT aa_cell: several students can share a
-		// cell value (or have a blank cell), which would collapse them to one entry.
-		$data[$G][$cl][$r['a_old']][$b][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
-		if ( !isset( $age_range[$G][$cl][$r['a_old']][$b]) )
-		{
-			$age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
-			$age_range[$G][$cl][$r['a_old']][$b]['upper'] = 0;
-		}
-		if ( $r['Age'] > $age_range[$G][$cl][$r['a_old']][$b]['upper'] )
-			$age_range[$G][$cl][$r['a_old']][$b]['upper'] = $r['Age'];
-
-		if ( $r['Age'] < $age_range[$G][$cl][$r['a_old']][$b]['lower'] )
-			$age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
-
+		$b = (int) $r['batch'];
+		$data[$G][$cl][$r['a_old']][$b][$r['a_id']] = array('name' => $name, 'room' => $room, 'val' => $r['val'], 'fixed' => $r['fixed']);
+		if (!isset($age_range[$G][$cl][$r['a_old']][$b]))
+			$age_range[$G][$cl][$r['a_old']][$b] = array('lower' => $r['Age'], 'upper' => 0);
+		if ($r['Age'] > $age_range[$G][$cl][$r['a_old']][$b]['upper']) $age_range[$G][$cl][$r['a_old']][$b]['upper'] = $r['Age'];
+		if ($r['Age'] < $age_range[$G][$cl][$r['a_old']][$b]['lower']) $age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
 	}
-	$dl_name = dh_course_file_basename($centre, $course, $slug);
+
+	$dl_name = dh_course_file_basename($centre, $course, $file_slug);
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
 	$out .= '</head><body>';
-	// Screen-only document title (in print, each table's repeating <thead> carries
-	// the title onto every page - see the batch loop below).
 	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title_txt.'</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
-	$sort_base = $slug.'/'.$centre.'/'.$course;
-	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
-	$keep_sort = ($sort == 'cell') ? array('sort' => 'cell') : array(); // preserve sort choice on column links
-	$wb_plan = ($mode === 'group') ? 'group' : 'main';
+	$sort_base = $route_slug.'/'.$centre.'/'.$course;
+	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();
+	$keep_sort = ($sort == $sort_key) ? array('sort' => $sort_key) : array();
 	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/cell-workbench/'.$centre.'/'.$course.'?plan='.$wb_plan.'">&#8592; Back to Workbench</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/'.$resource.'-workbench/'.$centre.'/'.$course.'?plan='.$mode.'">&#8592; Back to Workbench</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
-		($sort=='name' ? '<b>Name</b>' : l('Name', $sort_base, array('query'=>array('sort'=>'name') + $keep_cols))).
+		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols))).
 		' &middot; '.
-		($sort=='cell' ? '<b>Cell</b>' : l('Cell', $sort_base, array('query'=>array('sort'=>'cell') + $keep_cols))).
+		($sort == $sort_key ? '<b>'.$noun.'</b>' : l($noun, $sort_base, array('query' => array('sort' => $sort_key) + $keep_cols))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
-		($cols==1 ? '<b>1</b>' : l('1', $sort_base, array('query'=>$keep_sort))).
+		($cols == 1 ? '<b>1</b>' : l('1', $sort_base, array('query' => $keep_sort))).
 		' &middot; '.
-		($cols==2 ? '<b>2</b>' : l('2', $sort_base, array('query'=>array('cols'=>2) + $keep_sort))).
+		($cols == 2 ? '<b>2</b>' : l('2', $sort_base, array('query' => array('cols' => 2) + $keep_sort))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 	if ($has_fixed)
-		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the cell is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';
-	// Outer table: its <thead> is the document title, which browsers reprint at the
-	// top of every page (the reliable running-header technique). All the batches go
-	// in its single body cell.
+		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the '.$fix_word.' is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';
+	// Outer table: its <thead> is the document title, reprinted at the top of every
+	// printed page (the reliable running-header technique).
 	$out .= '<table class="cl-doc"><thead><tr><td class="cl-doc-cell">'.
 		'<div class="cl-dt-main">'.$title_txt.'</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
 		'</td></tr></thead><tbody><tr><td class="cl-doc-body">';
 	$out .= '<div class="main-div">';
 	$first = true;
-	foreach( $gender as $g )
+	foreach ($gender as $g)
 	{
-		foreach( array('student', 'server') as $cl )
+		foreach (array('student', 'server') as $cl)
 		{
-		for($i=1; $i>=0 ; $i--)
+		for ($i = 1; $i >= 0; $i--)
 		{
-			if (empty($data[$g][$cl][$i]))
-				continue;
-			$num_batches = count($data[$g][$cl][$i]);   // only label "Batch N" when there is more than one
-			$cat_first = true;                     // first batch of this category starts a new page
-			foreach( $data[$g][$cl][$i] as $batch => $cell_data )
+			if (empty($data[$g][$cl][$i])) continue;
+			$num_batches = count($data[$g][$cl][$i]);   // label "Batch N" only when more than one
+			$cat_first = true;                           // first batch of a category starts a new page
+			foreach ($data[$g][$cl][$i] as $batch => $seat_data)
 			{
-				//$out .= '<div class="title-info">'.$g.' Batch '.$batch.'</div>';
-				if ( ! $debug )
+				if (!$debug)
 				{
-					if ($sort == 'cell')
-						uasort($cell_data, function($a, $b){ return strnatcasecmp($a['cell'], $b['cell']); });  // natural cell order
+					if ($sort == $sort_key)
+						uasort($seat_data, function($a, $b){ return strnatcasecmp($a['val'], $b['val']); });  // natural value order
 					else
-						uasort($cell_data, function($a, $b){ return strcasecmp($a['name'], $b['name']); });      // by name
+						uasort($seat_data, function($a, $b){ return strcasecmp($a['name'], $b['name']); });     // by name
 				}
-				$keys = array_keys($cell_data);
+				$keys = array_keys($seat_data);
 				$n = count($keys);
 				// Servers are always old, so drop the Old/New prefix for them.
-				$batch_label = ($cl==='server' ? ($g=='M'?'Male':'Female').' Server' : ($i?'Old':'New').' '.($g=='M'?'Male':'Female')).($num_batches > 1 ? ' Batch '.($batch+1) : '').
-					' ('.$age_range[$g][$cl][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$cl][$i][$batch]['upper'].' yrs)';
-				if ($cols == 2) { $rows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
-				else            { $rows = $n;                 $colspan = 4; }  // one entry per row
+				$label = ($cl === 'server' ? ($g == 'M' ? 'Male' : 'Female').' Server' : ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female')).($num_batches > 1 ? ' Batch '.($batch + 1) : '');
+				if ($show_age)
+					$label .= ' ('.$age_range[$g][$cl][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$cl][$i][$batch]['upper'].' yrs)';
+				if ($cols == 2) { $trows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
+				else            { $trows = $n;                 $colspan = 4; }  // one entry per row
+				// Page break before the first batch of each category; batches within a
+				// category flow together (must not split across pages - see CSS).
+				$out .= '<div class="cl-batch'.((!$first && $cat_first) ? ' cl-break' : '').'">';
+				$first = false; $cat_first = false;
+				$out .= '<table cellspacing="0" class="table-cell-list'.($cols == 2 ? ' cl-2col' : '').'">';
+				if ($cols == 2)
+					$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
+				else
+					$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
+				$out .= '<thead><tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$label.'</th></tr>';
+				if ($cols == 2)
+					$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th></tr>';
+				else
+					$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th></tr>';
+				$out .= '</thead><tbody>';
+				for ($a = 0; $a < $trows; $a++)
 				{
-					// Each batch starts on its own page; the table's <thead> (doc title +
-					// batch title + column header) repeats on every page it spans.
-					// Page break before the first batch of each category; batches within a
-					// category flow together (they just must not split across pages - see CSS).
-					$out .= '<div class="cl-batch'.((!$first && $cat_first) ? ' cl-break' : '').'">';
-					$first = false; $cat_first = false;
-					$out .= '<table cellspacing="0" class="table-cell-list'.($cols==2 ? ' cl-2col' : '').'">';
 					if ($cols == 2)
-						$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
+						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, 2 * $a, 'val', $fix_title).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($seat_data, $keys, 2 * $a + 1, 'val', $fix_title).'</tr>';
 					else
-						$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
-					$out .= '<thead>';
-					$out .= '<tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$batch_label.'</th></tr>';
-					if ($cols == 2)
-						$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th></tr>';
-					else
-						$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Cell</th></tr>';
-					$out .= '</thead><tbody>';
-
-					for($a=0; $a<$rows; $a++ )
-					{
-						if ($cols == 2)
-							// Row-major: left = 2a, right = 2a+1, so the running number stays
-							// sequential down the rows and does not break when a batch spans pages.
-							$out .= '<tr>'.dh_cell_list_pair($cell_data, $keys, 2 * $a).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($cell_data, $keys, 2 * $a + 1).'</tr>';
-						else
-							$out .= '<tr>'.dh_cell_list_pair($cell_data, $keys, $a).'</tr>';
-					}
-					$out .= '</tbody></table>';
-					$out .= '</div>';
+						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, $a, 'val', $fix_title).'</tr>';
 				}
+				$out .= '</tbody></table>';
+				$out .= '</div>';
 			}
-
 		}
 		}
 	}
@@ -3684,6 +3682,12 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 		print $out;
 		exit;
 	}
+}
+
+/* Thin wrappers over dh_alloc_list() - keep the resource-specific entry points. */
+function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main')
+{
+	return dh_alloc_list($centre, $course, 'cell', $mode, $debug, $pdf);
 }
 
 /* Cells now use the shared allocation engine (same code as dining). Thin
@@ -3893,128 +3897,7 @@ function _dh_generate_cell_list_legacy($centre, $course)
    'default' shows aa_dining, 'group' shows aa_group_dining. */
 function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 {
-	global $base_url;
-	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
-	$dfix = ($mode === 'group') ? 'aa_group_dining_fixed' : 'aa_dining_fixed';
-	// Only list servers when this centre configures a dining _SERVER range (mirrors
-	// the allocation engine, which allocates dining to servers only in that case).
-	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
-	$cfg_srv = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
-	$ini_srv = ($cfg_srv !== '' && $cfg_srv !== null) ? parse_ini_string($cfg_srv, true, INI_SCANNER_RAW) : array();
-	$type_filter = dh_alloc_has_server_config(is_array($ini_srv) ? $ini_srv : array()) ? '' : " and a_type='Student'";
-	$title = ($mode === 'group') ? 'Group-wise Dining List' : 'Dining List';
-	$base_slug = ($mode === 'group') ? 'group-dining-list' : 'dining-list';
-	$file_slug = ($mode === 'group') ? 'group-dining' : 'dining';
-	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'seat') ? 'seat' : 'name';
-	// Layout: 1 column (default, full names) or 2 columns (denser) - same as cells.
-	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
-
-	$gender = array('M', 'F');
-	$data = array('M' => array(), 'F' => array());
-	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
-		aa_section, aa_acco, $col as seat, $dfix as aa_dining_fixed, IFNULL(aa_dining_batch,0) as aa_dining_batch
-		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
-		left join dh_applicant_attended on a_id=aa_applicant
-		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
-		where a_course='$course' and a_attended=1 $type_filter
-		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
-			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
-			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
-			IFNULL(ac_teen,0) desc, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) desc, a_id";
-	$result = db_query($q);
-	$has_fixed = false;
-	while ($r = $result->fetchAssoc())
-	{
-		if ($r['aa_dining_fixed']) $has_fixed = true;
-		$room = $r['aa_section'].'-'.$r['aa_acco'];
-		if ($room === '-') $room = '';
-		// Servers (Sevak) show as a separate group after the students.
-		$cl = (strtolower($r['a_type']) === 'sevak') ? 'server' : 'student';
-		$data[strtoupper($r['a_gender'])][$cl][$r['a_old'] ? 1 : 0][$r['aa_dining_batch']][$r['a_id']] =
-			array('name' => $r['Full Name'], 'room' => $room, 'seat' => $r['seat'], 'fixed' => $r['aa_dining_fixed']);
-	}
-
-	$dl_name = dh_course_file_basename($centre, $course, $file_slug);
-	$out = '<html><head><title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
-	$out .= '</head><body>';
-	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title.'</b></div>'.
-			'<div align="center" class="title-head">'.$course_name.'</div></div>';
-	$sort_base = $base_slug.'/'.$centre.'/'.$course;
-	$wb_plan = ($mode === 'group') ? 'group' : 'main';
-	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
-	$keep_sort = ($sort == 'seat') ? array('sort' => 'seat') : array(); // preserve sort choice on column links
-	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/dining-workbench/'.$centre.'/'.$course.'?plan='.$wb_plan.'">&#8592; Back to Workbench</a>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
-		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols))).
-		' &middot; '.
-		($sort == 'seat' ? '<b>Dining Seat</b>' : l('Dining Seat', $sort_base, array('query' => array('sort' => 'seat') + $keep_cols))).
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
-		($cols==1 ? '<b>1</b>' : l('1', $sort_base, array('query'=>$keep_sort))).
-		' &middot; '.
-		($cols==2 ? '<b>2</b>' : l('2', $sort_base, array('query'=>array('cols'=>2) + $keep_sort))).
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
-		'</div>';
-	if ($has_fixed)
-		$out .= '<div class="cl-fixed-note no-print"><span class="cl-fixed">&#9679;</span> A red dot means the dining seat is <b>fixed</b> &ndash; it is kept as-is when the list is regenerated. (Shown on screen only, not in print.)</div>';
-	$out .= '<table class="cl-doc"><thead><tr><td class="cl-doc-cell">'.
-		'<div class="cl-dt-main">'.$title.'</div><div class="cl-dt-sub">'.check_plain($course_name).'</div>'.
-		'</td></tr></thead><tbody><tr><td class="cl-doc-body">';
-	$out .= '<div class="main-div">';
-	$first = true;
-	foreach ($gender as $g)
-		foreach (array('student', 'server') as $cl)
-		for ($i = 1; $i >= 0; $i--)
-		{
-			if (empty($data[$g][$cl][$i])) continue;
-			$num_batches = count($data[$g][$cl][$i]);   // label "Batch N" only when more than one
-			foreach ($data[$g][$cl][$i] as $batch => $rowsd)
-			{
-			if ($sort == 'seat')
-				uasort($rowsd, function($a, $b) { return strnatcasecmp($a['seat'], $b['seat']); });
-			else
-				uasort($rowsd, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
-			$keys = array_keys($rowsd);
-			// Servers are always old, so drop the Old/New prefix for them.
-			$label = ($cl === 'server' ? ($g == 'M' ? 'Male' : 'Female').' Server' : ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female')).($num_batches > 1 ? ' Batch '.($batch + 1) : '');
-			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
-			$first = false;
-			$n = count($keys);
-			$dfix_title = 'Fixed dining seat - kept when the list is regenerated';
-			if ($cols == 2) { $trows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
-			else            { $trows = $n;                 $colspan = 4; }  // one entry per row
-			$out .= '<table cellspacing="0" class="table-cell-list'.($cols==2 ? ' cl-2col' : '').'">';
-			if ($cols == 2)
-				$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
-			else
-				$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
-			$out .= '<thead><tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$label.'</th></tr>';
-			if ($cols == 2)
-				$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr>';
-			else
-				$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr>';
-			$out .= '</thead><tbody>';
-			for ($a = 0; $a < $trows; $a++)
-			{
-				if ($cols == 2)
-					$out .= '<tr>'.dh_cell_list_pair($rowsd, $keys, 2 * $a, 'seat', $dfix_title).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($rowsd, $keys, 2 * $a + 1, 'seat', $dfix_title).'</tr>';
-				else
-					$out .= '<tr>'.dh_cell_list_pair($rowsd, $keys, $a, 'seat', $dfix_title).'</tr>';
-			}
-			$out .= '</tbody></table></div>';
-			}
-		}
-	$out .= '</div></td></tr></tbody></table></html>';
-
-	if ($pdf <> '')
-		create_pdf_from_html($out, $pdf);
-	else
-	{
-		print $out;
-		exit;
-	}
+	return dh_alloc_list($centre, $course, 'dining', $mode, 0, $pdf);
 }
 
 /* ------------------------------------------------------------------------- *
