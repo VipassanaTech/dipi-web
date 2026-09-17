@@ -3907,7 +3907,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$data = array('M' => array(), 'F' => array());
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 	$q = "select a_id, aa_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
-		aa_section, aa_acco, $col as seat, $dfix as aa_dining_fixed
+		aa_section, aa_acco, $col as seat, $dfix as aa_dining_fixed, IFNULL(aa_dining_batch,0) as aa_dining_batch
 		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
 		left join dh_applicant_attended on a_id=aa_applicant
 		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
@@ -3925,7 +3925,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 		if ($room === '-') $room = '';
 		// Servers (Sevak) show as a separate group after the students.
 		$cl = (strtolower($r['a_type']) === 'sevak') ? 'server' : 'student';
-		$data[strtoupper($r['a_gender'])][$cl][$r['a_old'] ? 1 : 0][$r['a_id']] =
+		$data[strtoupper($r['a_gender'])][$cl][$r['a_old'] ? 1 : 0][$r['aa_dining_batch']][$r['a_id']] =
 			array('name' => $r['Full Name'], 'room' => $room, 'seat' => $r['seat'], 'fixed' => $r['aa_dining_fixed']);
 	}
 
@@ -3954,13 +3954,15 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 		for ($i = 1; $i >= 0; $i--)
 		{
 			if (empty($data[$g][$cl][$i])) continue;
-			$rowsd = $data[$g][$cl][$i];
+			$num_batches = count($data[$g][$cl][$i]);   // label "Batch N" only when more than one
+			foreach ($data[$g][$cl][$i] as $batch => $rowsd)
+			{
 			if ($sort == 'seat')
 				uasort($rowsd, function($a, $b) { return strnatcasecmp($a['seat'], $b['seat']); });
 			else
 				uasort($rowsd, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
 			$keys = array_keys($rowsd);
-			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female').($cl === 'server' ? ' Server' : '');
+			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female').($cl === 'server' ? ' Server' : '').($num_batches > 1 ? ' Batch '.($batch + 1) : '');
 			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
 			$first = false;
 			$out .= '<table cellspacing="0" class="table-cell-list">';
@@ -3979,6 +3981,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 					'</td></tr>';
 			}
 			$out .= '</tbody></table></div>';
+			}
 		}
 	$out .= '</div></td></tr></tbody></table></html>';
 
