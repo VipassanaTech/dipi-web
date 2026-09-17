@@ -3537,9 +3537,9 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	// Layout: 1 column (default, full names) or 2 columns (denser).
 	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
 	$gender = array('M', 'F');
-	$data['M'][0] = array(); $data['F'][0] = array();
+	$data = array('M' => array(), 'F' => array());
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1  and a_type='Student' order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, a_type, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1 order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
 	while($r = $result->fetchAssoc())
@@ -3549,19 +3549,24 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 		if ($debug) $name .= ' ('.$r['Age'].')';
 		$room = $r['aa_section'].'-'.$r['aa_acco'];
 		if ($room === '-') $room = '';
+		// Servers (Sevak) are shown as a separate group after the students, so bucket
+		// by class (student/server) as well as gender/old/batch.
+		$G = strtoupper($r['a_gender']);
+		$cl = (strtolower($r['a_type']) === 'sevak') ? 'server' : 'student';
+		$b = $r['aa_cell_batch'];
 		// Key by the unique applicant id, NOT aa_cell: several students can share a
 		// cell value (or have a blank cell), which would collapse them to one entry.
-		$data[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
-		if ( !isset( $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]) )
+		$data[$G][$cl][$r['a_old']][$b][$r['a_id']] = array('name' => $name, 'room' => $room, 'cell' => $r['aa_cell'], 'fixed' => $r['aa_cell_fixed']);
+		if ( !isset( $age_range[$G][$cl][$r['a_old']][$b]) )
 		{
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] = $r['Age'];
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] = 0;
+			$age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
+			$age_range[$G][$cl][$r['a_old']][$b]['upper'] = 0;
 		}
-		if ( $r['Age'] > $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] )
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['upper'] = $r['Age'];
+		if ( $r['Age'] > $age_range[$G][$cl][$r['a_old']][$b]['upper'] )
+			$age_range[$G][$cl][$r['a_old']][$b]['upper'] = $r['Age'];
 
-		if ( $r['Age'] < $age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] )
-			$age_range[strtoupper($r['a_gender'])][$r['a_old']][$r['aa_cell_batch']]['lower'] = $r['Age'];
+		if ( $r['Age'] < $age_range[$G][$cl][$r['a_old']][$b]['lower'] )
+			$age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
 
 	}
 	$dl_name = dh_course_file_basename($centre, $course, $slug);
@@ -3597,13 +3602,15 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	$first = true;
 	foreach( $gender as $g )
 	{
+		foreach( array('student', 'server') as $cl )
+		{
 		for($i=1; $i>=0 ; $i--)
 		{
-			if (empty($data[$g][$i]))
+			if (empty($data[$g][$cl][$i]))
 				continue;
-			$num_batches = count($data[$g][$i]);   // only label "Batch N" when there is more than one
+			$num_batches = count($data[$g][$cl][$i]);   // only label "Batch N" when there is more than one
 			$cat_first = true;                     // first batch of this category starts a new page
-			foreach( $data[$g][$i] as $batch => $cell_data )
+			foreach( $data[$g][$cl][$i] as $batch => $cell_data )
 			{
 				//$out .= '<div class="title-info">'.$g.' Batch '.$batch.'</div>';
 				if ( ! $debug )
@@ -3615,8 +3622,8 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 				}
 				$keys = array_keys($cell_data);
 				$n = count($keys);
-				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($num_batches > 1 ? ' Batch '.($batch+1) : '').
-					' ('.$age_range[$g][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$i][$batch]['upper'].' yrs)';
+				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($cl==='server'?' Server':'').($num_batches > 1 ? ' Batch '.($batch+1) : '').
+					' ('.$age_range[$g][$cl][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$cl][$i][$batch]['upper'].' yrs)';
 				if ($cols == 2) { $rows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
 				else            { $rows = $n;                 $colspan = 4; }  // one entry per row
 				{
@@ -3653,6 +3660,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 				}
 			}
 
+		}
 		}
 	}
 	$out .= '</div>';                              // .main-div
@@ -3884,14 +3892,14 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'seat') ? 'seat' : 'name';
 
 	$gender = array('M', 'F');
-	$data = array('M' => array(1 => array(), 0 => array()), 'F' => array(1 => array(), 0 => array()));
+	$data = array('M' => array(), 'F' => array());
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
+	$q = "select a_id, aa_id, a_gender, a_old, a_type, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name',
 		aa_section, aa_acco, $col as seat, $dfix as aa_dining_fixed
 		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
 		left join dh_applicant_attended on a_id=aa_applicant
 		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
-		where a_course='$course' and a_attended=1 and a_type='Student'
+		where a_course='$course' and a_attended=1
 		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
 			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
 			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
@@ -3903,7 +3911,9 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 		if ($r['aa_dining_fixed']) $has_fixed = true;
 		$room = $r['aa_section'].'-'.$r['aa_acco'];
 		if ($room === '-') $room = '';
-		$data[strtoupper($r['a_gender'])][$r['a_old'] ? 1 : 0][$r['a_id']] =
+		// Servers (Sevak) show as a separate group after the students.
+		$cl = (strtolower($r['a_type']) === 'sevak') ? 'server' : 'student';
+		$data[strtoupper($r['a_gender'])][$cl][$r['a_old'] ? 1 : 0][$r['a_id']] =
 			array('name' => $r['Full Name'], 'room' => $room, 'seat' => $r['seat'], 'fixed' => $r['aa_dining_fixed']);
 	}
 
@@ -3928,16 +3938,17 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$out .= '<div class="main-div">';
 	$first = true;
 	foreach ($gender as $g)
+		foreach (array('student', 'server') as $cl)
 		for ($i = 1; $i >= 0; $i--)
 		{
-			if (empty($data[$g][$i])) continue;
-			$rowsd = $data[$g][$i];
+			if (empty($data[$g][$cl][$i])) continue;
+			$rowsd = $data[$g][$cl][$i];
 			if ($sort == 'seat')
 				uasort($rowsd, function($a, $b) { return strnatcasecmp($a['seat'], $b['seat']); });
 			else
 				uasort($rowsd, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
 			$keys = array_keys($rowsd);
-			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female');
+			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female').($cl === 'server' ? ' Server' : '');
 			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
 			$first = false;
 			$out .= '<table cellspacing="0" class="table-cell-list">';
