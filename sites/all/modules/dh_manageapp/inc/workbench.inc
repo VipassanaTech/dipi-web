@@ -98,10 +98,15 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$data = array();
 	$classes = array('Student' => TRUE);
 	if ($has_server) $classes['Sevak'] = TRUE;
+	// Whether ANY block on the page spans more than one batch. Drives whether the
+	// Batch column is shown - shown on EVERY table (or none) so all tables keep the
+	// same columns and line up.
+	$page_has_batch = FALSE;
 	while ($r = $result->fetchAssoc())
 	{
 		$class = (strtolower($r['a_type']) === 'sevak') ? 'Sevak' : 'Student';
 		if (!isset($classes[$class])) continue;
+		if ((int) $r['vbatch'] > 0) $page_has_batch = TRUE;
 		$g = strtoupper($r['a_gender']);
 		$old = $r['a_old'] ? 1 : 0;
 		// Groups only matter in the group-wise plan; in Main everyone in a
@@ -129,7 +134,15 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/workbench.css");</style>';
 	$out .= '<style>.wb-grid td .select2-container{min-width:120px}'.
 		'.select2-container.wb-dup .select2-selection{border-color:#d00 !important;background:#ffe6e6 !important}'.
-		'.wb-grid th.wb-batch,.wb-grid td.wb-batch{text-align:center;width:56px;color:#555}</style>';
+		// Fixed column layout so every section table lines up (same widths across tables).
+		'.wb-grid{table-layout:fixed;width:100%}'.
+		'.wb-grid .wbc-idx{width:44px}'.
+		'.wb-grid .wbc-room{width:96px}'.
+		'.wb-grid .wbc-cell{width:180px}'.
+		'.wb-grid .wbc-batch{width:80px}'.
+		'.wb-grid .wbc-fixed{width:70px}'.
+		'.wb-grid td.wb-name{white-space:normal;word-break:break-word}'.
+		'.wb-grid th.wb-batch,.wb-grid td.wb-batch{text-align:center;color:#555}</style>';
 	$out .= '</head><body>';
 
 	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>'.check_plain($rlabel).' Review &amp; Edit</b></div>'.
@@ -188,14 +201,16 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					$seckey = dh_alloc_effective_key($ini, $g, $grp, ($class === 'Sevak' ? 'server' : 'student'), $mode);
 					$opts_for($seckey);
 					$sec_attr = check_plain((string) $seckey);
-					// Show a Batch column only when this block actually spans more than
-					// one batch (a pool smaller than the people cycles into batches, so
-					// the same seat legitimately repeats across batches).
+					// The Batch column is shown on every table (or none) - see
+					// $page_has_batch - so all tables keep identical columns and align.
+					// $max_batch is still per-block, to size this block's batch picker.
 					$max_batch = 0;
 					foreach ($rows as $row) if ((int) $row['batch'] > $max_batch) $max_batch = (int) $row['batch'];
-					$show_batch = ($max_batch > 0);
+					$show_batch = $page_has_batch;
 					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp : 'No Group').'</div>' : '');
-					$out .= '<table class="wb-grid"><thead><tr>'.
+					$out .= '<table class="wb-grid">';
+					$out .= '<colgroup><col class="wbc-idx"><col class="wbc-name"><col class="wbc-room"><col class="wbc-cell">'.($show_batch ? '<col class="wbc-batch">' : '').'<col class="wbc-fixed"></colgroup>';
+					$out .= '<thead><tr>'.
 						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th>'.
 						($show_batch ? '<th class="wb-batch">Batch</th>' : '').
 						'<th>Fixed</th>'.
