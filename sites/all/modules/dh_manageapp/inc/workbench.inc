@@ -38,7 +38,15 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$fixedcol = ($plan === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
 
 	if (isset($_REQUEST['fill']))
+	{
 		dh_alloc_run($centre, $course, $desc, $plan);
+		// Post/Redirect/Get: drop ?fill from the URL so a later refresh re-shows the
+		// saved values instead of silently re-running the auto-fill, which would
+		// clobber manual edits saved after the fill. Only for real page requests;
+		// $return (programmatic/test) callers just get the freshly-filled page back.
+		if (!$return)
+			drupal_goto($resource.'-workbench/'.$centre.'/'.$course, array('query' => array('plan' => $plan)));
+	}
 
 	$cfg = db_query("select ".$desc['config']." from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
 	$ini = ($cfg !== '' && $cfg !== NULL) ? parse_ini_string($cfg, TRUE, INI_SCANNER_RAW) : array();
