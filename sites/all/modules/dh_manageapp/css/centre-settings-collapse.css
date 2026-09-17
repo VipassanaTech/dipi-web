@@ -1,27 +1,30 @@
 /**
- * Centre Settings: a small +/- toggle on the LEFT of each section header.
+ * Centre Settings: a colour +/- toggle icon on the LEFT of each section header,
+ * matching the applicant-list ("+"/"-") expander used on the search page.
  *
  * The Bootstrap subtheme (tweme) renders every collapsible fieldset as a
  * Bootstrap "panel" whose header link (a.fieldset-legend) is driven by
  * Bootstrap's own collapse plugin: the plugin adds/removes the `collapsed`
- * class on that link as the section opens and closes. So the +/- indicator
- * below is pure CSS keyed off `.collapsed` - no extra JS, and the header keeps
- * its original look; we only prepend a "+" (collapsed) / "-" (open) marker.
+ * class on that link as the section opens and closes. So the icon below is
+ * pure CSS keyed off `.collapsed` - no extra JS, and the header keeps its
+ * original look; we only prepend the same green-plus / red-minus icons the
+ * search results table uses (imgs/details_open.png, imgs/details_close.png).
  *
  * Loaded only on the centre add/edit form (see dh_ma_centre_form()).
  */
 
-/* Prepend the toggle marker before the section title. "-" when the section is
-   open, "+" when it is collapsed. */
 fieldset.panel > legend.panel-heading > a.fieldset-legend::before {
-  content: "\2212"; /* minus sign - section is open */
+  content: "";
   display: inline-block;
-  width: 1em;
-  margin-right: 6px;
-  text-align: center;
-  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+  /* Section is OPEN -> red minus (same icon as the search results "-"). */
+  background: url("../imgs/details_close.png") no-repeat center center;
 }
 
 fieldset.panel > legend.panel-heading > a.fieldset-legend.collapsed::before {
-  content: "\002B"; /* plus sign - section is collapsed */
+  /* Section is COLLAPSED -> green plus (same icon as the search results "+"). */
+  background-image: url("../imgs/details_open.png");
 }
