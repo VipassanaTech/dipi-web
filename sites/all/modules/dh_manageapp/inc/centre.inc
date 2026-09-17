@@ -216,6 +216,9 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
 
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	// Card-style +/- collapse affordance for the top-level settings sections
+	// (piggybacks on Drupal's native collapsible-fieldset behaviour).
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/centre-settings-collapse.css');
 	$add = 0;
 	if (count($edit_data) == 0)
 		$add = 1;
@@ -235,7 +238,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 			$city_name = db_query("select c_name from dh_city where c_id='".$edit_data['c_city']."'")->fetchField();
 	}
 
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true);
 	$form[$group]['c_name'] = array('#title' => 'Centre Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
 		'#default_value' => $add?'':$edit_data['c_name'], '#required' => 1, '#suffix' => $identifier.$qr_code_img  );
 	if(user_has_role(3)){
@@ -294,7 +297,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 
 
 	$group = 'Registration Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => true);
 	$form[$group]['cs_preconf_enable'] = array('#title' => 'Enable AutoCancellation after Preconfirmation', '#type' => 'radios', '#weight' => 1,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'0':$edit_data['cs_preconf_enable'], '#required' => 1,  );
@@ -343,13 +346,13 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 
 
 	$group = 'Search Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true);
 	$form[$group]['cs_pagination'] = array('#title' => 'Show Pagination on', '#type' => 'radios', '#weight' => 1,
 		'#options' => array('top' => 'Top', 'bottom' => 'Bottom', 'both' => 'Top and Bottom'),
 		'#default_value' => $add?'bottom':$edit_data['cs_pagination'], '#required' => 0,  );
 
 	$group = 'Dashboard Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => true);
 	// Only the short/service/other course types are offered as dashboard hide toggles.
 	// Ordered so "others" fill the LEFT column and 1/2/3-Day fill the RIGHT column
 	// (paired with grid-auto-flow:column in CSS): others first, then the day courses.
@@ -376,7 +379,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	);
 
 	$group = 'Course Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true);
 
 	// "Move to waitlist" question first (full-width row, above the editor).
 	$form[$group]['cs_apps_waitlist'] = array('#title' => 'Move Applications to Waitlist if course status is WaitList?', '#weight' => 1,
@@ -405,7 +408,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		'#description' => 'Keywords: MaxApps-Male, MaxApps-Female, Waitlist-Male, Waitlist-Female. ' );
 
 	$group = 'Hall Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => false);
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group,  '#collapsible' => true, '#collapsed' => true);
 	$form[$group]['cs_hall_combined'] = array('#title' => 'Male/Female Students in same Hall', '#type' => 'radios', '#weight' => 1,
 		'#options' => array(1 => 'Yes', 0 => 'No'), 
 		'#default_value' => $add?'':$edit_data['cs_hall_combined'], '#required' => 1,  );
@@ -521,7 +524,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	// same alloc-config.js table over cs_cells_config (Main + group blocks,
 	// Male/Female, split->Old/New, keep-aside, Sevak, reverse). See inc/allocate.inc.
 	$group = 'Cell Settings';
-	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => false,
+	$form[$group] = array('#type' => 'fieldset', '#title' => $group, '#collapsible' => true, '#collapsed' => true,
 		'#description' => 'Tick below if this centre has meditation cells, then set the ranges in the table.');
 	$has_cells = $add ? 1 : (isset($edit_data['cs_has_cells']) ? $edit_data['cs_has_cells'] : 1);
 	$form[$group]['cs_has_cells'] = array('#type' => 'checkbox', '#title' => 'This centre has meditation cells',
