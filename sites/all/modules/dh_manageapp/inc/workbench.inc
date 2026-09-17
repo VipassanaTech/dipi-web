@@ -138,6 +138,8 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		'.wb-grid .wbc-batch{width:80px}'.
 		'.wb-grid .wbc-fixed{width:70px}'.
 		'.wb-bar-links{margin-bottom:10px}.wb-bar-buttons button{margin:2px 2px}'.
+		'.wb-warn-details>summary{cursor:pointer;font-weight:bold;user-select:none}'.
+		'.wb-warn-details[open]>summary{margin-bottom:6px}.wb-warn-details ul{margin:0}'.
 		'.wb-grid td.wb-name{white-space:normal;word-break:break-word}'.
 		'.wb-grid th.wb-batch,.wb-grid td.wb-batch{text-align:center;color:#555}</style>';
 	$out .= '</head><body>';
@@ -176,9 +178,11 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$out .= '<div class="wb-warn no-print"'.(empty($warnings) ? ' style="display:none"' : '').'>';
 	if (!empty($warnings))
 	{
-		$out .= '<div class="wb-warn-title">Configuration warnings:</div><ul>';
+		// Collapsed by default so a long list does not bury the page; the count is
+		// in the summary and the user expands to read the details.
+		$out .= '<details class="wb-warn-details"><summary>&#9888; Configuration warnings ('.count($warnings).') &ndash; click to show</summary><ul>';
 		foreach ($warnings as $w) $out .= '<li>'.check_plain($w).'</li>';
-		$out .= '</ul>';
+		$out .= '</ul></details>';
 	}
 	$out .= '<div id="wb-dup-count"></div>';
 	$out .= '</div>';
@@ -293,7 +297,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			'var total=wbCheckDupes();'.
 			'var $box=$(".wb-warn"), $dup=$("#wb-dup-count");'.
 			'if (total>0){ $dup.text("Duplicate seat values: "+total); $box.show(); }'.
-			'else { $dup.text(""); if ($box.find(".wb-warn-title").length===0) $box.hide(); }'.
+			'else { $dup.text(""); if ($box.find(".wb-warn-details").length===0) $box.hide(); }'.
 		'}'.
 		'$(function(){'.
 			'$("#wb-save").on("click", function(){'.
