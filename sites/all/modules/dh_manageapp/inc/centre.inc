@@ -656,6 +656,13 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 					    ]
 					});
 
+					// The table inits hidden inside the collapsed Accommodation
+					// section, so its columns have no width until first shown.
+					// Recompute them the first time the section is expanded.
+					$("#centre-acco-table").closest(".panel-collapse").one("shown.bs.collapse", function(){
+						table.columns.adjust();
+					});
+
 				}
 
 
@@ -673,8 +680,10 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		';
 		drupal_add_js($js, 'inline');
 
-		$out = '<h2>Accomodation Settings</h2>
-				<table id="centre-acco-table">
+		// Accommodation (rooms per gender/section) as its own collapsible section,
+		// like the others, placed just above the Update button (weight 99 < the
+		// submit's 100).
+		$out = '<table id="centre-acco-table">
 					<thead>
 						<tr>
 							<th>Gender</th>
@@ -682,9 +691,10 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 							<th>Rooms</th>
 						</tr>
 					</thead>
-
 		</table>';
-		$form['a'] = array('#markup' => $out, '#weight' => 1000);
+		$form['Accommodation Settings'] = array('#type' => 'fieldset', '#title' => 'Accommodation Settings',
+			'#collapsible' => true, '#collapsed' => true, '#weight' => 99);
+		$form['Accommodation Settings']['acco'] = array('#markup' => $out);
 
 	}
 	else
