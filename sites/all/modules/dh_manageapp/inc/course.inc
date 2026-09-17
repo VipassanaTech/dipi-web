@@ -62,7 +62,19 @@ function dh_course_dashboard()
 			});
 		});})(jQuery);', "inline");
 	}
-	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2), 'Cell Workbench' => 'cell-workbench/'.arg(1).'/'.arg(2), 'Dining Workbench' => 'dining-workbench/'.arg(1).'/'.arg(2), 'Seating Plan' => 'seating/'.arg(1).'/'.arg(2), 'Group-wise Seating' => 'group-seating/'.arg(1).'/'.arg(2), 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
+	// Cells/Dining show only when the centre uses them (cs_has_*). Seating is one
+	// link that points at the plan this course uses (c_seat_plan). See
+	// dh_course_plan() in inc/allocate.inc.
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	$cflags = db_query("select cs_has_cells, cs_has_dining from dh_center_setting where cs_center=:c", array(':c' => arg(1)))->fetchAssoc();
+	$has_cells  = !empty($cflags['cs_has_cells']);
+	$has_dining = !empty($cflags['cs_has_dining']);
+	$seat_route = (dh_course_plan(arg(2), 'seat') === 'group' ? 'group-seating' : 'seating').'/'.arg(1).'/'.arg(2);
+	$modules = array( 'View Applications' => 'search-course/'.arg(1).'/'.arg(2), "Add Application" =>  'app/add/'.arg(1).'/'.arg(2), 'Assign Teacher' => 'assign-teacher/'.arg(1).'/'.arg(2),  'Day 0 List' => 'day0-list/'.arg(1).'/'.arg(2), 'Zero Day' => 'zero-day/'.arg(1).'/'.arg(2), 'Teachers List' => 'teacher-list/'.arg(1).'/'.arg(2), 'Manager List'  => 'manager-list/'.arg(1).'/'.arg(2) );
+	if ($has_cells)  $modules['Cell Workbench']   = 'cell-workbench/'.arg(1).'/'.arg(2);
+	if ($has_dining) $modules['Dining Workbench'] = 'dining-workbench/'.arg(1).'/'.arg(2);
+	$modules['Seating Plan'] = $seat_route;
+	$modules += array( 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
 	// Reports, printable pages and file downloads open in a new tab so the
 	// operator keeps the course page open behind them; plain navigation
@@ -92,6 +104,40 @@ function dh_course_dashboard()
 				$out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).'</li></h2>';
 	}
 	$out .= '</ul><br />';
+
+	// ---- Plan (Main / Group-wise) for this course. The SINGLE place that fixes
+	// the type; every generated list/report follows it (the editing tools keep
+	// their own controls). Managers only; saved via the course-plan route.
+	if (user_access('manage course'))
+	{
+		$mk = function($res, $label, $cur) {
+			return '<label class="cp-item" style="margin-right:20px; white-space:nowrap;"><b>'.$label.':</b> '
+				.'<select class="cp-sel" data-res="'.$res.'">'
+				.'<option value="main"'.($cur === 'main' ? ' selected' : '').'>Main</option>'
+				.'<option value="group"'.($cur === 'group' ? ' selected' : '').'>Group-wise</option>'
+				.'</select></label>';
+		};
+		$sel = '';
+		if ($has_cells)  $sel .= $mk('cell', 'Cell', dh_course_plan(arg(2), 'cell'));
+		if ($has_dining) $sel .= $mk('dining', 'Dining', dh_course_plan(arg(2), 'dining'));
+		$sel .= $mk('seat', 'Seating', dh_course_plan(arg(2), 'seat'));
+		$out .= '<div class="course-plan-box" style="margin:0 0 16px; padding:8px 14px; background:#f5f7f9; border:1px solid #dfe4e8; border-radius:6px; display:inline-block;">'
+			.'<b style="margin-right:12px;">Plan for this course:</b> '.$sel
+			.'<span style="color:#888; font-size:13px;">&mdash; all lists &amp; reports follow this</span></div>';
+		drupal_add_js('(function($){$(function(){
+			var NAMES={cell:"Cell",dining:"Dining",seat:"Seating"};
+			$(".cp-sel").each(function(){ this.setAttribute("data-prev", this.value); });
+			$(".cp-sel").on("change", function(){ var s=$(this), el=this;
+				var res=s.data("res"), val=s.val(), prev=el.getAttribute("data-prev");
+				var label = (val==="group") ? "Group-wise" : "Main";
+				if (!confirm("Set "+(NAMES[res]||res)+" to "+label+" for this course?\\nAll lists and reports will use this plan.")) { s.val(prev); return; }
+				$.post("/course-plan/'.(int) arg(1).'/'.(int) arg(2).'", {resource:res, plan:val}, function(j){
+					if (j && j.status) { location.reload(); } else { alert((j && j.msg) || "Could not save plan."); s.val(prev); }
+				}, "json").fail(function(){ alert("Could not save plan."); s.val(prev); });
+			});
+		});})(jQuery);', "inline");
+	}
+
 	$out .= '<h2>Course Summary</h2>';
 	$finalized = db_query("select c_finalized from dh_course where c_id=".arg(2))->fetchField();
 //	if ($finalized)
@@ -120,6 +166,36 @@ function _dh_course_pin_toggle()
 		->condition('c_id', $course)->execute();
 	$out['status'] = true;
 	$out['pinned'] = $new;
+	drupal_json_output($out);
+	exit;
+}
+
+/* Set a course's plan (Main/Group) for a resource (cell/dining/seat). JSON. */
+function _dh_course_plan_toggle()
+{
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	$centre = (int) arg(1);
+	$course = (int) arg(2);
+	$out = array('status' => false);
+	$resource = isset($_POST['resource']) ? $_POST['resource'] : '';
+	$plan = (isset($_POST['plan']) && $_POST['plan'] === 'group') ? 'group' : 'main';
+	if (!in_array($resource, array('cell', 'dining', 'seat'), true))
+	{
+		$out['msg'] = 'Bad resource.';
+		drupal_json_output($out);
+		exit;
+	}
+	$row = db_query("select c_center from dh_course where c_id=:c", array(':c' => $course))->fetchAssoc();
+	if (!$row || (int) $row['c_center'] !== $centre)
+	{
+		$out['msg'] = 'Course not found.';
+		drupal_json_output($out);
+		exit;
+	}
+	dh_course_plan_set($course, $resource, $plan);
+	$out['status'] = true;
+	$out['resource'] = $resource;
+	$out['plan'] = $plan;
 	drupal_json_output($out);
 	exit;
 }

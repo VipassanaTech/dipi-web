@@ -18,6 +18,24 @@ function dh_alloc_descriptor($resource) {
     'batch_col'=>'aa_dining_batch');
 }
 
+/** The plan a course uses for a resource ('cell'|'dining'|'seat'): 'main' or
+ *  'group'. Stored per course in c_<res>_plan (0=main default, 1=group). This is
+ *  the single source of truth that drives the course page, lists, workbench
+ *  default and the zero-day popup so a course shows only the plan it uses. */
+function dh_course_plan($course, $resource) {
+  $map = array('cell' => 'c_cell_plan', 'dining' => 'c_dining_plan', 'seat' => 'c_seat_plan');
+  if (!isset($map[$resource])) return 'main';
+  $v = db_query("select ".$map[$resource]." from dh_course where c_id=:c", array(':c' => (int) $course))->fetchField();
+  return ((int) $v === 1) ? 'group' : 'main';
+}
+
+/** Persist a course's plan for a resource ('main'|'group'). */
+function dh_course_plan_set($course, $resource, $plan) {
+  $map = array('cell' => 'c_cell_plan', 'dining' => 'c_dining_plan', 'seat' => 'c_seat_plan');
+  if (!isset($map[$resource])) return;
+  db_update('dh_course')->fields(array($map[$resource] => ($plan === 'group') ? 1 : 0))->condition('c_id', (int) $course)->execute();
+}
+
 /** Expand "1-40, 55, A1-A5" into an array of labels (letter-prefix aware). */
 function dh_alloc_expand($str) {
   $out = array();
