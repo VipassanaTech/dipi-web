@@ -3529,6 +3529,12 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	// group-wise aa_group_cell. Batch grouping (aa_cell_batch) is shared.
 	$col = ($mode === 'group') ? 'aa_group_cell' : 'aa_cell';
 	$fixcol = ($mode === 'group') ? 'aa_group_cell_fixed' : 'aa_cell_fixed';
+	// Only list servers when this centre configures a cell _SERVER range (mirrors
+	// the allocation engine, which allocates cells to servers only in that case).
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	$cfg_srv = db_query("select cs_cells_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
+	$ini_srv = ($cfg_srv !== '' && $cfg_srv !== null) ? parse_ini_string($cfg_srv, true, INI_SCANNER_RAW) : array();
+	$type_filter = dh_alloc_has_server_config(is_array($ini_srv) ? $ini_srv : array()) ? '' : " and a_type='Student'";
 	$title_txt = ($mode === 'group') ? 'Group-wise Cell List' : 'Cell List';
 	$slug = ($mode === 'group') ? 'group-cell-list' : 'cell-list';
 	$ROWS_PER_PAGE = variable_get('cell_list_rows_per_page', '5');
@@ -3539,7 +3545,7 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	$gender = array('M', 'F');
 	$data = array('M' => array(), 'F' => array());
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, a_type, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1 order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
+	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', a_conf_no , ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_section, aa_acco, a_type, $col as aa_cell, $fixcol as aa_cell_fixed, IFNULL(aa_cell_batch,0) as 'aa_cell_batch' from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender)) where a_course='$course' and a_attended=1 $type_filter order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc, a_id";
 	$result = db_query($q);
 	$has_fixed = false;
 	while($r = $result->fetchAssoc())
@@ -3886,6 +3892,12 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	global $base_url;
 	$col = ($mode === 'group') ? 'aa_group_dining' : 'aa_dining';
 	$dfix = ($mode === 'group') ? 'aa_group_dining_fixed' : 'aa_dining_fixed';
+	// Only list servers when this centre configures a dining _SERVER range (mirrors
+	// the allocation engine, which allocates dining to servers only in that case).
+	module_load_include('inc', 'dh_manageapp', 'inc/allocate');
+	$cfg_srv = db_query("select cs_dining_config from dh_center_setting where cs_center=:c", array(':c' => $centre))->fetchField();
+	$ini_srv = ($cfg_srv !== '' && $cfg_srv !== null) ? parse_ini_string($cfg_srv, true, INI_SCANNER_RAW) : array();
+	$type_filter = dh_alloc_has_server_config(is_array($ini_srv) ? $ini_srv : array()) ? '' : " and a_type='Student'";
 	$title = ($mode === 'group') ? 'Group-wise Dining List' : 'Dining List';
 	$base_slug = ($mode === 'group') ? 'group-dining-list' : 'dining-list';
 	$file_slug = ($mode === 'group') ? 'group-dining' : 'dining';
@@ -3899,7 +3911,7 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 		from dh_applicant left join dh_applicant_course on a_id=ac_applicant
 		left join dh_applicant_attended on a_id=aa_applicant
 		left join dh_teacher on (ac_teacher_code = CONCAT(t_code, '-', t_gender))
-		where a_course='$course' and a_attended=1
+		where a_course='$course' and a_attended=1 $type_filter
 		order by a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y")."),
 			IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc,
 			IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc,
