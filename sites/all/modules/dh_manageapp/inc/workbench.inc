@@ -137,6 +137,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		'.wb-grid .wbc-cell{width:180px}'.
 		'.wb-grid .wbc-batch{width:80px}'.
 		'.wb-grid .wbc-fixed{width:70px}'.
+		'.wb-bar-links{margin-bottom:10px}.wb-bar-buttons button{margin:2px 2px}'.
 		'.wb-grid td.wb-name{white-space:normal;word-break:break-word}'.
 		'.wb-grid th.wb-batch,.wb-grid td.wb-batch{text-align:center;color:#555}</style>';
 	$out .= '</head><body>';
@@ -156,15 +157,20 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$list_link = l('Printable list', $list_path, array('attributes' => array('target' => '_blank')));
 
 	$out .= '<div class="wb-bar no-print">'.
-		'<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="wb-plan-switch">Plan: '.$sw_main.' | '.$sw_group.'</span>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.
-		'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
-		'<button type="button" id="wb-clear">Clear non-fixed '.$unit_plural.'</button> '.
-		'<button type="button" id="wb-clearall">Clear all '.$unit_plural.'</button> '.
-		'<button type="button" id="wb-unfix">Clear all fixed checkboxes</button> '.
-		'<button type="button" id="wb-save">Save all</button>'.
-		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
+		// Line 1: navigation links.
+		'<div class="wb-bar-links">'.
+			'<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
+			' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="wb-plan-switch">Plan: '.$sw_main.' | '.$sw_group.'</span>'.
+			' &nbsp;&nbsp;&bull;&nbsp;&nbsp; '.$list_link.
+		'</div>'.
+		// Line 2: action buttons.
+		'<div class="wb-bar-buttons">'.
+			'<button type="button" id="wb-fill">Auto-fill '.$plan_name.' from ranges</button> '.
+			'<button type="button" id="wb-clear">Clear non-fixed '.$unit_plural.'</button> '.
+			'<button type="button" id="wb-clearall">Clear all '.$unit_plural.'</button> '.
+			'<button type="button" id="wb-unfix">Clear all fixed checkboxes</button> '.
+			'<button type="button" id="wb-save">Save all</button>'.
+		'</div>'.
 		'</div>';
 
 	$out .= '<div class="wb-warn no-print"'.(empty($warnings) ? ' style="display:none"' : '').'>';
