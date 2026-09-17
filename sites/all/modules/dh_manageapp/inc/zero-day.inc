@@ -3628,7 +3628,8 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 				}
 				$keys = array_keys($cell_data);
 				$n = count($keys);
-				$batch_label = ($i?'Old':'New').' '.($g=='M'?'Male':'Female').($cl==='server'?' Server':'').($num_batches > 1 ? ' Batch '.($batch+1) : '').
+				// Servers are always old, so drop the Old/New prefix for them.
+				$batch_label = ($cl==='server' ? ($g=='M'?'Male':'Female').' Server' : ($i?'Old':'New').' '.($g=='M'?'Male':'Female')).($num_batches > 1 ? ' Batch '.($batch+1) : '').
 					' ('.$age_range[$g][$cl][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$cl][$i][$batch]['upper'].' yrs)';
 				if ($cols == 2) { $rows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
 				else            { $rows = $n;                 $colspan = 4; }  // one entry per row
@@ -3962,7 +3963,8 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 			else
 				uasort($rowsd, function($a, $b) { return strcasecmp($a['name'], $b['name']); });
 			$keys = array_keys($rowsd);
-			$label = ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female').($cl === 'server' ? ' Server' : '').($num_batches > 1 ? ' Batch '.($batch + 1) : '');
+			// Servers are always old, so drop the Old/New prefix for them.
+			$label = ($cl === 'server' ? ($g == 'M' ? 'Male' : 'Female').' Server' : ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female')).($num_batches > 1 ? ' Batch '.($batch + 1) : '');
 			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
 			$first = false;
 			$out .= '<table cellspacing="0" class="table-cell-list">';
