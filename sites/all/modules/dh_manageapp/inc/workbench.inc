@@ -297,6 +297,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 		'}'.
 		'$(function(){'.
 			'$("#wb-save").on("click", function(){'.
+				'if (!confirm("Save all? This overwrites the currently saved "+WB_PLAN+" "+WB_UNIT+" (and batches) for this course.")) return;'.
 				'var rows=[];'.
 				'$("tr[data-aa]").each(function(){'.
 					'var $tr=$(this);'.
