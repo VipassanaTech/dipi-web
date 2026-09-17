@@ -3509,7 +3509,7 @@ document.addEventListener("click", function(e){
 
 /* One #|Name|Room|Cell group for the cell list. $idx is the position in the
    sorted batch; $keys are its cell numbers. Blank cells for an empty slot. */
-function dh_cell_list_pair($cd, $keys, $idx)
+function dh_cell_list_pair($cd, $keys, $idx, $valkey = 'cell', $fixtitle = 'Fixed cell - kept when the list is regenerated')
 {
 	if (!isset($keys[$idx]))
 		return '<td class="cl-idx"></td><td class="cl-name"></td><td class="cl-room"></td><td class="cl-cell"></td>';
@@ -3517,8 +3517,8 @@ function dh_cell_list_pair($cd, $keys, $idx)
 	return '<td class="cl-idx">'.($idx + 1).'</td>'
 		.'<td class="cl-name">'.check_plain($cd[$k]['name']).'</td>'
 		.'<td class="cl-room">'.check_plain($cd[$k]['room']).'</td>'
-		.'<td class="cl-cell">'.check_plain($cd[$k]['cell'])
-			.(!empty($cd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="Fixed cell - kept when the list is regenerated">&#9679;</span>' : '')
+		.'<td class="cl-cell">'.check_plain($cd[$k][$valkey])
+			.(!empty($cd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="'.$fixtitle.'">&#9679;</span>' : '')
 			.'</td>';
 }
 
@@ -3586,7 +3586,10 @@ function dh_cell_list($centre, $course, $debug = 0, $pdf = '', $mode = 'main' )
 	$sort_base = $slug.'/'.$centre.'/'.$course;
 	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
 	$keep_sort = ($sort == 'cell') ? array('sort' => 'cell') : array(); // preserve sort choice on column links
-	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
+	$wb_plan = ($mode === 'group') ? 'group' : 'main';
+	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/cell-workbench/'.$centre.'/'.$course.'?plan='.$wb_plan.'">&#8592; Back to Workbench</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
 		($sort=='name' ? '<b>Name</b>' : l('Name', $sort_base, array('query'=>array('sort'=>'name') + $keep_cols))).
 		' &middot; '.
 		($sort=='cell' ? '<b>Cell</b>' : l('Cell', $sort_base, array('query'=>array('sort'=>'cell') + $keep_cols))).
@@ -3903,6 +3906,8 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$base_slug = ($mode === 'group') ? 'group-dining-list' : 'dining-list';
 	$file_slug = ($mode === 'group') ? 'group-dining' : 'dining';
 	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == 'seat') ? 'seat' : 'name';
+	// Layout: 1 column (default, full names) or 2 columns (denser) - same as cells.
+	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
 
 	$gender = array('M', 'F');
 	$data = array('M' => array(), 'F' => array());
@@ -3937,10 +3942,19 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title.'</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$sort_base = $base_slug.'/'.$centre.'/'.$course;
-	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
-		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name')))).
+	$wb_plan = ($mode === 'group') ? 'group' : 'main';
+	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();          // preserve column choice on sort links
+	$keep_sort = ($sort == 'seat') ? array('sort' => 'seat') : array(); // preserve sort choice on column links
+	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/dining-workbench/'.$centre.'/'.$course.'?plan='.$wb_plan.'">&#8592; Back to Workbench</a>'.
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
+		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols))).
 		' &middot; '.
-		($sort == 'seat' ? '<b>Dining Seat</b>' : l('Dining Seat', $sort_base, array('query' => array('sort' => 'seat')))).
+		($sort == 'seat' ? '<b>Dining Seat</b>' : l('Dining Seat', $sort_base, array('query' => array('sort' => 'seat') + $keep_cols))).
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
+		($cols==1 ? '<b>1</b>' : l('1', $sort_base, array('query'=>$keep_sort))).
+		' &middot; '.
+		($cols==2 ? '<b>2</b>' : l('2', $sort_base, array('query'=>array('cols'=>2) + $keep_sort))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 	if ($has_fixed)
@@ -3967,20 +3981,27 @@ function dh_dining_list($centre, $course, $mode = 'default', $pdf = '')
 			$label = ($cl === 'server' ? ($g == 'M' ? 'Male' : 'Female').' Server' : ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female')).($num_batches > 1 ? ' Batch '.($batch + 1) : '');
 			$out .= '<div class="cl-batch'.(!$first ? ' cl-break' : '').'">';
 			$first = false;
-			$out .= '<table cellspacing="0" class="table-cell-list">';
-			$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
-			$out .= '<thead><tr><th colspan="4" class="cl-batch-title">'.$label.'</th></tr>'.
-				'<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr></thead><tbody>';
-			$idx = 0;
-			foreach ($keys as $k)
+			$n = count($keys);
+			$dfix_title = 'Fixed dining seat - kept when the list is regenerated';
+			if ($cols == 2) { $trows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
+			else            { $trows = $n;                 $colspan = 4; }  // one entry per row
+			$out .= '<table cellspacing="0" class="table-cell-list'.($cols==2 ? ' cl-2col' : '').'">';
+			if ($cols == 2)
+				$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
+			else
+				$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
+			$out .= '<thead><tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$label.'</th></tr>';
+			if ($cols == 2)
+				$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr>';
+			else
+				$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>Dining Seat</th></tr>';
+			$out .= '</thead><tbody>';
+			for ($a = 0; $a < $trows; $a++)
 			{
-				$idx++;
-				$out .= '<tr><td class="cl-idx">'.$idx.'</td>'.
-					'<td class="cl-name">'.check_plain($rowsd[$k]['name']).'</td>'.
-					'<td class="cl-room">'.check_plain($rowsd[$k]['room']).'</td>'.
-					'<td class="cl-cell">'.check_plain($rowsd[$k]['seat']).
-					(!empty($rowsd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="Fixed dining seat - kept when the list is regenerated">&#9679;</span>' : '').
-					'</td></tr>';
+				if ($cols == 2)
+					$out .= '<tr>'.dh_cell_list_pair($rowsd, $keys, 2 * $a, 'seat', $dfix_title).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($rowsd, $keys, 2 * $a + 1, 'seat', $dfix_title).'</tr>';
+				else
+					$out .= '<tr>'.dh_cell_list_pair($rowsd, $keys, $a, 'seat', $dfix_title).'</tr>';
 			}
 			$out .= '</tbody></table></div>';
 			}
