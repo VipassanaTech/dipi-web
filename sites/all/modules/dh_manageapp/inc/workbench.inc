@@ -214,12 +214,22 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 							'<option value=""></option>';
 						if ($val !== '') $sel .= '<option value="'.check_plain($val).'" selected="selected">'.check_plain($val).'</option>';
 						$sel .= '</select>';
+						// Editable batch picker (value = 0-based batch, label = 1-based).
+						// Offers the existing batches plus one new next batch.
+						$bsel = '';
+						if ($show_batch)
+						{
+							$bsel = '<select class="wb-batch-sel" data-aa="'.$aa_id.'">';
+							for ($bi = 0; $bi <= $max_batch + 1; $bi++)
+								$bsel .= '<option value="'.$bi.'"'.($bi === $batch ? ' selected="selected"' : '').'>'.($bi + 1).'</option>';
+							$bsel .= '</select>';
+						}
 						$out .= '<tr data-aa="'.$aa_id.'" data-block="'.$block_key.'" data-batch="'.$batch.'">'.
 							'<td class="wb-idx">'.$idx.'</td>'.
 							'<td class="wb-name">'.check_plain($row['name']).'</td>'.
 							'<td class="wb-room">'.check_plain($row['room']).'</td>'.
 							'<td>'.$sel.'</td>'.
-							($show_batch ? '<td class="wb-batch">'.($batch + 1).'</td>' : '').
+							($show_batch ? '<td class="wb-batch">'.$bsel.'</td>' : '').
 							'<td><input type="checkbox" class="wb-fixed" data-aa="'.$aa_id.'"'.($row['fixed'] ? ' checked' : '').'></td>'.
 							'</tr>';
 					}
@@ -237,13 +247,16 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$out .= '<script>(function($){'.
 		'var WB_CENTRE='.(int) $centre.', WB_COURSE='.(int) $course.', WB_PLAN="'.$plan.'", WB_RES="'.$resource.'", WB_UNIT="'.($resource==="cell"?"cells":"dining seats").'";'.
 		'var WB_OPTS='.drupal_json_encode($wb_opts).';'.
+		// Current batch of a row: the editable batch <select> when present, else the
+		// row's rendered data-batch (blocks with a single batch have no picker).
+		'function wbRowBatch($tr){ var $b=$tr.find(".wb-batch-sel"); return $b.length ? String($b.val()) : String($tr.data("batch")||0); }'.
 		'function wbCheckDupes(){'.
 			// Scope dedup to each row's data-block (class|gender|old-new|group): a
 			// group with its own range legitimately reuses seat numbers other groups
 			// use, so a page-wide check would false-flag those.
 			'var blocks={};'.
 			'$(".wb-val").each(function(){'.
-				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+($r.data("batch")||0);'.
+				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+wbRowBatch($r);'.
 				'if (!blocks[block]) blocks[block]={};'.
 				'var v=$.trim($(this).val());'.
 				'if (v==="") return;'.
@@ -251,7 +264,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			'});'.
 			'var dupes=0;'.
 			'$(".wb-val").each(function(){'.
-				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+($r.data("batch")||0);'.
+				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+wbRowBatch($r);'.
 				'var v=$.trim($(this).val());'.
 				'var isDup = v!=="" && (blocks[block]||{})[v]>1;'.
 				// the <select> is hidden by select2; mirror the flag onto its container.
@@ -271,7 +284,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 				'var rows=[];'.
 				'$("tr[data-aa]").each(function(){'.
 					'var $tr=$(this);'.
-					'rows.push({ aa: $tr.data("aa"), val: $tr.find(".wb-val").val(), df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0 });'.
+					'rows.push({ aa: $tr.data("aa"), val: $tr.find(".wb-val").val(), df: $tr.find(".wb-fixed").is(":checked") ? 1 : 0, bt: wbRowBatch($tr) });'.
 				'});'.
 				'$.post("/"+WB_RES+"-workbench-save/"+WB_CENTRE+"/"+WB_COURSE, {rows: rows, plan: WB_PLAN}, function(r){'.
 					'if (r && r.status) { alert("Saved "+r.saved+" row(s)."); }'.
@@ -298,8 +311,8 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			// A seat used in one batch is still free for another batch, so scope the
 			// "already used" set to this row's section AND its batch.
 			'function wbUsedInSection($s, sec){'.
-				'var used={}, b=$s.attr("data-batch")||"0";'.
-				'$(".wb-val").each(function(){ if(this!==$s[0] && $(this).attr("data-sec")===sec && ($(this).attr("data-batch")||"0")===b){ var v=$(this).val(); if(v){ used[v]=1; } } });'.
+				'var used={}, b=wbRowBatch($s.closest("tr[data-block]"));'.
+				'$(".wb-val").each(function(){ if(this!==$s[0] && $(this).attr("data-sec")===sec && wbRowBatch($(this).closest("tr[data-block]"))===b){ var v=$(this).val(); if(v){ used[v]=1; } } });'.
 				'return used;'.
 			'}'.
 			'$(".wb-val").each(function(){'.
@@ -315,6 +328,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 				'});'.
 			'});'.
 			'$(document).on("change", ".wb-val", wbUpdateWarn);'.
+			'$(document).on("change", ".wb-batch-sel", wbUpdateWarn);'.
 			'wbUpdateWarn();'.
 		'});'.
 	'})(jQuery);</script>';
@@ -344,6 +358,7 @@ function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main', $reso
 	$desc = dh_alloc_descriptor($resource);
 	$col = ($plan === 'group') ? $desc['group_col'] : $desc['main_col'];
 	$fixedcol = ($plan === 'group') ? $desc['group_fixed_col'] : $desc['fixed_col'];
+	$batchcol = $desc['batch_col'];
 
 	$valid = array();
 	$result = db_query("select aa_id from dh_applicant_attended aa join dh_applicant a on a.a_id=aa.aa_applicant where a.a_course=:c", array(':c' => $course));
@@ -359,10 +374,16 @@ function _dh_workbench_write_rows($centre, $course, $rows, $plan = 'main', $reso
 		$val = isset($row['val']) ? (string) $row['val'] : '';
 		$df = !empty($row['df']);
 
-		db_update('dh_applicant_attended')->fields(array(
+		$fields = array(
 			$col => ($val === '' ? NULL : $val),
 			$fixedcol => $df ? 1 : 0,
-		))->condition('aa_id', $aa)->execute();
+		);
+		// Batch is editable in the workbench too (only sent when the row had a
+		// batch picker); persist it into the shared batch column when present.
+		if (isset($row['bt']) && $row['bt'] !== '')
+			$fields[$batchcol] = (int) $row['bt'];
+
+		db_update('dh_applicant_attended')->fields($fields)->condition('aa_id', $aa)->execute();
 		$n++;
 	}
 	return $n;
