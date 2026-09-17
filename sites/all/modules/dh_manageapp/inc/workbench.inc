@@ -98,15 +98,10 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$data = array();
 	$classes = array('Student' => TRUE);
 	if ($has_server) $classes['Sevak'] = TRUE;
-	// Whether ANY block on the page spans more than one batch. Drives whether the
-	// Batch column is shown - shown on EVERY table (or none) so all tables keep the
-	// same columns and line up.
-	$page_has_batch = FALSE;
 	while ($r = $result->fetchAssoc())
 	{
 		$class = (strtolower($r['a_type']) === 'sevak') ? 'Sevak' : 'Student';
 		if (!isset($classes[$class])) continue;
-		if ((int) $r['vbatch'] > 0) $page_has_batch = TRUE;
 		$g = strtoupper($r['a_gender']);
 		$old = $r['a_old'] ? 1 : 0;
 		// Groups only matter in the group-wise plan; in Main everyone in a
@@ -201,12 +196,9 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					$seckey = dh_alloc_effective_key($ini, $g, $grp, ($class === 'Sevak' ? 'server' : 'student'), $mode);
 					$opts_for($seckey);
 					$sec_attr = check_plain((string) $seckey);
-					// The Batch column is shown on every table (or none) - see
-					// $page_has_batch - so all tables keep identical columns and align.
-					// $max_batch is still per-block, to size this block's batch picker.
-					$max_batch = 0;
-					foreach ($rows as $row) if ((int) $row['batch'] > $max_batch) $max_batch = (int) $row['batch'];
-					$show_batch = $page_has_batch;
+					// The Batch column is always shown (default 1) so every table keeps
+					// identical columns and lines up.
+					$show_batch = TRUE;
 					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp : 'No Group').'</div>' : '');
 					$out .= '<table class="wb-grid">';
 					$out .= '<colgroup><col class="wbc-idx"><col class="wbc-name"><col class="wbc-room"><col class="wbc-cell">'.($show_batch ? '<col class="wbc-batch">' : '').'<col class="wbc-fixed"></colgroup>';
@@ -229,13 +221,13 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 							'<option value=""></option>';
 						if ($val !== '') $sel .= '<option value="'.check_plain($val).'" selected="selected">'.check_plain($val).'</option>';
 						$sel .= '</select>';
-						// Editable batch picker (value = 0-based batch, label = 1-based).
-						// Offers the existing batches plus one new next batch.
+						// Editable batch picker (value = 0-based batch, label = 1-based),
+						// offering batches 1..99. Default is 1 (batch 0) when unset.
 						$bsel = '';
 						if ($show_batch)
 						{
 							$bsel = '<select class="wb-batch-sel" data-aa="'.$aa_id.'">';
-							for ($bi = 0; $bi <= $max_batch + 1; $bi++)
+							for ($bi = 0; $bi <= 98; $bi++)
 								$bsel .= '<option value="'.$bi.'"'.($bi === $batch ? ' selected="selected"' : '').'>'.($bi + 1).'</option>';
 							$bsel .= '</select>';
 						}
