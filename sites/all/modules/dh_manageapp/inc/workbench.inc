@@ -78,7 +78,9 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
 	$type_filter = $has_server ? "and a_type in ('Student','Sevak')" : "and a_type='Student'";
+	$batchcol = $desc['batch_col'];
 	$q = "select aa_id, a_gender, a_old, aa_group, a_type, $maincol as vmain, $groupcol as vgroup, $fixedcol as vfixed,
+			IFNULL($batchcol,0) as vbatch,
 			aa_section, aa_acco, concat(a_f_name, ' ', a_m_name, ' ', a_l_name) as name
 		from dh_applicant
 		left join dh_applicant_course on a_id=ac_applicant
@@ -113,6 +115,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			'room' => $room,
 			'val' => ($plan === 'group') ? $r['vgroup'] : $r['vmain'],
 			'fixed' => $r['vfixed'],
+			'batch' => (int) $r['vbatch'],
 		);
 	}
 
@@ -125,7 +128,8 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 	$out .= '<link rel="stylesheet" href="'.$base_url.'/sites/all/modules/dh_manageapp/css/select2.min.css">';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/workbench.css");</style>';
 	$out .= '<style>.wb-grid td .select2-container{min-width:120px}'.
-		'.select2-container.wb-dup .select2-selection{border-color:#d00 !important;background:#ffe6e6 !important}</style>';
+		'.select2-container.wb-dup .select2-selection{border-color:#d00 !important;background:#ffe6e6 !important}'.
+		'.wb-grid th.wb-batch,.wb-grid td.wb-batch{text-align:center;width:56px;color:#555}</style>';
 	$out .= '</head><body>';
 
 	$out .= '<div class="wb-header no-print"><div align="center" class="title"><b>'.check_plain($rlabel).' Review &amp; Edit</b></div>'.
@@ -184,9 +188,17 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					$seckey = dh_alloc_effective_key($ini, $g, $grp, ($class === 'Sevak' ? 'server' : 'student'), $mode);
 					$opts_for($seckey);
 					$sec_attr = check_plain((string) $seckey);
+					// Show a Batch column only when this block actually spans more than
+					// one batch (a pool smaller than the people cycles into batches, so
+					// the same seat legitimately repeats across batches).
+					$max_batch = 0;
+					foreach ($rows as $row) if ((int) $row['batch'] > $max_batch) $max_batch = (int) $row['batch'];
+					$show_batch = ($max_batch > 0);
 					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp : 'No Group').'</div>' : '');
 					$out .= '<table class="wb-grid"><thead><tr>'.
-						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th><th>Fixed</th>'.
+						'<th class="wb-idx">#</th><th>Name</th><th>Room</th><th>'.check_plain($col_label).'</th>'.
+						($show_batch ? '<th class="wb-batch">Batch</th>' : '').
+						'<th>Fixed</th>'.
 						'</tr></thead><tbody>';
 					$idx = 0;
 					foreach ($rows as $row)
@@ -194,18 +206,20 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 						$idx++;
 						$aa_id = (int) $row['aa_id'];
 						$val = (string) $row['val'];
+						$batch = (int) $row['batch'];
 						// A <select> (upgraded to select2 in JS). Starts with just the
 						// blank + current value; the section's full seat list is added
 						// lazily on first open (keeps a ~300-row page fast).
-						$sel = '<select class="wb-val" data-aa="'.$aa_id.'" data-sec="'.$sec_attr.'">'.
+						$sel = '<select class="wb-val" data-aa="'.$aa_id.'" data-sec="'.$sec_attr.'" data-batch="'.$batch.'">'.
 							'<option value=""></option>';
 						if ($val !== '') $sel .= '<option value="'.check_plain($val).'" selected="selected">'.check_plain($val).'</option>';
 						$sel .= '</select>';
-						$out .= '<tr data-aa="'.$aa_id.'" data-block="'.$block_key.'">'.
+						$out .= '<tr data-aa="'.$aa_id.'" data-block="'.$block_key.'" data-batch="'.$batch.'">'.
 							'<td class="wb-idx">'.$idx.'</td>'.
 							'<td class="wb-name">'.check_plain($row['name']).'</td>'.
 							'<td class="wb-room">'.check_plain($row['room']).'</td>'.
 							'<td>'.$sel.'</td>'.
+							($show_batch ? '<td class="wb-batch">'.($batch + 1).'</td>' : '').
 							'<td><input type="checkbox" class="wb-fixed" data-aa="'.$aa_id.'"'.($row['fixed'] ? ' checked' : '').'></td>'.
 							'</tr>';
 					}
@@ -229,7 +243,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			// use, so a page-wide check would false-flag those.
 			'var blocks={};'.
 			'$(".wb-val").each(function(){'.
-				'var block=$(this).closest("tr[data-block]").data("block")||"";'.
+				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+($r.data("batch")||0);'.
 				'if (!blocks[block]) blocks[block]={};'.
 				'var v=$.trim($(this).val());'.
 				'if (v==="") return;'.
@@ -237,7 +251,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			'});'.
 			'var dupes=0;'.
 			'$(".wb-val").each(function(){'.
-				'var block=$(this).closest("tr[data-block]").data("block")||"";'.
+				'var $r=$(this).closest("tr[data-block]"); var block=($r.data("block")||"")+"|b"+($r.data("batch")||0);'.
 				'var v=$.trim($(this).val());'.
 				'var isDup = v!=="" && (blocks[block]||{})[v]>1;'.
 				// the <select> is hidden by select2; mirror the flag onto its container.
@@ -281,9 +295,11 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 			// MINUS seats already taken by other rows in the same section, so the
 			// picker only offers UNUSED seats (plus this row own current value).
 			// tags:true still allows a manual/out-of-range value.
+			// A seat used in one batch is still free for another batch, so scope the
+			// "already used" set to this row's section AND its batch.
 			'function wbUsedInSection($s, sec){'.
-				'var used={};'.
-				'$(".wb-val").each(function(){ if(this!==$s[0] && $(this).attr("data-sec")===sec){ var v=$(this).val(); if(v){ used[v]=1; } } });'.
+				'var used={}, b=$s.attr("data-batch")||"0";'.
+				'$(".wb-val").each(function(){ if(this!==$s[0] && $(this).attr("data-sec")===sec && ($(this).attr("data-batch")||"0")===b){ var v=$(this).val(); if(v){ used[v]=1; } } });'.
 				'return used;'.
 			'}'.
 			'$(".wb-val").each(function(){'.
