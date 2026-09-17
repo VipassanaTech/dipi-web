@@ -145,6 +145,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage course'),
 	       'type' => MENU_CALLBACK);
 
+    $items['course-plan/%centre_id/%course_id'] = array('title' => t('Set course plan'),
+	       'page callback' => '_dh_course_plan_toggle',
+	       'access arguments' => array('manage course'),
+	       'type' => MENU_CALLBACK);
+
     $items['centre'] = array('title' => t('Manage Centre'),
 	       'page callback' => 'dh_manage_centre',
 	       'access arguments' => array('access centre'),
