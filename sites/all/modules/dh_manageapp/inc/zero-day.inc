@@ -4062,7 +4062,7 @@ function dh_student_chit($centre, $course, $seating)
 	$alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
 	$BLOCKS_PER_PAGE = variable_get('student_chit_rows_per_page', '18');
 	$gender = array('M', 'F');
-	$data['M'][0] = array(); $data['F'][0] = array();
+	$data = array('M' => array(), 'F' => array());
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
 	// Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
@@ -4078,18 +4078,18 @@ function dh_student_chit($centre, $course, $seating)
 	// Only offer the dining line/toggle for centres that actually assign dining seats.
 	$hasdining = (int) db_query("select cs_has_dining from dh_center_setting where cs_center=$centre")->fetchField();
 
-  $orderby = " order by a_gender, a_f_name, a_l_name ";
+  // Always split into Gender > Group sections (like the teacher list): order by
+  // gender then group; within a group by name, or by seat in sitting-plan order.
+  $orderby = " order by a_gender, aa_group, a_f_name, a_l_name ";
   if($seating)
-    $orderby = $sgrp
-      ? " order by aa_group asc, aa_chowky_chair desc, $seatrow asc, $seatcol asc "   // group plan: walk group-by-group (group seat row/col restart per group)
-      : " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";                 // main plan: single hall grid, walk by row/col
+    $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
 	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
-		$data[strtoupper($r['a_gender'])][] = $r;
+		$data[strtoupper($r['a_gender'])][$r['aa_group']][] = $r;
 	}
 	$max_cols = array('M' => array(), 'F' => array());
 	$q = "SELECT a_gender, $seatrow as aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, $seatrow";
@@ -4102,9 +4102,6 @@ function dh_student_chit($centre, $course, $seating)
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css?v='.filemtime(drupal_get_path("module", "dh_manageapp")."/css/student-chit.css").'");</style>';
 	$out .= '</head><body>';
-	$title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
-			'<div align="center" class="title-head">'.$course_name.'</div></div>';
-	$out .= $title;
   $student_chit_as_seating = $base_url."/student-chit/$centre/$course?seating=1";
   $out .= '<div class="sc-bar no-print">'.
     '<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
@@ -4115,62 +4112,65 @@ function dh_student_chit($centre, $course, $seating)
     '<label class="sc-tog"><input type="checkbox" class="sc-toggle" data-t="cell" checked> Cell</label>'.
     ($hasdining ? '<label class="sc-tog"><input type="checkbox" class="sc-toggle" data-t="dining" checked> Dining</label>' : '').
     '</div>';
+	$genlabel = array('M' => 'Male', 'F' => 'Female');
+	$first_section = true;
 	foreach( $gender as $g )
 	{
-		$count = 1;
-		if ($g == 'F')
-			$out .= '<div class="footer"></div><br>'.$title;
-		$out .= '<div class="main-div">';
-		foreach($data[$g] as $r)
+		if (empty($data[$g])) continue;
+		$groups = $data[$g];
+		ksort($groups, SORT_NUMERIC);                 // Group 1, 2, 3 ... (blank/0 first)
+		foreach ($groups as $grp => $rows)
 		{
-			if ($count > $BLOCKS_PER_PAGE)
+			if (empty($rows)) continue;
+			$grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp;
+			$sec_head = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
+				'<div align="center" class="title-head">'.$course_name.' / '.$genlabel[$g].' &ndash; '.$grplabel.'</div></div>';
+			if (!$first_section) $out .= '<div class="footer"></div><br>';   // each Gender/Group section starts a new page
+			$first_section = false;
+			$out .= $sec_head.'<div class="main-div">';
+			$count = 1;
+			foreach ($rows as $r)
 			{
-				$count = 1 ;
-				$out .= '<div class="footer"></div><br>';
-			}
-			$seat_type = 'Seat';
-			if ( !isset($r['a_f_name']) )
-				continue;
-			if ($alpha)
-				$r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
-			else
-			{
-				$offset = 0;
-				if ($r['aa_seat_row'])
+				if ( !isset($r['a_f_name']) ) continue;
+				if ($count > $BLOCKS_PER_PAGE)
 				{
-					for ($j=0; $j<$r['aa_seat_row']; $j++)
-						$offset += $max_cols[$g][$j];
+					$count = 1;
+					$out .= '</div><div class="footer"></div><br><div class="main-div">';   // page break within a big group; one title per section (printed, then cut)
 				}
-				$offset += $r['aa_seat_col'] + 1;
-				$r['SeatNo'] = $offset;
-			}
-			if ($r['aa_chowky'])
-				$r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
-			if ($r['aa_chair'])
-				$r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
+				$seat_type = 'Seat';
+				if ($alpha)
+					$r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
+				else
+				{
+					$offset = 0;
+					if ($r['aa_seat_row'])
+						for ($j=0; $j<$r['aa_seat_row']; $j++) $offset += $max_cols[$g][$j];
+					$offset += $r['aa_seat_col'] + 1;
+					$r['SeatNo'] = $offset;
+				}
+				if ($r['aa_chowky']) $r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
+				if ($r['aa_chair'])  $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
+				if ($r['aa_chowky']) $seat_type = 'Chowky';
+				elseif ($r['aa_chair']) $seat_type = 'Chair';
+				elseif ($r['aa_backrest']) $seat_type = 'Backrest';
 
-			if ($r['aa_chowky'])
-				$seat_type = 'Chowky';
-			elseif ($r['aa_chair'])
-				$seat_type = 'Chair';
-			elseif ($r['aa_backrest'])
-				$seat_type = 'Backrest';
-	
-			$dining_cell = $hasdining ? '<div class="sc-cell dining"><span class="sc-lbl">Dining</span><span class="sc-val">'.$r['aa_dining'].'</span></div>' : '';
-			$out .= '<div class="table-student-chit">'.
-				'<div class="sc-row sc-top">'.
-					'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].'</span></div>'.
-					'<div class="sc-cell room"><span class="sc-lbl">Room</span><span class="sc-val">'.$r['AccoNo'].'</span></div>'.
-				'</div>'.
-				'<div class="name"><span>'.$r['a_f_name'].'<br>'.$r['a_l_name'].'</span></div>'.
-				'<div class="sc-row sc-bot">'.
-					'<div class="sc-cell cell"><span class="sc-lbl">Cell</span><span class="sc-val">'.$r['aa_cell'].'</span></div>'.
-					$dining_cell.
-				'</div>'.
-				'</div>';
-			$count++;
+				$oldnew = $r['a_old'] ? ' (O)' : '';
+				$dining_cell = $hasdining ? '<div class="sc-cell dining"><span class="sc-lbl">Dining</span><span class="sc-val">'.$r['aa_dining'].'</span></div>' : '';
+				$out .= '<div class="table-student-chit">'.
+					'<div class="sc-row sc-top">'.
+						'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].'</span></div>'.
+						'<div class="sc-cell room"><span class="sc-lbl">Room</span><span class="sc-val">'.$r['AccoNo'].'</span></div>'.
+					'</div>'.
+					'<div class="name"><span>'.$r['a_f_name'].'<br>'.$r['a_l_name'].$oldnew.'</span></div>'.
+					'<div class="sc-row sc-bot">'.
+						'<div class="sc-cell cell"><span class="sc-lbl">Cell</span><span class="sc-val">'.$r['aa_cell'].'</span></div>'.
+						$dining_cell.
+					'</div>'.
+					'</div>';
+				$count++;
+			}
+			$out .= '</div>';
 		}
-		$out .= '</div>';		
 	}
 	$out .= '</body></html>';
   $out .= '
@@ -4199,7 +4199,7 @@ function dh_checking_slip($centre, $course, $seating)
   $alpha = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center=$centre")->fetchField();
   $BLOCKS_PER_PAGE = variable_get('checking_slip_per_page', '6');
   $gender = array('M', 'F');
-  $data['M'][0] = array(); $data['F'][0] = array();
+  $data = array('M' => array(), 'F' => array());
   $course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
 
   // Cell and Seat columns follow the course's plan (Main/Group), set on the course page.
@@ -4215,18 +4215,18 @@ function dh_checking_slip($centre, $course, $seating)
   // Only offer the dining line/toggle for centres that actually assign dining seats.
   $hasdining = (int) db_query("select cs_has_dining from dh_center_setting where cs_center=$centre")->fetchField();
 
-  $orderby = " order by a_gender, a_f_name, a_l_name ";
+  // Always split into Gender > Group sections (like the teacher list): order by
+  // gender then group; within a group by name, or by seat in sitting-plan order.
+  $orderby = " order by a_gender, aa_group, a_f_name, a_l_name ";
   if($seating)
-    $orderby = $sgrp
-      ? " order by aa_group asc, aa_chowky_chair desc, $seatrow asc, $seatcol asc "   // group plan: walk group-by-group (group seat row/col restart per group)
-      : " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";                 // main plan: single hall grid, walk by row/col
+    $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
   $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
   $result = db_query($q);
   while($r = $result->fetchAssoc())
   {
-    $data[strtoupper($r['a_gender'])][] = $r;
+    $data[strtoupper($r['a_gender'])][$r['aa_group']][] = $r;
   }
   $max_cols = array('M' => array(), 'F' => array());
   $q = "SELECT a_gender, $seatrow as aa_seat_row, count(aa_id) as c FROM `dh_applicant_attended` aa left join dh_applicant a on (aa.aa_applicant=a.a_id) WHERE a.a_course = '$course' and a.a_attended=1 and aa.aa_chowky=0 and a.a_type='Student' group by a_gender, $seatrow";
@@ -4239,9 +4239,6 @@ function dh_checking_slip($centre, $course, $seating)
   $out = '<html><head><title>'.$dl_name.'</title>';
   $out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/checking-slip.css?v='.filemtime(drupal_get_path("module", "dh_manageapp")."/css/checking-slip.css").'");</style>';
   $out .= '</head><body>';
-  $title = '<div class="header-day0"><div align="center" class="title"><b>Checking Slip</b></div>'.
-      '<div align="center" class="title-head">'.$course_name.'</div></div>';
-  $out .= $title;
   $student_chit_as_seating = $base_url."/checking-slip/$centre/$course?seating=1";
   $out .= '<div class="sc-bar no-print">'.
     '<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
@@ -4259,59 +4256,62 @@ function dh_checking_slip($centre, $course, $seating)
     '<label>Hindi <input type="text" id="hin-place-txt" placeholder="&#2313;&#2342;&#2366;. &#2343;&#2350;&#2381;&#2350;&#2366; &#2361;&#2377;&#2354;"></label>'.
     '<button type="button" class="replace-text">Fill in location</button>'.
     '</div>';
+  $genlabel = array('M' => 'Male', 'F' => 'Female');
+  $first_section = true;
   foreach( $gender as $g )
   {
-    $count = 1;
-    if ($g == 'F')
-      $out .= '<div class="footer"></div><br>'.$title;
-    $out .= '<div class="main-div">';
-    foreach($data[$g] as $r)
+    if (empty($data[$g])) continue;
+    $groups = $data[$g];
+    ksort($groups, SORT_NUMERIC);                 // Group 1, 2, 3 ... (blank/0 first)
+    foreach ($groups as $grp => $rows)
     {
-      if ($count > $BLOCKS_PER_PAGE)
+      if (empty($rows)) continue;
+      $grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp;
+      $sec_head = '<div class="header-day0"><div align="center" class="title"><b>Checking Slip</b></div>'.
+        '<div align="center" class="title-head">'.$course_name.' / '.$genlabel[$g].' &ndash; '.$grplabel.'</div></div>';
+      if (!$first_section) $out .= '<div class="footer"></div><br>';   // each Gender/Group section starts a new page
+      $first_section = false;
+      $out .= $sec_head.'<div class="main-div">';
+      $count = 1;
+      foreach ($rows as $r)
       {
-        $count = 1 ;
-        $out .= '<div class="footer"></div><br>';
-      }
-      $seat_type = 'Seat';
-      if ( !isset($r['a_f_name']) )
-        continue;
-      if ($alpha)
-        $r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
-      else
-      {
-        $offset = 0;
-        if ($r['aa_seat_row'])
+        if ( !isset($r['a_f_name']) ) continue;
+        if ($count > $BLOCKS_PER_PAGE)
         {
-          for ($j=0; $j<$r['aa_seat_row']; $j++)
-            $offset += $max_cols[$g][$j];
+          $count = 1;
+          $out .= '</div><div class="footer"></div><br><div class="main-div">';   // page break within a big group; one title per section (printed, then cut)
         }
-        $offset += $r['aa_seat_col'] + 1;
-        $r['SeatNo'] = $offset;
+        $seat_type = 'Seat';
+        if ($alpha)
+          $r['SeatNo'] = dh_seat_label($r['aa_seat_col'], $r['aa_seat_row'], $alpha);
+        else
+        {
+          $offset = 0;
+          if ($r['aa_seat_row'])
+            for ($j=0; $j<$r['aa_seat_row']; $j++) $offset += $max_cols[$g][$j];
+          $offset += $r['aa_seat_col'] + 1;
+          $r['SeatNo'] = $offset;
+        }
+        if ($r['aa_chowky']) $r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
+        if ($r['aa_chair'])  $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
+        if ($r['aa_chowky']) $seat_type = 'Chowky';
+        elseif ($r['aa_chair']) $seat_type = 'Chair';
+        elseif ($r['aa_backrest']) $seat_type = 'Backrest';
+
+        $oldnew = $r['a_old'] ? ' (O)' : '';
+        $dining_cs = $hasdining ? '<span class="dining">Dining: '.$r['aa_dining'].'</span>' : '';
+        $out .= '<div class="table-student-chit">'.
+          '<div class="name">'.mb_substr($r['a_f_name'].' '.$r['a_l_name'], 0, 25).$oldnew.'</div>'.
+          '<div class="cs-row"><span class="seat">'.$seat_type.': '.$r['aa_seat'].'</span>'.$dining_cs.'</div>'.
+          '<div class="cs-row"><span class="room">Room: '.$r['AccoNo'].'</span><span class="cell">Cell: '.$r['aa_cell'].'</span></div>'.
+          '<div class="linebreak"><hr></div>
+          <div class="message-english">Kindly meet the teacher TODAY at _______ AM/PM at Teacher\'sRoom / InterviewRoom / DhammaHall / MiniHall / <span class="eng-place">_____________ </span>, bring this note with you. Be Happy.</div>
+          <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर _______ बजे आचार्यनिवास / मुलाकातकक्ष / धम्माहॉल / मिनीहॉल / <span class="hin-place">_____________</span> में जायें, यह परची अपने साथ में लायें | मंगल हो | </div>
+          </div>';
+        $count++;
       }
-      if ($r['aa_chowky'])
-        $r['SeatNo'] = 'CW-'.($r['aa_seat_row']+1);
-      if ($r['aa_chair'])
-        $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
-
-      if ($r['aa_chowky'])
-        $seat_type = 'Chowky';
-      elseif ($r['aa_chair'])
-        $seat_type = 'Chair';
-      elseif ($r['aa_backrest'])
-        $seat_type = 'Backrest';
-
-      $dining_cs = $hasdining ? '<span class="dining">Dining: '.$r['aa_dining'].'</span>' : '';
-      $out .= '<div class="table-student-chit">'.
-        '<div class="name">'.mb_substr($r['a_f_name'].' '.$r['a_l_name'], 0, 25).'</div>'.
-        '<div class="cs-row"><span class="seat">'.$seat_type.': '.$r['aa_seat'].'</span>'.$dining_cs.'</div>'.
-        '<div class="cs-row"><span class="room">Room: '.$r['AccoNo'].'</span><span class="cell">Cell: '.$r['aa_cell'].'</span></div>'.
-        '<div class="linebreak"><hr></div>
-        <div class="message-english">Kindly meet the teacher TODAY at _______ AM/PM at Teacher\'sRoom / InterviewRoom / DhammaHall / MiniHall / <span class="eng-place">_____________ </span>, bring this note with you. Be Happy.</div>
-        <div class="message-hindi">कृपया आचार्य / आचार्या से भेंट के लिये आज सुबह / दोपहर _______ बजे आचार्यनिवास / मुलाकातकक्ष / धम्माहॉल / मिनीहॉल / <span class="hin-place">_____________</span> में जायें, यह परची अपने साथ में लायें | मंगल हो | </div>
-        </div>';
-      $count++;
+      $out .= '</div>';
     }
-    $out .= '</div>';
   }
   $out .= '</body></html>';
   $out .= '

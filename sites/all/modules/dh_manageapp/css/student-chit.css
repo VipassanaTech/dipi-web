@@ -1,11 +1,17 @@
 .main-div {
 	width: 650px;
 	margin: 20px auto 0;   /* centered like the cell/dining lists */
+	/* CSS grid (not floats) so every box sits in a fixed 3-column cell and rows
+	   always line up - avoids the float "staircase" gap when boxes differ in
+	   height. Boxes in a row stretch to equal height. */
+	display: grid;
+	grid-template-columns: repeat(3, 197px);
+	gap: 25px 15px;
+	justify-content: center;
 }
 
 
 .table-student-chit {
-	float: left;
     font-weight: normal;
     font-size: 11pt;
     color: black;
@@ -15,7 +21,6 @@
     border: 1px solid;
     border-color: gray;
     border-style: solid;
-    margin: 25px 15px 0 0;
     width: 197px;
     /* min-height (not a fixed height) so a long/bold name can never push the text
        outside the border — the box grows instead. Keeps the chit its usual size
@@ -40,7 +45,7 @@
 .sc-cell.seat, .sc-cell.cell   { grid-column: 1; align-items: flex-start; text-align: left; }
 .sc-cell.room, .sc-cell.dining { grid-column: 2; align-items: flex-end;   text-align: right; }
 .sc-lbl { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: .3px; }
-.sc-val { font-size: 11pt; word-break: break-word; }
+.sc-val { font-size: 11pt; word-break: break-word; min-height: 1.2em; }   /* reserve the value line so an empty Seat/Room/Cell/Dining doesn't shrink the box */
 
 .header-day0 {
 	width: 650px;
