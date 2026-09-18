@@ -11,7 +11,13 @@ ok(is_array($students), 'students is array');
 ok(count($students) === 320, 'fixture has 320 attended students'); // verified 2026-09-18
 $first = reset($students);
 $id = key($students);
-ok(is_string($id) && ctype_digit($id), 'keyed by string student id');
+// PHP coerces integer-like array keys to int; the wire contract is what matters:
+// the map must JSON-encode as an OBJECT keyed by the numeric id string.
+ok(ctype_digit((string) $id), 'keyed by numeric student id');
+$json = json_encode($students);
+ok(is_string($json) && $json !== '' && $json[0] === '{', 'students encodes as a JSON object, not an array');
+$decoded = json_decode($json, true);
+ok(array_key_exists((string) $id, $decoded), 'id present as a string key in the encoded JSON');
 foreach (array('name','gender','age','language','old_student','type','health','meditation_history','special_requests','accommodation','flags') as $k) {
   ok(array_key_exists($k, $first), "student has field: $k");
 }
