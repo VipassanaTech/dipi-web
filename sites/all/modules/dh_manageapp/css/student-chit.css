@@ -123,7 +123,7 @@
 .sc-bar {
   width: 650px;
   margin: 6px auto 14px;
-  text-align: right;   /* right-aligned above the grid, matching .cl-sort */
+  text-align: center;   /* centered options bar */
   /* Match the cell/dining list bar exactly: it renders in a sans-serif stack,
      whereas this standalone page would otherwise default to Times (serif),
      which looks noticeably smaller/thinner at the same 12px. */
