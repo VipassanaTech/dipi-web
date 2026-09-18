@@ -119,3 +119,59 @@ function dcv_course_students($course_id) {
   }
   return $out;
 }
+
+/**
+ * Occupied seats + per-seat card fields for a course, honouring the course's
+ * seat plan (main vs group). Seat labels are Dipi's cached values (aa_seat /
+ * aa_group_seat) — not recomputed. Read-only, parameterized.
+ */
+function dcv_course_seats($course_id) {
+  $course_id = (int) $course_id;
+  // dh_course_plan() lives in dh_manageapp/inc/allocate.inc (dependency).
+  $plan = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
+  if ($plan === 'group') {
+    $col_c = 'aa_group_seat_col'; $col_r = 'aa_group_seat_row'; $col_l = 'aa_group_seat';
+  }
+  else {
+    $col_c = 'aa_seat_col'; $col_r = 'aa_seat_row'; $col_l = 'aa_seat';
+  }
+  // Column names are chosen from a fixed whitelist above — safe to interpolate.
+  $sql = "select a_id, a_gender, a_old,
+            concat(a_f_name,' ',a_l_name) as name,
+            TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age,
+            ac_teen, ac_10d, ac_stp, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_spl,
+            aa_section, aa_acco, aa_cell, aa_group,
+            aa_chowky, aa_chair, aa_backrest,
+            $col_r as seat_row, $col_c as seat_col, $col_l as seat_label
+          from dh_applicant
+            left join dh_applicant_course   on a_id = ac_applicant
+            left join dh_applicant_attended on a_id = aa_applicant
+          where a_course = :c and a_attended = 1 and a_type = 'Student'
+            and $col_r is not null and $col_c is not null";
+  $out = array();
+  foreach (db_query($sql, array(':c' => $course_id)) as $r) {
+    $acco = trim($r->aa_section . '-' . $r->aa_acco, '-');
+    if (!empty($r->aa_cell)) { $acco .= ' / ' . $r->aa_cell; }
+    $short = (int) $r->ac_teen + (int) $r->ac_10d + (int) $r->ac_stp;
+    $long  = (int) $r->ac_20d + (int) $r->ac_30d + (int) $r->ac_45d
+           + (int) $r->ac_60d + (int) $r->ac_tsc + (int) $r->ac_spl;
+    $out[] = array(
+      'section'    => ($r->a_gender === 'M') ? 'RIGHT' : 'LEFT',
+      'group'      => (int) $r->aa_group,
+      'row'        => (int) $r->seat_row,
+      'col'        => (int) $r->seat_col,
+      'label'      => (string) $r->seat_label,
+      'chowky'     => (bool) $r->aa_chowky,
+      'chair'      => (bool) $r->aa_chair,
+      'student_id' => (int) $r->a_id,
+      'name'       => $r->name,
+      'acco'       => $acco,
+      'age'        => is_null($r->age) ? null : (int) $r->age,
+      'old_student'   => (bool) $r->a_old,
+      'short_courses' => $short,
+      'long_courses'  => $long,
+      'backrest'      => (bool) ($r->aa_backrest || $r->aa_chowky),
+    );
+  }
+  return $out;
+}
