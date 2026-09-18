@@ -83,3 +83,57 @@ function dcv_login() {
   user_login_finalize($login); // sets up the session + Set-Cookie
   dcv_json('OK', array('uid' => (int) $uid, 'name' => $user->name), 'Logged in.');
 }
+
+/**
+ * Centre ids the current user may access via dh_user_center.
+ * Returns array('*') when the user has the 'access all centres' bypass.
+ */
+function dcv_user_centres() {
+  global $user;
+  if (user_access('access all centres')) {
+    return array('*');
+  }
+  $centres = array();
+  $res = db_query("select uc_center from dh_user_center where uc_deleted=0 and uc_user=:u",
+    array(':u' => $user->uid));
+  foreach ($res as $r) { $centres[] = (int) $r->uc_center; }
+  return $centres;
+}
+
+/**
+ * Build the loadable-course list for a set of centre ids.
+ * $centres is an array of ints, or array('*') for all centres.
+ * Excludes deleted/cancelled courses. Read-only, parameterized.
+ */
+function dcv_build_course_list($centres) {
+  if (empty($centres)) {
+    return array();
+  }
+  $where = "c_deleted=0 and c_cancelled=0";
+  $args = array();
+  if ($centres !== array('*')) {
+    $where .= " and c_center in (:centres)";
+    $args[':centres'] = $centres;
+  }
+  $sql = "select c_id, c_name, c_center, c_start, c_end
+          from dh_course
+          where $where
+          order by c_start desc";
+  $out = array();
+  foreach (db_query($sql, $args) as $r) {
+    $out[] = array(
+      'id'         => (int) $r->c_id,
+      'name'       => $r->c_name,
+      'centre'     => (int) $r->c_center,
+      'start_date' => $r->c_start,
+      'end_date'   => $r->c_end,
+    );
+  }
+  return $out;
+}
+
+/** GET dcv/courses — courses the logged-in caller may load. */
+function dcv_courses() {
+  $list = dcv_build_course_list(dcv_user_centres());
+  dcv_json('OK', array('courses' => $list));
+}
