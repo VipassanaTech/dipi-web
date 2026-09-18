@@ -274,6 +274,20 @@
   function sectionOf(host) { return host.closest('.dh-plan-section'); }
   function hasData(host) { var el = q(host.dataset.prefix + 'spr'); return !!(el && String(el.value).trim() !== ''); }
   function showSection(host, on) { var fs = sectionOf(host); if (fs) fs.style.display = on ? '' : 'none'; }
+  // Expand a plan's collapsible panel and land the operator ON it. With the
+  // Bootstrap theme, collapse('show') fires shown.bs.collapse (see run()), which
+  // does the scroll; without it, scroll directly. Fixes "opening a group plan
+  // leaves me up at the first plan and I have to scroll down".
+  function openSection(host) {
+    var fs = sectionOf(host); if (!fs) return;
+    var body = fs.querySelector('.panel-collapse');
+    if (window.jQuery && body && window.jQuery(body).collapse) {
+      window.jQuery(body).collapse('show');
+    } else {
+      var head = fs.querySelector('.panel-heading') || fs.querySelector('legend') || fs;
+      if (head && head.scrollIntoView) head.scrollIntoView({ block: 'start' });
+    }
+  }
   function initEditor(host) { host.dataset.dhInit = ''; host.innerHTML = ''; initOne(host); }
 
   function addDeleteLink(host) {
@@ -303,6 +317,7 @@
     initEditor(host);
     addDeleteLink(host);
     renderAddUI();
+    openSection(host);   // expand + scroll to the plan just added, so it isn't left collapsed below the fold
   }
   function deletePlan(host) {
     ['spr', 'sprc', 'dir', 'pos', 'empty', 'empty_cho'].forEach(function (k) { var t = q(host.dataset.prefix + k); if (t) t.value = ''; });
@@ -342,6 +357,18 @@
       else initOne(host);   // Main Plan: always present + active
     }
     _addBox = document.getElementById('dh-plan-add');
+    // When any seating plan panel is expanded (operator clicks its heading, or via
+    // "Add a group plan"), scroll it to the top so they land on that plan instead
+    // of being left at the first plan and having to scroll down. Scoped to
+    // .dh-plan-section so the other settings sections are unaffected.
+    if (window.jQuery) {
+      window.jQuery(document).on('shown.bs.collapse', function (e) {
+        var fs = e.target && e.target.closest ? e.target.closest('.dh-plan-section') : null;
+        if (!fs) return;
+        var head = fs.querySelector('.panel-heading') || fs.querySelector('legend') || fs;
+        if (head && head.scrollIntoView) head.scrollIntoView({ block: 'start' });
+      });
+    }
     _groups.forEach(function (host) {
       if (hasData(host)) { showSection(host, true); initOne(host); addDeleteLink(host); }
       else { showSection(host, false); }
