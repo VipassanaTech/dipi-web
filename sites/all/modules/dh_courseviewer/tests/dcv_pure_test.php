@@ -30,4 +30,13 @@ ok($secs[1]['seats_per_row'] === 4, 'LEFT SeatsPerRow=4');
 $only = dcv_parse_seat_config("[RIGHT]\nSeatsPerRow = 3\n");
 ok(count($only) === 1 && $only[0]['key'] === 'RIGHT', 'single section ok');
 
+// --- centre access scoping (pure) ---
+ok(dcv_centres_allow(array('*'), 5) === true,  'all-centres bypass allows any course');
+ok(dcv_centres_allow(array(), 5) === false,    'no centres denies');
+ok(dcv_centres_allow(array(5, 7), 5) === true, 'matching centre allowed');
+ok(dcv_centres_allow(array(5, 7), 9) === false,'foreign centre denied');
+ok(dcv_centres_allow(array(5, 7), false) === false, 'missing course (false centre) denied');
+ok(dcv_centres_allow(array(5, 7), null) === false,  'null centre denied');
+ok(dcv_centres_allow(array(5, 7), '5') === true, 'string centre id from DB coerces and matches');
+
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";

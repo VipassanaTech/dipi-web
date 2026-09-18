@@ -138,14 +138,24 @@ function dcv_courses() {
   dcv_json('OK', array('courses' => $list));
 }
 
-/** True if the current user may load this course (centre-scoped). */
-function dcv_user_can_access_course($course_id) {
-  $centres = dcv_user_centres();
+/**
+ * Decide whether a caller's centre scope grants access to a course's centre.
+ * Pure (no DB, no globals) — unit tested. $centres is dcv_user_centres()'s
+ * return: an int list, or array('*') for the all-centres bypass. $course_centre
+ * is the course's c_center, or false/null when the course does not exist.
+ */
+function dcv_centres_allow($centres, $course_centre) {
   if ($centres === array('*')) { return true; }
   if (empty($centres)) { return false; }
-  $centre = db_query("select c_center from dh_course where c_id = :c",
+  if ($course_centre === false || $course_centre === null) { return false; }
+  return in_array((int) $course_centre, $centres, true);
+}
+
+/** True if the current user may load this course (centre-scoped). */
+function dcv_user_can_access_course($course_id) {
+  $course_centre = db_query("select c_center from dh_course where c_id = :c",
     array(':c' => (int) $course_id))->fetchField();
-  return $centre !== false && in_array((int) $centre, $centres, true);
+  return dcv_centres_allow(dcv_user_centres(), $course_centre);
 }
 
 /** GET dcv/course/%/bundle */
