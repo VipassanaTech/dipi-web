@@ -17,7 +17,11 @@
     border-style: solid;
     margin: 25px 15px 0 0;
     width: 360px;
-    height: 280px;
+    /* The message text (see .message-*) is sized to fit inside 280px with ~45px
+       of slack, so the slip keeps its fixed size. min-height (not a hard height)
+       is a safety net: if a browser's font metrics ever push past 280px the box
+       grows to keep the text inside the border instead of spilling below it. */
+    min-height: 280px;
     text-align: center;
     padding: 5px;
     margin-left: 10px;
@@ -45,18 +49,21 @@
 }
 
 .message-english {
-  font-size: 16px;
+  font-size: 15px;
   text-align: left;
   padding-bottom: 10px;
-  letter-spacing: 2px;
+  /* no letter-spacing: the old 2px widened every line and forced extra wrapping,
+     pushing the text past the slip border in some browsers. */
 }
 
 .message-hindi {
-  font-size: medium;
+  /* Devanagari reads visually smaller than Latin at the same px, so the Hindi
+     is set a touch larger than the 15px English. Still leaves ~18px of slack
+     inside the 280px slip. */
+  font-size: 16px;
   text-align: left;
   padding-top: 5px;
   padding-bottom: 10px;
-  letter-spacing: 2px;
 }
 
 .header-day0 {
