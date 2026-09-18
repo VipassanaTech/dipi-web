@@ -1,6 +1,6 @@
 .main-div {
-  margin-top: 20px;
   width: 800px;
+  margin: 8px auto 0;   /* centered, like the cell/dining lists */
 }
 
 
@@ -67,9 +67,58 @@
 }
 
 .header-day0 {
-  width: 650px;
+  width: 800px;
+  margin: 0 auto;   /* centered over the slip grid */
   clear: both;
 }
+
+/* Page-options bar + 2-column slip rows + meeting-location tool, all styled to
+   match the cell/dining lists (sans-serif; standalone page would else use Times). */
+.sc-bar {
+  width: 800px;
+  margin: 6px auto;
+  text-align: center;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  color: #666;
+}
+.sc-bar a { color: #06c; text-decoration: none; }
+.sc-bar a:hover { text-decoration: underline; }
+.sc-bar .sc-show { color: #222; }
+.sc-tog { margin-left: 8px; cursor: pointer; white-space: nowrap; }
+.sc-tog input { vertical-align: middle; margin-right: 3px; }
+
+/* Seat | Dining and Room | Cell rows: left item column 1, right item column 2,
+   kept in place even when the other is toggled off. */
+.cs-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; margin-top: 4px; }
+.cs-row .seat, .cs-row .room  { grid-column: 1; text-align: left;  padding: 0; float: none; }
+.cs-row .dining, .cs-row .cell { grid-column: 2; text-align: right; padding: 0; float: none; }
+
+body.hide-seat .seat,
+body.hide-cell .cell,
+body.hide-dining .dining { display: none !important; }
+
+.cs-replace {
+  width: 800px;
+  margin: 0 auto 14px;
+  box-sizing: border-box;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #333;
+  background: #f5f6f8;
+  border: 1px solid #dfe3e8;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cs-replace .cs-replace-title { font-weight: bold; }
+.cs-replace label { display: inline-flex; align-items: center; gap: 5px; }
+.cs-replace input { padding: 3px 6px; border: 1px solid #cbd2d9; border-radius: 3px; font-size: 13px; }
+.cs-replace .replace-text { padding: 4px 12px; background: #06c; color: #fff; border: 0; border-radius: 3px; cursor: pointer; font-size: 13px; }
+.cs-replace .replace-text:hover { background: #0055b3; }
 
 
 .title {
