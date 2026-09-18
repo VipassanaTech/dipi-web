@@ -4080,7 +4080,9 @@ function dh_student_chit($centre, $course, $seating)
 
   $orderby = " order by a_gender, a_f_name, a_l_name ";
   if($seating)
-    $orderby = " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
+    $orderby = $sgrp
+      ? " order by aa_group asc, aa_chowky_chair desc, $seatrow asc, $seatcol asc "   // group plan: walk group-by-group (group seat row/col restart per group)
+      : " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";                 // main plan: single hall grid, walk by row/col
 
 	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
@@ -4215,7 +4217,9 @@ function dh_checking_slip($centre, $course, $seating)
 
   $orderby = " order by a_gender, a_f_name, a_l_name ";
   if($seating)
-    $orderby = " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
+    $orderby = $sgrp
+      ? " order by aa_group asc, aa_chowky_chair desc, $seatrow asc, $seatcol asc "   // group plan: walk group-by-group (group seat row/col restart per group)
+      : " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";                 // main plan: single hall grid, walk by row/col
 
   $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
