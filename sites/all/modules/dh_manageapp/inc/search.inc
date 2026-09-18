@@ -669,13 +669,25 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				function esc(s){ return $("<span>").text(s).html(); }
 				function chipStyle(bg){ bg=(bg||"").replace("#",""); if(bg.length===3){bg=bg[0]+bg[0]+bg[1]+bg[1]+bg[2]+bg[2];} if(bg.length!==6){bg="607d8b";} var r=parseInt(bg.substr(0,2),16),g=parseInt(bg.substr(2,2),16),b=parseInt(bg.substr(4,2),16); function hx(x){x=Math.max(0,Math.min(255,Math.round(x)));var s=x.toString(16);return s.length<2?"0"+s:s;} function mix(a,t){return a+(255-a)*t;} function lin(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);} var back="#"+hx(mix(r,0.85))+hx(mix(g,0.85))+hx(mix(b,0.85)); var bord="#"+hx(mix(r,0.45))+hx(mix(g,0.45))+hx(mix(b,0.45)); var tr=r,tg=g,tb=b; for(var i=0;i<40;i++){var L=0.2126*lin(tr)+0.7152*lin(tg)+0.0722*lin(tb);if(L<=0.10)break;tr*=0.92;tg*=0.92;tb*=0.92;} var fore="#"+hx(tr)+hx(tg)+hx(tb); return "background:"+back+";color:"+fore+";border:1px solid "+bord; }
 				function chipHtml(t){ return "<span class=\"tag-chip\" data-tid=\"" + t.t_id + "\" style=\"" + chipStyle(t.t_color) + "\">" + esc(t.t_name) + "<span class=\"tag-x\" title=\"Remove\">&times;</span></span>"; }
+				// Keep the DataTables row-data in sync after a tag add/remove, so a
+				// later redraw (status change, sort, paginate, tag filter) rebuilds the
+				// tag strip from the updated tags instead of the stale page-load snapshot.
+				function dhSyncRowTags(aid, box){
+					if (!$.fn.dataTable || !$.fn.dataTable.isDataTable("#table-applicants")) { return; }
+					var mainrow = $("#table-applicants tbody tr[data-urow=\"" + aid + "\"]").not(".tag-strip").first();
+					if (!mainrow.length) { return; }
+					var d = $("#table-applicants").DataTable().row(mainrow).data();
+					if (!d) { return; }
+					d.tag_block = box[0].outerHTML;
+					d.tag_ids = box.find(".tag-chip[data-tid]").map(function(){ return String($(this).data("tid")); }).get().join(",");
+				}
 				$(document).on("click", ".app-tags .tag-x", function (e) {
 					e.stopPropagation();
 					var chip = $(this).closest(".tag-chip"), box = chip.closest(".app-tags");
 					var name = chip.clone().children().remove().end().text().replace(/×/g, "").trim();
 					var doRemove = function () {
 						$.post(tagUrl, { op: "unassign", tag: chip.data("tid"), application: box.data("aid"), scope: tagScope }, function (j) {
-							if (j.status) { chip.remove(); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+							if (j.status) { chip.remove(); dhSyncRowTags(box.data("aid"), box); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 						}, "json");
 					};
 					if ($.confirm) { $.confirm({ title: "Remove tag", content: "Remove tag \"" + name + "\" from this applicant?", buttons: { remove: { text: "Remove", btnClass: "btn-red", action: doRemove }, cancel: function () {} } }); }
@@ -687,7 +699,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					box.find(".tag-chip").each(function () { assigned[$(this).data("tid")] = 1; });
 					function assignTag(t) {
 						$.post(tagUrl, { op: "assign", tag: t.t_id, application: aid, scope: tagScope }, function (j) {
-							if (j.status) { box.find(".tag-add-btn").before(chipHtml(t)); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
+							if (j.status) { box.find(".tag-add-btn").before(chipHtml(t)); dhSyncRowTags(aid, box); } else { ($.alert ? $.alert(j.msg) : alert(j.msg)); }
 						}, "json");
 					}
 					var avail = centreTags.filter(function (t) { return !assigned[t.t_id] && !(+t.t_system); });
