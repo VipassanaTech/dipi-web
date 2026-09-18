@@ -4214,7 +4214,7 @@ function dh_checking_slip($centre, $course, $seating)
   }
   $dl_name = dh_course_file_basename($centre, $course, 'checking-slip');
   $out = '<html><head><title>'.$dl_name.'</title>';
-  $out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/checking-slip.css");</style>';
+  $out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/checking-slip.css?v='.filemtime(drupal_get_path("module", "dh_manageapp")."/css/checking-slip.css").'");</style>';
   $out .= '</head><body>';
   $title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
       '<div align="center" class="title-head">'.$course_name.'</div></div>';
