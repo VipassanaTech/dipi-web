@@ -137,3 +137,28 @@ function dcv_courses() {
   $list = dcv_build_course_list(dcv_user_centres());
   dcv_json('OK', array('courses' => $list));
 }
+
+/** True if the current user may load this course (centre-scoped). */
+function dcv_user_can_access_course($course_id) {
+  $centres = dcv_user_centres();
+  if ($centres === array('*')) { return true; }
+  if (empty($centres)) { return false; }
+  $centre = db_query("select c_center from dh_course where c_id = :c",
+    array(':c' => (int) $course_id))->fetchField();
+  return $centre !== false && in_array((int) $centre, $centres, true);
+}
+
+/** GET dcv/course/%/bundle */
+function dcv_course_bundle($course_id) {
+  if (!ctype_digit((string) $course_id)) {
+    dcv_json('FAIL', array(), 'Invalid course id.');
+  }
+  if (!dcv_user_can_access_course($course_id)) {
+    dcv_json('FAIL', array(), 'Not authorised for this course.');
+  }
+  $bundle = dcv_build_bundle($course_id);
+  if ($bundle === null) {
+    dcv_json('FAIL', array(), 'Course not found.');
+  }
+  dcv_json('OK', $bundle);
+}
