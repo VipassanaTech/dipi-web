@@ -16,5 +16,10 @@ function dh_courseviewer_menu() {
     'access callback' => TRUE,
     'type'            => MENU_CALLBACK,
   );
+  $items['dcv/login'] = array(
+    'page callback'   => 'dcv_login',
+    'access callback' => TRUE,
+    'type'            => MENU_CALLBACK,
+  );
   return $items;
 }

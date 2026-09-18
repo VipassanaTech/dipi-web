@@ -19,3 +19,25 @@ function dcv_json($status, $data = array(), $msg = '') {
 function dcv_ping() {
   dcv_json('OK', array('pong' => true), 'dcv');
 }
+
+/**
+ * POST dcv/login — validate Dipi credentials, establish a Drupal session.
+ * Accepts form-encoded 'username' and 'password'. On success the response
+ * sets the session cookie the app carries for the two download calls.
+ */
+function dcv_login() {
+  $name = isset($_POST['username']) ? trim($_POST['username']) : '';
+  $pass = isset($_POST['password']) ? $_POST['password'] : '';
+  if ($name === '' || $pass === '') {
+    dcv_json('FAIL', array(), 'Username and password are required.');
+  }
+  $uid = user_authenticate($name, $pass);
+  if (!$uid) {
+    dcv_json('FAIL', array(), 'Invalid username or password.');
+  }
+  global $user;
+  $user = user_load($uid);
+  $login = array('name' => $user->name, 'pass' => $pass);
+  user_login_finalize($login); // sets up the session + Set-Cookie
+  dcv_json('OK', array('uid' => (int) $uid, 'name' => $user->name), 'Logged in.');
+}
