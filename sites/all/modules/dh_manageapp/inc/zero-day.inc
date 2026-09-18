@@ -4095,7 +4095,7 @@ function dh_student_chit($centre, $course, $seating)
 	}
 	$dl_name = dh_course_file_basename($centre, $course, 'student-chit');
 	$out = '<html><head><title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/student-chit.css?v='.filemtime(drupal_get_path("module", "dh_manageapp")."/css/student-chit.css").'");</style>';
 	$out .= '</head><body>';
 	$title = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';

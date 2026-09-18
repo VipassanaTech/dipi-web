@@ -17,9 +17,13 @@
     border-style: solid;
     margin: 25px 15px 0 0;
     width: 197px;
-    height: 110px;	
+    /* min-height (not a fixed height) so a long/bold name can never push the text
+       outside the border — the box grows instead. Keeps the chit its usual size
+       otherwise, so the 3-per-row print layout is unchanged. */
+    min-height: 110px;
     text-align: center;
     padding-top: 15px;
+    padding-bottom: 5px;
 }
 
 .header-day0 {
@@ -87,4 +91,5 @@
 .name {
   margin-top: 5px;
   margin-bottom: 5px;
+  font-weight: bold;
 }
