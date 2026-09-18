@@ -1,6 +1,6 @@
 .main-div {
-	margin-top: 20px;
 	width: 650px;
+	margin: 20px auto 0;   /* centered like the cell/dining lists */
 }
 
 
@@ -21,14 +21,31 @@
        outside the border — the box grows instead. Keeps the chit its usual size
        otherwise, so the 3-per-row print layout is unchanged. */
     min-height: 110px;
-    text-align: center;
-    padding-top: 15px;
-    padding-bottom: 5px;
+    /* Flex column so the top row sits at the top corners and the bottom row at
+       the bottom corners, with the name centred between them. */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 8px 8px;
+    box-sizing: border-box;
 }
+
+/* Corner rows: Seat | Room (top) and Cell | Dining (bottom), each as a stacked
+   label + value card. A 2-column grid with explicit column placement keeps the
+   left item in column 1 and the right item in column 2 even when the other is
+   toggled off; min-width:0 lets a long value wrap inside its own half instead
+   of colliding with the opposite corner. */
+.sc-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; }
+.sc-cell { min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.sc-cell.seat, .sc-cell.cell   { grid-column: 1; align-items: flex-start; text-align: left; }
+.sc-cell.room, .sc-cell.dining { grid-column: 2; align-items: flex-end;   text-align: right; }
+.sc-lbl { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: .3px; }
+.sc-val { font-size: 11pt; word-break: break-word; }
 
 .header-day0 {
 	width: 650px;
-  clear: both;
+	margin: 0 auto;   /* centered like the cell/dining lists */
+	clear: both;
 }
 
 
@@ -89,7 +106,38 @@
 
 
 .name {
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 4px 0;
   font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  /* Always reserve 3 lines of height and vertically centre the name, so a name
+     that renders in 1, 2 or 3 lines leaves every chit box the same size. */
+  height: 3.6em;              /* 3 lines x 1.2 line-height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;          /* clip the rare 4th line rather than grow the box */
 }
+
+/* Page-options bar, styled to match the cell/dining lists (.cl-sort). */
+.sc-bar {
+  width: 650px;
+  margin: 6px auto 14px;
+  text-align: right;   /* right-aligned above the grid, matching .cl-sort */
+  /* Match the cell/dining list bar exactly: it renders in a sans-serif stack,
+     whereas this standalone page would otherwise default to Times (serif),
+     which looks noticeably smaller/thinner at the same 12px. */
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  color: #666;
+}
+.sc-bar a { color: #06c; text-decoration: none; }
+.sc-bar a:hover { text-decoration: underline; }
+.sc-bar .sc-show { color: #222; }
+.sc-tog { margin-left: 8px; cursor: pointer; white-space: nowrap; }
+.sc-tog input { vertical-align: middle; margin-right: 3px; }
+
+/* Show/hide toggles for the Seat / Cell / Dining lines. */
+body.hide-seat .seat,
+body.hide-cell .cell,
+body.hide-dining .dining { display: none !important; }

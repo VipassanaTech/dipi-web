@@ -4074,12 +4074,15 @@ function dh_student_chit($centre, $course, $seating)
 	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
 	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
 	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
+	$diningcol = (dh_course_plan($cp, 'dining') === 'group') ? 'aa_group_dining' : 'aa_dining';
+	// Only offer the dining line/toggle for centres that actually assign dining seats.
+	$hasdining = (int) db_query("select cs_has_dining from dh_center_setting where cs_center=$centre")->fetchField();
 
   $orderby = " order by a_gender, a_f_name, a_l_name ";
   if($seating)
     $orderby = " order by aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -4101,10 +4104,15 @@ function dh_student_chit($centre, $course, $seating)
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$out .= $title;
   $student_chit_as_seating = $base_url."/student-chit/$centre/$course?seating=1";
-  $out .= '<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.$course.'" style="margin-right:10px">&#8592; Back to Course page</a>';
-  $out .= '<button type="button" class="no-print remove-seat">Click to remove Seats</button>';
-  $out .= ' <button type="button" class="no-print remove-cell">Click to remove Cells</button>';
-  $out .= ' <a class="no-print" href="'.$student_chit_as_seating.'/">Click to Generate Student Chit in order of sitting plan.</a>';
+  $out .= '<div class="sc-bar no-print">'.
+    '<a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
+    ' &nbsp;&bull;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
+    ' &nbsp;&bull;&nbsp; <a href="'.$student_chit_as_seating.'">In sitting-plan order</a>'.
+    ' &nbsp;&bull;&nbsp; <span class="sc-show">Show:</span>'.
+    '<label class="sc-tog"><input type="checkbox" class="sc-toggle" data-t="seat" checked> Seat</label>'.
+    '<label class="sc-tog"><input type="checkbox" class="sc-toggle" data-t="cell" checked> Cell</label>'.
+    ($hasdining ? '<label class="sc-tog"><input type="checkbox" class="sc-toggle" data-t="dining" checked> Dining</label>' : '').
+    '</div>';
 	foreach( $gender as $g )
 	{
 		$count = 1;
@@ -4146,7 +4154,18 @@ function dh_student_chit($centre, $course, $seating)
 			elseif ($r['aa_backrest'])
 				$seat_type = 'Backrest';
 	
-			$out .= '<div class="table-student-chit"><div class="seat">'.$seat_type.': '.$r['aa_seat'].'</div><div class="name">'.$r['a_f_name'].'<br>'.$r['a_l_name'].'</div><div class="cell">Cell: '.$r['aa_cell'].'</div><div class="room">Room No.:'.$r['AccoNo'].'</div></div>';
+			$dining_cell = $hasdining ? '<div class="sc-cell dining"><span class="sc-lbl">Dining</span><span class="sc-val">'.$r['aa_dining'].'</span></div>' : '';
+			$out .= '<div class="table-student-chit">'.
+				'<div class="sc-row sc-top">'.
+					'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].'</span></div>'.
+					'<div class="sc-cell room"><span class="sc-lbl">Room</span><span class="sc-val">'.$r['AccoNo'].'</span></div>'.
+				'</div>'.
+				'<div class="name"><span>'.$r['a_f_name'].'<br>'.$r['a_l_name'].'</span></div>'.
+				'<div class="sc-row sc-bot">'.
+					'<div class="sc-cell cell"><span class="sc-lbl">Cell</span><span class="sc-val">'.$r['aa_cell'].'</span></div>'.
+					$dining_cell.
+				'</div>'.
+				'</div>';
 			$count++;
 		}
 		$out .= '</div>';		
@@ -4158,12 +4177,9 @@ function dh_student_chit($centre, $course, $seating)
     (function ($) {
     $(document).ready(function(){
 
-      $(document).on("click", ".remove-seat", function(){
-          $(".seat").remove();
-      });
-
-      $(document).on("click", ".remove-cell", function(){
-          $(".cell").remove();
+      // Show/hide Seat / Cell / Dining via a body class (reversible, print-safe).
+      $(document).on("change", ".sc-toggle", function(){
+          $("body").toggleClass("hide-" + $(this).data("t"), !this.checked);
       });
 
     });
