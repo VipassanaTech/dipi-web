@@ -23,13 +23,13 @@ function dh_courseviewer_menu() {
   );
   $items['dcv/courses'] = array(
     'page callback'   => 'dcv_courses',
-    'access callback' => 'user_is_logged_in',
+    'access arguments' => array('access zero day'),
     'type'            => MENU_CALLBACK,
   );
   $items['dcv/course/%/bundle'] = array(
     'page callback'   => 'dcv_course_bundle',
     'page arguments'  => array(2),
-    'access callback' => 'user_is_logged_in',
+    'access arguments' => array('access zero day'),
     'type'            => MENU_CALLBACK,
   );
   return $items;

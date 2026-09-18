@@ -23,5 +23,6 @@ ok(count($b['students']) === 320, 'students match');
 ok(isset($b['generated_at']) && strlen($b['generated_at']) > 0, 'generated_at set');
 // JSON-encodable
 ok(json_encode($b) !== false, 'bundle json-encodes');
+$je = json_encode($b['students']); ok(is_string($je) && $je[0] === '{', 'students encodes as JSON object');
 
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";

@@ -27,6 +27,8 @@ foreach (db_query($sql, array(':c' => $course)) as $row) {
   );
 }
 
+ok(count($truth) > 0, 'fixture has occupied seats (truth non-empty)');
+
 $seats = dcv_course_seats($course);
 ok(count($seats) === count($truth), 'seat count matches live plan (' . count($truth) . ')');
 

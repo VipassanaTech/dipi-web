@@ -179,7 +179,7 @@ function dcv_course_seats($course_id) {
 /** Course header for the bundle, or null if the course does not exist. */
 function dcv_course_header($course_id) {
   $r = db_query("select c.c_id, c.c_name, c.c_center, c.c_start, c.c_end,
-                        c.c_seat_plan, td.td_val1 as course_type,
+                        td.td_val1 as course_type,
                         ce.c_name as centre_name
                  from dh_course c
                    left join dh_type_detail td on c.c_course_type = td.td_id
@@ -208,13 +208,15 @@ function dcv_build_bundle($course_id) {
   $seat_cfg = db_query("select cs_seat_config from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg) : array();
-  $expires = date('Y-m-d', strtotime($header['end_date'] . ' +1 day'));
+  $end_ts = !empty($header['end_date']) ? strtotime($header['end_date'] . ' +1 day') : false;
+  $expires = $end_ts ? date('Y-m-d', $end_ts) : null;
+  $students = dcv_course_students($course_id);
   return array(
     'schema_version' => 1,
     'course'         => $header,
     'sections'       => $sections,
     'seats'          => dcv_course_seats($course_id),
-    'students'       => dcv_course_students($course_id),
+    'students'       => $students ? $students : new stdClass(),
     'generated_at'   => date('c'),
     'expires_after'  => $expires,
   );
