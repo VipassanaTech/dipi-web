@@ -1,0 +1,205 @@
+/**
+ * Photo editor on the DIPI add/edit application form.
+ * Adapted from the schedule form's photo-preview.css. Phone-first: controls are
+ * at least 44px so a thumb can hit them; neutral palette to sit in the admin UI.
+ */
+
+.dh-photo-editor {
+  margin: 0.75em 0 1.25em;
+  padding: 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  background: #fbfcfd;
+  max-width: 520px;
+  box-sizing: border-box;
+  clear: both;
+}
+
+/* Cropper measures this box on init, so it needs a height before the image
+   loads or no crop frame appears. */
+.dh-photo-stage {
+  max-height: 340px;
+  min-height: 200px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eef1f4;
+}
+.dh-photo-stage img,
+.dh-photo-stage video {
+  max-width: 100%;
+  max-height: 340px;
+  display: block;
+  margin: 0 auto;
+}
+
+.dh-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.dh-photo-tools {
+  display: inline-flex;
+  align-self: center;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.dh-photo-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #eef1f4;
+  background: transparent;
+  color: #4a5568;
+  cursor: pointer;
+}
+.dh-photo-icon:last-child { border-right: 0; }
+.dh-photo-icon svg { width: 21px; height: 21px; }
+.dh-photo-icon:hover { background: #f2f5f8; color: #1a2733; }
+.dh-photo-icon:active { background: #e8edf2; }
+
+.dh-photo-fine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  font-size: 14px;
+  color: #33404d;
+}
+.dh-photo-fine-label { flex: 1 1 auto; }
+.dh-photo-degrees {
+  flex: 0 0 auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #7a8694;
+}
+.dh-photo-fine input[type="range"] {
+  flex: 1 0 100%;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.dh-photo-fine input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #dfe3e8; }
+.dh-photo-fine input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%;
+  background: #2d6cdf; box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+}
+.dh-photo-fine input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: #dfe3e8; }
+.dh-photo-fine input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border: 0; border-radius: 50%;
+  background: #2d6cdf; box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+}
+
+/* Neutral button (e.g. webcam "Cancel"). */
+.dh-photo-btn {
+  min-height: 44px;
+  padding: 0 1.1em;
+  border: 1px solid #cbd2da;
+  border-radius: 10px;
+  background: #fff;
+  color: #33404d;
+  font-size: 15px;
+  cursor: pointer;
+}
+.dh-photo-btn:hover { background: #f2f5f8; }
+
+.dh-photo-btn--primary {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 1.2em;
+  border: 0;
+  border-radius: 10px;
+  background: #2d6cdf;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dh-photo-btn--primary:hover { background: #245bc0; }
+.dh-photo-btn--primary:active { background: #1e4ea3; }
+
+.dh-photo-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #7a8694;
+  text-align: center;
+}
+
+.dh-photo-editor--done { border-color: #cddcc4; background: #fafcf8; }
+.dh-photo-editor--done .dh-photo-stage { background: transparent; }
+.dh-photo-hint--done { margin-top: 10px; color: #3f7a3f; }
+.dh-photo-hint--done::before { content: "\2713"; margin-right: 6px; font-weight: 600; }
+
+.dh-photo-editor .cropper-container { max-width: 100%; }
+
+@media (max-width: 768px) {
+  .dh-photo-stage, .dh-photo-stage img { max-height: 280px; }
+}
+
+/* ---- "Take a photo" (mobile only; added by JS on coarse pointers) ---- */
+.dh-photo-camera-input,
+input.dh-photo-camera-input {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  pointer-events: none;
+}
+.dh-photo-choose {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  flex-wrap: wrap;
+  margin: 0.2em 0 0.6em;
+}
+.dh-photo-or { color: #4a5568; font-size: 15px; }
+.dh-photo-btn.dh-photo-camera,
+.dh-photo-btn.dh-photo-pick {
+  flex: 1 1 0;
+  min-width: 9em;
+  min-height: 44px;
+  padding: 0 1.1em;
+  border: 1px solid #2d6cdf;
+  border-radius: 10px;
+  background: #fff;
+  color: #1a2733;
+  font-size: 16px;
+  cursor: pointer;
+}
+.dh-photo-btn.dh-photo-camera:active,
+.dh-photo-btn.dh-photo-pick:active { background: #eef3fc; }
+
+/* The browser's own file control, once JS has replaced it with the two buttons.
+   Class added by JS only, so a script failure leaves the native control usable. */
+.dh-photo-native-hidden,
+input.dh-photo-native-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0 !important;
+}
