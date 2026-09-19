@@ -1,0 +1,36 @@
+<?php
+/**
+ * @file
+ * Dipi Course Viewer (DCV) export API — read-only JSON endpoints for the
+ * offline Android tablet app. See DCV design spec §5.
+ */
+
+include_once(dirname(__FILE__) . "/inc/dcv-api.inc");
+include_once(dirname(__FILE__) . "/inc/dcv-bundle.inc");
+
+/** Implements hook_menu(). */
+function dh_courseviewer_menu() {
+  $items = array();
+  $items['dcv/ping'] = array(
+    'page callback'   => 'dcv_ping',
+    'access callback' => TRUE,
+    'type'            => MENU_CALLBACK,
+  );
+  $items['dcv/login'] = array(
+    'page callback'   => 'dcv_login',
+    'access callback' => TRUE,
+    'type'            => MENU_CALLBACK,
+  );
+  $items['dcv/courses'] = array(
+    'page callback'   => 'dcv_courses',
+    'access arguments' => array('access zero day'),
+    'type'            => MENU_CALLBACK,
+  );
+  $items['dcv/course/%/bundle'] = array(
+    'page callback'   => 'dcv_course_bundle',
+    'page arguments'  => array(2),
+    'access arguments' => array('access zero day'),
+    'type'            => MENU_CALLBACK,
+  );
+  return $items;
+}

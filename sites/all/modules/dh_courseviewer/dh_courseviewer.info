@@ -1,0 +1,5 @@
+name = "Course Viewer API"
+description = "Authenticated JSON export API for the Dipi Course Viewer (DCV) Android app."
+core = 7.x
+dependencies[] = dh_manageapp
+version = "7.x.1.0"

@@ -223,6 +223,14 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
   $group = 'Photo';
   $form[$group] = array('#type' => 'fieldset', '#title' => 'Photo',  '#collapsible' => true, '#collapsed' => false);
+  // Photo editor: preview + auto face-crop (35x45) + mobile camera. Best-effort;
+  // if a library fails the plain file input still works. See js/app-photo.js.
+  $_dh_mp = drupal_get_path('module', 'dh_manageapp');
+  drupal_add_css($_dh_mp.'/libraries/cropperjs/cropper.min.css');
+  drupal_add_css($_dh_mp.'/css/app-photo.css');
+  drupal_add_js($_dh_mp.'/libraries/cropperjs/cropper.min.js');
+  drupal_add_js($_dh_mp.'/js/app-photo.js');
+  drupal_add_js(array('dhAppPhoto' => array('picoPath' => base_path().$_dh_mp.'/libraries/picojs/')), 'setting');
 	$photo = '';
 	if (isset($edit_data['a_photo']))
 	{
