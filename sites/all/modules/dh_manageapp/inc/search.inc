@@ -2455,20 +2455,23 @@ function dh_application_view($app_id, $at_uid = 0)
 		a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile,
 		a_passport, a_voter_id, a_pancard, a_aadhar,
 		a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department,
+		a_purpose, a_learn_about_vip,
 		a_emergency_name, a_emergency_relation, a_emergency_num,
 		a_friend_family_details, a_internal_note, a_willing_to_serve, a_extra,
 		a_lang_1, a_lang_2, a_lang_3, a_langs, a_lang_discourse, a_created,
+		a_lang_1_level, a_lang_2_level, a_lang_3_level, a_lang_discourse_level,
 		ci.c_name as City, a_city_str, s.s_name as StateName, co.c_name as Country,
 		c.c_name as course_name,
 		ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_service,
 		CONCAT(IFNULL(ac_first_year,''),'-',IFNULL(ac_first_month,''),'-',IFNULL(ac_first_day,''),', ',IFNULL(ac_first_location_str,'')) as first_course,
 		CONCAT(IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day,''),', ',IFNULL(ac_last_location_str,'')) as last_course,
-		ac_practice_details,
+		ac_practice_details, ac_first_teacher_str, ac_last_teacher_str,
 		aa_section, aa_acco, aa_left_comment,
-		ae_desc_physical, ae_desc_mental, ae_desc_medication,
-		CONCAT(IFNULL(ae_desc_other_technique,''),' ',IFNULL(ae_desc_other_technique_old,'')) as other_technique,
+		ae_desc_physical, ae_desc_mental, ae_desc_medication, ae_desc_special_requirement, ae_desc_addiction_past, ae_seva_details,
+		CONCAT_WS(' ', NULLIF(TRIM(ae_desc_other_technique),''), NULLIF(TRIM(ae_desc_other_technique_old),''), NULLIF(TRIM(ae_teach_other_details),'')) as other_technique,
 		ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_id_issued, ae_id_issued_by, ae_nationality,
 		ae_father, ae_mother, ae_parent_course, ae_teen_std,
+		ae_ch_course, ae_ch_course_detail, ae_ch_practice, ae_ch_practice_detail,
 		td.td_key as course_type_key, td.td_val1 as course_type_label, td.td_val2 as course_days,
 		al_id, al_at_year, al_committed, al_committed_details, al_exclusive_2yrs, al_exclusive_2yrs_details,
 		al_daily_practice_yrs, al_daily_practice_details, al_5_precepts, al_5_precepts_details,
@@ -2513,6 +2516,13 @@ function dh_application_view($app_id, $at_uid = 0)
 		$detail = trim((string)$detail);
 		if ($detail !== '' && strtolower($detail) !== 'null' && $detail !== '-') $v .= ' - '.$detail;
 		return $fld($label, $v);
+	};
+	/* a language with its optional proficiency level: "Hindi (Expert)" */
+	$langfmt = function($lang, $level) {
+		$lang = trim((string)$lang);
+		if ($lang === '') return '';
+		$level = trim((string)$level);
+		return ($level !== '' && strtolower($level) !== 'null') ? $lang.' ('.$level.')' : $lang;
 	};
 
 	$city = $r['City'] ? $r['City'] : $r['a_city_str'];
@@ -2598,19 +2608,26 @@ function dh_application_view($app_id, $at_uid = 0)
 		$fld('TSC', $r['ac_tsc']).$fld('20-Day', $r['ac_20d']).
 		$fld('30-Day', $r['ac_30d']).$fld('45-Day', $r['ac_45d']).
 		$fld('60-Day', $r['ac_60d']).$fld('Service', $r['ac_service']).
-		$fld('First Course', $r['first_course']).$fld('Last Course', $r['last_course']).
-		$fld('Practice Details', $r['ac_practice_details']).'</div>');
+		$fld('First Course', $r['first_course']).$fld('First Teacher', $r['ac_first_teacher_str']).
+		$fld('Last Course', $r['last_course']).$fld('Last Teacher', $r['ac_last_teacher_str']).
+		$fld('Practice Details', $r['ac_practice_details']).$fld('Other Courses Served', $r['ae_seva_details']).'</div>');
 
 	$out .= $sec('Health', '<div class="av-grid">'.
 		$fld('Physical', $r['ae_desc_physical']).$fld('Mental', $r['ae_desc_mental']).
-		$fld('Medication', $r['ae_desc_medication']).$fld('Intoxicants', $r['ae_desc_addiction_current']).
-		$fld('Other Techniques', $r['other_technique']).$fld('Pregnancy', $pregnant).'</div>');
+		$fld('Medication', $r['ae_desc_medication']).$fld('Intoxicants (current)', $r['ae_desc_addiction_current']).
+		$fld('Past Addiction', $r['ae_desc_addiction_past']).$fld('Other Techniques', $r['other_technique']).
+		$fld('Pregnancy', $pregnant).$fld('Special Requirement', $r['ae_desc_special_requirement']).'</div>');
 
 	$out .= $sec('Languages', '<div class="av-grid">'.
-		$fld('Discourse Language', $r['a_lang_discourse']).$fld('Languages', trim($r['a_lang_1'].' '.$r['a_lang_2'].' '.$r['a_lang_3'].' '.$r['a_langs'])).'</div>');
+		$fld('Discourse Language', $langfmt($r['a_lang_discourse'], $r['a_lang_discourse_level'])).
+		$fld('Language 1', $langfmt($r['a_lang_1'], $r['a_lang_1_level'])).
+		$fld('Language 2', $langfmt($r['a_lang_2'], $r['a_lang_2_level'])).
+		$fld('Language 3', $langfmt($r['a_lang_3'], $r['a_lang_3_level'])).
+		$fld('Other Languages', $r['a_langs']).'</div>');
 
 	$out .= $sec('Other', '<div class="av-grid">'.
 		$fld('Willing to Serve', $r['a_willing_to_serve'] ? 'Yes' : 'No').$fld('Accommodation', trim($r['aa_section'].'-'.$r['aa_acco'], '-')).
+		$fld('How Heard of Vipassana', $r['a_learn_about_vip']).$fld('Reason for Course', $r['a_purpose']).
 		$fld('Friend / Family', $r['a_friend_family_details']).$fld('Other Info', $r['a_extra']).
 		$fld('Internal Note', $r['a_internal_note']).$fld('Left Reason', $r['aa_left_comment']).'</div>');
 
@@ -2623,6 +2640,8 @@ function dh_application_view($app_id, $at_uid = 0)
 		$out .= $sec('Children / Teen Details', '<div class="av-grid">'.
 			$fld('School Standard', $r['ae_teen_std']).
 			$yn('Parent has done a course', $r['ae_parent_course']).
+			$yn('Attended a children\'s course', $r['ae_ch_course'], $r['ae_ch_course_detail']).
+			$yn('Practices Anapana', $r['ae_ch_practice'], $r['ae_ch_practice_detail']).
 			$fld('Father Contact', $r['ae_father']).
 			$fld('Mother Contact', $r['ae_mother']).'</div>');
 	}
