@@ -36,7 +36,7 @@ function dh_bulk_mail_build_recipient_query($where) {
 function dh_bulk_mail_preview_recipients($where, $limit = 25) {
   $joins = _dh_bulk_mail_joins();
   $q = "select
-      concat(ifnull(a_f_name,''),' ',ifnull(a_l_name,'')) as name,
+      CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as name,
       a_address,
       coalesce(nullif(ci.c_name,''), a_city_str) as city,
       a_zip,

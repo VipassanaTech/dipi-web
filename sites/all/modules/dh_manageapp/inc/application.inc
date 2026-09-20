@@ -1348,7 +1348,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		if ($add)
 			$msg = "Conf No $new_conf_no created successfully!";
 		else
-			$msg = $app['a_f_name'].' '.$app['a_l_name']." details updated successfully";
+			$msg = implode(' ', array_filter(array(trim($app['a_f_name']), trim($app['a_m_name']), trim($app['a_l_name'])), 'strlen'))." details updated successfully";
 		// Tell the browser to close the modal.
 		$form_state['ajax_commands'][] = ctools_modal_command_dismiss();
 
@@ -1365,7 +1365,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 function app_delete( $id )
 {
 	global $user; 
-	$temp = db_query("select a_center, CONCAT(a_f_name, ' ', a_l_name) as 'name' from dh_applicant where a_id=$id");
+	$temp = db_query("select a_center, CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'name' from dh_applicant where a_id=$id");
 	$row = $temp->fetchAssoc();
 	$fields = array();
 	$fields['l_center'] = $row['a_center'];

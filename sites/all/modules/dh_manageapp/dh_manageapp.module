@@ -1901,7 +1901,7 @@ function dh_activity_search_results( $centre, $date_start, $date_end, $event, $c
 	if ($event <> '' )
 		$append .= " and l_event='$event' ";
 
-	$q = "select CONCAT(a_f_name,' ',a_l_name) as 'Applicant', c.c_name as 'Course Name', l_event,l_msg, u.name, l_tstamp from dh_log l left join dh_applicant a on (l.l_identifier=a.a_id and l.l_module='Applicant') left join dh_course c on (a.a_course=c.c_id) left join users u on (l.l_user=u.uid) where DATE_FORMAT(l_tstamp,'%Y-%m-%d') >= '$date_start' and DATE_FORMAT(l_tstamp,'%Y-%m-%d') <= '$date_end' and l_center='$centre' and l_module='Applicant' $append order by l_tstamp desc";
+	$q = "select CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Applicant', c.c_name as 'Course Name', l_event,l_msg, u.name, l_tstamp from dh_log l left join dh_applicant a on (l.l_identifier=a.a_id and l.l_module='Applicant') left join dh_course c on (a.a_course=c.c_id) left join users u on (l.l_user=u.uid) where DATE_FORMAT(l_tstamp,'%Y-%m-%d') >= '$date_start' and DATE_FORMAT(l_tstamp,'%Y-%m-%d') <= '$date_end' and l_center='$centre' and l_module='Applicant' $append order by l_tstamp desc";
 
 	$header = array('Applicant Name', 'Course Name', 'Event', 'Message', 'User', 'DateTime');
 	$results = 	db_query($q);
@@ -2858,7 +2858,7 @@ function show_application_pdf( $app_id )
 {
 	$q = "select c.c_subdomain,
         DATE_FORMAT(co.c_start, '%d-%b-%Y') as 'start_date',
-        td.td_val1, a.a_f_name, a.a_l_name, a_uri
+        td.td_val1, a.a_f_name, a.a_m_name, a.a_l_name, a_uri
         from dh_applicant a
         left join dh_course co on a.a_course=co.c_id
         left join dh_center c on a.a_center=c.c_id
@@ -2867,11 +2867,15 @@ function show_application_pdf( $app_id )
 
     $r = db_query($q, array(':a_id'=>$app_id))->fetchAssoc();
 
+    $namepart = implode('-', array_filter(array(
+      application_filename_part($r["a_f_name"]),
+      application_filename_part($r["a_m_name"]),
+      application_filename_part($r["a_l_name"])
+    ), 'strlen'));
     $base = ucfirst($r["c_subdomain"]) . '_'
       . $r["start_date"] . '_'
       . application_filename_part($r["td_val1"]) . '_'
-      . application_filename_part($r["a_f_name"]) . '-'
-      . application_filename_part($r["a_l_name"]);
+      . $namepart;
     $filename = $base.".pdf";
 
     $url = $r["a_uri"];
@@ -3242,7 +3246,7 @@ function dipi_mail_consumer_callback($msg)
       }
       else
       {
-        $app = db_query("select concat(ifnull(a_f_name, ''), ' ', ifnull(a_l_name, '')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
+        $app = db_query("select CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
 
 
         if (filter_var($app['a_email'], FILTER_VALIDATE_EMAIL))

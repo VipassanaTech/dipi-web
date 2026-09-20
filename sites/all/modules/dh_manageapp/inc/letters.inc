@@ -1143,7 +1143,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
       //   $event .= " (".$a_type.")";
       // }
 
-			$params = array($row['a_f_name'].' '.$row['a_l_name'], $row['CourseName'], $event);
+			$params = array(implode(' ', array_filter(array(trim($row['a_f_name']), trim($row['a_m_name']), trim($row['a_l_name'])), 'strlen')), $row['CourseName'], $event);
 			
 			if ($row['a_phone_mobile'])
 			{
