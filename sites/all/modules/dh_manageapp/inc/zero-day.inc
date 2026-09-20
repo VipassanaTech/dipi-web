@@ -2068,7 +2068,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 			$course_name .= $r['c_name']." / ";
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
@@ -2297,7 +2297,7 @@ function dh_auto_allocate_seats($centre, $course)
 	}
 
 
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course IN (".implode("," , $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_langs, aa_comment, aa_cell from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course IN (".implode("," , $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -2853,7 +2853,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		$group_teachers[trim($tr['ct_group'])] = $tr['tnames'];
 
 	// Read the (already allocated) group seat positions.
-	$q = "select a_id, aa_id, a_gender, a_old,  concat(a_f_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 
 	// Build grids from stored group positions: $groups[label][GENDER][type][row][col] = student.
@@ -4084,7 +4084,7 @@ function dh_student_chit($centre, $course, $seating)
   if($seating)
     $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -4161,7 +4161,7 @@ function dh_student_chit($centre, $course, $seating)
 						'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].'</span></div>'.
 						'<div class="sc-cell room"><span class="sc-lbl">Room</span><span class="sc-val">'.$r['AccoNo'].'</span></div>'.
 					'</div>'.
-					'<div class="name"><span>'.$r['a_f_name'].'<br>'.$r['a_l_name'].$oldnew.'</span></div>'.
+					'<div class="name"><span>'.implode(' ', array_filter(array(trim($r['a_f_name']), trim($r['a_m_name'])), 'strlen')).'<br>'.$r['a_l_name'].$oldnew.'</span></div>'.
 					'<div class="sc-row sc-bot">'.
 						'<div class="sc-cell cell"><span class="sc-lbl">Cell</span><span class="sc-val">'.$r['aa_cell'].'</span></div>'.
 						$dining_cell.
@@ -4221,7 +4221,7 @@ function dh_checking_slip($centre, $course, $seating)
   if($seating)
     $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
   $result = db_query($q);
   while($r = $result->fetchAssoc())
@@ -4301,7 +4301,7 @@ function dh_checking_slip($centre, $course, $seating)
         $oldnew = $r['a_old'] ? ' (O)' : '';
         $dining_cs = $hasdining ? '<span class="dining">Dining: '.$r['aa_dining'].'</span>' : '';
         $out .= '<div class="table-student-chit">'.
-          '<div class="name">'.mb_substr($r['a_f_name'].' '.$r['a_l_name'], 0, 25).$oldnew.'</div>'.
+          '<div class="name">'.mb_substr(implode(' ', array_filter(array(trim($r['a_f_name']), trim($r['a_m_name']), trim($r['a_l_name'])), 'strlen')), 0, 25).$oldnew.'</div>'.
           '<div class="cs-row"><span class="seat">'.$seat_type.': '.$r['aa_seat'].'</span>'.$dining_cs.'</div>'.
           '<div class="cs-row"><span class="room">Room: '.$r['AccoNo'].'</span><span class="cell">Cell: '.$r['aa_cell'].'</span></div>'.
           '<div class="linebreak"><hr></div>
