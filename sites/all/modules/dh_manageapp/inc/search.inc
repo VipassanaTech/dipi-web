@@ -2543,7 +2543,7 @@ function dh_application_view($app_id, $at_uid = 0)
 		.av-sec h3{margin:0 0 8px;font-size:15px;border-bottom:1px solid #eee;padding-bottom:5px}
 		.av-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px}
 		.av-row{padding:3px 0;border-bottom:1px dotted #f0f0f0}
-		.av-label{display:inline-block;min-width:150px;color:#666;font-weight:bold;vertical-align:top}
+		.av-label{display:inline-block;min-width:150px;padding-right:10px;color:#666;font-weight:bold;vertical-align:top}
 		.av-val{display:inline-block;max-width:100%;word-break:break-word}
 		.app-view img{max-width:140px;height:auto}
 		.app-view table{border-collapse:collapse;max-width:100%}
