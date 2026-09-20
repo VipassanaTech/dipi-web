@@ -2461,7 +2461,7 @@ function dh_application_view($app_id, $at_uid = 0)
 		a_lang_1, a_lang_2, a_lang_3, a_langs, a_lang_discourse, a_created,
 		a_lang_1_level, a_lang_2_level, a_lang_3_level, a_lang_discourse_level,
 		ci.c_name as City, a_city_str, s.s_name as StateName, co.c_name as Country,
-		c.c_name as course_name,
+		c.c_name as course_name, c.c_start as course_start,
 		ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_service,
 		CONCAT(IFNULL(ac_first_year,''),'-',IFNULL(ac_first_month,''),'-',IFNULL(ac_first_day,''),', ',IFNULL(ac_first_location_str,'')) as first_course,
 		CONCAT(IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day,''),', ',IFNULL(ac_last_location_str,'')) as last_course,
@@ -2637,6 +2637,13 @@ function dh_application_view($app_id, $at_uid = 0)
 	{
 		$left_on = trim((string)$r['aa_left_on']);
 		if (substr($left_on, -9) === ' 00:00:00') $left_on = substr($left_on, 0, 10);
+		/* course day the applicant left on: the course start date counts as Day 0 */
+		$cs = DateTime::createFromFormat('!Y-m-d', substr((string)$r['course_start'], 0, 10));
+		$lo = ($left_on !== '') ? DateTime::createFromFormat('!Y-m-d', substr($left_on, 0, 10)) : false;
+		if ($cs && $lo) {
+			$day = (int)$cs->diff($lo)->format('%r%a');
+			if ($day >= 0) $left_on .= ' (Day '.$day.')';
+		}
 		$out .= $sec('Course Left', '<div class="av-grid">'.
 			'<div class="av-row"><span class="av-label">Left the Course</span><span class="av-val"><input type="checkbox" checked disabled> Yes</span></div>'.
 			$fld('Left On', $left_on).
