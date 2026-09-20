@@ -2466,7 +2466,7 @@ function dh_application_view($app_id, $at_uid = 0)
 		CONCAT(IFNULL(ac_first_year,''),'-',IFNULL(ac_first_month,''),'-',IFNULL(ac_first_day,''),', ',IFNULL(ac_first_location_str,'')) as first_course,
 		CONCAT(IFNULL(ac_last_year,''),'-',IFNULL(ac_last_month,''),'-',IFNULL(ac_last_day,''),', ',IFNULL(ac_last_location_str,'')) as last_course,
 		ac_practice_details, ac_first_teacher_str, ac_last_teacher_str,
-		aa_section, aa_acco, aa_left_comment,
+		aa_section, aa_acco, aa_left, aa_left_on, aa_left_comment,
 		ae_desc_physical, ae_desc_mental, ae_desc_medication, ae_desc_special_requirement, ae_desc_addiction_past, ae_seva_details,
 		CONCAT_WS(' ', NULLIF(TRIM(ae_desc_other_technique),''), NULLIF(TRIM(ae_desc_other_technique_old),''), NULLIF(TRIM(ae_teach_other_details),'')) as other_technique,
 		ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_id_issued, ae_id_issued_by, ae_nationality,
@@ -2629,7 +2629,19 @@ function dh_application_view($app_id, $at_uid = 0)
 		$fld('Willing to Serve', $r['a_willing_to_serve'] ? 'Yes' : 'No').$fld('Accommodation', trim($r['aa_section'].'-'.$r['aa_acco'], '-')).
 		$fld('How Heard of Vipassana', $r['a_learn_about_vip']).$fld('Reason for Course', $r['a_purpose']).
 		$fld('Friend / Family', $r['a_friend_family_details']).$fld('Other Info', $r['a_extra']).
-		$fld('Internal Note', $r['a_internal_note']).$fld('Left Reason', $r['aa_left_comment']).'</div>');
+		$fld('Internal Note', $r['a_internal_note']).'</div>');
+
+	/* Course Left: shown only when the applicant left (aa_left set). Mirrors the
+	   edit page's "Course Left" fieldset (aa_left / aa_left_on / aa_left_comment). */
+	if ($r['aa_left'])
+	{
+		$left_on = trim((string)$r['aa_left_on']);
+		if (substr($left_on, -9) === ' 00:00:00') $left_on = substr($left_on, 0, 10);
+		$out .= $sec('Course Left', '<div class="av-grid">'.
+			'<div class="av-row"><span class="av-label">Left the Course</span><span class="av-val"><input type="checkbox" checked disabled> Yes</span></div>'.
+			$fld('Left On', $left_on).
+			$fld('Reason', $r['aa_left_comment']).'</div>');
+	}
 
 	/* ---- course-type-specific details ---- */
 
