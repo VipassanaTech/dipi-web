@@ -312,8 +312,13 @@ function dh_zero_select_course($form, &$form_state, $with_header = true)
 		$courses = array();
 		$courses[''] = 'Choose';
 		$courses += db_query($q)->fetchAllKeyed();
-		$form['course'] = array('#title' => 'Select Course', '#type' => 'select', '#options' => $courses, '#weight' => 1, 
-			'#prefix' => $title);		
+		$form['course'] = array('#title' => 'Select Course', '#type' => 'select', '#options' => $courses, '#weight' => 1,
+			'#prefix' => $title);
+		// "Go to any course" — searches this centre's FULL history (select2 + AJAX),
+		// for courses older than the 6-month window above.
+		$form['course_any'] = array('#title' => 'Go to any course', '#type' => 'select',
+			'#options' => array('' => ''), '#weight' => 2,
+			'#description' => 'Type course name, type, date or course id.');
 	}
 	else
 		drupal_goto("zero-day/".arg(1)."/$course_id");
@@ -326,11 +331,75 @@ function dh_zero_select_course($form, &$form_state, $with_header = true)
 					//alert($(this).val());
 					location.href = "/course/'.arg(1).'/"+$(this).val();
 				});
+				$("#edit-course-any").select2({
+					placeholder: "Type course name, type, date or course id...",
+					minimumInputLength: 2,
+					ajax: {
+						url: "/course-search/'.arg(1).'",
+						dataType: "json",
+						delay: 250,
+						data: function (params) { return { term: params.term }; },
+						processResults: function (data) { return { results: data.results }; },
+						cache: true
+					}
+				});
+				$("#edit-course-any").change(function(){
+					var v = $(this).val();
+					if (v) location.href = "/course/'.arg(1).'/"+v;
+				});
 			});
 		})(jQuery);
 	';
 	drupal_add_js($js, 'inline');
 	return $form;
+}
+
+/**
+ * JSON course search behind the dashboard "Go to any course" box (select2 AJAX).
+ * Scope: one centre's FULL course history. The typed text is split into words and
+ * EVERY word must match the course on at least one dimension (AND across words):
+ * course name, course-type label (td_val1), course id, the start-date YEAR, or the
+ * start-date MONTH name/abbrev. So "2025 August" = courses starting Aug 2025;
+ * "2025 August 1 day" / "2025 1 day" add the type. Display is the course NAME only.
+ * Returns select2-shaped results, newest first, capped.
+ *
+ * NB: the request param is 'term', NOT 'q' — in Drupal 7 ?q= is the reserved
+ * clean-URL path param and would hijack routing (404 the request).
+ */
+function dh_course_search($centre_id)
+{
+	$centre_id = (int) $centre_id;
+	$raw = isset($_GET['term']) ? trim($_GET['term']) : '';
+	$tokens = preg_split('/\s+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+
+	$where = array("c.c_center = :centre", "c.c_deleted = 0");
+	$args = array(':centre' => $centre_id);
+	foreach ($tokens as $i => $tok)
+	{
+		$c = ':c' . $i;   // contains-match  (%tok%)
+		$p = ':p' . $i;   // prefix-match    (tok%)  — for month names (aug -> August)
+		$args[$c] = '%' . db_like($tok) . '%';
+		$args[$p] = db_like($tok) . '%';
+		$where[] = "(c_name like $c"
+		         . " or td_val1 like $c"
+		         . " or cast(c_id as char) like $c"
+		         . " or date_format(c_start, '%Y') like $c"
+		         . " or monthname(c_start) like $p"
+		         . " or date_format(c_start, '%b') like $p)";
+	}
+	$sql = "select c_id, c_name
+	        from dh_course c
+	        left join dh_type_detail td on c.c_course_type = td.td_id
+	        where " . implode(' and ', $where) . "
+	        order by c_start desc limit 20";
+	$res = db_query($sql, $args);
+	$out = array();
+	foreach ($res as $r)
+	{
+		$out[] = array('id' => (int) $r->c_id, 'text' => trim((string) $r->c_name));
+	}
+	drupal_json_output(array('results' => $out));
+	drupal_exit();
 }
 
 
