@@ -6,6 +6,12 @@
 
 /** Build the standard response envelope (pure — unit tested). */
 function dcv_envelope($status, $data = array(), $msg = '') {
+  // An empty PHP array JSON-encodes as [], which breaks typed clients that
+  // expect data to be an object or null. Normalize empty data to null so the
+  // envelope's data is always an object (success) or null (error/empty).
+  if ($data === array()) {
+    $data = NULL;
+  }
   return array('status' => $status, 'msg' => $msg, 'data' => $data);
 }
 
@@ -109,8 +115,11 @@ function dcv_build_course_list($centres) {
   if (empty($centres)) {
     return array();
   }
-  $where = "c_deleted=0 and c_cancelled=0";
-  $args = array();
+  // Only currently-running courses: start_date <= today <= end_date. DCV is a
+  // viewer for the course a teacher is running now, not the full history.
+  $today = date('Y-m-d');
+  $where = "c_deleted=0 and c_cancelled=0 and c_start <= :today and c_end >= :today";
+  $args = array(':today' => $today);
   if ($centres !== array('*')) {
     $where .= " and c_center in (:centres)";
     $args[':centres'] = $centres;

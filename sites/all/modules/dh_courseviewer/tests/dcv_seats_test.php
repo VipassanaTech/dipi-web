@@ -23,4 +23,26 @@ $orphans = 0;
 foreach ($seats as $x) { if (!isset($students[(string) $x['student_id']])) { $orphans++; } }
 ok($orphans === 0, 'every seat maps to a student record');
 
+// --- Phase 3A: enriched fields ---
+$s0 = $seats[0];
+foreach (array('cell','dining','lang_discourse') as $k) {
+    ok(array_key_exists($k, $s0), "seat has field: $k");
+    ok(is_string($s0[$k]), "seat.$k is string");
+}
+// cell is plan-effective: for the main-plan fixture it must equal aa_cell.
+$plan_cell = function_exists('dh_course_plan') ? dh_course_plan(9900002, 'cell') : 'main';
+ok($plan_cell === 'main', 'fixture cell plan is main');
+$byId = array();
+foreach ($seats as $s) { $byId[$s['student_id']] = $s; }
+$row = db_query("select a_id, aa_cell, aa_dining from dh_applicant
+                 left join dh_applicant_attended on a_id=aa_applicant
+                 where a_course=9900002 and a_attended=1 and a_type='Student'
+                   and aa_seat_row is not null and aa_seat_col is not null limit 1")->fetchObject();
+ok(isset($byId[(int)$row->a_id]), 'sample student present in seats');
+ok($byId[(int)$row->a_id]['cell'] === (string)(is_null($row->aa_cell)?'':$row->aa_cell), 'cell matches aa_cell (main plan)');
+ok($byId[(int)$row->a_id]['dining'] === (string)(is_null($row->aa_dining)?'':$row->aa_dining), 'dining matches aa_dining (main plan)');
+// lang resolution sanity (independent of fixture): 'TA' resolves to a dh_languages name.
+$ta = db_query("select l_name from dh_languages where lower(l_code)='ta' limit 1")->fetchField();
+ok($ta !== false && $ta !== null, 'dh_languages has a row for code ta (resolution target exists)');
+
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";

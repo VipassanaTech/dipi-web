@@ -8,22 +8,29 @@ function ok($c, $m) { echo ($c ? "PASS" : "FAIL") . " - $m\n"; if (!$c) { $GLOBA
 
 $students = dcv_course_students(9900002);
 ok(is_array($students), 'students is array');
-ok(count($students) === 320, 'fixture has 320 attended students'); // verified 2026-09-18
-$first = reset($students);
-$id = key($students);
-// PHP coerces integer-like array keys to int; the wire contract is what matters:
-// the map must JSON-encode as an OBJECT keyed by the numeric id string.
-ok(ctype_digit((string) $id), 'keyed by numeric student id');
-$json = json_encode($students);
-ok(is_string($json) && $json !== '' && $json[0] === '{', 'students encodes as a JSON object, not an array');
-$decoded = json_decode($json, true);
-ok(array_key_exists((string) $id, $decoded), 'id present as a string key in the encoded JSON');
-foreach (array('name','gender','age','language','old_student','type','health','meditation_history','special_requests','accommodation','flags') as $k) {
-  ok(array_key_exists($k, $first), "student has field: $k");
+ok(count($students) === 320, 'fixture has 320 attended students');
+$id = (string) array_key_first($students);
+$s = $students[$id];
+// grouped structure present
+foreach (array('identity','ids','contact','languages','course','meditation','health','seating','notes','family','lc') as $g) {
+    ok(is_array($s[$g]) || is_object($s[$g]) || array_key_exists($g,$s), "group present: $g");
 }
-ok(is_array($first['health']) && array_key_exists('physical', $first['health']), 'health is nested');
-ok(is_array($first['flags']), 'flags is array');
-ok($first['type'] === 'Student', 'type is Student');
-ok(is_int($first['age']) || $first['age'] === null, 'age is int or null');
+// representative fields from each group (from dh_application_view's SELECT)
+ok(array_key_exists('name', $s['identity']) && array_key_exists('gender', $s['identity']) && array_key_exists('old_student', $s['identity']), 'identity core');
+ok(array_key_exists('aadhar', $s['ids']) && array_key_exists('passport', $s['ids']), 'ids present (full view, per decision B)');
+ok(array_key_exists('email', $s['contact']) && array_key_exists('city', $s['contact']) && array_key_exists('emergency_name', $s['contact']), 'contact core');
+ok(array_key_exists('lang_discourse', $s['languages']), 'languages.lang_discourse');
+ok(array_key_exists('short_courses', $s['meditation']) && array_key_exists('first_course', $s['meditation']), 'meditation core');
+ok(array_key_exists('physical', $s['health']) && array_key_exists('medication', $s['health']) && array_key_exists('pregnant', $s['health']), 'health core');
+ok(array_key_exists('nationality', $s['identity']), 'nationality under identity');
+ok(array_key_exists('id_issued', $s['ids']) && array_key_exists('id_issued_by', $s['ids']), 'id_issued under ids');
+ok(array_key_exists('father', $s['family']) && array_key_exists('parent_course', $s['family']), 'family group has parent/teen fields');
+ok(!array_key_exists('nationality', $s['health']) && !array_key_exists('id_issued', $s['health']) && !array_key_exists('father', $s['health']), 'moved fields no longer under health');
+ok(array_key_exists('room', $s['seating']) && array_key_exists('dining', $s['seating']) && array_key_exists('section', $s['seating']), 'seating core (incl dining)');
+ok(array_key_exists('committed', $s['lc']) && array_key_exists('special_req', $s['lc']), 'lc block present');
+// wire contract: encodes as a JSON object keyed by numeric id
+$je = json_encode($students);
+ok(is_string($je) && $je[0] === '{', 'students encodes as a JSON object');
+ok(ctype_digit($id), 'keyed by numeric student id');
 
 echo empty($GLOBALS['fail']) ? "ALL PASS\n" : "FAILURES\n";

@@ -1,8 +1,9 @@
 <?php
 /**
  * @file
- * Dipi Course Viewer (DCV) export API — read-only JSON endpoints for the
- * offline Android tablet app. See DCV design spec §5.
+ * Dipi App export API — read-only JSON endpoints for the offline Android tablet
+ * app (formerly "Dipi Course Viewer"). Machine name stays dh_courseviewer; routes
+ * stay /dcv/* so the app's API contract is unchanged. See DCV design spec §5.
  */
 
 include_once(dirname(__FILE__) . "/inc/dcv-api.inc");

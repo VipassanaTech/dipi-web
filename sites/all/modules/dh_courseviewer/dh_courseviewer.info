@@ -1,5 +1,5 @@
-name = "Course Viewer API"
-description = "Authenticated JSON export API for the Dipi Course Viewer (DCV) Android app."
+name = "Dipi App API"
+description = "Authenticated JSON export API for the Dipi App (Android tablet). Machine name kept as dh_courseviewer."
 core = 7.x
 dependencies[] = dh_manageapp
 version = "7.x.1.0"
