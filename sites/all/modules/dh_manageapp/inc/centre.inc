@@ -922,6 +922,28 @@ function dh_acco_handler()
 
 }
 
+/**
+ * Dashboard "Currently Running" section: courses that have started but not yet
+ * ended (in progress, i.e. after Day Zero) — which drop off the Upcoming grid.
+ * Just course-name links to the course page. Hidden when nothing is running.
+ */
+function currently_running_courses( $centre_id )
+{
+	$now = date('Y-m-d');
+	$res = db_query("select c_id, c_name from dh_course
+	                 where c_center=:c and c_deleted=0 and c_cancelled=0
+	                   and c_start <= :now and c_end >= :now
+	                 order by c_start, c_id", array(':c' => $centre_id, ':now' => $now));
+	// Render via theme('table') (one course link per row) so the link font matches
+	// the Received/Response and Upcoming course links, which are themed-table links.
+	$rows = array();
+	foreach ($res as $r)
+		$rows[] = array(l($r->c_name, "course/$centre_id/" . $r->c_id));
+	if (!$rows)
+		return '';
+	return '<h2>Currently Running Courses</h2>' . theme('table', array('rows' => $rows));
+}
+
 function upcoming_courses( $centre_id )
 {
 	$now_minus_1month = date('Y-m-d',strtotime("-1 month"));
@@ -1034,8 +1056,8 @@ function dashboard( $centre_id )
 		$out .= received_applications( $centre_id );
 
 	if (user_access('upcoming courses block'))
-		$out .= upcoming_courses($centre_id);
-	return $out; 
+		$out .= currently_running_courses($centre_id) . upcoming_courses($centre_id);
+	return $out;
 }
 
 
