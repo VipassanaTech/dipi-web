@@ -64,15 +64,11 @@ function dcv_photo_data_uri($uri) {
   if (!is_string($uri) || $uri === '' || !extension_loaded('gd')) {
     return '';
   }
-  $path = drupal_realpath($uri);
-  if (!$path || !is_readable($path)) {
+  $bytes = dcv_read_file_bytes($uri);
+  if ($bytes === '' || $bytes === false) {
     return '';
   }
-  $info = @getimagesize($path);
-  if (!$info) {
-    return '';
-  }
-  $src = @imagecreatefromstring(file_get_contents($path));
+  $src = @imagecreatefromstring($bytes);
   if (!$src) {
     return '';
   }
@@ -87,6 +83,34 @@ function dcv_photo_data_uri($uri) {
   $data = ob_get_clean();
   imagedestroy($src); imagedestroy($dst);
   return 'data:image/jpeg;base64,' . base64_encode($data);
+}
+
+/**
+ * Raw bytes of a Drupal file uri. Local filesystem first (dev / sites whose private
+ * files are on disk); falls back to S3 via dh_manageapp's s3_get_file() for prod,
+ * where files live on S3 and are referenced as private://. Returns '' if unreadable.
+ */
+function dcv_read_file_bytes($uri) {
+  $path = drupal_realpath($uri);
+  if ($path && is_readable($path)) {
+    $b = @file_get_contents($path);
+    if ($b !== false) { return $b; }
+  }
+  if (!function_exists('s3_get_file') && module_exists('dh_manageapp')) {
+    module_load_include('inc', 'dh_manageapp', 'inc/dana-s3');
+  }
+  if (function_exists('s3_get_file')) {
+    $bucket = variable_get('s3_bucket_name', '');
+    if ($bucket !== '') {
+      $ret = s3_get_file($bucket, file_uri_target($uri), 'file');
+      if (!empty($ret['success']) && !empty($ret['data'])) {
+        $b = @file_get_contents($ret['data']);
+        @unlink($ret['data']);
+        if ($b !== false) { return $b; }
+      }
+    }
+  }
+  return '';
 }
 
 /**

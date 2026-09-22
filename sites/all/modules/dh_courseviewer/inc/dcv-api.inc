@@ -175,6 +175,9 @@ function dcv_course_bundle($course_id) {
   if (!dcv_user_can_access_course($course_id)) {
     dcv_json('FAIL', array(), 'Not authorised for this course.');
   }
+  // Building a bundle fetches every student photo from S3 (up to ~450 in a big
+  // course), which can exceed the default 30s max_execution_time — raise it here.
+  drupal_set_time_limit(300);
   $bundle = dcv_build_bundle($course_id);
   if ($bundle === null) {
     dcv_json('FAIL', array(), 'Course not found.');
