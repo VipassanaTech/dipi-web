@@ -1,0 +1,45 @@
+/* Announcements: dashboard block + archive (inc/announcements.inc). */
+.dh-ann { margin: 0 0 16px; }
+
+.dh-ann-item {
+	color: #0b6b2e; font-size: 15px; font-weight: normal;
+	background: #eef9ef; border: 1px solid #bfe3c3; border-radius: 6px;
+	padding: 8px 14px; margin-bottom: 8px;
+	overflow-wrap: break-word; word-wrap: break-word;
+}
+.dh-ann-item a { color: #0b6b2e; text-decoration: underline; }
+.dh-ann-body p { margin: 0 0 4px; }
+.dh-ann-body p:last-child, .dh-ann-body ul:last-child, .dh-ann-body ol:last-child { margin-bottom: 0; }
+
+/* Dashboard: compact boxes sized to their text, one per line ("📣 New: ..."). */
+.dh-ann-compact { display: table; max-width: 100%; }
+.dh-ann-compact .dh-ann-new { margin-right: 0.3em; }
+.dh-ann-compact .dh-ann-body, .dh-ann-compact .dh-ann-body > p:first-child { display: inline; }
+.dh-ann-dash .dh-ann-links { font-size: 13px; }
+.dh-ann-dash .dh-ann-links a { color: #5f7466; }
+
+/* Archive: bold title + small date above the body. */
+.dh-ann-title { font-weight: bold; margin-bottom: 2px; }
+.dh-ann-date { font-weight: normal; font-size: 12px; color: #5f7466; margin-left: 8px; white-space: nowrap; }
+
+/* Archive page: a centred reading column of white cards with dark text (long green-on-green
+   text is tiring to read), a green accent bar, and year headings. */
+.dh-ann-archive-wrap { max-width: 700px; margin: 0 auto; }
+.dh-ann-year {
+	font-size: 20px; font-weight: bold; color: #4a5a50;
+	margin: 28px 0 12px; padding-bottom: 4px; border-bottom: 1px solid #dfe7e1;
+}
+.dh-ann-archive .dh-ann-year:first-child { margin-top: 4px; }
+.dh-ann-archive .dh-ann-item {
+	background: #fff; color: #2b2f2c; line-height: 1.6;
+	border: 1px solid #dfe7e1; border-left: 4px solid #3c8d5a; border-radius: 6px;
+	padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.dh-ann-archive .dh-ann-title { font-size: 17px; line-height: 1.35; color: #1b5e35; margin-bottom: 6px; }
+.dh-ann-archive .dh-ann-date { font-size: 13px; color: #6b7a70; }
+.dh-ann-archive .dh-ann-item a { color: #1b6e3c; }
+.dh-ann-archive .dh-ann-body p { margin: 0 0 8px; }
+.dh-ann-archive .dh-ann-body ul, .dh-ann-archive .dh-ann-body ol { margin: 4px 0 8px; padding-left: 22px; }
+@media (max-width: 600px) {
+	.dh-ann-archive .dh-ann-item { padding: 12px 14px; }
+}

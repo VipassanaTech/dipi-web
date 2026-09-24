@@ -24,6 +24,7 @@ include_once dirname(__FILE__) . "/inc/seating.inc";
 include_once dirname(__FILE__) . "/inc/bulk-mail-common.inc";
 include_once dirname(__FILE__) . "/inc/bulk-mail.inc";
 include_once dirname(__FILE__) . "/inc/tags.inc";
+include_once dirname(__FILE__) . "/inc/announcements.inc";
 include_once 'inc/admin-bulk-mail.inc';
 
 
@@ -118,6 +119,42 @@ function dh_manageapp_menu()
            'page arguments' => array('dh_manageapp_admin_form'),
            'page callback' => 'drupal_get_form',
            'access arguments' => array('administer manageapp'));
+
+    // Announcements (inc/announcements.inc): admin pages + one archive per audience.
+    $items['announcements/manage'] = array('title' => t('Manage Announcements'),
+           'page callback' => 'dh_announcements_manage',
+           'access arguments' => array('administer manageapp'),
+           'type' => MENU_CALLBACK);
+    $items['announcements/manage/add'] = array('title' => t('New Announcement'),
+           'page callback' => 'drupal_get_form',
+           'page arguments' => array('dh_announcement_form'),
+           'access arguments' => array('administer manageapp'),
+           'type' => MENU_CALLBACK);
+    $items['announcements/manage/%announcement_id/edit'] = array('title' => t('Edit Announcement'),
+           'page callback' => 'drupal_get_form',
+           'page arguments' => array('dh_announcement_form', 2),
+           'access arguments' => array('administer manageapp'),
+           'type' => MENU_CALLBACK);
+    $items['announcements/manage/%announcement_id/delete'] = array('title' => t('Delete Announcement'),
+           'page callback' => 'drupal_get_form',
+           'page arguments' => array('dh_announcement_delete_form', 2),
+           'access arguments' => array('administer manageapp'),
+           'type' => MENU_CALLBACK);
+    // Takes over the old node/View page's path (and its main-menu link); the old
+    // 'announcements' View must be disabled or its page would override this route.
+    $items['announcements'] = array('title' => t('Announcements'),
+           'page callback' => 'dh_announcements_archive_centre_all',
+           'access arguments' => array('access centre'),
+           'type' => MENU_CALLBACK);
+    $items['centre/%centre_id/announcements'] = array('title' => t('Announcements'),
+           'page callback' => 'dh_announcements_archive_centre',
+           'page arguments' => array(1),
+           'access arguments' => array('access centre'),
+           'type' => MENU_CALLBACK);
+    $items['at-portal/announcements'] = array('title' => t('Announcements'),
+           'page callback' => 'dh_announcements_archive_at',
+           'access arguments' => array('access at portal'),
+           'type' => MENU_CALLBACK);
 
     $items['manage-course/%centre_id'] = array('title' => t('Manage Courses'),
 	       'page callback' => 'dh_manage_courses',
@@ -1224,8 +1261,11 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form['student_chit_rows_per_page'] = array('#type' => 'textfield', '#size' => '5' , '#title' => 'Blocks per page in Student Chit For Print?', 
  		'#default_value' => variable_get('student_chit_rows_per_page', '18') );
 
- 	$form['important_notice'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Urgent Important Notice', 
- 		'#default_value' => variable_get('important_notice', ''));
+ 	// Replaces the old free-HTML "Urgent Important Notice" (important_notice variable).
+ 	$form['announcement_dashboard_days'] = array('#type' => 'textfield', '#size' => '5', '#title' => 'Announcements: days to show on dashboards',
+ 		'#default_value' => variable_get('announcement_dashboard_days', 10),
+ 		'#element_validate' => array('element_validate_integer_positive'),
+ 		'#description' => 'New announcements show on the centre Manage page / AT Portal dashboard for this many days after they are posted, then only in the archive. '.l('Manage announcements', 'announcements/manage'));
 
  	$form['s3_bucket_name'] = array('#type' => 'textfield',  '#title' => 'S3 Bucket Name', 
  		'#default_value' => variable_get('s3_bucket_name', variable_get('s3_bucket_name', '')));

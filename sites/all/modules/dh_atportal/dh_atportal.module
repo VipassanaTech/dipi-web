@@ -485,7 +485,11 @@ function dh_atportal_dashboard()
     'Request for Comments' => 'request-for-comments',
 	);
 
-	$out = '<h1>AT Portal Dashboard</h1><ul>';
+	$out = '<h1>AT Portal Dashboard</h1>';
+	// Recent AT announcements (dh_manageapp inc/announcements.inc).
+	if (function_exists('dh_announcements_block'))
+		$out .= dh_announcements_block('at', 'at-portal/announcements');
+	$out .= '<ul>';
 
 	foreach($modules as $key => $val )
 	{

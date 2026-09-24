@@ -30,7 +30,7 @@ function dh_manage_centre()
 
 	$name = db_query("select c_name from dh_center where c_id=".arg(1))->fetchField();
 	drupal_set_title("Manage $name");
-	$out = '<div style="color:#ff0000; font-size:26px; margin-bottom:10px;">'.variable_get('important_notice', '').'</div>';
+	$out = dh_announcements_block('centre', 'centre/'.arg(1).'/announcements');
 	$modules = array(
 		'Centre Settings' => 'centre/'.arg(1).'/edit',
 		'Manage Courses' => 'manage-course/'.arg(1) ,
