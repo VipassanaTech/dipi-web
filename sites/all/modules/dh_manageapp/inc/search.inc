@@ -1409,7 +1409,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							//row1.data().confno = json.confno;
 							var d = row1.data().status;
 							row1.invalidate().draw("page");
-							tr1.css("background-color", "#bdcdea");						  		
+							tr1.children("td").css("background-color", "#bdcdea");						  		
 					  	}
 					  	else
 					  		alert("Update failed!\n"+json.msg)
@@ -1439,7 +1439,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						  	if (json.status == "OK")
 						  	{
 						  		//row.delete();
-								tr.css("background-color", "#ff0000");						  		
+								tr.children("td").css("background-color", "#ff0000");						  		
 						  	}
 						  	else
 						  		alert("Update failed "+json.msg);
@@ -1667,7 +1667,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 												//row1.data().status = s;
 												//var d = row1.data().status;
 												//row1.invalidate().draw();
-												tr.css("background-color", "#ffff00");						  		
+												tr.children("td").css("background-color", "#ffff00");						  		
 										  	}
 										  	else
 										  		alert("Update failed "+json.msg);
