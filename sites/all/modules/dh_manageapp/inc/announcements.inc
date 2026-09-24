@@ -137,6 +137,13 @@ function dh_announcements_manage()
 	foreach ($audiences as $key => $label)
 		$show[] = ($filter == $key) ? '<b>'.$label.'</b>' : l($label, 'announcements/manage', array('query' => array('audience' => $key)));
 	$out .= '<p>'.t('Show').': '.implode(' | ', $show).'</p>';
+	// Help: how long announcements stay on the dashboards, and where to change it.
+	$out .= '<div class="alert alert-info dh-ann-help">'
+		.t('A new announcement shows on the dashboard (the centre Manage page for centre staff, the AT Portal for Assistant Teachers) for <b>@d days</b> after it is posted. After that it is only in the archive (All announcements).',
+			array('@d' => $days))
+		.'<br>'.t('To change the number of days, open !link and change <b>Announcements: days to show on dashboards</b>.',
+			array('!link' => l(t('Manage Applicant Settings'), 'admin/dh_manageapp')))
+		.'</div>';
 
 	$where = "a.an_deleted = 0";
 	$args = array();
@@ -164,8 +171,6 @@ function dh_announcements_manage()
 	}
 	$header = array(t('Posted'), t('Audience'), t('Title'), t('Dashboard'), t('Last edited'), '');
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'empty' => t('No announcements yet.')));
-	$out .= '<p>'.t('New announcements show on the dashboard for @d days (change this in !link).',
-		array('@d' => $days, '!link' => l(t('Manage Applicant Settings'), 'admin/dh_manageapp'))).'</p>';
 	return $out;
 }
 
