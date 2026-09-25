@@ -60,11 +60,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	$statuses[$system_statues['STATUS-CUSTOM']] = $system_statues['STATUS-CUSTOM'];
 
 	$letters = array();
-	$q = "select l_id, l_event, l_name from dh_letter where l_center=$centre and l_deleted=0 order by l_event, l_name";
+	$q = "select l_id, l_event, l_name, l_course_type from dh_letter where l_center=$centre and l_deleted=0 order by l_event, l_name";
 	$letter_res = db_query($q);
 	while( $l = $letter_res->fetchAssoc())
 	{
-		$letters[$l['l_event']][] = array('id' => $l['l_id'], 'status' => $l['l_name']);
+		// 'type' = the letter's course type (0 = all types); the status-change popup
+		// offers only letters for the row's course type or for all types.
+		$letters[$l['l_event']][] = array('id' => $l['l_id'], 'status' => $l['l_name'], 'type' => (int) $l['l_course_type']);
 	}
 	$letters_json = json_encode($letters);
 
@@ -308,7 +310,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['o_n'] .= '<br>'.$rs['gender'];
 		$rs['courseid'] = $r['a_course'];
 
-		$course_type = db_query("SELECT td_key, td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchAssoc();
+		$course_type = db_query("SELECT c_course_type, td_key, td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchAssoc();
+		$rs['coursetype'] = (int) $course_type['c_course_type'];
 
         $LC = false;
 		if ($course_type['td_val3'] == 'LC')
@@ -1325,7 +1328,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	                $(".sub-letter-"+row.data().aid).attr("subletter", "");
 					if ( (letters[tmp] === null) || (typeof letters[tmp] !== "object") )
 						return;
-					if ( letters[tmp].length > 1 )
+					// Offer only letters for this row course type or for all types (0), the same
+					// rule dh_send_letter() uses when no letter is picked. No course type on the
+					// row: fall back to the full list, as before.
+					var ct = row.data().coursetype;
+					var avail = (typeof ct === "undefined") ? letters[tmp] : letters[tmp].filter(function (x) { return x.type == 0 || x.type == ct; });
+					if ( avail.length > 1 )
 					{
 						$.confirm({
 						    title: row.data().name,
@@ -1367,9 +1375,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						        var jc = this;
 						        $(".letter-select").empty();
 						        var i = 0;
-						        for(l = letters[tmp].length; i < l; i++) 
+						        for(l = avail.length; i < l; i++)
 						        {
-						        	$(".letter-select").append($("<option>", { value : letters[tmp][i].id }).text( letters[tmp][i].status ));
+						        	$(".letter-select").append($("<option>", { value : avail[i].id }).text( avail[i].status ));
 						        }
 						        this.$content.find("form").on("submit", function (e) {
 						            // if the user submits the form by pressing enter in the field.
