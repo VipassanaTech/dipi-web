@@ -9,7 +9,7 @@
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
  */
-function dcv_parse_seat_config($ini_string) {
+function dcv_parse_seat_config($ini_string, $naming_conv = 0) {
   $raw = parse_ini_string($ini_string, true, INI_SCANNER_RAW);
   if ($raw === false) { return array(); }
   $key_map = array(
@@ -29,6 +29,7 @@ function dcv_parse_seat_config($ini_string) {
       'key' => $key, 'gender' => $gl[0], 'label' => $gl[1],
       'seats_per_row' => 0, 'seats_per_row_chowky' => 0,
       'seat_direction' => '', 'chowky_position' => '', 'empty_seats' => '',
+      'naming_conv' => (int) $naming_conv,
       'groups' => array(),
     );
     $groups = array();
@@ -520,7 +521,9 @@ function dcv_build_bundle($course_id) {
   $centre = $header['centre'];
   $seat_cfg = db_query("select cs_seat_config from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
-  $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg) : array();
+  $naming_conv = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c",
+    array(':c' => $centre))->fetchField();
+  $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
   $end_ts = !empty($header['end_date']) ? strtotime($header['end_date'] . ' +1 day') : false;
   $expires = $end_ts ? date('Y-m-d', $end_ts) : null;
   $students = dcv_course_students($course_id);

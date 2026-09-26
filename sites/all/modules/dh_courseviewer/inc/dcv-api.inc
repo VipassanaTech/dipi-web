@@ -107,23 +107,85 @@ function dcv_user_centres() {
 }
 
 /**
- * Build the loadable-course list for a set of centre ids.
- * $centres is an array of ints, or array('*') for all centres.
+ * Access callback for the two download endpoints: centre users ('access zero day')
+ * and teachers ('at view courses', the AT Portal role). What each may load is
+ * narrowed per course by dcv_build_course_list() / dcv_user_can_access_course().
+ */
+function dcv_api_access() {
+  return user_access('access zero day') || user_access('at view courses');
+}
+
+/**
+ * Centres the caller may load courses from as a centre user: dcv_user_centres(),
+ * but only with 'access zero day' — a teacher's own centre links grant nothing here.
+ */
+function dcv_scope_centres() {
+  return user_access('access zero day') ? dcv_user_centres() : array();
+}
+
+/**
+ * The caller's active teacher id when they may use the app as a teacher, else
+ * FALSE. Same identity as Dipi's AT portal (_at_view_teacher_id(): username =
+ * t_code.t_gender), so no AT portal module → no teacher access.
+ */
+function dcv_teacher_id() {
+  if (!user_access('at view courses') || !function_exists('_at_view_teacher_id')) {
+    return FALSE;
+  }
+  $tid = _at_view_teacher_id();
+  return $tid ? (int) $tid : FALSE;
+}
+
+/**
+ * SQL for the courses a teacher serves, as in Dipi's AT portal: Confirmed and
+ * Conducting or Assisting. Trainee, cancelled and unconfirmed mappings grant nothing.
+ */
+function dcv_teacher_courses_sql() {
+  return "select ct_course from dh_course_teacher
+          where ct_teacher = :tid and ct_status = 'Confirmed'
+            and ct_type in ('Conducting','Assisting')";
+}
+
+/** True if teacher $tid serves course $course_id (and it isn't deleted or cancelled). */
+function dcv_teacher_mapped($tid, $course_id) {
+  if (!$tid) { return false; }
+  $sql = "select count(*) from dh_course
+          where c_id = :c and c_deleted = 0 and c_cancelled = 0
+            and c_id in (" . dcv_teacher_courses_sql() . ")";
+  return db_query($sql, array(':c' => (int) $course_id, ':tid' => (int) $tid))->fetchField() > 0;
+}
+
+/**
+ * Build the loadable-course list: the running courses of the given centres plus
+ * those teacher $teacher_id serves (each listed once).
+ * $centres is an array of ints, or array('*') for all centres; $teacher_id is a
+ * dh_teacher id or FALSE; $today defaults to the real date (tests pass one).
  * Excludes deleted/cancelled courses. Read-only, parameterized.
  */
-function dcv_build_course_list($centres) {
-  if (empty($centres)) {
-    return array();
+function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
+  // Who may see what: centre courses and/or the teacher's own courses.
+  $scope = array();
+  $args = array();
+  if ($centres === array('*')) {
+    $scope[] = "1=1";
   }
-  // Only currently-running courses: start_date <= today <= end_date. DCV is a
-  // viewer for the course a teacher is running now, not the full history.
-  $today = date('Y-m-d');
-  $where = "c_deleted=0 and c_cancelled=0 and c_start <= :today and c_end >= :today";
-  $args = array(':today' => $today);
-  if ($centres !== array('*')) {
-    $where .= " and c_center in (:centres)";
+  elseif (!empty($centres)) {
+    $scope[] = "c_center in (:centres)";
     $args[':centres'] = $centres;
   }
+  if ($teacher_id) {
+    $scope[] = "c_id in (" . dcv_teacher_courses_sql() . ")";
+    $args[':tid'] = (int) $teacher_id;
+  }
+  if (empty($scope)) {
+    return array();
+  }
+  // Only currently-running courses: start_date <= today <= end_date. The start
+  // date is Day 0, so a course can be loaded from Day 0 to its last day. DCV is a
+  // viewer for the course a teacher is running now, not the full history.
+  $args[':today'] = $today ? $today : date('Y-m-d');
+  $where = "c_deleted=0 and c_cancelled=0 and c_start <= :today and c_end >= :today"
+    . " and (" . implode(" or ", $scope) . ")";
   $sql = "select c_id, c_name, c_center, c_start, c_end
           from dh_course
           where $where
@@ -141,9 +203,9 @@ function dcv_build_course_list($centres) {
   return $out;
 }
 
-/** GET dcv/courses — courses the logged-in caller may load. */
+/** GET dcv/courses — courses the logged-in caller may load (centre and/or teacher). */
 function dcv_courses() {
-  $list = dcv_build_course_list(dcv_user_centres());
+  $list = dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id());
   dcv_json('OK', array('courses' => $list));
 }
 
@@ -160,11 +222,17 @@ function dcv_centres_allow($centres, $course_centre) {
   return in_array((int) $course_centre, $centres, true);
 }
 
-/** True if the current user may load this course (centre-scoped). */
+/**
+ * True if the current user may load this course: it is in one of their centres
+ * (centre users), or they serve it as a teacher.
+ */
 function dcv_user_can_access_course($course_id) {
   $course_centre = db_query("select c_center from dh_course where c_id = :c",
     array(':c' => (int) $course_id))->fetchField();
-  return dcv_centres_allow(dcv_user_centres(), $course_centre);
+  if (dcv_centres_allow(dcv_scope_centres(), $course_centre)) {
+    return true;
+  }
+  return dcv_teacher_mapped(dcv_teacher_id(), $course_id);
 }
 
 /** GET dcv/course/%/bundle */
