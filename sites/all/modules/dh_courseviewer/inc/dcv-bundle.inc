@@ -5,6 +5,15 @@
  */
 
 /**
+ * A student's seat aid in the main / group grid (dh_applicant_attended.aa_seat_aid): "CW"
+ * (chowky) or "CH" (chair) at their own seat, else "". Pure — unit tested.
+ */
+function dcv_seat_aid($v) {
+  $v = strtoupper(trim((string) $v));
+  return in_array($v, array('CW', 'CH'), true) ? $v : '';
+}
+
+/**
  * Parse cs_seat_config INI into structured sections for the app to render.
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
@@ -150,7 +159,7 @@ function dcv_course_students($course_id) {
       CONCAT(IFNULL(ae_desc_other_technique,''),' ',IFNULL(ae_desc_other_technique_old,'')) as other_technique,
       ae_desc_addiction_current, ae_pregnant, ae_pregnant_detail, ae_id_issued, ae_id_issued_by,
       ae_nationality, ae_father, ae_mother, ae_parent_course, ae_teen_std,
-      aa_section, aa_acco, aa_cell, aa_group, aa_backrest, aa_chowky, aa_chair, aa_comment,
+      aa_section, aa_acco, aa_cell, aa_group, aa_backrest, aa_chowky, aa_chair, aa_seat_aid, aa_comment,
       $col_cell as eff_cell, $col_din as eff_dining,
       COALESCE((select l.l_name from dh_languages l
                 where lower(l.l_code)=lower(a_lang_discourse) or l.l_name=a_lang_discourse
@@ -244,6 +253,7 @@ function dcv_course_students($course_id) {
         'section' => $S($r->aa_section), 'room' => $acco, 'cell' => $S($r->eff_cell),
         'dining' => $S($r->eff_dining), 'group' => $I($r->aa_group),
         'backrest' => $B($r->aa_backrest), 'chowky' => $B($r->aa_chowky), 'chair' => $B($r->aa_chair),
+        'seat_aid' => dcv_seat_aid($r->aa_seat_aid),
         'comment' => $S($r->aa_comment),
       ),
       'notes' => array(
@@ -432,7 +442,7 @@ function dcv_course_seats($course_id) {
             TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age,
             ac_teen, ac_10d, ac_stp, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_spl,
             aa_section, aa_acco, aa_cell, aa_group,
-            aa_chowky, aa_chair, aa_backrest,
+            aa_chowky, aa_chair, aa_backrest, aa_seat_aid,
             ae_desc_physical, ae_desc_mental, ae_desc_medication, ae_desc_addiction_current,
             $col_r as seat_row, $col_c as seat_col, $col_l as seat_label
             , $col_cell as cell, $col_din as dining,
@@ -466,6 +476,9 @@ function dcv_course_seats($course_id) {
       'label'      => (string) $r->seat_label,
       'chowky'     => (bool) $r->aa_chowky,
       'chair'      => (bool) $r->aa_chair,
+      // Chowky / chair at the student's own main- or group-grid seat (Dipi's CW / CH mark);
+      // separate from the chowky-grid flags above, which still say where the student sits.
+      'seat_aid'   => dcv_seat_aid($r->aa_seat_aid),
       'student_id' => (int) $r->a_id,
       'name'       => $r->name,
       'acco'       => $acco,
