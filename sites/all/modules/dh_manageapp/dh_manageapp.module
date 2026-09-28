@@ -575,6 +575,13 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	// Seat aid (CW chowky / CH chair) at a main/group-grid seat; saved from the plans.
+	$items['seat-aid/%centre_id/%course_id'] = array( 'title' => t('Seat Aid'),
+	       'page callback' => 'dh_seat_aid_update',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	$items['seating-section-pdf/%centre_id/%course_id'] = array( 'title' => t('Seating Section PDF'),
 	       'page callback' => 'dh_seating_section_pdf',
 	       'access arguments' => array('access zero day'),

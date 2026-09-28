@@ -394,3 +394,62 @@ ul {
 .dh-print-bar{clear:both;display:block;margin:6px 0 8px}
 .dh-print-section{display:inline-block;margin:2px 4px 2px 0;padding:6px 12px;border:1px solid #2e7d32;background:#2e7d32;color:#fff !important;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none}
 .dh-print-section:hover{background:#276a2b;color:#fff !important;text-decoration:none}
+
+/* Seat aid badge (CW = chowky, CH = chair) at a main/group-grid seat - not used in
+   the chowky grid. It sits right after the seat number, in the student (draggable)
+   layer, so it moves with the student: that layer keeps an invisible copy of the
+   seat number to push it into place (re-synced after a drag). The background layer
+   hides its copy. On editable plans it is a button that opens the None/CW/CH menu;
+   an empty seat shows a dashed "+" only on hover (screen only). */
+.s-aid, .legend-aid {
+	display: inline-block;
+	border: 1px solid #000;
+	border-radius: 3px;
+	background: #fff;
+	color: #000;
+	font-size: 10px;
+	font-weight: bold;
+	line-height: 12px;
+	padding: 0 2px;
+}
+.s-seat-no .s-aid, .s-seat-no .s-aid-btn {
+	margin: 0 0 0 2px;
+	vertical-align: 1px;
+	font-family: inherit;
+}
+.bg-table-m .s-aid, .bg-table-f .s-aid,
+.bg-table-m .s-aid-btn, .bg-table-f .s-aid-btn { display: none; }
+button.s-aid-btn { cursor: pointer; }
+.s-aid-btn.s-aid-add {
+	border: 1px dashed #999;
+	border-radius: 3px;
+	background: #fff;
+	color: #777;
+	font-size: 10px;
+	line-height: 12px;
+	padding: 0 3px;
+	visibility: hidden;
+}
+.ui-state-default:hover .s-aid-add, .s-aid-add:focus { visibility: visible; }
+.s-aid-menu {
+	position: absolute;
+	z-index: 10000;
+	background: #fff;
+	border: 1px solid #888;
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	padding: 3px;
+}
+.s-aid-menu button {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: #fff;
+	border: 0;
+	padding: 4px 10px;
+	font-size: 13px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.s-aid-menu button:hover { background: #eef3f8; }
+.s-aid-menu button.sel { font-weight: bold; }

@@ -1629,7 +1629,7 @@ function dh_seat_plan_header($title_html, $title_class = 'teacher-seat')
 		.'<div class="s-backrest s-backrest-yes"></div>'
 		.'</div></div>';
 	$sep = ' <span class="rc-sep">&bull;</span> ';
-	$note = '<div class="legend-note">(O) old student'.$sep.'s: short courses'.$sep.'L: long courses'.$sep.'<span class="legend-bar"></span> backrest'.$sep.'<span class="legend-swatch"></span> shaded name = teacher</div>';
+	$note = '<div class="legend-note">(O) old student'.$sep.'s: short courses'.$sep.'L: long courses'.$sep.'<span class="legend-bar"></span> backrest'.$sep.'<span class="legend-aid">CW</span> chowky'.$sep.'<span class="legend-aid">CH</span> chair'.$sep.'<span class="legend-swatch"></span> shaded name = teacher</div>';
 	return '<div class="plan-header">'
 		.$legend
 		.'<div class="'.$title_class.' plan-header-title">'.$title_html.'</div>'
@@ -1898,7 +1898,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     //$(".chowky-div").sortable({ items: "td" });
     //$(".chowky-div").disableSelection();
 
-	$(".sortable-m .seatnumber").empty();
+	/* Hidden, not emptied: keeps its width so a CW/CH seat-aid badge sits right after the (background) number. */
+	$(".sortable-m .seatnumber").css("visibility", "hidden");
 	$(".bg-table-m .s-acco").empty();
 	$(".bg-table-m .s-name").empty();
 	$(".bg-table-m .s-old-student").empty();
@@ -1906,7 +1907,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$(".bg-table-m .s-backrest").empty();
   $(".bg-table-m .s-cell").empty();
 
-	$(".sortable-f .seatnumber").empty();
+	$(".sortable-f .seatnumber").css("visibility", "hidden");
 	$(".bg-table-f .s-acco").empty();
 	$(".bg-table-f .s-name").empty();
 	$(".bg-table-f .s-old-student").empty();
@@ -2112,6 +2113,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
+		<p>9- To mark a chowky or chair at a student\'s own seat: move the mouse over the student, click the small "+" next to the seat number and choose "CW - Chowky" or "CH - Chair". A small <span class="legend-aid">CW</span> or <span class="legend-aid">CH</span> mark shows next to the seat number. It is saved at once (no need to click "Store Seat Changes"), it moves with the student and it prints. To change or remove it, click the mark and choose again, or "None". This mark is different from the separate Chowky / Chair grid.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
         <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
@@ -2135,7 +2137,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 			$course_name .= $r['c_name']." / ";
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_row, aa_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, aa_seat_row, aa_seat_col from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
@@ -2183,7 +2185,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
 		. '</div>';
 	// Read-only surface (AT view): never persist seat labels or enable drag.
-	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only);
+	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only,
+		'seat_aid_edit' => (!$read_only && $pdf == '' && !$return_html));
+	if ($mopts['seat_aid_edit'])
+		$out .= dh_seat_aid_js($centre, $course[0]);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
 	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts, 'M', 'Male');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
@@ -2228,7 +2233,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
   function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
-  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
+  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
     var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
@@ -2570,6 +2575,17 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 						array(":aa_seat" => $aa_seat, ":a_id" => $r['a_id']));
 				}
 
+				// Seat aid at a main/group-grid seat (not the chowky grid): CW = chowky,
+				// CH = chair. Display only - the allocators never read aa_seat_aid.
+				$aid = ($div == 'main-div' && isset($r['aa_seat_aid']) && in_array($r['aa_seat_aid'], array('CW', 'CH'), true)) ? $r['aa_seat_aid'] : '';
+				$aid_html = '';
+				if ($div == 'main-div' && !empty($opts['seat_aid_edit']))
+					$aid_html = ($aid !== '')
+						? '<button type="button" class="s-aid s-aid-btn" data-aid="'.$aid.'" title="Chowky / chair at this seat">'.$aid.'</button>'
+						: '<button type="button" class="s-aid-btn s-aid-add no-print" data-aid="" title="Mark chowky / chair at this seat">+</button>';
+				elseif ($aid !== '')
+					$aid_html = '<span class="s-aid">'.$aid.'</span>';
+
 				$t = $r['a_old'] ? '(O)' : '';
 				$teacher = '';
 				$br = ($r['aa_backrest'] || $r['aa_chowky']) ? 's-backrest-yes' : '';
@@ -2581,7 +2597,7 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 					if ($r['ac_teacher']) $teacher = 's-teacher';
 				}
 				$out .= '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
-					'<div class="s-seat-no">'.$seat_no.'</div>'.
+					'<div class="s-seat-no">'.str_replace($s_no_html.'</div>', $s_no_html.$aid_html.'</div>', $seat_no).'</div>'.
 					'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].($r['aa_cell'] ? dh_room_cell_sep().$r['aa_cell'] : '').'</div>'.
 					'<div class="s-cell"></div>'.
 					'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
@@ -2610,6 +2626,104 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 	return $ret;
 }
 
+
+// Seat aid (CW chowky / CH chair) at a main/group-grid seat, set from the sitting
+// and group-sitting plans: clicking the badge (or the "+" shown on hover) opens a
+// small None / CW / CH menu that saves at once via seat-aid/%centre/%course.
+// The plan pages print their own HTML (not the Drupal page template), so this
+// returns a <script> block for the caller to append; '' after the first call.
+function dh_seat_aid_js($centre, $course)
+{
+	$added = &drupal_static(__FUNCTION__);
+	if ($added)
+		return '';
+	$added = TRUE;
+	$js = <<<'JS'
+(function ($) {
+	var URL = "%URL%", TOKEN = "%TOKEN%", $menu = null;
+	function closeMenu() { if ($menu) { $menu.remove(); $menu = null; } }
+	function setBtn($b, aid) {
+		$b.attr("data-aid", aid);
+		if (aid) $b.removeClass("s-aid-add no-print").addClass("s-aid").text(aid).attr("title", "Chowky / chair at this seat");
+		else $b.removeClass("s-aid").addClass("s-aid-add no-print").text("+").attr("title", "Mark chowky / chair at this seat");
+	}
+	$(document).on("click", ".sortable-m .s-aid-btn, .sortable-f .s-aid-btn", function (e) {
+		e.preventDefault(); e.stopPropagation();
+		var $b = $(this), aid = $b.attr("data-aid") || "";
+		var appId = $b.closest("li").find(".s-app-id").attr("data-s-app-id");
+		closeMenu();
+		if (!appId) return;
+		$menu = $("<div class=\"s-aid-menu no-print\"></div>");
+		$.each([["", "None"], ["CW", "CW - Chowky"], ["CH", "CH - Chair"]], function (i, o) {
+			$("<button type=\"button\"></button>").text(o[1]).toggleClass("sel", o[0] === aid).appendTo($menu).on("click", function (ev) {
+				ev.stopPropagation(); closeMenu();
+				if (o[0] === aid) return;
+				$b.prop("disabled", true);
+				$.post(URL, { a: appId, aid: o[0], token: TOKEN }, function (j) {
+					$b.prop("disabled", false);
+					if (j && j.status === "OK") setBtn($b, o[0]);
+					else alert("Could not save: " + ((j && j.msg) || "unknown error"));
+				}, "json").fail(function () { $b.prop("disabled", false); alert("Could not save. Please try again."); });
+			});
+		});
+		var off = $b.offset();
+		$menu.css({ top: off.top + $b.outerHeight() + 2, left: off.left }).appendTo("body");
+	});
+	$(document).on("click", function () { closeMenu(); });
+	$(document).on("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+	// The badge sits right after the student's own (hidden) copy of the seat
+	// number. After a drag or a column re-flow, copy in the number of the seat the
+	// student now stands on (same index in the background list).
+	window.dhAidSync = function () {
+		$(".main-div").each(function () {
+			var $bg = $(this).find("ul[class*=bg-table]").first().children("li");
+			$(this).find("ul[class*=sortable]").first().children("li").each(function (i) {
+				if ($(this).find(".s-aid-btn").length)
+					$(this).find(".seatnumber").first().text($bg.eq(i).find(".seatnumber").first().text());
+			});
+		});
+	};
+	$(document).on("sortstop", ".sortable-m, .sortable-f", function () { setTimeout(window.dhAidSync, 0); });
+})(jQuery);
+JS;
+	return '<script>'.strtr($js, array(
+		'%URL%' => url('seat-aid/'.(int) $centre.'/'.(int) $course),
+		'%TOKEN%' => drupal_get_token('seat-aid'),
+	)).'</script>';
+}
+
+// Save handler for the seat aid menu (route seat-aid/%centre_id/%course_id, JSON).
+// Only '', 'CW' or 'CH', and only for an applicant of this course - or of its
+// combined-seating course, since a plan can seat two courses together.
+function dh_seat_aid_update($centre, $course)
+{
+	$out = array('status' => 'Failed', 'msg' => '');
+	$a = isset($_POST['a']) ? (int) $_POST['a'] : 0;
+	$aid = isset($_POST['aid']) ? (string) $_POST['aid'] : '';
+	if (!isset($_POST['token']) || !drupal_valid_token($_POST['token'], 'seat-aid'))
+		$out['msg'] = 'Session expired. Reload the page and try again.';
+	elseif (!in_array($aid, array('', 'CW', 'CH'), true))
+		$out['msg'] = 'Invalid value.';
+	elseif ($a <= 0)
+		$out['msg'] = 'Invalid applicant.';
+	else
+	{
+		$courses = array((int) $course);
+		$other = (int) db_query("select c_combined_seat_course from dh_course where c_id = :c", array(':c' => (int) $course))->fetchField();
+		if ($other > 0)
+			$courses[] = $other;
+		$n = db_query("update dh_applicant_attended aa join dh_applicant a on a.a_id = aa.aa_applicant
+			set aa.aa_seat_aid = :aid where a.a_id = :a and a.a_course in (:courses)",
+			array(':aid' => $aid, ':a' => $a, ':courses' => $courses),
+			array('return' => Database::RETURN_AFFECTED));
+		if ($n)
+			$out = array('status' => 'OK', 'msg' => '', 'aid' => $aid);
+		else
+			$out['msg'] = 'Applicant not found in this course.';
+	}
+	drupal_json_output($out);
+	drupal_exit();
+}
 
 // dh_print_seats() merged into dh_render_seat_grid() (2026-08).
 
@@ -2920,7 +3034,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		$group_teachers[trim($tr['ct_group'])] = $tr['tnames'];
 
 	// Read the (already allocated) group seat positions.
-	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, aa_group_seat_row, aa_group_seat_col  from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 
 	// Build grids from stored group positions: $groups[label][GENDER][type][row][col] = student.
@@ -2972,7 +3086,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		// Seat numbers live only in the fixed background layer; student cards live
 		// only in the draggable layer. This way seat numbers stay put at their
 		// location while students are dragged between them.
-		$(".sortable-m .seatnumber, .sortable-f .seatnumber").empty();
+		// (Hidden, not emptied: keeps its width so a CW/CH seat-aid badge sits
+		// right after the number.)
+		$(".sortable-m .seatnumber, .sortable-f .seatnumber").css("visibility", "hidden");
 		$(".bg-table-m, .bg-table-f").find(".s-acco, .s-cell, .s-name, .s-old-student, .s-age, .s-backrest").empty();
 
 		// Easier drop: land where the CURSOR is (not >50% card overlap), with a
@@ -3097,6 +3213,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
+		<p>9- To mark a chowky or chair at a student\'s own seat: move the mouse over the student, click the small "+" next to the seat number and choose "CW - Chowky" or "CH - Chair". A small <span class="legend-aid">CW</span> or <span class="legend-aid">CH</span> mark shows next to the seat number. It is saved at once (no need to click "Store Seat Changes"), it moves with the student and it prints. To change or remove it, click the mark and choose again, or "None". This mark is different from the separate Chowky / Chair grid.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
         <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
@@ -3160,7 +3277,10 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			// $sec_id / $sec_lbl computed above at the section wrapper.
 			// Cache the computed group seat label into aa_group_seat (same server-side
 			// label logic as the main plan writes to aa_seat), so reports can show it.
-			$gopts = array('write_seat' => true, 'write_col' => 'aa_group_seat');
+			$gopts = array('write_seat' => true, 'write_col' => 'aa_group_seat',
+				'seat_aid_edit' => ($pdf == '' && !$return_html));
+			if ($gopts['seat_aid_edit'])
+				$out .= dh_seat_aid_js($centre, $course[0]);
 			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts, $sec_id, $sec_lbl);
 			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts, $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
@@ -3188,7 +3308,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
   function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
-  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } }
+  function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
     var u=dhUls($div); if(!u.fg.length) return; var pfx=u.fg.find(".cwch").first().text();  /* chowky/chair prefix, so reflowed bg numbers keep their alignment */
