@@ -93,6 +93,10 @@
 .cs-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; margin-top: 4px; }
 .cs-row .seat, .cs-row .room  { grid-column: 1; text-align: left;  padding: 0; float: none; }
 .cs-row .dining, .cs-row .cell { grid-column: 2; text-align: right; padding: 0; float: none; }
+/* Seat flags after the seat number: CW / CH = chowky or chair at this seat (a
+   main/group grid seat), BR = backrest. Outlined, so they print in black and white. */
+.cs-flag { display: inline-block; margin-left: 4px; font-size: 0.72em; font-weight: bold; letter-spacing: .3px;
+	border: 1px solid #555; border-radius: 3px; padding: 0 3px; line-height: 1.3; vertical-align: 0.1em; }
 
 body.hide-seat .seat,
 body.hide-cell .cell,

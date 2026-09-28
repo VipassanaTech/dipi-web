@@ -46,6 +46,10 @@
 .sc-cell.room, .sc-cell.dining { grid-column: 2; align-items: flex-end;   text-align: right; }
 .sc-lbl { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: .3px; }
 .sc-val { font-size: 11pt; word-break: break-word; min-height: 1.2em; }   /* reserve the value line so an empty Seat/Room/Cell/Dining doesn't shrink the box */
+/* Seat flags after the seat number: CW / CH = chowky or chair at this seat (a
+   main/group grid seat), BR = backrest. Outlined, so they print in black and white. */
+.sc-flag { display: inline-block; margin-left: 4px; font-size: 0.72em; font-weight: bold; letter-spacing: .3px;
+	border: 1px solid #555; border-radius: 3px; padding: 0 3px; line-height: 1.3; vertical-align: 0.1em; }
 
 .header-day0 {
 	width: 650px;

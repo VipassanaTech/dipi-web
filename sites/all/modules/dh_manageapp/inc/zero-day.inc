@@ -2627,8 +2627,9 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 }
 
 
-// Seat aid pill (CW / CH) for the teacher and manager lists, in the same style as
-// their "BR" backrest pill ($cls = tl-br / ml-br). Not for a chowky/chair-grid
+// Seat aid pill (CW / CH) shown after the seat in the teacher and manager lists
+// (same style as their "BR" backrest pill, $cls = tl-br / ml-br), the student chit
+// (sc-flag) and the checking slip (cs-flag). Not for a chowky/chair-grid
 // student: that seat already reads CW-/CH-, and the plan hides the mark there too.
 function dh_seat_aid_pill($r, $cls)
 {
@@ -4285,7 +4286,7 @@ function dh_student_chit($centre, $course, $seating)
   if($seating)
     $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+	$q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest, aa_seat_aid from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
 	//ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -4353,13 +4354,14 @@ function dh_student_chit($centre, $course, $seating)
 				if ($r['aa_chair'])  $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
 				if ($r['aa_chowky']) $seat_type = 'Chowky';
 				elseif ($r['aa_chair']) $seat_type = 'Chair';
-				elseif ($r['aa_backrest']) $seat_type = 'Backrest';
+				// Backrest is a "BR" pill after the seat (as in the teacher/manager lists), not a label.
+				$br_flag = $r['aa_backrest'] ? '<span class="sc-flag" title="Backrest">BR</span>' : '';
 
 				$oldnew = $r['a_old'] ? ' (O)' : '';
 				$dining_cell = $hasdining ? '<div class="sc-cell dining"><span class="sc-lbl">Dining</span><span class="sc-val">'.$r['aa_dining'].'</span></div>' : '';
 				$out .= '<div class="table-student-chit">'.
 					'<div class="sc-row sc-top">'.
-						'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].'</span></div>'.
+						'<div class="sc-cell seat"><span class="sc-lbl">'.$seat_type.'</span><span class="sc-val">'.$r['aa_seat'].dh_seat_aid_pill($r, 'sc-flag').$br_flag.'</span></div>'.
 						'<div class="sc-cell room"><span class="sc-lbl">Room</span><span class="sc-val">'.$r['AccoNo'].'</span></div>'.
 					'</div>'.
 					'<div class="name"><span>'.implode(' ', array_filter(array(trim($r['a_f_name']), trim($r['a_m_name'])), 'strlen')).'<br>'.$r['a_l_name'].$oldnew.'</span></div>'.
@@ -4422,7 +4424,7 @@ function dh_checking_slip($centre, $course, $seating)
   if($seating)
     $orderby = " order by a_gender, aa_group, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
-  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
+  $q = "select a_id, aa_id, a_gender, a_old,  a_f_name, a_m_name, a_l_name, a_conf_no , aa_group, $cellcol as aa_cell, $cellfix as aa_cell_fixed, aa_cell_batch, $diningcol as aa_dining, CONCAT(aa_section,'-', aa_acco) as 'AccoNo', $seatcol as aa_seat_col, $seatrow as aa_seat_row, $seatlbl as aa_seat, aa_chowky, aa_chair, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_backrest, aa_seat_aid from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course='$course' and a_attended=1  and a_type='Student' $orderby";
   //ac_teacher desc, ac_60d desc, ac_45d desc, ac_30d desc, ac_20d desc, ac_tsc desc, ac_spl desc,ac_stp desc, ac_10d desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() )  desc,
   $result = db_query($q);
   while($r = $result->fetchAssoc())
@@ -4497,13 +4499,14 @@ function dh_checking_slip($centre, $course, $seating)
         if ($r['aa_chair'])  $r['SeatNo'] = 'CH-'.($r['aa_seat_row']+1);
         if ($r['aa_chowky']) $seat_type = 'Chowky';
         elseif ($r['aa_chair']) $seat_type = 'Chair';
-        elseif ($r['aa_backrest']) $seat_type = 'Backrest';
+        // Backrest is a "BR" pill after the seat (as in the teacher/manager lists), not a label.
+        $br_flag = $r['aa_backrest'] ? '<span class="cs-flag" title="Backrest">BR</span>' : '';
 
         $oldnew = $r['a_old'] ? ' (O)' : '';
         $dining_cs = $hasdining ? '<span class="dining">Dining: '.$r['aa_dining'].'</span>' : '';
         $out .= '<div class="table-student-chit">'.
           '<div class="name">'.mb_substr(implode(' ', array_filter(array(trim($r['a_f_name']), trim($r['a_m_name']), trim($r['a_l_name'])), 'strlen')), 0, 25).$oldnew.'</div>'.
-          '<div class="cs-row"><span class="seat">'.$seat_type.': '.$r['aa_seat'].'</span>'.$dining_cs.'</div>'.
+          '<div class="cs-row"><span class="seat">'.$seat_type.': '.$r['aa_seat'].dh_seat_aid_pill($r, 'cs-flag').$br_flag.'</span>'.$dining_cs.'</div>'.
           '<div class="cs-row"><span class="room">Room: '.$r['AccoNo'].'</span><span class="cell">Cell: '.$r['aa_cell'].'</span></div>'.
           '<div class="linebreak"><hr></div>
           <div class="message-english">Kindly meet the teacher TODAY at _______ AM/PM at Teacher\'sRoom / InterviewRoom / DhammaHall / MiniHall / <span class="eng-place">_____________ </span>, bring this note with you. Be Happy.</div>
