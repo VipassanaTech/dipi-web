@@ -79,6 +79,11 @@ table.table-manager-list td {
 	color: #444; border: 1px solid #999; border-radius: 3px; padding: 0 3px; line-height: 1.45;
 }
 
+/* A CW/CH (chowky/chair at the seat) pill uses the same look. With two pills, a
+   small even side margin keeps a gap side by side and keeps them centred when
+   they wrap one under the other; a single pill is unchanged. */
+.ml-br:not(:only-of-type) { margin-left: 1.5px; margin-right: 1.5px; }
+
 /* Column widths (fixed layout). */
 col.ml-sn      { width: 32px; }
 col.ml-student { width: 180px; }

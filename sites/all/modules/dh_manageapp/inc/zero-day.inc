@@ -1050,7 +1050,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
 	$dl_name = dh_course_file_basename($centre, $course, 'teacher-list');
 	$out = '<title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/teacher-list-v2.css").'");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -1077,7 +1077,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -1217,7 +1217,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 						'courses'  => trim($courses),
 						'cell'     => $cellno,
 						'dining'   => check_plain($r['aa_dining']),
-						'seat'     => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="tl-br" title="Backrest">BR</span>' : ''),
+						'seat'     => check_plain($r['aa_seat']).dh_seat_aid_pill($r, 'tl-br').(!empty($r['aa_backrest']) ? '<span class="tl-br" title="Backrest">BR</span>' : ''),
 						'occ'      => check_plain(dh_day0_case($r['a_occupation'])),
 						'edu'      => check_plain(trim($r['a_education'])),
 						'langs'    => check_plain(dh_day0_langs($r['a_lang_discourse'].','.$r['a_langs'])),
@@ -1281,7 +1281,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
 	$dl_name = dh_course_file_basename($centre, $course, 'manager-list');
 	$out = '<title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/manager-list-v2.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/manager-list-v2.css").'");</style>';
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -1313,7 +1313,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	$seatlbl = $sgrp ? 'aa_group_seat' : 'aa_seat';
 	$seatrow = $sgrp ? 'aa_group_seat_row' : 'aa_seat_row';
 	$seatcol = $sgrp ? 'aa_group_seat_col' : 'aa_seat_col';
-	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, $seatrow as aa_seat_row, $seatcol as aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
+	$q = "select a_id, a_gender, a_old, a_type, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', aa_group, aa_acco, aa_section, aa_laundry, aa_chowky, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, a_emergency_name, a_emergency_relation, a_emergency_num, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, $seatrow as aa_seat_row, $seatcol as aa_seat_col, c_name, a_conf_no from dh_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_city on a_city=c_id where a_course='$course' and a_attended=1 order by a_type desc, a_f_name, a_m_name, a_l_name";
 	$result = db_query($q);
 	$data = array();
 	while($r = $result->fetchAssoc())
@@ -1406,7 +1406,7 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 				'enum'    => check_plain($r['a_emergency_num']),
 				'cell'    => $cellno,
 				'dining'  => check_plain($r['aa_dining']),
-				'seat'    => check_plain($r['aa_seat']).(!empty($r['aa_backrest']) ? '<span class="ml-br" title="Backrest">BR</span>' : ''),
+				'seat'    => check_plain($r['aa_seat']).dh_seat_aid_pill($r, 'ml-br').(!empty($r['aa_backrest']) ? '<span class="ml-br" title="Backrest">BR</span>' : ''),
 				'conf'    => check_plain($r['a_conf_no']),
 				'set'     => $code !== '' ? check_plain($code) : '',
 			);
@@ -2626,6 +2626,20 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 	return $ret;
 }
 
+
+// Seat aid pill (CW / CH) for the teacher and manager lists, in the same style as
+// their "BR" backrest pill ($cls = tl-br / ml-br). Not for a chowky/chair-grid
+// student: that seat already reads CW-/CH-, and the plan hides the mark there too.
+function dh_seat_aid_pill($r, $cls)
+{
+	if (empty($r['aa_seat_aid']) || !empty($r['aa_chowky']) || !empty($r['aa_chair']))
+		return '';
+	if ($r['aa_seat_aid'] == 'CW')
+		return '<span class="'.$cls.'" title="Chowky at this seat">CW</span>';
+	if ($r['aa_seat_aid'] == 'CH')
+		return '<span class="'.$cls.'" title="Chair at this seat">CH</span>';
+	return '';
+}
 
 // Seat aid (CW chowky / CH chair) at a main/group-grid seat, set from the sitting
 // and group-sitting plans: clicking the badge (or the "+" shown on hover) opens a
