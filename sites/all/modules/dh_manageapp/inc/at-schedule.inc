@@ -609,6 +609,8 @@ function dh_assign_teacher()
 	$out .= drupal_render( $temp )."<br>";
 
 
+	// Teacher applications: Confirmed, then Received, then Cancelled; within each,
+	// male teachers before female; then oldest application first.
 	$q = "select
 		t_id,
 		CONCAT(t_f_name, ' ', t_l_name) as 'teacher',
@@ -626,6 +628,8 @@ function dh_assign_teacher()
 		ct_type<>'Training' and
 		c_id=$course
 		order by
+		case ct_status when 'Confirmed' then 1 when 'Received' then 2 when 'Cancelled' then 3 else 4 end,
+		case t_gender when 'M' then 1 when 'F' then 2 else 3 end,
 		ct_created
 		asc";
 
