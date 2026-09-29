@@ -153,23 +153,19 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#default_value' => isset($edit_data['a_designation'])?$edit_data['a_designation']:'', '#required' => 0, '#maxlength' => 100);
 
 
-	$doc_types = array('' => 'Choose', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_aadhar' => 'Aadhar', 'a_voter_id' => 'National ID');
-	$default_doc_type = '';
-	$default_doc_id = '';
-	if (!$add || array_key_exists('a_passport', $edit_data) )
+	// Every photo ID the applicant has: one box each, all saved (the submit handler
+	// copies every a_* field). The PDF prints only one of them, as the note above
+	// the boxes says (order kept in step with map_application_fields in pdf.inc).
+	$form[$group]['dh_photo_id_note'] = array('#type' => 'markup', '#weight' => 40.9,
+		'#markup' => '<div class="dh-photo-id-note">The application PDF shows only one ID: the first one filled, '
+			.'in this order: Aadhaar, Passport, National ID, PAN.</div>');
+	$id_weight = 41;
+	foreach (dh_photo_id_fields() as $k => $label)
 	{
-		if ( $edit_data['a_passport'] <> '' ) $default_doc_type = 'a_passport';
-		if ( $edit_data['a_aadhar'] <> '' ) $default_doc_type = 'a_aadhar';
-		if ( $edit_data['a_voter_id'] <> '' ) $default_doc_type = 'a_voter_id';
-		if ( $edit_data['a_pancard'] <> '' ) $default_doc_type = 'a_pancard';
-		if ($default_doc_type <> '')
-			$default_doc_id = $edit_data[$default_doc_type];		
+		$form[$group][$k] = array('#title' => $label, '#type' => 'textfield', '#size' => '20', '#weight' => $id_weight,
+			'#default_value' => isset($edit_data[$k]) ? $edit_data[$k] : '', '#required' => 0, '#maxlength' => 20 );
+		$id_weight += 0.01;
 	}
-
-	$form[$group]['document_type'] = array('#title' => 'Photo ID', '#type' => 'select', '#multiple' => false,  '#weight' => 41, 
-		'#default_value' => $default_doc_type, '#options' => $doc_types, '#required' => 0, );
-  $form[$group]['document_id'] = array('#title' => 'Identifier', '#type' => 'textfield', '#size' => '20', '#weight' => 42,
-    '#default_value' => $default_doc_id, '#required' => 0, '#maxlength' => 20 );
   $form[$group]['ae_id_issued_by'] = array('#title' => 'ID Issued By', '#type' => 'textfield', '#size' => '20', '#weight' => 42.1,
     '#default_value' => isset($edit_data['ae_id_issued_by'])?$edit_data['ae_id_issued_by']:'', '#required' => 0, '#maxlength' => 100 );
     $form[$group]['ae_id_issued'] = array('#title' => 'ID Issued Date', '#type' => 'date_popup', '#size' => '20', '#weight' => 42.3,
@@ -177,7 +173,8 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
         'maxDate' => 0, '#required' => 0,
         'dateFormat' => date_popup_format_to_popup('Y-m-d'),
       ), '#date_label_position' => 'above',
-    '#theme_wrappers' => array('date_popup'), '#suffix' => '');
+    '#theme_wrappers' => array('date_popup'), '#suffix' => '',
+    '#wrapper_attributes' => array('class' => array('dh-id-issued-date')));   // sits beside "ID Issued By" (see manageapp.css)
 	// Nationality is picked from dh_country.c_nationality, the same list the
 	// application forms now offer, so entries match instead of adding more
 	// free-text spellings (Indian / India / IN / Indain were all in use).
@@ -826,6 +823,23 @@ function _ajax_get_acco_options($section, $gender, $centre, $course)
 	return $rooms;
 }
 
+// The photo-ID columns on dh_applicant with their labels, in the order the edit
+// form shows them. (The PDF picks one by its own order - see map_application_fields.)
+function dh_photo_id_fields()
+{
+	return array('a_aadhar' => 'Aadhaar', 'a_pancard' => 'PAN', 'a_passport' => 'Passport', 'a_voter_id' => 'National ID');
+}
+
+// The value a field of this form was loaded with (trimmed; '' if none), found in
+// whichever fieldset holds it rather than by naming the fieldset.
+function dh_form_default_value($form, $key)
+{
+	foreach (element_children($form) as $grp)
+		if (isset($form[$grp][$key]['#default_value']))
+			return trim($form[$grp][$key]['#default_value']);
+	return '';
+}
+
 function dh_ma_applicant_form_validate($form, &$form_state)
 {
 	if ($form_state['input']['a_gender'] == '')
@@ -878,6 +892,17 @@ function dh_ma_applicant_form_validate($form, &$form_state)
   foreach (element_children($form) as $grp)
     if (isset($form[$grp]['al_last_lc_date']['#default_value']))
       $lc_date_was = trim($form[$grp]['al_last_lc_date']['#default_value']);
+  /* Photo ID numbers: letters, digits, space, - and / only. A quote in an ID
+     breaks the student match at course finalize (check_student() builds its SQL
+     from these values). As with the LC date, only an ID the operator changed is
+     checked, so an existing odd value never blocks saving the rest of the form. */
+  foreach (dh_photo_id_fields() as $k => $label)
+  {
+    $id_now = isset($form_state['input'][$k]) ? trim($form_state['input'][$k]) : '';
+    if ( ($id_now <> '') && ($id_now <> dh_form_default_value($form, $k)) && !preg_match('#^[A-Za-z0-9 /-]+$#', $id_now) )
+      form_set_error($k, t('@label: use only letters, numbers, spaces, - and /.', array('@label' => $label)));
+  }
+
   if ( ($lc_date <> '') && ($lc_date <> $lc_date_was) && (parse_last_lc_date($lc_date) === false) )
     form_set_error('al_last_lc_date', t('Last LC Date is not a date DIPI can read, so the gap since the last long course cannot be worked out. Use a full date or a month and year, for example 15/08/2019, 2019-08-15, Aug 2019 or 08/2019. A year on its own is not enough.'));
 }
@@ -932,8 +957,17 @@ function dh_ma_applicant_form_submit($form, &$form_state)
     if ( trim($input['a_friend_family_details']) <> '' )
         $app['a_friend_family'] = 1;
 
-	if ($input['document_type'] <> '')
-		$app[$input['document_type']] = $input['document_id'];
+	// Photo ID numbers (already copied in with the other a_* fields): a changed box
+	// is saved trimmed, and an emptied one removes that ID. An untouched box is left
+	// out, so the stored value (often NULL) is not rewritten.
+	foreach (array_keys(dh_photo_id_fields()) as $k)
+		if (isset($app[$k]))
+		{
+			if (trim($app[$k]) === dh_form_default_value($form, $k))
+				unset($app[$k]);
+			else
+				$app[$k] = trim($app[$k]);
+		}
 
 	if (isset($input['a_alist']) && ($input['a_alist']))
 		$app['a_alist'] = 1;

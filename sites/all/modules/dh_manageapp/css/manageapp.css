@@ -33,7 +33,7 @@
 	margin-right: 10px !important;
 }
 .form-item-a-mob-country, .form-item-a-address, .form-item-a-zip, .form-item-a-education, .form-item-s-education, 
-.form-item-document-type, .form-item-ac-first-location-str, 
+.form-item-document-type, .form-item-a-aadhar, .form-item-ae-id-issued-by, .form-item-a-langs, .form-item-ac-first-location-str, 
 .form-item-ac-last-location-str, .form-item-aa-comment, .form-item-aa-left-comment, #room-info,
 .form-item-f-name, .form-item-conf-no, .form-item-country, .form-item-email, .form-item-mobile, .form-item-mode,
 .form-item-a-lang-1,  .form-item-a-lang-3, .form-item-al-relationship, .form-item-al-relation-harmonious,
@@ -413,4 +413,18 @@ fieldset#edit-advanced {
 .form-item-t-ct-centers, .form-item-t-act-centers, .form-item-t-cat-areas, .form-item-t-acat-areas {
     display: block !important;
     width: 100% !important;
+}
+
+/* "ID Issued Date" on the same line as "ID Issued By". The Date module gives every
+   date-picker wrapper clear:both, which would push it onto a new line. */
+.container-inline-date.dh-id-issued-date {
+	clear: none;
+}
+
+/* Note above the photo-ID boxes on the application form: its own full row. */
+.dh-photo-id-note {
+	clear: both;
+	color: #444;
+	font-size: 14px;
+	margin: 2px 0 8px;
 }

@@ -629,10 +629,13 @@ function map_application_fields($row)
 	$fields['home'] = $row['a_phone_home']; 	$fields['work'] = $row['a_phone_office'];	$fields['mobile'] = $row['a_phone_mobile']; 
 	$fields['email'] = $row['a_email'];
 
+	// One photo ID only: the first filled of Aadhaar, Passport, National ID, PAN gets
+	// its box ticked and its number printed. The note under the ID boxes on the
+	// application edit form states this order; keep the two in step.
 	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
-	if ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
-	if ($row['a_voter_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
-	if ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
+	elseif ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
+	elseif ($row['a_voter_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
+	elseif ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
 //	$fields['Photo ID'] = ''; 	
 
 	$occupation = strtolower($row['a_occupation']);
@@ -911,10 +914,13 @@ function map_application_fields_lc($row)
 	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['s_name'].', '.$row['country'].' - '.$row['a_zip'];
 
 
+	// One photo ID only: the first filled of Aadhaar, Passport, National ID, PAN gets
+	// its box ticked and its number printed. The note under the ID boxes on the
+	// application edit form states this order; keep the two in step.
 	if ($row['a_aadhar']) { $fields['aadhar'] = 'Yes'; $fields['Photo ID'] = $row['a_aadhar']; }
-	if ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
-	if ($row['a_voter_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
-	if ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
+	elseif ($row['a_passport']) { $fields['passport'] = 'Yes'; $fields['Photo ID'] = $row['a_passport']; }
+	elseif ($row['a_voter_id']) { $fields['national id'] = 'Yes'; $fields['Photo ID'] = $row['a_voter_id']; }
+	elseif ($row['a_pancard']) { $fields['pan card'] = 'Yes'; $fields['Photo ID'] = $row['a_pancard']; }
 
 	$fields['Home'] = $row['a_phone_home']; 	
 	$fields['Office'] = $row['a_phone_office'];	
