@@ -830,6 +830,20 @@ function dh_photo_id_fields()
 	return array('a_aadhar' => 'Aadhaar', 'a_pancard' => 'PAN', 'a_passport' => 'Passport', 'a_voter_id' => 'National ID');
 }
 
+// Is this a real ID number, one that can tell a person apart? Not a placeholder
+// typed when there is no ID ("NO", "-", "NIL", "ADHAR CARD", "0000",
+// "999999999999") and not a masked number ("XXXX XXXX 1234", "BCSPH****H").
+// Referral matching uses only real IDs, so one person's placeholder never
+// "matches" another person's placeholder.
+function dh_id_usable($value)
+{
+	$value = (string) $value;
+	$n = strtoupper(preg_replace('/[^0-9A-Za-z]/', '', $value));
+	if (strpos($value, '*') !== false || strpos($n, 'XXXX') !== false)
+		return false;      // masked
+	return strlen($n) >= 6 && preg_match('/[0-9]/', $n) && !preg_match('/^(.)\1+$/', $n);
+}
+
 // The value a field of this form was loaded with (trimmed; '' if none), found in
 // whichever fieldset holds it rather than by naming the fieldset.
 function dh_form_default_value($form, $key)
@@ -1485,14 +1499,15 @@ function set_referral( $app_id )
 		$doc_type = '';
 		$doc_id = '';
 		
-		if ( $res['a_pancard'] )
-			$doc_type = 's_pancard';
-		elseif ( $res['a_aadhar'] )
-			$doc_type = 's_aadhar';
-		elseif ( $res['a_voter_id'] )
-			$doc_type = 's_voter_id';
-		elseif ( $res['a_passport'] )
-			$doc_type = 's_passport';
+		// The first REAL ID in the order PAN, Aadhaar, National ID, Passport: a
+		// placeholder ("NO", "-") or a masked number is skipped, so it neither
+		// matches other people's placeholders nor hides a real ID behind it.
+		foreach (array('s_pancard', 's_aadhar', 's_voter_id', 's_passport') as $t)
+			if ( dh_id_usable($res[str_replace('s_', 'a_', $t)]) )
+			{
+				$doc_type = $t;
+				break;
+			}
 
 		if ($doc_type)
 		{

@@ -706,6 +706,16 @@ function dh_referral_form_validate($form, &$form_state)
 
   if($end_date > $date_after_2_years)
     form_set_error('r_end', t('Referral end date can not be greater then 2 years from now'));
+
+  // ID numbers: the real number or nothing. A placeholder ("NO", "-", "NIL",
+  // "ADHAR CARD") or a masked number would match every applicant who typed the
+  // same thing (see dh_id_usable in application.inc).
+  foreach (array('s_pancard' => 'Pancard', 's_aadhar' => 'Aadhar', 's_voter_id' => 'National ID', 's_passport' => 'Passport') as $k => $label)
+  {
+    $v = isset($form_state['input'][$k]) ? trim($form_state['input'][$k]) : '';
+    if ($v <> '' && !dh_id_usable($v))
+      form_set_error($k, t('@label: enter the real number, or leave it empty if the person does not have one.', array('@label' => $label)));
+  }
 }
 
 function dh_referral_form_submit($form, &$form_state)
@@ -922,7 +932,7 @@ function update_referral_flag($ref_id)
 
   db_query($q, $q_array);
 
-  if ($ref['s_pancard'])
+  if (dh_id_usable($ref['s_pancard']))   // real IDs only - never a placeholder like "NO"
   {
     $q = "update dh_applicant a
       left join dh_course co on a.a_course=co.c_id
@@ -941,7 +951,7 @@ function update_referral_flag($ref_id)
     db_query($q, $q_array);
   }
 
-  if ($ref['s_aadhar'])
+  if (dh_id_usable($ref['s_aadhar']))
   {
     $q = "update dh_applicant a
       left join dh_course co on a.a_course=co.c_id
@@ -960,7 +970,7 @@ function update_referral_flag($ref_id)
     db_query($q, $q_array);
   }
 
-  if ($ref['s_voter_id'])
+  if (dh_id_usable($ref['s_voter_id']))
   {
     $q = "update dh_applicant a
       left join dh_course co on a.a_course=co.c_id
@@ -979,7 +989,7 @@ function update_referral_flag($ref_id)
     db_query($q, $q_array);
   }
 
-  if ($ref['s_passport'])
+  if (dh_id_usable($ref['s_passport']))
   {
         $q = "update dh_applicant a
       left join dh_course co on a.a_course=co.c_id
