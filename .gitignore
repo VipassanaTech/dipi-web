@@ -2,3 +2,8 @@
 sites/all/libraries/editor/php/config.php
 sites/default/settings.php
 *.jpg
+
+# Claude Code working files: never publish (this repository is public)
+CLAUDE.md
+.claude/
+graphify-out/
