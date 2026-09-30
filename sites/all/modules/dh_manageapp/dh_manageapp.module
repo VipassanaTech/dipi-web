@@ -2401,6 +2401,10 @@ function _move_to_centre_course()
     $fields['a_updated'] = date("Y-m-d H:i:s");
 	$fields['a_updated_by'] = $user->uid;   // audit trigger (dh_applicant_au) logs l_user = a_updated_by
 	db_update('dh_applicant')->fields($fields)->condition('a_id', $app_id)->execute();
+	// The new centre may have its own centre referral for this person, and the old
+	// centre's may no longer apply: check the referral again (the API transfer does
+	// the same through status-trigger.php -> update_status_external).
+	set_referral($app_id);
 	$out = array();
 	$out['status'] = 'OK';
 	$out['msg'] = '';

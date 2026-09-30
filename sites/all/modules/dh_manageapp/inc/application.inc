@@ -844,6 +844,66 @@ function dh_id_usable($value)
 	return strlen($n) >= 6 && preg_match('/[0-9]/', $n) && !preg_match('/^(.)\1+$/', $n);
 }
 
+// The person details used by referral matching, taken from a row whose columns
+// carry $prefix: 'a_' for an application (dh_applicant), 's_' for a referral's
+// person (dh_student).
+function dh_referral_who($row, $prefix)
+{
+	$who = array();
+	foreach (array('f_name', 'l_name', 'email', 'phone_mobile', 'pancard', 'aadhar', 'voter_id', 'passport') as $k)
+		$who[$k] = isset($row[$prefix.$k]) ? trim((string) $row[$prefix.$k]) : '';
+	return $who;
+}
+
+// THE referral matching rule, in one place for both directions (set_referral and
+// update_referral_flag): an applicant and a referral's person are the same when
+//   - ANY real ID (PAN, Aadhaar, National ID, Passport) is equal on both sides, or
+//   - first + last name are equal together with the email or the mobile.
+// Placeholders ("NO", "-") and masked IDs never match (dh_id_usable).
+// $who = the known side (dh_referral_who), $col = column prefix of the side being
+// searched: 's.s_' for referrals' people, 'a.a_' for applications.
+// Returns array(condition, args, id_first, id_first_args) - id_first is an ORDER BY
+// expression ranking a match by what matched, in the order set_referral always used:
+// PAN, Aadhaar, National ID, Passport, then name - with its own args (pass them only
+// when the ORDER BY is used) - or NULL if there is nothing to match on.
+function dh_referral_match_sql($who, $col)
+{
+	$or = $args = $id_order = $order_args = array();
+	foreach (array('pancard', 'aadhar', 'voter_id', 'passport') as $rank => $k)
+		if (dh_id_usable($who[$k]))
+		{
+			$or[] = "{$col}{$k} = :rm_$k";
+			$args[":rm_$k"] = $who[$k];
+			$id_order[] = "when {$col}{$k} = :rmo_$k then $rank";      // own placeholder: never reuse one
+			$order_args[":rmo_$k"] = $who[$k];
+		}
+	// Name + contact rule. Its args are added only when the clause itself is: an
+	// unused placeholder value makes PDO reject the whole query (HY093).
+	$contact = $contact_args = array();
+	if ($who['email'] !== '')
+	{
+		$contact[] = "{$col}email = :rm_email";
+		$contact_args[':rm_email'] = $who['email'];
+	}
+	if ($who['phone_mobile'] !== '')
+	{
+		$contact[] = "{$col}phone_mobile = :rm_mobile";
+		$contact_args[':rm_mobile'] = $who['phone_mobile'];
+	}
+	if ($contact && $who['f_name'] !== '' && $who['l_name'] !== '')
+	{
+		$or[] = "({$col}f_name = :rm_f and {$col}l_name = :rm_l and (".implode(' or ', $contact)."))";
+		$args += $contact_args;
+		$args[':rm_f'] = $who['f_name'];
+		$args[':rm_l'] = $who['l_name'];
+	}
+	if (!$or)
+		return NULL;
+	// '' when there is no real ID: a bare number in ORDER BY would mean a column position.
+	$id_first = $id_order ? '(case '.implode(' ', $id_order).' else 9 end)' : '';
+	return array('('.implode(' or ', $or).')', $args, $id_first, $order_args);
+}
+
 // The value a field of this form was loaded with (trimmed; '' if none), found in
 // whichever fieldset holds it rather than by naming the fieldset.
 function dh_form_default_value($form, $key)
@@ -1473,97 +1533,32 @@ function send_at_email()
 
 function set_referral( $app_id )
 {
+	// Find the referral for this application with the shared rule (all real IDs,
+	// or name + email/mobile; see dh_referral_match_sql), among referrals that are
+	// not deleted and are global or for the application's centre. When several
+	// match: keep the current one if it still matches, then by what matched (PAN,
+	// Aadhaar, National ID, Passport, then name), then the oldest. No match clears
+	// the flag.
+	$res = db_query("select a_f_name, a_l_name, a_center, a_email, a_phone_mobile, a_passport, a_voter_id, a_pancard, a_aadhar, a_referral
+		from dh_applicant where a_id = :a_id", array(':a_id' => $app_id))->fetchAssoc();
+	if (!$res)
+		return;
+
 	$referral = 0;
-
-	$q = "select
-		a_f_name,
-		a_l_name,
-		a_center,
-		a_email,
-		a_phone_mobile,
-		a_passport,
-		a_voter_id,
-		a_pancard,
-		a_aadhar,
-		a_referral
-		from
-		dh_applicant
-		where
-		a_id = :a_id
-	";
-
-	$res = db_query($q, array(":a_id" => $app_id))->fetchAssoc();
-
-	if ($res)
+	$m = dh_referral_match_sql(dh_referral_who($res, 'a_'), 's.s_');
+	if ($m)
 	{
-		$doc_type = '';
-		$doc_id = '';
-		
-		// The first REAL ID in the order PAN, Aadhaar, National ID, Passport: a
-		// placeholder ("NO", "-") or a masked number is skipped, so it neither
-		// matches other people's placeholders nor hides a real ID behind it.
-		foreach (array('s_pancard', 's_aadhar', 's_voter_id', 's_passport') as $t)
-			if ( dh_id_usable($res[str_replace('s_', 'a_', $t)]) )
-			{
-				$doc_type = $t;
-				break;
-			}
-
-		if ($doc_type)
-		{
-			$doc_id = $res[str_replace("s_", "a_", $doc_type)];
-
-			$q ="select
-				r_id
-				from
-				dh_referral r
-				left join dh_student s on (r.r_student=s.s_id) 
-				where
-				r_deleted = 0 and
-				r_center in (0, '{$res['a_center']}') and
-				$doc_type = :doc_id and $doc_type <> ''
-				limit 1
-			";
-
-			$referral = db_query($q, array(":doc_id" => $doc_id))->fetchField();
-		}
-
-		if (!$referral)
-		{
-			$q = "select
-				r_id
-				from
-				dh_referral r
-				left join dh_student s on (r.r_student=s.s_id) 
-				where
-				r_deleted = 0 and
-				r_center in (0, {$res['a_center']}) and
-				s_f_name = :s_f_name and
-				s_l_name = :s_l_name and
-				( (s_email = :s_email and s_email <> '') or (s_phone_mobile = :s_phone_mobile and s_phone_mobile <> '') )
-				limit 1
-			";
-
-			$q_array = array (
-				':s_f_name' => $res['a_f_name'],
-				':s_l_name' => $res['a_l_name'],
-				':s_email' => $res['a_email'],
-				':s_phone_mobile' => $res['a_phone_mobile'],
-			);
-
-			$referral = db_query($q, $q_array)->fetchField();
-		}
-
-
-		if ($referral)
-			db_query("update dh_applicant set a_referral='{$referral}' where a_id='{$app_id}'");
-		elseif($res["a_referral"])
-			db_query("update dh_applicant set a_referral='0' where a_id='{$app_id}'");
-
+		list($cond, $args, $id_first, $order_args) = $m;
+		$args += $order_args;
+		$args[':centre'] = (int) $res['a_center'];
+		$args[':current'] = (int) $res['a_referral'];
+		$referral = (int) db_query("select r.r_id from dh_referral r join dh_student s on s.s_id = r.r_student
+			where r.r_deleted = 0 and r.r_center in (0, :centre) and $cond
+			order by (r.r_id = :current) desc, ".($id_first !== '' ? "$id_first, " : '')."r.r_id limit 1", $args)->fetchField();
 	}
 
-	
-
+	if ($referral <> (int) $res['a_referral'])
+		db_query("update dh_applicant set a_referral = :r where a_id = :a", array(':r' => $referral, ':a' => $app_id));
 }
 
 

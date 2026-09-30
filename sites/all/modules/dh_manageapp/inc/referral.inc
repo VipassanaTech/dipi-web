@@ -877,136 +877,30 @@ function dh_referral_form_submit($form, &$form_state)
 
 function update_referral_flag($ref_id)
 {
-  $q = "select
-      r_center,
-      r_deleted,
-      s_f_name,
-      s_l_name,
-      s_email,
-      s_phone_mobile,
-      s_pancard,
-      s_aadhar,
-      s_voter_id,
-      s_passport
-      from dh_referral r
-      left join dh_student s on s.s_id = r.r_student
-      where r_id=$ref_id";
-
-  $ref = db_query($q)->fetchAssoc();
-
-  $conditon = "";
-  $conditon_clear ="";
-
-  if ($ref['r_center'])
-  {
-    $conditon = " a.a_center='{$ref['r_center']}' and ";
-    $conditon_clear = " a_center='{$ref['r_center']}' and ";
-  }
-
-  db_query("update dh_applicant set a_referral=0 where $conditon_clear a_referral=$ref_id");
-
-  if ($ref["r_deleted"])
+  // Re-flag applications for this referral: clear its old flags, then flag the
+  // applications in courses that have not started yet which match the referral's
+  // person under the shared rule (dh_referral_match_sql in application.inc - the
+  // same rule set_referral uses), within the referral's centre if it has one.
+  $ref = db_query("select r_center, r_deleted, s_f_name, s_l_name, s_email, s_phone_mobile, s_pancard, s_aadhar, s_voter_id, s_passport
+      from dh_referral r left join dh_student s on s.s_id = r.r_student where r_id = :r", array(':r' => $ref_id))->fetchAssoc();
+  if (!$ref)
     return;
 
-  $q = "update dh_applicant a
-    left join dh_course co on a.a_course=co.c_id
-    set a.a_referral = :a_referral
-    where
-    $conditon
-    co.c_start>curdate() and
-    a.a_f_name = :a_f_name and
-    a.a_l_name = :a_l_name and
-    (
-      (a.a_email = :a_email and a.a_email <> '') or
-      (a.a_phone_mobile = :a_phone_mobile and a.a_phone_mobile <> '')
-    )
-  ";
+  $centre_clear = $ref['r_center'] ? " and a_center = ".(int) $ref['r_center'] : "";
+  db_query("update dh_applicant set a_referral = 0 where a_referral = :r".$centre_clear, array(':r' => $ref_id));
 
-  $q_array = array (
-    ':a_referral' => $ref_id,
-    ':a_f_name' => $ref['s_f_name'],
-    ':a_l_name' => $ref['s_l_name'],
-    ':a_email' => $ref['s_email'],
-    ':a_phone_mobile' => $ref['s_phone_mobile'],
-  );
+  if ($ref['r_deleted'])
+    return;
 
-  db_query($q, $q_array);
-
-  if (dh_id_usable($ref['s_pancard']))   // real IDs only - never a placeholder like "NO"
-  {
-    $q = "update dh_applicant a
-      left join dh_course co on a.a_course=co.c_id
-      set a.a_referral = :a_referral
-      where
-      $conditon
-      co.c_start>curdate() and
-      a.a_pancard = :a_pancard and a.a_pancard <> ''
-    ";
-
-    $q_array = array (
-      ':a_referral' => $ref_id,
-      ':a_pancard' => $ref['s_pancard'],
-    );
-
-    db_query($q, $q_array);
-  }
-
-  if (dh_id_usable($ref['s_aadhar']))
-  {
-    $q = "update dh_applicant a
-      left join dh_course co on a.a_course=co.c_id
-      set a.a_referral = :a_referral
-      where
-      $conditon
-      co.c_start>curdate() and
-      a.a_aadhar = :a_aadhar and a.a_aadhar <> ''
-    ";
-
-    $q_array = array (
-      ':a_referral' => $ref_id,
-      ':a_aadhar' => $ref['s_aadhar'],
-    );
-
-    db_query($q, $q_array);
-  }
-
-  if (dh_id_usable($ref['s_voter_id']))
-  {
-    $q = "update dh_applicant a
-      left join dh_course co on a.a_course=co.c_id
-      set a.a_referral = :a_referral
-      where
-      $conditon
-      co.c_start>curdate() and
-      a.a_voter_id = :a_voter_id and a.a_voter_id <> ''
-    ";
-
-    $q_array = array (
-      ':a_referral' => $ref_id,
-      ':a_voter_id' => $ref['s_voter_id'],
-    );
-
-    db_query($q, $q_array);
-  }
-
-  if (dh_id_usable($ref['s_passport']))
-  {
-        $q = "update dh_applicant a
-      left join dh_course co on a.a_course=co.c_id
-      set a.a_referral = :a_referral
-      where
-      $conditon
-      co.c_start>curdate() and
-      a.a_passport = :a_passport and a.a_passport <> ''
-    ";
-
-    $q_array = array (
-      ':a_referral' => $ref_id,
-      ':a_passport' => $ref['s_passport'],
-    );
-
-    db_query($q, $q_array);
-  }
+  $m = dh_referral_match_sql(dh_referral_who($ref, 's_'), 'a.a_');
+  if (!$m)
+    return;
+  list($cond, $args) = $m;
+  $args[':ref'] = $ref_id;
+  $centre = $ref['r_center'] ? " and a.a_center = ".(int) $ref['r_center'] : "";
+  db_query("update dh_applicant a join dh_course co on a.a_course = co.c_id
+      set a.a_referral = :ref
+      where co.c_start > curdate() $centre and $cond", $args);
 }
 
 function dh_addedit_referral()
