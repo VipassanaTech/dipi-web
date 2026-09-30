@@ -84,9 +84,13 @@ function at_view_course_load($course_id) {
  * dh_manageapp's app_id_load() fallback, so the reused registrar pages
  * (application-view, applicant-reviews, add-review, show-application) become
  * reachable for an AT — scoped to their own courses only.
+ *
+ * Needs the 'at view courses' permission too, so that one permission switches the
+ * whole AT course view off or on (it is also what the My Courses routes and the
+ * Dipi App check). Without it the mapping alone opened those application pages.
  */
 function _at_view_applicant_in_my_courses($app_id) {
-  if (!is_numeric($app_id)) {
+  if (!is_numeric($app_id) || !user_access('at view courses')) {
     return FALSE;
   }
   $tid = _at_view_teacher_id();
