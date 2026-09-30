@@ -1,0 +1,4 @@
+# Design specs and implementation plans are for developers, not for the web:
+# they describe server paths, deploy steps and internals. Refuse every request
+# under /docs/ (the files stay in the repository).
+Require all denied
