@@ -208,6 +208,33 @@ function _course_title_clean($val)
 	return trim(preg_replace('/\s+/u', ' ', (string) $val));
 }
 
+// A course editor date ("d M Y", e.g. 01 Nov 2026) as a DateTime; null when empty
+// or unreadable (the dateFormat validator reports those).
+function _course_form_date($val)
+{
+	$d = DateTime::createFromFormat('!d M Y', trim((string) $val));
+	return $d ? $d : null;
+}
+
+// Course dates must be in order: Enrollment Date <= Start Date <= End Date.
+// $which is 'end' or 'enrol'; $row is the submitted row (after the empty dates are
+// filled in by _course_set_default). Returns true or the error message.
+function _course_date_order_check($which, $val, $row)
+{
+	$start = _course_form_date(isset($row['dh_course']['c_start']) ? $row['dh_course']['c_start'] : '');
+	$date = _course_form_date($val);
+	if (!$start || !$date) {
+		return true;
+	}
+	if ($which == 'end' && $date < $start) {
+		return t('End Date cannot be before the Start Date.');
+	}
+	if ($which == 'enrol' && $date > $start) {
+		return t('Enrollment Date cannot be after the Start Date.');
+	}
+	return true;
+}
+
 function dh_manage_courses()
 {
 	$c_type = db_query("select c_subdomain, c_vri from dh_center where c_id=".arg(1))->fetchAssoc();
@@ -591,7 +618,10 @@ function dh_manage_course_handler()
 					'to' => 'Y-m-d'
 					) )
             ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
-                ->message( 'Course End date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
+                ->message( 'Course End date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) )
+            ->validator( function ( $val, $data, $field, $host ) {
+                return _course_date_order_check( 'end', $val, $data );
+            } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_cancelled' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_finalized' )
    	        ->validator( function ( $val, $data, $field, $host ) {
@@ -629,7 +659,10 @@ function dh_manage_course_handler()
 					'to' => 'Y-m-d'
 					) )
             ->validator( \DataTables\Editor\Validate::dateFormat('d M Y', \DataTables\Editor\ValidateOptions::inst()
-                ->message( 'Course Enrol date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) ),
+                ->message( 'Course Enrol date must be in dd Mmm yyyy (31 Jan 2021) format' ) ) )
+            ->validator( function ( $val, $data, $field, $host ) {
+                return _course_date_order_check( 'enrol', $val, $data );
+            } ),
 		\DataTables\Editor\Field::inst( 'dh_course.c_status' )
    	            ->options( /*function () {
 			        return array(
@@ -896,7 +929,10 @@ function _course_set_default( &$editor, $id, &$values)
 {
 //	file_put_contents("/tmp/lala2", print_r($values, true));
 	$start = $values['dh_course']['c_start'] ;
-	if ($values['dh_course']['c_end'] == '' || strtotime($values['dh_course']['c_end']) <  strtotime($start) )
+	// Only an EMPTY End Date is filled in from the course length. An End Date before
+	// the Start Date is refused by the End Date validator (it used to be silently
+	// replaced, so the operator never saw the date they typed was ignored).
+	if ($values['dh_course']['c_end'] == '')
 	{
 		$days = db_query("select td_val2 from dh_type_detail where td_id=".$values['dh_course']['c_course_type'])->fetchField() + 1;
 		//if ( in_array($values['dh_course']['c_course_type'], array(9,11,41) ) )             //array('2 Day Course', '3 Day Course', 'STP') ) )
