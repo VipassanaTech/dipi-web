@@ -201,6 +201,13 @@ function _dh_course_plan_toggle()
 }
 
 
+// A course title is one line: collapse line breaks, tabs and runs of spaces into
+// single spaces (a line break in it breaks WhatsApp messages and the course name).
+function _course_title_clean($val)
+{
+	return trim(preg_replace('/\s+/u', ' ', (string) $val));
+}
+
 function dh_manage_courses()
 {
 	$c_type = db_query("select c_subdomain, c_vri from dh_center where c_id=".arg(1))->fetchAssoc();
@@ -262,7 +269,7 @@ function dh_manage_courses()
 				        { name: "dh_course.c_list_only", label: "List Only", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_date_change", label: "Date Change", type: "radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
 				        { name: "dh_course.c_comments", label: "Comments", type: "textarea" },
-				        { name: "dh_course.c_description", label: "Description", type: "textarea", fieldInfo: "If Description field is set, it will be displayed instead of default course-type (overrides course-type).<br>Please do not use it as comment." },
+				        { name: "dh_course.c_description", label: "Course Title", type: "text", attr: { maxlength: 70 }, fieldInfo: "Optional. A short title shown <b>instead of the course type</b>: in the course name, on the schedule and in messages to applicants. Example: <i>Teenager Girls Course</i>. One line, at most 70 characters.<br>For eligibility, language, venue or contact details use <b>Comments</b> (Comments are also shown on the schedule)." },
 				        { name: "dh_course.c_at_m_count", label: "Male Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 						{ name: "dh_course.c_at_f_count", label: "Female Teacher Count", type: "text", attr: {type: "number"}, def: "1" },
 				        { name: "dh_course.c_combined_seat_course", label: "Combine Seating with Course", type: "select2", def: "0" },
@@ -271,6 +278,21 @@ function dh_manage_courses()
 				        { name: "dh_course.c_finalized", type: "hidden" },
 				    ],	
 				 } );
+
+				// Course Title is one line. A text box silently DROPS pasted line breaks
+				// (joining the words), so turn them into spaces on paste - within the
+				// 70-character limit, as the box itself would.
+				$(editor.field("dh_course.c_description").input()).on("paste", function (e) {
+					var cd = (e.originalEvent || e).clipboardData || window.clipboardData;
+					var t = cd ? cd.getData("text") : "";
+					if (!/[\r\n\t]/.test(t)) return;
+					e.preventDefault();
+					t = t.replace(/\s+/g, " ").trim();
+					var el = this, a = el.selectionStart, b = el.selectionEnd;
+					t = t.slice(0, Math.max(0, 70 - (el.value.length - (b - a))));
+					el.value = el.value.slice(0, a) + t + el.value.slice(b);
+					el.selectionStart = el.selectionEnd = a + t.length;
+				});
 
 				var table = $("#course-table").DataTable( {
 
@@ -498,7 +520,7 @@ function dh_manage_courses()
 						<th>Status Male (N/O)</th>
 						<th>Status Female (N/O)</th>
 						<th>Comments</th>
-						<th>Description<br>(Course Type)</th>
+						<th>Course Title<br>(Course Type)</th>
 						<th>Finalized?</th>
 					</tr>
 				</thead>
@@ -701,7 +723,34 @@ function dh_manage_course_handler()
 	    \DataTables\Editor\Field::inst( 'dh_course.c_list_only' ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_date_change' ),   	            
         \DataTables\Editor\Field::inst( 'dh_course.c_comments' ),            
-        \DataTables\Editor\Field::inst( 'dh_course.c_description' ),
+        // Course Title (c_description) replaces the course type in the course name
+        // (the course_name() DB function uses only its first 70 characters), on the
+        // schedule and in WhatsApp messages - which fail on a line break. So: one line
+        // (whitespace collapsed on save) and at most 70 characters; notes go in
+        // Comments. An existing longer title is let through unchanged, so editing
+        // anything else on an old course is never blocked. It is also sent to the
+        // editor already flattened: a one-line input drops line breaks without a
+        // space, which would join the words of an old multi-line title.
+        \DataTables\Editor\Field::inst( 'dh_course.c_description' )
+            ->getFormatter( function ( $val, $data ) {
+                return _course_title_clean( $val );
+            } )
+            ->setFormatter( function ( $val, $data ) {
+                return _course_title_clean( $val );
+            } )
+            ->validator( function ( $val, $data, $field, $host ) {
+                $new = _course_title_clean( $val );
+                if ( drupal_strlen( $new ) <= 70 ) {
+                    return true;
+                }
+                if ( $host['action'] === 'edit' ) {
+                    $old = db_query("SELECT c_description FROM dh_course WHERE c_id = :id", array(':id' => $host['id']))->fetchField();
+                    if ( $new === _course_title_clean( $old ) ) {
+                        return true; // unchanged old title: do not block other edits
+                    }
+                }
+                return t('Course Title can be at most 70 characters (it has @n now). Put notes like eligibility, language, venue or contact details in Comments.', array('@n' => drupal_strlen( $new )));
+            } ),
         \DataTables\Editor\Field::inst( 'dh_course.c_at_m_count' ),
         \DataTables\Editor\Field::inst( 'dh_course.c_at_f_count' ),
 		\DataTables\Editor\Field::inst( 'dh_course.c_combined_seat_course' )
