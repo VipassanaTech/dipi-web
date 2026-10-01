@@ -1,6 +1,7 @@
 <?php
 // sites/all/modules/dh_courseviewer/tests/dcv_login_test.php
 // Bootstrapped test. Run: php7.4 <thisfile>
+if (PHP_SAPI !== 'cli') { exit; }
 define('DRUPAL_ROOT', '/dhamma/web/dipinew'); chdir(DRUPAL_ROOT);
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);

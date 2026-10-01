@@ -7,6 +7,7 @@
 // apps (which ignore unknown fields) are unaffected; the chowky/chair grid flags don't change.
 // Runs against THIS worktree's code; the marks are set inside a rolled-back transaction on the
 // synthetic fixture course 9900002.
+if (PHP_SAPI !== 'cli') { exit; }
 define('DRUPAL_ROOT', realpath(__DIR__ . '/../../../../..')); chdir(DRUPAL_ROOT);
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);

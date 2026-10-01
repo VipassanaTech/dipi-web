@@ -7,6 +7,7 @@
 // row it creates (teacher, mappings, centre link) is inside a transaction that is
 // rolled back at the end, so the local DB is left untouched. Uses the synthetic
 // fixture course 9900002 (centre 5, 2026-09-30 → 10-03) with an explicit "today".
+if (PHP_SAPI !== 'cli') { exit; }
 define('DRUPAL_ROOT', realpath(__DIR__ . '/../../../../..')); chdir(DRUPAL_ROOT);
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
