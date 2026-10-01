@@ -198,6 +198,8 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
       'centre'     => (int) $r->c_center,
       'start_date' => $r->c_start,
       'end_date'   => $r->c_end,
+      // The plans the app can choose from (spec: choose which plans to load).
+      'plans'      => dcv_course_plans((int) $r->c_id),
     );
   }
   return $out;
@@ -235,7 +237,19 @@ function dcv_user_can_access_course($course_id) {
   return dcv_teacher_mapped(dcv_teacher_id(), $course_id);
 }
 
-/** GET dcv/course/%/bundle */
+/**
+ * The plans a bundle request asks for: NULL = the whole course (no ?plans=, as 1.1.x
+ * apps send); FALSE = refused (empty, malformed, or of the wrong kind for this
+ * course's seating plan); else the plan ids.
+ */
+function dcv_requested_plans($course_id, $raw) {
+  $ids = dcv_parse_plans($raw);
+  if ($ids === NULL || $ids === FALSE) { return $ids; }
+  $kind = function_exists('dh_course_plan') ? dh_course_plan((int) $course_id, 'seat') : 'main';
+  return dcv_plans_fit_kind($ids, $kind) ? $ids : FALSE;
+}
+
+/** GET dcv/course/%/bundle[?plans=RIGHT,LEFT-2] */
 function dcv_course_bundle($course_id) {
   if (!ctype_digit((string) $course_id)) {
     dcv_json('FAIL', array(), 'Invalid course id.');
@@ -243,10 +257,15 @@ function dcv_course_bundle($course_id) {
   if (!dcv_user_can_access_course($course_id)) {
     dcv_json('FAIL', array(), 'Not authorised for this course.');
   }
+  $raw = isset($_GET['plans']) ? $_GET['plans'] : NULL;
+  $plans = dcv_requested_plans($course_id, (is_string($raw) || $raw === NULL) ? $raw : '');
+  if ($plans === FALSE) {
+    dcv_json('FAIL', array(), 'Unknown plan.');
+  }
   // Building a bundle fetches every student photo from S3 (up to ~450 in a big
   // course), which can exceed the default 30s max_execution_time — raise it here.
   drupal_set_time_limit(300);
-  $bundle = dcv_build_bundle($course_id);
+  $bundle = dcv_build_bundle($course_id, $plans);
   if ($bundle === null) {
     dcv_json('FAIL', array(), 'Course not found.');
   }

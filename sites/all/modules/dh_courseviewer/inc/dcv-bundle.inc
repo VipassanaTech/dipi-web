@@ -127,8 +127,9 @@ function dcv_read_file_bytes($uri) {
  * Full Dipi application view for every attending student, keyed by id.
  * Mirrors dh_application_view (search.inc) field set; grouped JSON; read-only.
  */
-function dcv_course_students($course_id) {
+function dcv_course_students($course_id, $plans = NULL) {
   $course_id = (int) $course_id;
+  $kind = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
   $cell_plan = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'cell')   : 'main';
   $din_plan  = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'dining') : 'main';
   $col_cell = ($cell_plan === 'group') ? 'aa_group_cell'   : 'aa_cell';
@@ -185,12 +186,19 @@ function dcv_course_students($course_id) {
       left join dh_city ci on a_city = ci.c_id
       left join dh_state s on (a_state = s.s_code and a_country = s.s_country)
     where a_course = :c and a_attended = 1 and a_type = 'Student'";
+  $args = array(':c' => $course_id);
+  if ($plans !== NULL) {
+    // Only the chosen plans' students (spec: choose which plans to load).
+    list($cond, $pargs) = dcv_plans_sql($plans, $kind);
+    $sql .= " and $cond";
+    $args += $pargs;
+  }
 
   $S = function($v) { return is_null($v) ? '' : (string) $v; };
   $I = function($v) { return (int) $v; };
   $B = function($v) { return (bool) $v; };
   $out = array();
-  foreach (db_query($sql, array(':c' => $course_id)) as $r) {
+  foreach (db_query($sql, $args) as $r) {
     $acco = trim($S($r->aa_section) . '-' . $S($r->aa_acco), '-');
     $short = $I($r->ac_teen) + $I($r->ac_10d) + $I($r->ac_stp);
     $long  = $I($r->ac_20d) + $I($r->ac_30d) + $I($r->ac_45d) + $I($r->ac_60d) + $I($r->ac_tsc) + $I($r->ac_spl);
@@ -421,7 +429,7 @@ function dcv_student_activity($a_id) {
  * seat plan (main vs group). Seat labels are Dipi's cached values (aa_seat /
  * aa_group_seat) — not recomputed. Read-only, parameterized.
  */
-function dcv_course_seats($course_id) {
+function dcv_course_seats($course_id, $plans = NULL) {
   $course_id = (int) $course_id;
   // dh_course_plan() lives in dh_manageapp/inc/allocate.inc (dependency).
   $plan = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
@@ -455,6 +463,12 @@ function dcv_course_seats($course_id) {
             left join dh_applicant_extra    on a_id = ae_applicant
           where a_course = :c and a_attended = 1 and a_type = 'Student'
             and $col_r is not null and $col_c is not null";
+  $args = array(':c' => $course_id);
+  if ($plans !== NULL) {
+    list($cond, $pargs) = dcv_plans_sql($plans, $plan);
+    $sql .= " and $cond";
+    $args += $pargs;
+  }
   // A free-text health field counts as "present" only if it holds a real value
   // (not blank / a negative like "No", "None", "NA").
   $present = function ($v) {
@@ -462,14 +476,14 @@ function dcv_course_seats($course_id) {
     return $t !== '' && !in_array($t, array('no', 'none', 'na', 'n/a', 'nil', '-', '0'), true);
   };
   $out = array();
-  foreach (db_query($sql, array(':c' => $course_id)) as $r) {
+  foreach (db_query($sql, $args) as $r) {
     // Room only; the cell is exported separately (as 'cell') so the app can render it once.
     $acco = trim($r->aa_section . '-' . $r->aa_acco, '-');
     $short = (int) $r->ac_teen + (int) $r->ac_10d + (int) $r->ac_stp;
     $long  = (int) $r->ac_20d + (int) $r->ac_30d + (int) $r->ac_45d
            + (int) $r->ac_60d + (int) $r->ac_tsc + (int) $r->ac_spl;
     $out[] = array(
-      'section'    => ($r->a_gender === 'M') ? 'RIGHT' : 'LEFT',
+      'section'    => (strtoupper((string) $r->a_gender) === 'M') ? 'RIGHT' : 'LEFT',
       'group'      => (int) $r->aa_group,
       'row'        => (int) $r->seat_row,
       'col'        => (int) $r->seat_col,
@@ -528,7 +542,7 @@ function dcv_course_header($course_id) {
 }
 
 /** Assemble the full course bundle (spec §5), or null if course missing. */
-function dcv_build_bundle($course_id) {
+function dcv_build_bundle($course_id, $plans = NULL) {
   $header = dcv_course_header($course_id);
   if ($header === null) { return null; }
   $centre = $header['centre'];
@@ -537,14 +551,17 @@ function dcv_build_bundle($course_id) {
   $naming_conv = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
+  if ($plans !== NULL) {
+    $sections = dcv_filter_sections($sections, $plans, $header['seat_plan']);
+  }
   $end_ts = !empty($header['end_date']) ? strtotime($header['end_date'] . ' +1 day') : false;
   $expires = $end_ts ? date('Y-m-d', $end_ts) : null;
-  $students = dcv_course_students($course_id);
+  $students = dcv_course_students($course_id, $plans);
   return array(
     'schema_version' => 2,
     'course'         => $header,
     'sections'       => $sections,
-    'seats'          => dcv_course_seats($course_id),
+    'seats'          => dcv_course_seats($course_id, $plans),
     'students'       => $students ? $students : new stdClass(),
     'generated_at'   => date('c'),
     'expires_after'  => $expires,

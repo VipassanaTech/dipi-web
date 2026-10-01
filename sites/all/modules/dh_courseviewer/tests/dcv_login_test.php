@@ -2,7 +2,7 @@
 // sites/all/modules/dh_courseviewer/tests/dcv_login_test.php
 // Bootstrapped test. Run: php7.4 <thisfile>
 if (PHP_SAPI !== 'cli') { exit; }
-define('DRUPAL_ROOT', '/dhamma/web/dipinew'); chdir(DRUPAL_ROOT);
+define('DRUPAL_ROOT', realpath(__DIR__ . '/../../../../..')); chdir(DRUPAL_ROOT);
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 require_once DRUPAL_ROOT . '/sites/all/modules/dh_courseviewer/inc/dcv-api.inc';

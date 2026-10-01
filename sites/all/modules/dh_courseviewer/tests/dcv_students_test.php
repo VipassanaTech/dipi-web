@@ -1,7 +1,7 @@
 <?php
 // sites/all/modules/dh_courseviewer/tests/dcv_students_test.php
 if (PHP_SAPI !== 'cli') { exit; }
-define('DRUPAL_ROOT', '/dhamma/web/dipinew'); chdir(DRUPAL_ROOT);
+define('DRUPAL_ROOT', realpath(__DIR__ . '/../../../../..')); chdir(DRUPAL_ROOT);
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 require_once DRUPAL_ROOT . '/sites/all/modules/dh_courseviewer/inc/dcv-bundle.inc';
@@ -21,7 +21,7 @@ ok(array_key_exists('name', $s['identity']) && array_key_exists('gender', $s['id
 ok(array_key_exists('aadhar', $s['ids']) && array_key_exists('passport', $s['ids']), 'ids present (full view, per decision B)');
 ok(array_key_exists('email', $s['contact']) && array_key_exists('city', $s['contact']) && array_key_exists('emergency_name', $s['contact']), 'contact core');
 ok(array_key_exists('lang_discourse', $s['languages']), 'languages.lang_discourse');
-ok(array_key_exists('short_courses', $s['meditation']) && array_key_exists('first_course', $s['meditation']), 'meditation core');
+ok(array_key_exists('short_courses', $s['meditation']) && array_key_exists('first_course_date', $s['meditation']), 'meditation core');
 ok(array_key_exists('physical', $s['health']) && array_key_exists('medication', $s['health']) && array_key_exists('pregnant', $s['health']), 'health core');
 ok(array_key_exists('nationality', $s['identity']), 'nationality under identity');
 ok(array_key_exists('id_issued', $s['ids']) && array_key_exists('id_issued_by', $s['ids']), 'id_issued under ids');

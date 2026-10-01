@@ -77,7 +77,7 @@ try {
   // --- Lists: teacher only, centre only, both (no duplicates) ----------------
   $t_only = dcv_build_course_list(array(), $tid, DAY);
   ok(ids($t_only) === array(COURSE), 'teacher-only list = just their course');
-  ok(array_keys($t_only[0]) === array('id', 'name', 'centre', 'start_date', 'end_date'), 'field whitelist unchanged');
+  ok(array_keys($t_only[0]) === array('id', 'name', 'centre', 'start_date', 'end_date', 'plans'), 'field whitelist unchanged');
   ok(dcv_build_course_list(array(), FALSE, DAY) === array(), 'no centres + no teacher → empty');
   $c_only = ids(dcv_build_course_list(array(5), FALSE, DAY));
   ok(in_array(COURSE, $c_only), 'centre user (regression): centre 5 lists the course');
@@ -98,6 +98,13 @@ try {
   ok(!dcv_user_can_access_course(COURSE), 'no role → course refused');
 
   as_user($uid, $name, array($at_rid));   // AT only (also has a centre link, which must not count)
+  // Dipi withdrew 'at view courses' from every role today (none has it any more) —
+  // confirm the real AT Portal role, as currently configured, is still refused...
+  ok(!user_access('at view courses'), 'AT Portal role (as configured): at view courses refused');
+  // ...then grant it to this test's AT role ONLY inside this rolled-back transaction
+  // (never touching the real, deployed role), so the dormant teacher-access code
+  // below stays exercised instead of permanently failing until Dipi restores it.
+  user_role_grant_permissions($at_rid, array('at view courses'));
   ok(dcv_api_access(), 'AT → API allowed');
   ok(dcv_teacher_id() === $tid, 'AT → resolved to their teacher id');
   ok(dcv_scope_centres() === array(), 'AT without "access zero day" → no centre scope');

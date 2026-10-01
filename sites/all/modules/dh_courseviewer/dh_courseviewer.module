@@ -8,6 +8,7 @@
 
 include_once(dirname(__FILE__) . "/inc/dcv-api.inc");
 include_once(dirname(__FILE__) . "/inc/dcv-bundle.inc");
+include_once(dirname(__FILE__) . "/inc/dcv-plans.inc");
 
 /** Implements hook_menu(). */
 function dh_courseviewer_menu() {

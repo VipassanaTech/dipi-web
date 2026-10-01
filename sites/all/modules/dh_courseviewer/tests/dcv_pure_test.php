@@ -10,7 +10,7 @@ ok($e['status'] === 'OK', 'envelope status');
 ok($e['msg'] === 'hi', 'envelope msg');
 ok($e['data']['pong'] === true, 'envelope data');
 $d = dcv_envelope('FAIL');
-ok($d['status'] === 'FAIL' && $d['data'] === array() && $d['msg'] === '', 'envelope defaults');
+ok($d['status'] === 'FAIL' && $d['data'] === NULL && $d['msg'] === '', 'envelope defaults');
 
 // --- seat config parser ---
 require_once __DIR__ . '/../inc/dcv-bundle.inc';
