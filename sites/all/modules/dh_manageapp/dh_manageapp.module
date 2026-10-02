@@ -8,6 +8,7 @@ use Mailgun\Mailgun;
 
 include_once(dirname(__FILE__)."/inc/allocate.inc");
 include_once(dirname(__FILE__)."/inc/centre.inc");
+include_once(dirname(__FILE__)."/inc/centre-log.inc");
 include_once(dirname(__FILE__)."/inc/pdf.inc");
 include_once(dirname(__FILE__)."/inc/letters.inc");
 include_once(dirname(__FILE__)."/inc/zero-day.inc");
@@ -207,9 +208,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access centre settings'),
 	       'type' => MENU_CALLBACK);
 
+    // Same permission as the Centre Settings page that shows the accommodation
+    // editor (was 'access centre', which View Only / data-entry roles also hold).
     $items['centre/%centre_id/acco-handler'] = array('title' => t('Accomodation'),
 	       'page callback' => 'dh_acco_handler',
-	       'access arguments' => array('access centre'),
+	       'access arguments' => array('access centre settings'),
 	       'type' => MENU_CALLBACK);
 
 
@@ -1354,7 +1357,8 @@ function dh_manage_usermapping_handler()
 	include_once "sites/all/libraries/editor/php/DataTables.php";
     $centers_allowed = array();
     $users_allowed = array();
-    if ( ! user_access('administer manageapp') )
+    $is_admin = user_access('administer manageapp');
+    if ( ! $is_admin )
     {
 	    $res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."' and uc_deleted=0");
     	while( $r = $res->fetchAssoc())
@@ -1390,8 +1394,15 @@ function dh_manage_usermapping_handler()
             )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Please Select a User' )
-            ) ),
-	        \DataTables\Editor\Field::inst( 'uc.name' ),
+            ) )
+            // The dropdown lists only the allowed users; enforce that on save too.
+            ->validator( function ( $val, $data, $field, $host ) use ( $is_admin, $users_allowed ) {
+                if ( $is_admin || $val === null || $val === '' || in_array( $val, $users_allowed ) )
+                    return true;
+                return 'You can only give access to users of your own centres.';
+            } ),
+	        // Joined columns are for display only - never written from here.
+	        \DataTables\Editor\Field::inst( 'uc.name' )->set( false ),
 			\DataTables\Editor\Field::inst( 'dh_user_center.uc_center' )
    	            ->options( \DataTables\Editor\Options::inst()
                 ->table( 'dh_center' )
@@ -1407,13 +1418,18 @@ function dh_manage_usermapping_handler()
             )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Please Select a Center' )
-            ) ),            
-        \DataTables\Editor\Field::inst( 'dh_center.c_name' ),
+            ) )
+            ->validator( function ( $val, $data, $field, $host ) use ( $is_admin, $centers_allowed ) {
+                if ( $is_admin || $val === null || $val === '' || in_array( $val, $centers_allowed ) )
+                    return true;
+                return 'You can only give access to your own centres.';
+            } ),
+        \DataTables\Editor\Field::inst( 'dh_center.c_name' )->set( false ),
         \DataTables\Editor\Field::inst( 'dh_user_center.uc_deleted' ),
-        \DataTables\Editor\Field::inst( 'dh_user_center.uc_id' ),
+        \DataTables\Editor\Field::inst( 'dh_user_center.uc_id' )->set( false ),
 	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_updated_by' )
 	    ->setValue( $user->uid ),
-        \DataTables\Editor\Field::inst( 'up.name' ),
+        \DataTables\Editor\Field::inst( 'up.name' )->set( false ),
 	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_updated' )
 	    ->setValue( date('Y-m-d H:i:s') ),
 	    \DataTables\Editor\Field::inst( 'dh_user_center.uc_created_by' )
@@ -1431,15 +1447,36 @@ function dh_manage_usermapping_handler()
 
    	if(! user_access("administer manageapp") )
    	{
-    	$editor->where( function ( $q ) use ($centers_allowed) 
+    	// The centre ORs go in a nested where() so they are bracketed: Editor calls
+    	// this closure directly (no brackets), and an unbracketed OR escaped the other
+    	// conditions - listing other centres' deleted rows and, after a create or edit,
+    	// sending back the wrong row (which the next Delete would then act on).
+    	$editor->where( function ( $q ) use ($centers_allowed)
     	{
+    	    $q->where( function ( $q ) use ($centers_allowed) {
         	foreach($centers_allowed as $k => $c)
             	if ( $k == 0)
                 	$q->where( 'uc_center', $c );
                 else
                 	$q->or_where( 'uc_center',  $c);
+    	    } );
+        } );
+        // An edit (also the Delete button) is saved by row id only, so check every
+        // edited row is a mapping of one of this user's centres.
+        $editor->validator( function ( $editor, $action, $data ) use ( $centers_allowed ) {
+            if ( $action != 'edit' )
+                return '';
+            foreach ( array_keys( $data['data'] ) as $key ) {
+                $row = $editor->db()->select( 'dh_user_center', 'uc_center',
+                    array( 'uc_id' => str_replace( $editor->idPrefix(), '', $key ) ) )->fetch();
+                if ( ! $row || ! in_array( $row['uc_center'], $centers_allowed ) )
+                    return 'You can only change user access for your own centres.';
+            }
+            return '';
         } );
    	}
+    dh_centre_log_editor( $editor, 'dh_user_center', 'uc_id', 'uc_center', 'access',
+        array( 'uc_user', 'uc_center' ), 'uc_deleted' );
 
     $editor->process( $_POST )
     ->json();

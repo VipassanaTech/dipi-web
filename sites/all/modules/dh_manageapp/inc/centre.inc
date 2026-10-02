@@ -696,6 +696,11 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 			'#collapsible' => true, '#collapsed' => true, '#weight' => 99);
 		$form['Accommodation Settings']['acco'] = array('#markup' => $out);
 
+		// Who changed what (inc/centre-log.inc), read-only, below the Update button.
+		$form['Change Log'] = array('#type' => 'fieldset', '#title' => 'Change Log',
+			'#collapsible' => true, '#collapsed' => true, '#weight' => 110);
+		$form['Change Log']['log'] = array('#markup' => dh_centre_log_viewer($centre_id, $form));
+
 	}
 	else
 	{
@@ -746,9 +751,16 @@ function dh_ma_centre_form_submit($form, &$form_state)
 		? implode(',', array_keys(array_filter((array) $form_state['input']['cs_dash_hide_types'])))
 		: '';
 
+	// Save only the centre columns that are on this form as built for this user (the
+	// admin-only ones only for admins), plus the seat INI assembled above - a crafted
+	// POST cannot set hidden columns.
+	$fields = _dh_centre_form_fields($form);
+	$fields['cs_seat_config'] = TRUE;
 	$centre = array(); $centre_setting = array();
 	foreach ($form_state['input'] as $key => $value)
 	{
+		if (!isset($fields[$key]))
+			continue;
 		if ( substr($key,0,2) == 'c_')
 			$centre[$key] = $value;
 		if ( substr($key,0,3) == 'cs_')
@@ -756,32 +768,70 @@ function dh_ma_centre_form_submit($form, &$form_state)
 	}
 
 	if ($centre['c_city'] <> '')
-	{	
-		$q = "select c_id from dh_city where c_country='".$centre['c_country']."' and c_state='".$centre['c_state']."' and c_name='".$centre['c_city']."' limit 1";
-		$city_id = db_query($q)->fetchField();
-		//watchdog('lala - $city_id', $q);
+	{
+		$city_id = db_query("select c_id from dh_city where c_country = :co and c_state = :st and c_name = :ci limit 1",
+			array(':co' => $centre['c_country'], ':st' => $centre['c_state'], ':ci' => $centre['c_city']))->fetchField();
 		if ( $city_id <> '')
 			$centre['c_city'] = $city_id;
 	}
 	if ( $centre_id <> '')
-	{
-		$centre['c_updated_by'] = $user->uid;
-		$centre['c_updated'] = date('Y-m-d H:i:s');
-		db_update('dh_center')->fields($centre)->condition('c_id', $centre_id )->execute();
-		db_update('dh_center_setting')->fields($centre_setting)->condition('cs_center', $centre_id )->execute();				
-	}
+		_dh_centre_save_edit($centre_id, $centre, $centre_setting);
 	else
+		$centre_id = _dh_centre_save_add($centre, $centre_setting);
+	drupal_goto("centre/$centre_id");
+}
+
+/* Save an edited centre: both tables and the change log (only fields whose value
+   really changed) in one transaction, so a failure leaves nothing half-saved. */
+function _dh_centre_save_edit($centre_id, $centre, $centre_setting)
+{
+	global $user;
+	$old_c = db_query("select * from dh_center where c_id = :c", array(':c' => $centre_id))->fetchAssoc();
+	$old_cs = db_query("select * from dh_center_setting where cs_center = :c", array(':c' => $centre_id))->fetchAssoc();
+	$c_fields = array_keys($centre);
+	$centre['c_updated_by'] = $user->uid;
+	$centre['c_updated'] = date('Y-m-d H:i:s');
+
+	$txn = db_transaction();
+	try
 	{
-		$centre['c_created_by'] = $user->uid;
-		$centre['c_created'] = date('Y-m-d H:i:s');
-		$centre['c_updated_by'] = $user->uid;
-		$centre['c_updated'] = date('Y-m-d H:i:s');
+		db_update('dh_center')->fields($centre)->condition('c_id', $centre_id )->execute();
+		db_update('dh_center_setting')->fields($centre_setting)->condition('cs_center', $centre_id )->execute();
+		dh_centre_log_write($centre_id, 'centre', 'update', dh_centre_log_diff($old_c, $centre, $c_fields));
+		dh_centre_log_write($centre_id, 'settings', 'update', dh_centre_log_diff($old_cs, $centre_setting, array_keys($centre_setting)));
+	}
+	catch (Exception $e)
+	{
+		$txn->rollback();
+		throw $e;
+	}
+}
+
+/* Create a centre (its settings row, letters copied from centre 0) and log it, in
+   one transaction. Returns the new centre id. */
+function _dh_centre_save_add($centre, $centre_setting)
+{
+	global $user;
+	$centre['c_created_by'] = $user->uid;
+	$centre['c_created'] = date('Y-m-d H:i:s');
+	$centre['c_updated_by'] = $user->uid;
+	$centre['c_updated'] = date('Y-m-d H:i:s');
+
+	$txn = db_transaction();
+	try
+	{
 		$centre_id = db_insert('dh_center')->fields($centre)->execute();
 		$centre_setting['cs_center'] = $centre_id;
-		db_insert('dh_center_setting')->fields($centre_setting)->execute();		
-		copy_letters_to_centre($centre_id);		
+		db_insert('dh_center_setting')->fields($centre_setting)->execute();
+		copy_letters_to_centre($centre_id);
+		dh_centre_log_write($centre_id, 'centre', 'create', array('c_name' => array(NULL, $centre['c_name'])));
 	}
-	drupal_goto("centre/$centre_id");
+	catch (Exception $e)
+	{
+		$txn->rollback();
+		throw $e;
+	}
+	return $centre_id;
 }
 
 /* (Cells + Dining Configuration INI are now assembled client-side by
@@ -914,9 +964,24 @@ function dh_acco_handler()
 	    )
     ->pkey('csa_id')
     ->on( 'preRemove', function() { return false; })
+    // An edit (also the Delete button) is saved by row id only, so check every
+    // edited row belongs to this centre.
+    ->validator( function ( $editor, $action, $data ) use ( $centre_id ) {
+        if ( $action != 'edit' )
+            return '';
+        foreach ( array_keys( $data['data'] ) as $key ) {
+            $row = $editor->db()->select( 'dh_center_setting_acco', 'csa_center',
+                array( 'csa_id' => str_replace( $editor->idPrefix(), '', $key ) ) )->fetch();
+            if ( ! $row || (string) $row['csa_center'] !== (string) $centre_id )
+                return 'This accommodation row does not belong to this centre.';
+        }
+        return '';
+    } )
     ->where( 'csa_deleted', 0)
-    ->where( 'csa_center', $centre_id)
-    ->process( $_POST )
+    ->where( 'csa_center', $centre_id);
+    dh_centre_log_editor( $editor, 'dh_center_setting_acco', 'csa_id', 'csa_center', 'acco',
+        array( 'csa_gender', 'csa_section', 'csa_room', 'csa_center' ), 'csa_deleted' );
+    $editor->process( $_POST )
     ->json();
     exit;
 

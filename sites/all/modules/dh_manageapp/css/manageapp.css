@@ -428,3 +428,9 @@ fieldset#edit-advanced {
 	font-size: 14px;
 	margin: 2px 0 8px;
 }
+
+/* Centre change log (bottom of Centre Settings, inc/centre-log.inc) */
+.dh-centre-log td { vertical-align: top; }
+.dh-centre-log td.cl-val { max-width: 380px; word-break: break-word; font-size: 12px; }
+.dh-centre-log .cl-del { color: #a94442; }
+.dh-centre-log .cl-add { color: #2b7a3d; }
