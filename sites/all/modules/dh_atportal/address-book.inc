@@ -192,8 +192,8 @@ function dh_atportal_address_book_form($form, &$form_state)
         '#weight' => 18.31
     );
 
-    $form['t_status_blocked'] = array(
-        '#title' => '&nbsp;Blocked',
+    $form['t_status_redacted'] = array(
+        '#title' => '&nbsp;Redacted',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.32
@@ -295,8 +295,8 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
     if (!empty($values['t_status_steppeddown']))
         $or_status[] = " t_status = 'SteppedDown' ";
 
-    if (!empty($values['t_status_blocked']))
-        $or_status[] = " t_status = 'Blocked' ";
+    if (!empty($values['t_status_redacted']))
+        $or_status[] = " t_status = 'Redacted' ";
 
     if (!empty($values['t_status_training']))
         $or_status[] = " t_status = 'Training' ";
@@ -732,7 +732,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
             'Training' => 'Training',
             'Deceased' => 'Deceased',
             'SteppedDown' => 'SteppedDown',
-            'Blocked' => 'Blocked',
+            'Redacted' => 'Redacted',
         );
 
 		$default_status = '';
@@ -742,7 +742,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 			if ( $edit_data['t_status'] == 'Inactive' ) $default_status = 'Inactive';
             if ( $edit_data['t_status'] == 'Deceased' ) $default_status = 'Deceased';
             if ( $edit_data['t_status'] == 'SteppedDown' ) $default_status = 'SteppedDown';
-            if ( $edit_data['t_status'] == 'Blocked' ) $default_status = 'Blocked';
+            if ( $edit_data['t_status'] == 'Redacted' ) $default_status = 'Redacted';
 			// if ( $edit_data['t_status'] == 'Deprecated' ) $default_status = 'Deprecated';
 			if ( $edit_data['t_status'] == 'Training' ) $default_status = 'Training';
             // if ( $edit_data['t_status'] != 'Training' ) unset($statuses['Training']);
