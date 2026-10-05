@@ -973,10 +973,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
+				var lettersCentre = '.(int) $centre.';
 				var courses = '.$courses_json.';
 				var centres = '.$centres_json.';
 
-				var comment = "";			
 
 			    var buttonCommon = {
 			        exportOptions: {
@@ -1326,6 +1326,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        var row = table.row( tr );
 	                $(".sub-letter-"+row.data().aid).text("");
 	                $(".sub-letter-"+row.data().aid).attr("subletter", "");
+	                $(".sub-letter-"+row.data().aid).attr("subcomment", "");
 					if ( (letters[tmp] === null) || (typeof letters[tmp] !== "object") )
 						return;
 					// Offer only letters for this row course type or for all types (0), the same
@@ -1333,6 +1334,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					// row: fall back to the full list, as before.
 					var ct = row.data().coursetype;
 					var avail = (typeof ct === "undefined") ? letters[tmp] : letters[tmp].filter(function (x) { return x.type == 0 || x.type == ct; });
+					// Only one letter applies: show its name below the status so the user can see
+					// which letter Update will send. The id is not set: the server picks the same
+					// letter from the applicant centre. Skipped when the letter list is not for this
+					// row (multi-centre LC search) or the row was transferred after page load.
+					if ( avail.length == 1 && row.data().centreid == lettersCentre && !row.data().transferred )
+						$(".sub-letter-"+row.data().aid).text(avail[0].status);
 					if ( avail.length > 1 )
 					{
 						$.confirm({
@@ -1353,7 +1360,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						            action: function () {
 						                var letter = this.$content.find(".letter-select").val();
 						                var letter_txt = this.$content.find(".letter-select :selected").text();
-						                comment = this.$content.find("#txt-comment").val();
+						                var comment = this.$content.find("#txt-comment").val();
 						                if(!letter){
 						                    $.alert("Please select a letter");
 						                    return false;
@@ -1363,6 +1370,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 
 						                $(".sub-letter-"+row.data().aid).text(letter_txt);
 						                $(".sub-letter-"+row.data().aid).attr("subletter", letter);
+						                // Keep the comment with its own row (it used to be one page-wide value,
+						                // so it could go out with another row or another letter).
+						                $(".sub-letter-"+row.data().aid).attr("subcomment", comment);
 						                //$.alert("Your selected " + letter);
 						            }
 						        },
@@ -1395,6 +1405,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					var id = $(this).attr("id").replace("btn-", "");
 					var s = $("#new-status-"+id).val() ;
 					var letter = $(".sub-letter-"+id).attr("subletter");
+					var comment = $(".sub-letter-"+id).attr("subcomment") || "";
 					if (s == "")
 					{
 						alert("Please select a status");
@@ -1408,6 +1419,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					  .done(function( json ) {
 					  	if (json.status == "OK")
 					  	{
+					  		$(".sub-letter-"+id).attr("subcomment", "");
 					  		if ( s != "'.$system_statues['STATUS-CUSTOM'].'")
 								row1.data().status = s;
 							if ( json.newstatus != "" )
@@ -1428,7 +1440,6 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					    alert("Error updating "+err);
 					    $(this).loading("stop");
 					});			
-					comment="";
 
 				});
 
@@ -1675,6 +1686,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 												//row1.data().status = s;
 												//var d = row1.data().status;
 												//row1.invalidate().draw();
+												row.data().transferred = 1;
 												tr.children("td").css("background-color", "#ffff00");						  		
 										  	}
 										  	else
