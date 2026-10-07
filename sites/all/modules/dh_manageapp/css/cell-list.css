@@ -189,6 +189,9 @@ col.c2-room { width: 11%; }
 col.c2-cell { width: 7%; }
 col.c2-gap  { width: 6%; }
 table.cl-2col td { font-size: 15px; padding: 6px 6px; }
+/* "Room: Hide" (?room=0): no Room column, so the name takes its width. */
+table.cl-noroom col.c-name  { width: 82%; }
+table.cl-noroom col.c2-name { width: 36%; }
 table.cl-2col .cl-room { font-size: 14px; }
 
 /* Screen-only "Sort by" toggle. */

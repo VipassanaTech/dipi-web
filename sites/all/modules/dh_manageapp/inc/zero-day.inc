@@ -3731,15 +3731,16 @@ document.addEventListener("click", function(e){
 
 
 /* One #|Name|Room|Cell group for the cell list. $idx is the position in the
-   sorted batch; $keys are its cell numbers. Blank cells for an empty slot. */
-function dh_cell_list_pair($cd, $keys, $idx, $valkey = 'cell', $fixtitle = 'Fixed cell - kept when the list is regenerated')
+   sorted batch; $keys are its cell numbers. Blank cells for an empty slot.
+   $show_room = FALSE leaves out the Room cell (the list's "Room: Hide" option). */
+function dh_cell_list_pair($cd, $keys, $idx, $valkey = 'cell', $fixtitle = 'Fixed cell - kept when the list is regenerated', $show_room = TRUE)
 {
 	if (!isset($keys[$idx]))
-		return '<td class="cl-idx"></td><td class="cl-name"></td><td class="cl-room"></td><td class="cl-cell"></td>';
+		return '<td class="cl-idx"></td><td class="cl-name"></td>'.($show_room ? '<td class="cl-room"></td>' : '').'<td class="cl-cell"></td>';
 	$k = $keys[$idx];
 	return '<td class="cl-idx">'.($idx + 1).'</td>'
 		.'<td class="cl-name">'.check_plain($cd[$k]['name']).'</td>'
-		.'<td class="cl-room">'.check_plain($cd[$k]['room']).'</td>'
+		.($show_room ? '<td class="cl-room">'.check_plain($cd[$k]['room']).'</td>' : '')
 		.'<td class="cl-cell">'.check_plain($cd[$k][$valkey])
 			.(!empty($cd[$k]['fixed']) ? '<span class="cl-fixed no-print" title="'.$fixtitle.'">&#9679;</span>' : '')
 			.'</td>';
@@ -3779,6 +3780,8 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 
 	$sort = (isset($_REQUEST['sort']) && $_REQUEST['sort'] == $sort_key) ? $sort_key : 'name';
 	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
+	// ?room=0 hides the Room column (screen and print); shown by default.
+	$show_room = !(isset($_REQUEST['room']) && $_REQUEST['room'] === '0');
 	$gender = array('M', 'F');
 	$data = array('M' => array(), 'F' => array());
 	$age_range = array();
@@ -3812,23 +3815,28 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 
 	$dl_name = dh_course_file_basename($centre, $course, $file_slug);
 	$out = '<html><head><title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css");</style>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css?v=20261007");</style>';
 	$out .= '</head><body>';
 	$out .= '<div class="header-day0 no-print"><div align="center" class="title"><b>'.$title_txt.'</b></div>'.
 			'<div align="center" class="title-head">'.$course_name.'</div></div>';
 	$sort_base = $route_slug.'/'.$centre.'/'.$course;
 	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();
 	$keep_sort = ($sort == $sort_key) ? array('sort' => $sort_key) : array();
+	$keep_room = $show_room ? array() : array('room' => 0);
 	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/'.$resource.'-workbench/'.$centre.'/'.$course.'?plan='.$mode.'">&#8592; Back to Workbench</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
-		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols))).
+		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols + $keep_room))).
 		' &middot; '.
-		($sort == $sort_key ? '<b>'.$noun.'</b>' : l($noun, $sort_base, array('query' => array('sort' => $sort_key) + $keep_cols))).
+		($sort == $sort_key ? '<b>'.$noun.'</b>' : l($noun, $sort_base, array('query' => array('sort' => $sort_key) + $keep_cols + $keep_room))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
-		($cols == 1 ? '<b>1</b>' : l('1', $sort_base, array('query' => $keep_sort))).
+		($cols == 1 ? '<b>1</b>' : l('1', $sort_base, array('query' => $keep_sort + $keep_room))).
 		' &middot; '.
-		($cols == 2 ? '<b>2</b>' : l('2', $sort_base, array('query' => array('cols' => 2) + $keep_sort))).
+		($cols == 2 ? '<b>2</b>' : l('2', $sort_base, array('query' => array('cols' => 2) + $keep_sort + $keep_room))).
+		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Room: '.
+		($show_room ? '<b>Show</b>' : l('Show', $sort_base, array('query' => $keep_sort + $keep_cols))).
+		' &middot; '.
+		(!$show_room ? '<b>Hide</b>' : l('Hide', $sort_base, array('query' => array('room' => 0) + $keep_sort + $keep_cols))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 	if ($has_fixed)
@@ -3866,29 +3874,31 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 				$label = ($cl === 'server' ? ($g == 'M' ? 'Male' : 'Female').' Server' : ($i ? 'Old' : 'New').' '.($g == 'M' ? 'Male' : 'Female')).($num_batches > 1 ? ' Batch '.($batch + 1) : '');
 				if ($show_age)
 					$label .= ' ('.$age_range[$g][$cl][$i][$batch]['lower'].'&ndash;'.$age_range[$g][$cl][$i][$batch]['upper'].' yrs)';
-				if ($cols == 2) { $trows = (int) ceil($n / 2); $colspan = 9; }  // two entries per row (row-major)
-				else            { $trows = $n;                 $colspan = 4; }  // one entry per row
+				if ($cols == 2) { $trows = (int) ceil($n / 2); $colspan = $show_room ? 9 : 7; }  // two entries per row (row-major)
+				else            { $trows = $n;                 $colspan = $show_room ? 4 : 3; }  // one entry per row
+				$room_col = $show_room ? '<col class="'.($cols == 2 ? 'c2-room' : 'c-room').'">' : '';
+				$room_th  = $show_room ? '<th>Room</th>' : '';
 				// Page break before the first batch of each category; batches within a
 				// category flow together (must not split across pages - see CSS).
 				$out .= '<div class="cl-batch'.((!$first && $cat_first) ? ' cl-break' : '').'">';
 				$first = false; $cat_first = false;
-				$out .= '<table cellspacing="0" class="table-cell-list'.($cols == 2 ? ' cl-2col' : '').'">';
+				$out .= '<table cellspacing="0" class="table-cell-list'.($cols == 2 ? ' cl-2col' : '').($show_room ? '' : ' cl-noroom').'">';
 				if ($cols == 2)
-					$out .= '<colgroup><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name"><col class="c2-room"><col class="c2-cell"></colgroup>';
+					$out .= '<colgroup><col class="c2-idx"><col class="c2-name">'.$room_col.'<col class="c2-cell"><col class="c2-gap"><col class="c2-idx"><col class="c2-name">'.$room_col.'<col class="c2-cell"></colgroup>';
 				else
-					$out .= '<colgroup><col class="c-idx"><col class="c-name"><col class="c-room"><col class="c-cell"></colgroup>';
+					$out .= '<colgroup><col class="c-idx"><col class="c-name">'.$room_col.'<col class="c-cell"></colgroup>';
 				$out .= '<thead><tr><th colspan="'.$colspan.'" class="cl-batch-title">'.$label.'</th></tr>';
 				if ($cols == 2)
-					$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th></tr>';
+					$out .= '<tr><th class="cl-idx">#</th><th>Name</th>'.$room_th.'<th>'.$noun.'</th><th class="cl-gap">&nbsp;</th><th class="cl-idx">#</th><th>Name</th>'.$room_th.'<th>'.$noun.'</th></tr>';
 				else
-					$out .= '<tr><th class="cl-idx">#</th><th>Name</th><th>Room</th><th>'.$noun.'</th></tr>';
+					$out .= '<tr><th class="cl-idx">#</th><th>Name</th>'.$room_th.'<th>'.$noun.'</th></tr>';
 				$out .= '</thead><tbody>';
 				for ($a = 0; $a < $trows; $a++)
 				{
 					if ($cols == 2)
-						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, 2 * $a, 'val', $fix_title).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($seat_data, $keys, 2 * $a + 1, 'val', $fix_title).'</tr>';
+						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, 2 * $a, 'val', $fix_title, $show_room).'<td class="cl-gap">&nbsp;</td>'.dh_cell_list_pair($seat_data, $keys, 2 * $a + 1, 'val', $fix_title, $show_room).'</tr>';
 					else
-						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, $a, 'val', $fix_title).'</tr>';
+						$out .= '<tr>'.dh_cell_list_pair($seat_data, $keys, $a, 'val', $fix_title, $show_room).'</tr>';
 				}
 				$out .= '</tbody></table>';
 				$out .= '</div>';
