@@ -12,7 +12,9 @@ include_once(dirname(__FILE__) . "/inc/dcv-plans.inc");
 
 /**
  * Implements hook_permission(). Teachers' use of the app has its own switch, apart from
- * the AT Portal course view ('at view courses'); no role has it for now.
+ * the AT Portal course view ('at view courses'). The app serves teachers only while Dipi's
+ * AT course view is on ('at view courses') AND this switch ('dcv teacher access') is on;
+ * switching either off stops teachers in the app.
  */
 function dh_courseviewer_permission() {
   return array(

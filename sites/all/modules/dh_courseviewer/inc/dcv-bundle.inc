@@ -124,10 +124,11 @@ function dcv_read_file_bytes($uri) {
 }
 
 /**
- * Full Dipi application view for every attending student, keyed by id.
+ * Full Dipi application view for every attending student (or, with $type 'Sevak', Dhamma
+ * server), keyed by id. $sides: a teacher's side limit (dcv_sides_sql).
  * Mirrors dh_application_view (search.inc) field set; grouped JSON; read-only.
  */
-function dcv_course_students($course_id, $plans = NULL) {
+function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = 'Student') {
   $course_id = (int) $course_id;
   $kind = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
   $cell_plan = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'cell')   : 'main';
@@ -185,14 +186,17 @@ function dcv_course_students($course_id, $plans = NULL) {
       left join dh_country co on a_country = co.c_code
       left join dh_city ci on a_city = ci.c_id
       left join dh_state s on (a_state = s.s_code and a_country = s.s_country)
-    where a_course = :c and a_attended = 1 and a_type = 'Student'";
-  $args = array(':c' => $course_id);
+    where a_course = :c and a_attended = 1 and a_type = :typ";
+  $args = array(':c' => $course_id, ':typ' => $type);
   if ($plans !== NULL) {
     // Only the chosen plans' students (spec: choose which plans to load).
     list($cond, $pargs) = dcv_plans_sql($plans, $kind);
     $sql .= " and $cond";
     $args += $pargs;
   }
+  list($fence, $fargs) = dcv_sides_sql($sides);
+  $sql .= $fence;
+  $args += $fargs;
 
   $S = function($v) { return is_null($v) ? '' : (string) $v; };
   $I = function($v) { return (int) $v; };
@@ -314,6 +318,20 @@ function dcv_course_students($course_id, $plans = NULL) {
 }
 
 /**
+ * The course's attending Dhamma servers (a_type 'Sevak') — the same record as a student,
+ * plus 'plan', the plan they belong to (same rule as a student: gender, and in a group-wise
+ * course aa_group). Servers have no fixed seat. Keyed by id; read-only.
+ */
+function dcv_course_servers($course_id, $plans = NULL, $sides = NULL) {
+  $kind = function_exists('dh_course_plan') ? dh_course_plan((int) $course_id, 'seat') : 'main';
+  $out = dcv_course_students($course_id, $plans, $sides, 'Sevak');
+  foreach ($out as $id => $rec) {
+    $out[$id]['plan'] = dcv_plan_id($rec['identity']['gender'], $rec['seating']['group'], $kind);
+  }
+  return $out;
+}
+
+/**
  * Referral block for an applicant, mirroring dh_application_view: only returned
  * when the referral is still valid (today <= r_end) AND its listed level matches
  * the course level. Returns null otherwise (app treats null as "no referral").
@@ -429,7 +447,7 @@ function dcv_student_activity($a_id) {
  * seat plan (main vs group). Seat labels are Dipi's cached values (aa_seat /
  * aa_group_seat) — not recomputed. Read-only, parameterized.
  */
-function dcv_course_seats($course_id, $plans = NULL) {
+function dcv_course_seats($course_id, $plans = NULL, $sides = NULL) {
   $course_id = (int) $course_id;
   // dh_course_plan() lives in dh_manageapp/inc/allocate.inc (dependency).
   $plan = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
@@ -469,6 +487,9 @@ function dcv_course_seats($course_id, $plans = NULL) {
     $sql .= " and $cond";
     $args += $pargs;
   }
+  list($fence, $fargs) = dcv_sides_sql($sides);
+  $sql .= $fence;
+  $args += $fargs;
   // A free-text health field counts as "present" only if it holds a real value
   // (not blank / a negative like "No", "None", "NA").
   $present = function ($v) {
@@ -542,7 +563,7 @@ function dcv_course_header($course_id) {
 }
 
 /** Assemble the full course bundle (spec §5), or null if course missing. */
-function dcv_build_bundle($course_id, $plans = NULL) {
+function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $header = dcv_course_header($course_id);
   if ($header === null) { return null; }
   $centre = $header['centre'];
@@ -556,13 +577,15 @@ function dcv_build_bundle($course_id, $plans = NULL) {
   }
   $end_ts = !empty($header['end_date']) ? strtotime($header['end_date'] . ' +1 day') : false;
   $expires = $end_ts ? date('Y-m-d', $end_ts) : null;
-  $students = dcv_course_students($course_id, $plans);
+  $students = dcv_course_students($course_id, $plans, $sides);
+  $servers = dcv_course_servers($course_id, $plans, $sides);
   return array(
     'schema_version' => 2,
     'course'         => $header,
     'sections'       => $sections,
-    'seats'          => dcv_course_seats($course_id, $plans),
+    'seats'          => dcv_course_seats($course_id, $plans, $sides),
     'students'       => $students ? $students : new stdClass(),
+    'servers'        => $servers ? $servers : new stdClass(),
     'generated_at'   => date('c'),
     'expires_after'  => $expires,
   );

@@ -44,6 +44,10 @@ function map_teacher($tid, $course, $type, $status) {
 
 $txn = db_transaction();
 try {
+  // Start from a known state, whatever the real AT Portal role has (the app switch is granted to
+  // it after deploy): no app switch, the AT course view on.
+  user_role_revoke_permissions($at_rid, array('dcv teacher access'));
+  user_role_grant_permissions($at_rid, array('at view courses'));
   $tid = (int) db_insert('dh_teacher')->fields(array(
     't_code' => 'ZZDCV1', 't_gender' => 'M', 't_f_name' => 'Test', 't_status' => 'Active',
     't_created_by' => 1, 't_updated_by' => 1,
@@ -98,17 +102,20 @@ try {
   ok(!dcv_user_can_access_course(COURSE), 'no role → course refused');
 
   as_user($uid, $name, array($at_rid));   // AT only (also has a centre link, which must not count)
-  // Teachers use the app only with 'dcv teacher access', which no role has (the AT
-  // Portal's 'at view courses' no longer opens the app) — confirm the real AT Portal
-  // role is refused even when it holds 'at view courses'...
-  ok(!user_access('dcv teacher access'), 'AT Portal role (as configured): dcv teacher access refused');
-  user_role_grant_permissions($at_rid, array('at view courses'));
-  drupal_static_reset('user_access');
-  ok(!dcv_api_access() && dcv_teacher_id() === FALSE, "AT Portal course view on ('at view courses') → app still refused");
-  // ...then grant the app permission to this test's AT role ONLY inside this rolled-back
-  // transaction (never touching the real, deployed role), so the dormant teacher-access
-  // code below stays exercised.
+  // Teachers use the app only with BOTH 'at view courses' (Dipi's AT course view) and
+  // 'dcv teacher access' (the app switch). Without the switch, the AT course view alone does
+  // not open the app...
+  ok(!user_access('dcv teacher access') && user_access('at view courses'), "AT Portal role here: 'at view courses' only");
+  ok(!dcv_api_access() && dcv_teacher_id() === FALSE && !dcv_user_can_access_course(COURSE),
+    "without 'dcv teacher access': refused");
+  // ...and the switch without the AT course view does not either...
   user_role_grant_permissions($at_rid, array('dcv teacher access'));
+  user_role_revoke_permissions($at_rid, array('at view courses'));
+  ok(user_access('dcv teacher access') && dcv_teacher_id() === FALSE && !dcv_user_can_access_course(COURSE),
+    "'dcv teacher access' without 'at view courses': refused");
+  // ...so grant both to this test's AT role ONLY inside this rolled-back transaction (never
+  // touching the real, deployed role), to exercise the teacher-access code below.
+  user_role_grant_permissions($at_rid, array('at view courses'));
   ok(dcv_api_access(), 'AT → API allowed');
   ok(dcv_teacher_id() === $tid, 'AT → resolved to their teacher id');
   ok(dcv_scope_centres() === array(), 'AT without "access zero day" → no centre scope');

@@ -3,7 +3,7 @@
  * @file
  * Dipi App plans: the seating plans of a course that the app can load one or more
  * of — RIGHT / LEFT (main seating plan) or RIGHT-<group> / LEFT-<group> (group-wise).
- * A student belongs to a plan by gender (M → RIGHT, anything else → LEFT, as
+ * A student or Dhamma server (a_type 'Sevak') belongs to a plan by gender (M → RIGHT, anything else → LEFT, as
  * dcv_course_seats() places seats) and, in a group-wise course, by aa_group.
  * A plan not chosen is not sent at all: the app's tablet never holds its students.
  */
@@ -39,6 +39,23 @@ function dcv_plan_id($gender, $group, $kind) {
 }
 
 /**
+ * SQL limiting rows to a teacher's sides (their "Sees": array('M'), array('F') or both) by
+ * exact gender, appended to a WHERE; NULL = no limit (centre users). Applicants whose gender
+ * is neither M nor F match no side, as on Dipi's AT course view. Pure.
+ */
+function dcv_sides_sql($sides) {
+  if ($sides === NULL) { return array('', array()); }
+  if (!$sides) { return array(' and (1=0)', array()); }
+  return array(' and a_gender in (:dcv_sides)', array(':dcv_sides' => array_values($sides)));
+}
+
+/** True if plan $id is on one of $sides (RIGHT = M, LEFT = F). Pure. */
+function dcv_plan_on_sides($id, array $sides) {
+  $key = strtok($id, '-');
+  return in_array($key === 'RIGHT' ? 'M' : 'F', $sides, TRUE);
+}
+
+/**
  * The SQL condition (and its arguments) selecting the students of the plans $ids,
  * over a_gender and aa_group — the student and seat queries both join
  * dh_applicant_attended. Group numbers are bound as parameters. Pure.
@@ -67,23 +84,26 @@ function dcv_plans_sql(array $ids, $kind) {
 }
 
 /**
- * The course's plans with their student counts, in the order the app's plan
- * switcher shows them (main: RIGHT then LEFT; group-wise: by group, then LEFT before
- * RIGHT); only plans with at least one attended student.
+ * The course's plans with their student and server counts, in the order the app's plan
+ * switcher shows them (main: RIGHT then LEFT; group-wise: by group, then LEFT before RIGHT);
+ * only plans with at least one attended student or server. $sides (a teacher's) limits rows
+ * by exact gender, so only that side's plans and people are counted.
  */
-function dcv_course_plans($course_id) {
+function dcv_course_plans($course_id, $sides = NULL) {
   $course_id = (int) $course_id;
   $kind = function_exists('dh_course_plan') ? dh_course_plan($course_id, 'seat') : 'main';
   $labels = array('RIGHT' => 'Male', 'LEFT' => 'Female');
+  list($fence, $fargs) = dcv_sides_sql($sides);
   $counts = array();
   $sql = "select (case when a_gender = 'M' then 'RIGHT' else 'LEFT' end) as sec,
-                 coalesce(aa_group, 0) as grp, count(*) as n
+                 coalesce(aa_group, 0) as grp, a_type as typ, count(*) as n
           from dh_applicant left join dh_applicant_attended on a_id = aa_applicant
-          where a_course = :c and a_attended = 1 and a_type = 'Student'
-          group by sec, grp";
-  foreach (db_query($sql, array(':c' => $course_id)) as $r) {
+          where a_course = :c and a_attended = 1 and a_type in ('Student', 'Sevak')$fence
+          group by sec, grp, typ";
+  foreach (db_query($sql, array(':c' => $course_id) + $fargs) as $r) {
     $id = ($kind === 'group') ? $r->sec . '-' . (int) $r->grp : $r->sec;
-    $counts[$id] = (isset($counts[$id]) ? $counts[$id] : 0) + (int) $r->n;
+    if (!isset($counts[$id])) { $counts[$id] = array('students' => 0, 'servers' => 0); }
+    $counts[$id][strtolower((string) $r->typ) === 'sevak' ? 'servers' : 'students'] += (int) $r->n;
   }
   $ids = array_keys($counts);
   usort($ids, function ($a, $b) use ($kind) {
@@ -98,7 +118,8 @@ function dcv_course_plans($course_id) {
   foreach ($ids as $id) {
     $key = strtok($id, '-');
     $label = ($kind === 'group') ? 'Group ' . substr($id, strlen($key) + 1) . ' · ' . $labels[$key] : $labels[$key];
-    $out[] = array('id' => $id, 'label' => $label, 'students' => $counts[$id]);
+    $out[] = array('id' => $id, 'label' => $label,
+      'students' => $counts[$id]['students'], 'servers' => $counts[$id]['servers']);
   }
   return $out;
 }

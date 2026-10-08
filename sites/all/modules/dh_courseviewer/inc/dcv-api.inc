@@ -109,10 +109,12 @@ function dcv_user_centres() {
 /**
  * Access callback for the two download endpoints: centre users ('access zero day')
  * and teachers ('dcv teacher access'). What each may load is narrowed per course by
- * dcv_build_course_list() / dcv_user_can_access_course().
+ * dcv_build_course_list() (the list) and dcv_bundle_scope() / dcv_course_access() (the
+ * download).
  *
  * Teachers have their own permission, separate from the AT Portal's 'at view courses',
  * so the AT course view on the website can be on while the app stays off for teachers.
+ * The app needs both on for a teacher (see dcv_teacher_id()).
  */
 function dcv_api_access() {
   return user_access('access zero day') || user_access('dcv teacher access');
@@ -128,11 +130,15 @@ function dcv_scope_centres() {
 
 /**
  * The caller's active teacher id when they may use the app as a teacher, else
- * FALSE. Same identity as Dipi's AT portal (_at_view_teacher_id(): username =
- * t_code.t_gender), so no AT portal module → no teacher access.
+ * FALSE. The app serves teachers only while Dipi's AT course view is on
+ * ('at view courses') AND the app switch ('dcv teacher access') is on: switching either
+ * off stops teachers in the app. Same identity as Dipi's AT portal
+ * (_at_view_teacher_id(): username = t_code.t_gender), so no AT portal module → no
+ * teacher access.
  */
 function dcv_teacher_id() {
-  if (!user_access('dcv teacher access') || !function_exists('_at_view_teacher_id')) {
+  if (!user_access('dcv teacher access') || !user_access('at view courses')
+      || !function_exists('_at_view_teacher_id')) {
     return FALSE;
   }
   $tid = _at_view_teacher_id();
@@ -159,8 +165,73 @@ function dcv_teacher_mapped($tid, $course_id) {
 }
 
 /**
+ * A teacher's sides for a course — array('M'), array('F') or array('M','F'), always in M, F
+ * order — from their Confirmed Conducting/Assisting mapping(s) and the centre's "Sees"
+ * (ct_sees: M / F / B, empty = the teacher's own gender), by Dipi's own AT course view rule
+ * _at_view_sides(). Several mappings → only the sides common to all of them (never more than
+ * the website, which reads one). array() = none; FALSE = not a teacher of this course (or no
+ * AT portal module).
+ */
+function dcv_teacher_sides($tid, $course_id) {
+  if (!$tid || !function_exists('_at_view_sides')) { return FALSE; }
+  $rows = db_query("select ct.ct_sees as sees, t.t_gender as gender
+      from dh_course_teacher ct
+        join dh_teacher t on t.t_id = ct.ct_teacher and t.t_status = 'Active'
+        join dh_course c on c.c_id = ct.ct_course
+      where ct.ct_teacher = :tid and ct.ct_course = :c and ct.ct_status = 'Confirmed'
+        and ct.ct_type in ('Conducting','Assisting') and c.c_deleted = 0 and c.c_cancelled = 0",
+    array(':tid' => (int) $tid, ':c' => (int) $course_id))->fetchAll();
+  if (!$rows) { return FALSE; }
+  $sides = array('M', 'F');
+  foreach ($rows as $r) {
+    $sides = array_values(array_intersect($sides, _at_view_sides($r->sees, $r->gender)));
+  }
+  return $sides;
+}
+
+/**
+ * What the caller may load of a course: 'full' (a centre user of the course's centre — the
+ * centre role wins, as on Dipi's centre pages), the teacher's sides (a non-empty array), or
+ * FALSE.
+ */
+function dcv_course_access($course_id) {
+  $course_centre = db_query("select c_center from dh_course where c_id = :c",
+    array(':c' => (int) $course_id))->fetchField();
+  if (dcv_centres_allow(dcv_scope_centres(), $course_centre)) {
+    return 'full';
+  }
+  $sides = dcv_teacher_sides(dcv_teacher_id(), $course_id);
+  return $sides ? $sides : FALSE;
+}
+
+/**
+ * The plans and sides a bundle request gets, or the error message to send. Full access:
+ * the requested plans (NULL = the whole course). A teacher: only plans on their sides —
+ * none asked (apps before 1.1.4) = all their plans, never the whole course — and every
+ * query also limited to their sides' genders.
+ */
+function dcv_bundle_scope($course_id, $raw) {
+  $access = dcv_course_access($course_id);
+  if ($access === FALSE) { return 'Not authorised for this course.'; }
+  $plans = dcv_requested_plans($course_id, $raw);
+  if ($plans === FALSE) { return 'Unknown plan.'; }
+  if ($access === 'full') { return array($plans, NULL); }
+  if ($plans === NULL) {
+    $plans = array();
+    foreach (dcv_course_plans($course_id, $access) as $p) { $plans[] = $p['id']; }
+  }
+  foreach ($plans as $id) {
+    if (!dcv_plan_on_sides($id, $access)) { return 'Unknown plan.'; }
+  }
+  return array($plans, $access);
+}
+
+/**
  * Build the loadable-course list: the running courses of the given centres plus
  * those teacher $teacher_id serves (each listed once).
+ * A course in one of the centres lists all its plans; a teacher-only course lists only
+ * the plans on the teacher's sides (dcv_teacher_sides()) and is skipped when their sides
+ * come to nothing.
  * $centres is an array of ints, or array('*') for all centres; $teacher_id is a
  * dh_teacher id or FALSE; $today defaults to the real date (tests pass one).
  * Excludes deleted/cancelled courses. Read-only, parameterized.
@@ -195,6 +266,10 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
           order by c_start desc";
   $out = array();
   foreach (db_query($sql, $args) as $r) {
+    // A centre user of the course's centre sees all its plans; a teacher only their sides'
+    // (a served course whose sides come to nothing is not listed).
+    $sides = dcv_centres_allow($centres, (int) $r->c_center) ? NULL : dcv_teacher_sides($teacher_id, (int) $r->c_id);
+    if ($sides !== NULL && !$sides) { continue; }
     $out[] = array(
       'id'         => (int) $r->c_id,
       'name'       => $r->c_name,
@@ -202,7 +277,7 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
       'start_date' => $r->c_start,
       'end_date'   => $r->c_end,
       // The plans the app can choose from (spec: choose which plans to load).
-      'plans'      => dcv_course_plans((int) $r->c_id),
+      'plans'      => dcv_course_plans((int) $r->c_id, $sides),
     );
   }
   return $out;
@@ -228,16 +303,11 @@ function dcv_centres_allow($centres, $course_centre) {
 }
 
 /**
- * True if the current user may load this course: it is in one of their centres
- * (centre users), or they serve it as a teacher.
+ * True if the current user may load this course: a centre user of its centre, or a teacher of
+ * it with at least one side.
  */
 function dcv_user_can_access_course($course_id) {
-  $course_centre = db_query("select c_center from dh_course where c_id = :c",
-    array(':c' => (int) $course_id))->fetchField();
-  if (dcv_centres_allow(dcv_scope_centres(), $course_centre)) {
-    return true;
-  }
-  return dcv_teacher_mapped(dcv_teacher_id(), $course_id);
+  return dcv_course_access($course_id) !== FALSE;
 }
 
 /**
@@ -257,18 +327,16 @@ function dcv_course_bundle($course_id) {
   if (!ctype_digit((string) $course_id)) {
     dcv_json('FAIL', array(), 'Invalid course id.');
   }
-  if (!dcv_user_can_access_course($course_id)) {
-    dcv_json('FAIL', array(), 'Not authorised for this course.');
-  }
   $raw = isset($_GET['plans']) ? $_GET['plans'] : NULL;
-  $plans = dcv_requested_plans($course_id, (is_string($raw) || $raw === NULL) ? $raw : '');
-  if ($plans === FALSE) {
-    dcv_json('FAIL', array(), 'Unknown plan.');
+  $scope = dcv_bundle_scope($course_id, (is_string($raw) || $raw === NULL) ? $raw : '');
+  if (is_string($scope)) {
+    dcv_json('FAIL', array(), $scope);
   }
+  list($plans, $sides) = $scope;
   // Building a bundle fetches every student photo from S3 (up to ~450 in a big
   // course), which can exceed the default 30s max_execution_time — raise it here.
   drupal_set_time_limit(300);
-  $bundle = dcv_build_bundle($course_id, $plans);
+  $bundle = dcv_build_bundle($course_id, $plans, $sides);
   if ($bundle === null) {
     dcv_json('FAIL', array(), 'Course not found.');
   }
