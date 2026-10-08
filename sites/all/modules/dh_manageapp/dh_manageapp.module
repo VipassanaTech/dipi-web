@@ -13,6 +13,7 @@ include_once(dirname(__FILE__)."/inc/pdf.inc");
 include_once(dirname(__FILE__)."/inc/letters.inc");
 include_once(dirname(__FILE__)."/inc/zero-day.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
+include_once(dirname(__FILE__)."/inc/course-log.inc");
 include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
@@ -2837,6 +2838,20 @@ function logit($centre, $event, $app_id, $msg, $uid = 0 )
 	$fields['l_event'] = $event;
 	$fields['l_identifier'] = $app_id;
 	db_insert('dh_log')->fields($fields)->execute();
+}
+
+/**
+ * Uid of DIPI's "system" user (dh_type_detail COURSE-APPLICANT / COURSE-SYSTEM-UID).
+ * Automatic jobs (crons, sync, recalculated counts) stamp it as c_updated_by so the
+ * course log (trigger dh_course_au) credits them to System, not to the last person
+ * who saved the course.
+ */
+function dh_system_uid()
+{
+	$uid = &drupal_static(__FUNCTION__);
+	if (!isset($uid))
+		$uid = (int) db_query("select td_val1 from dh_type_detail where td_type='COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
+	return $uid;
 }
 
 function simple_crypt( $string, $action = 'e' )

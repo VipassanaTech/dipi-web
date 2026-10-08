@@ -144,6 +144,11 @@ function dh_course_dashboard()
 //		$out .= course_summary_finalized( arg(2) );
 //	else
 		$out .= course_summary( arg(1), "where c_id=".arg(2), array() );
+
+	// Change Log: every change to this course (who, when, old -> new), latest first.
+	// Closed by default so the page stays short; it opens with a click.
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	$out .= '<details class="course-log-box"><summary><h2>Change Log</h2></summary>'.dh_course_log_viewer((int) arg(2)).'</details>';
 	return $out;
 }
 

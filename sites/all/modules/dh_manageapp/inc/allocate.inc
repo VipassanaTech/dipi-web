@@ -33,7 +33,8 @@ function dh_course_plan($course, $resource) {
 function dh_course_plan_set($course, $resource, $plan) {
   $map = array('cell' => 'c_cell_plan', 'dining' => 'c_dining_plan', 'seat' => 'c_seat_plan');
   if (!isset($map[$resource])) return;
-  db_update('dh_course')->fields(array($map[$resource] => ($plan === 'group') ? 1 : 0))->condition('c_id', (int) $course)->execute();
+  // c_updated_by = the person choosing, so the course log credits the plan change to them.
+  db_update('dh_course')->fields(array($map[$resource] => ($plan === 'group') ? 1 : 0, 'c_updated_by' => $GLOBALS['user']->uid))->condition('c_id', (int) $course)->execute();
 }
 
 /** Expand "1-40, 55, A1-A5" into an array of labels (letter-prefix aware). */

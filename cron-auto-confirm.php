@@ -24,7 +24,7 @@ require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
 // setting auto confirm for global pagoda courses
-db_query("update dh_course set c_auto_confirm=1 where c_center=308 and c_start>curdate() and c_auto_confirm=0");
+db_query("update dh_course set c_auto_confirm=1, c_updated_by=:sys where c_center=308 and c_start>curdate() and c_auto_confirm=0", array(':sys' => dh_system_uid()));
 
 // auto confirming/rejecting applications for courses set to autoconfirm on
 

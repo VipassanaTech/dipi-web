@@ -1204,7 +1204,15 @@ function update_course_current_at_count( $course_id )
 	$fields = array();
 	$fields['c_at_m_conf'] = $res['male_at_count'];
 	$fields['c_at_f_conf'] = $res['female_at_count'];
-	
+
+	// Write only when a count really changed (this also runs on AT-portal page views), and
+	// credit the recalculated count to System in the course log.
+	$cur = db_query("select c_at_m_conf, c_at_f_conf from dh_course where c_id=:c", array(':c' => $course_id))->fetchAssoc();
+	if (!$cur || ($cur['c_at_m_conf'] !== NULL && (int) $cur['c_at_m_conf'] === (int) $fields['c_at_m_conf']
+		&& $cur['c_at_f_conf'] !== NULL && (int) $cur['c_at_f_conf'] === (int) $fields['c_at_f_conf']))
+		return;
+	$fields['c_updated_by'] = dh_system_uid();
+
 	$updated = db_update('dh_course')
 		->fields( $fields )
 		->condition('c_id', $course_id, '=')

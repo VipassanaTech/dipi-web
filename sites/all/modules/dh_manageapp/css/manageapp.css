@@ -434,3 +434,11 @@ fieldset#edit-advanced {
 .dh-centre-log td.cl-val { max-width: 380px; word-break: break-word; font-size: 12px; }
 .dh-centre-log .cl-del { color: #a94442; }
 .dh-centre-log .cl-add { color: #2b7a3d; }
+/* Course page Change Log (inc/course-log.inc), reuses the centre log table style. */
+details.course-log-box { margin: 20px 0; }
+details.course-log-box > summary { cursor: pointer; list-style-position: inside; }
+details.course-log-box > summary h2 { display: inline; }
+.dh-course-log .cl-act { font-weight: bold; }
+.dh-course-log .cl-empty { color: #999; font-style: italic; }
+.dh-course-log .cl-old { color: #8a6d3b; font-weight: bold; cursor: help; }
+.course-log-box .cl-note { font-size: 12px; color: #666; }
