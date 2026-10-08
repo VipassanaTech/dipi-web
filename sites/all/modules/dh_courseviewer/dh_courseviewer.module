@@ -10,6 +10,16 @@ include_once(dirname(__FILE__) . "/inc/dcv-api.inc");
 include_once(dirname(__FILE__) . "/inc/dcv-bundle.inc");
 include_once(dirname(__FILE__) . "/inc/dcv-plans.inc");
 
+/**
+ * Implements hook_permission(). Teachers' use of the app has its own switch, apart from
+ * the AT Portal course view ('at view courses'); no role has it for now.
+ */
+function dh_courseviewer_permission() {
+  return array(
+    'dcv teacher access' => array('title' => t('Use the Dipi App as a teacher (courses the teacher serves)')),
+  );
+}
+
 /** Implements hook_menu(). */
 function dh_courseviewer_menu() {
   $items = array();

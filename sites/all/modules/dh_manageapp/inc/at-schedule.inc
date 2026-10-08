@@ -619,7 +619,8 @@ function dh_assign_teacher()
 		ct_updated ,
 		ct_status,
 		ct_type,
-		ct_group
+		ct_group,
+		ct_sees
 		from
 		dh_course_teacher
 		left join dh_course on ct_course=c_id
@@ -670,6 +671,16 @@ function dh_assign_teacher()
 		';
 
 
+		// Which side of the course this AT sees in the AT course view (default: own gender).
+		$change_sees = '
+			<select class="at-sees-select">
+			<option value="">Choose</option>
+			<option value="M">Male</option>
+			<option value="F">Female</option>
+			<option value="B">Both</option>
+			</select>
+		';
+
 		if ($r['ct_status'] == "Confirmed")
 			$current_status = '<span style="color:green;">'.$r['ct_status'].'</span>';
 		elseif ($r['ct_status'] == "Cancelled")
@@ -689,6 +700,8 @@ function dh_assign_teacher()
 			'type' => $r['ct_type'],
 			'change_type' => $change_type,
 			'change_group' => $change_group,
+			'sees' => dh_teacher_sees_label($r['ct_sees'], $r['t_gender'], TRUE),
+			'change_sees' => $change_sees,
 		);
 
 	}
@@ -771,9 +784,11 @@ function dh_assign_teacher()
 			            { data: "current_status", "title" : "Status" },
 			            { data: "type", "title" : "Type" },
 			            { data: "group", "title" : "Group" },
+			            { data: "sees", "title" : "Sees" },
 			            { data: "change_status", "title" : "Change-Status" },
 			            { data: "change_type", "title" : "Change-Type" },
 			            { data: "change_group", "title" : "Change-Group" },
+			            { data: "change_sees", "title" : "Change-Sees" },
 			        ],
 			    });	
 
@@ -993,6 +1008,74 @@ function dh_assign_teacher()
 									  	{
 									  		row_data = row.data();
 									  		row_data.group = group_to_be_updated;
+									  		row.data(row_data);
+						  					alert(json.msg)
+									  	}
+									  	else
+									  		alert("Update failed!\n"+json.msg)
+									  })
+									  .fail(function( jqxhr, textStatus, error ) {
+									    var err = textStatus + ", " + error;
+									    alert("Error updating "+err);
+									});
+
+
+					     
+					            	}
+					
+					            }
+					        },
+					        Cancel: function () {
+					            //close
+					        },
+					    },
+					    onContentReady: function () {
+					        // bind to events
+					        var jc = this;
+					        this.$content.find("form").on("submit", function (e) {
+					            // if the user submits the form by pressing enter in the field.
+					            e.preventDefault();
+					            jc.$$formSubmit.trigger("click"); // reference the button and click it
+					        });
+					    }
+					});
+
+				});
+
+				$("#course-at-apps tbody").on("change", ".at-sees-select", function() {
+
+					var tr = $(this).closest("tr");
+
+					sees_to_be_updated = $(this).find(":selected").val();
+
+
+					if (sees_to_be_updated == "")
+						return;
+
+				    var row = table.row( tr );
+
+				    id = row.data().ct_id;
+
+
+
+				   $.confirm({
+					    title: "AT: " + row.data().teacher,
+					    content: "This AT will see <b>" + {M: "Male", F: "Female", B: "Both"}[sees_to_be_updated] + "</b> applicants in the AT course view. Save?",
+					    buttons: {
+					        Ok: {
+					            text: "Ok",
+					            btnClass: "btn-blue",
+					            action: function () {
+
+					            	const choices = ["M", "F", "B"];
+					            	if (choices.includes(sees_to_be_updated))
+					            	{
+					            		$.getJSON( "/at-schedule/change-sees/"+id, { s: sees_to_be_updated } )
+									  .done(function( json ) {
+									  	if (json.status == "OK")
+									  	{
+									  		row_data = row.data();
+									  		row_data.sees = json.label;
 									  		row.data(row_data);
 						  					alert(json.msg)
 									  	}
@@ -1297,6 +1380,21 @@ function dh_assign_trainee_teacher_form_submit($form, &$form_state)
 
 
 
+
+/**
+ * "Male", "Female" or "Both": the side of a course a mapped AT sees in the AT course view
+ * (dh_course_teacher.ct_sees; empty = the teacher's own gender, the default). With $html,
+ * the default is marked "(default)" for the Assign Teachers table.
+ */
+function dh_teacher_sees_label($sees, $gender, $html = FALSE)
+{
+	$s = $sees ? $sees : $gender;
+	$label = ($s == 'B') ? 'Both' : (($s == 'M') ? 'Male' : (($s == 'F') ? 'Female' : ''));
+	if ($html && !$sees)
+		$label .= ' <span style="color:#888;">(default)</span>';
+	return $label;
+}
+
 function at_app_change()
 {
 	$course_teacher_id = arg(2);
@@ -1423,6 +1521,34 @@ function at_app_change()
 
 
 		$out['msg'] ="AT Application Group updated to $group.";
+	}
+
+	if (arg(1) == "change-sees")
+	{
+		$sees = $_REQUEST['s'];
+
+		if ( !in_array($sees, array("M", "F", "B")) )
+		{
+			$out['status'] = 'Failed';
+			$out['msg'] ="Invalid choice";
+			drupal_json_output($out);
+			exit;
+		}
+
+		$old = db_query("select ct_sees, t_gender from dh_course_teacher left join dh_teacher on ct_teacher=t_id where ct_id=:id", array(':id' => $course_teacher_id))->fetchAssoc();
+		// The teacher's own gender is the default, kept as NULL.
+		$new = ($sees == $old['t_gender']) ? NULL : $sees;
+		db_update('dh_course_teacher')
+			->fields( array('ct_sees' => $new) )
+			->condition('ct_id', $course_teacher_id, '=')
+			->execute();
+		$from = dh_teacher_sees_label($old['ct_sees'], $old['t_gender']);
+		$to = dh_teacher_sees_label($new, $old['t_gender']);
+		if ($from !== $to)
+			log_course_teacher($course_teacher_id, "Sees changed from $from to $to");
+
+		$out['msg'] = "This AT will now see $to applicants.";
+		$out['label'] = dh_teacher_sees_label($new, $old['t_gender'], TRUE);
 	}
 
 	drupal_json_output($out);

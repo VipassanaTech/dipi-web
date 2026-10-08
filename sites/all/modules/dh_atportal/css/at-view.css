@@ -227,6 +227,7 @@
 .at-course-card .at-cc-type { color: var(--at-accent-dark); font-weight: 600; }
 .at-course-card .at-cc-dates { color: var(--at-muted); font-variant-numeric: tabular-nums; }
 .at-course-card .at-cc-tags { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+.at-course-card .at-cc-scope { flex-basis: 100%; color: var(--at-muted); font-size: 14px; }
 
 /* Link tiles (hub) -------------------------------------------------------- */
 .at-tiles {

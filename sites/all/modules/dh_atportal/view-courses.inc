@@ -7,6 +7,13 @@
  * (Confirmed, Conducting/Assisting in dh_course_teacher) and drill into the
  * course's applicants — WITHOUT any edit ability.
  *
+ * What a teacher sees (_at_view_applicant_sql): only their side of the course (the
+ * centre's "Sees" setting on Assign Teachers, dh_course_teacher.ct_sees: Male, Female
+ * or Both; by default the teacher's own gender). Up to Day 0 (the start date) every
+ * applicant of that side; from Day 1 on, only those who attended or left. The seating
+ * plan and teacher list are limited to the same side. (No cell list: the teacher list
+ * already shows each student's cell.)
+ *
  * Design: dedicated read-only routes in the AT portal, scoped per-course via
  * dh_course_teacher (the portal's own identity/scoping model), reusing
  * dh_manageapp's pure-read renderers/workers (dh_application_view,
@@ -36,6 +43,56 @@ function _at_view_teacher_id() {
 
 
 /**
+ * The side of a course a mapped teacher sees, from the centre's "Sees" setting
+ * (dh_course_teacher.ct_sees): 'B' = both, 'M' / 'F' = that side, empty = the
+ * teacher's own gender. Returns array('M'), array('F'), array('M','F'), or array()
+ * (nothing) if neither is known.
+ */
+function _at_view_sides($sees, $teacher_gender) {
+  $s = strtoupper((string) $sees);
+  if ($s === 'B') {
+    return array('M', 'F');
+  }
+  if ($s === 'M' || $s === 'F') {
+    return array($s);
+  }
+  $g = strtoupper((string) $teacher_gender);
+  return in_array($g, array('M', 'F')) ? array($g) : array();
+}
+
+/* TRUE from Day 1 of a course (the day after its start date, which is Day 0) onward. */
+function _at_view_after_day0($start_date) {
+  return date('Y-m-d') > substr($start_date, 0, 10);
+}
+
+/* "Male", "Female" or "Both" for a list of sides. */
+function _at_view_sides_label($sides) {
+  if (count($sides) == 2) {
+    return t('Both');
+  }
+  return $sides ? ($sides[0] == 'M' ? t('Male') : t('Female')) : t('None');
+}
+
+/**
+ * The applicants a teacher may see in a course (row from at_view_course_load), as a
+ * SQL condition on dh_applicant: their side always; up to Day 0 every applicant of
+ * that side, from Day 1 only those who attended (marked at Day-0 registration) or
+ * left (status Left). Dhamma servers count like students.
+ */
+function _at_view_applicant_sql($c) {
+  if (empty($c['sides'])) {
+    return '1=0';
+  }
+  $sql = "a_gender in ('" . implode("','", $c['sides']) . "')";
+  if ($c['after_day0']) {
+    $left = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-LEFT'")->fetchField();
+    $sql .= " and (a_attended=1 or a_status=" . Database::getConnection()->quote($left ? $left : 'Left') . ")";
+  }
+  return $sql;
+}
+
+
+/**
  * Menu loader for %at_view_course.
  *
  * Grants access to a course ONLY if the logged-in AT is Confirmed on it as
@@ -60,8 +117,11 @@ function at_view_course_load($course_id) {
       ce.c_name      as centre_name,
       td.td_val1     as course_type,
       ct.ct_type     as my_role,
-      ct.ct_group    as my_group
+      ct.ct_group    as my_group,
+      ct.ct_sees     as sees,
+      t.t_gender     as my_gender
     from dh_course_teacher ct
+    left join dh_teacher     t  on ct.ct_teacher=t.t_id
     left join dh_course      co on ct.ct_course=co.c_id
     left join dh_center      ce on co.c_center=ce.c_id
     left join dh_type_detail td on co.c_course_type=td.td_id
@@ -74,13 +134,19 @@ function at_view_course_load($course_id) {
     limit 1";
 
   $row = db_query($q, array(':tid' => $tid, ':cid' => $course_id))->fetchAssoc();
-  return $row ? $row : FALSE;
+  if (!$row) {
+    return FALSE;
+  }
+  $row['sides'] = _at_view_sides($row['sees'], $row['my_gender']);
+  $row['after_day0'] = _at_view_after_day0($row['start_date']);
+  return $row;
 }
 
 
 /**
- * TRUE if the given applicant's course is one the logged-in AT is Confirmed to
- * serve (Conducting/Assisting). Shared by the %at_view_app loader here and by
+ * TRUE if the logged-in AT may see this applicant: the applicant's course is one the
+ * AT is Confirmed to serve (Conducting/Assisting), and the applicant is on the AT's
+ * side and, from Day 1, attended or left (_at_view_applicant_sql). Shared by the %at_view_app loader here and by
  * dh_manageapp's app_id_load() fallback, so the reused registrar pages
  * (application-view, applicant-reviews, add-review, show-application) become
  * reachable for an AT — scoped to their own courses only.
@@ -98,17 +164,11 @@ function _at_view_applicant_in_my_courses($app_id) {
     return FALSE;
   }
   $course = db_query("select a_course from dh_applicant where a_id=:id", array(':id' => $app_id))->fetchField();
-  if (!$course) {
+  $c = $course ? at_view_course_load($course) : FALSE;
+  if (!$c) {
     return FALSE;
   }
-  $ok = db_query(
-    "select count(*) from dh_course_teacher
-     where ct_teacher=:tid and ct_course=:c
-       and ct_status='Confirmed' and ct_type in ('Conducting','Assisting')",
-    array(':tid' => $tid, ':c' => $course)
-  )->fetchField();
-
-  return ($ok > 0);
+  return (bool) db_query("select 1 from dh_applicant where a_id=:id and " . _at_view_applicant_sql($c), array(':id' => $app_id))->fetchField();
 }
 
 
@@ -210,8 +270,20 @@ function _at_course_card($c) {
     . '<span class="at-cc-centre">' . check_plain($c['centre_name']) . '</span>'
     . '<span class="at-cc-type">' . check_plain($c['course_type']) . '</span>'
     . '<span class="at-cc-dates">' . check_plain($c['start_date']) . ' – ' . check_plain($c['end_date']) . '</span>'
-    . '<span class="at-cc-tags">' . _at_role_badge($c['my_role']) . '<span class="at-pill">' . t('View only') . '</span></span>'
+    . '<span class="at-cc-tags">' . _at_role_badge($c['my_role']) . '<span class="at-pill">' . t('View only') . '</span>'
+    . (isset($c['sides']) ? '<span class="at-pill">' . t('You see: @side', array('@side' => _at_view_sides_label($c['sides']))) . '</span>' : '')
+    . '</span>'
+    . (isset($c['sides']) ? '<span class="at-cc-scope">' . _at_view_scope_text($c) . '</span>' : '')
     . '</div>';
+}
+
+/* One line saying which applicants the teacher sees in this course, and why. */
+function _at_view_scope_text($c) {
+  $side = count($c['sides']) == 2 ? t('male and female') : (empty($c['sides']) ? '' : ($c['sides'][0] == 'M' ? t('male') : t('female')));
+  if ($c['after_day0']) {
+    return t('From Day 1 you see only @side applicants who attended the course (and those who left).', array('@side' => $side));
+  }
+  return t('Until Day 0 (@date) you see all @side applicants. From Day 1 you will see only those who attended.', array('@side' => $side, '@date' => substr($c['start_date'], 0, 10)));
 }
 
 /**
@@ -266,10 +338,9 @@ function at_view_course_hub($c) {
     'report'  => '<svg ' . $sv . '><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>',
   );
   $tiles = array(
-    array('applicants', 'users',   t('Applicants'),     t('all applicants')),
+    array('applicants', 'users',   t('Applicants'),     $c['after_day0'] ? t('attended & left') : t('all applicants')),
     array('seating',    'grid',    t('Seating Plan'),   ''),
     array('teachers',   'teacher', t('Teacher List'),   ''),
-    array('cells',      'cell',    t('Cell List'),      ''),
     array('report',     'report',  t('Course Summary'), t('Day-11 report')),
   );
 
@@ -320,7 +391,7 @@ function at_view_course_applicants($c) {
   // read-only (last arg) so no write actions show even for ATs who also hold
   // edit permissions via another role — only "Add Review" remains. Rendered
   // OUTSIDE .at-view so none of the AT-view styling touches it.
-  $out .= dh_manageapp_search_results('applicant', "a_course=$cid", $c['center'], FALSE, $fname, TRUE, $user->uid);
+  $out .= dh_manageapp_search_results('applicant', "a_course=$cid and " . _at_view_applicant_sql($c), $c['center'], FALSE, $fname, TRUE, $user->uid);
   return $out;
 }
 
@@ -338,7 +409,7 @@ function _at_view_fix_links($centre, $course) {
   $c = (int) $centre;
   $co = (int) $course;
   print '<script>(function(){var C=' . $c . ',CO=' . $co . ';'
-    . 'var map={"teacher-list":"teachers","cell-list":"cells","seating2":"seating","seating":"seating","group-seating":"seating","manager-list":""};'
+    . 'var map={"teacher-list":"teachers","cell-list":"","seating2":"seating","seating":"seating","group-seating":"seating","manager-list":""};'
     . 'function u(s){return "/at-portal/my-course/"+CO+(s?"/"+s:"");}'
     . 'function rw(){var a=document.getElementsByTagName("a");for(var i=0;i<a.length;i++){var h=a[i].getAttribute("href")||"";'
     . 'var m=h.match(/\\/course\\/(\\d+)\\/(\\d+)/);if(m&&+m[2]===CO){a[i].setAttribute("href",u(""));continue;}'
@@ -382,6 +453,7 @@ function at_view_course_seating($c) {
       . '<span class="vo">' . t('View only') . '</span></div>';
 
   _at_view_fix_links($c['center'], $course);
+  dh_view_gender_scope($c['sides']);   // the teacher's side only (an empty side shows nobody)
   return dh_generate_seating_plan($c['center'], $arg, '', TRUE);
 }
 
@@ -396,20 +468,8 @@ function at_view_course_teachers($c) {
   }
   $seating = (isset($_REQUEST['seating']) && $_REQUEST['seating'] == 1) ? 1 : 0;
   _at_view_fix_links($c['center'], $c['course']);
+  dh_view_gender_scope($c['sides']);   // the teacher's side only (an empty side shows nobody)
   return dh_generate_teacher_list($c['center'], $c['course'], $seating);
-}
-
-
-/**
- * Page: read-only Cell List. Reuses dh_manageapp's renderer. No zeroize, and
- * never the ?r=1 (generate_cell_list) write branch.
- */
-function at_view_course_cells($c) {
-  if (!function_exists('dh_cell_list')) {
-    return t('Cell list is unavailable.');
-  }
-  _at_view_fix_links($c['center'], $c['course']);
-  return dh_cell_list($c['center'], $c['course'], 0);
 }
 
 

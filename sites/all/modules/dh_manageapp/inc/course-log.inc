@@ -191,6 +191,8 @@ function _dh_course_teacher_log_rows($course_id)
 			list($event, $old, $new) = array('Type', $m[1], $m[2]);
 		elseif (preg_match('/^Group changed from (.*) to (.*)$/', $text, $m))
 			list($event, $old, $new) = array('Group', $m[1], $m[2]);
+		elseif (preg_match('/^Sees changed from (.*) to (.*)$/', $text, $m))
+			list($event, $old, $new) = array('Sees', $m[1], $m[2]);
 		elseif (preg_match('/^Trainee removed:/', $text))
 			list($event, $new) = array('Removed', '(removed)');
 		elseif (strpos($text, 'Email Notification sent') !== FALSE || !$l->l_user)

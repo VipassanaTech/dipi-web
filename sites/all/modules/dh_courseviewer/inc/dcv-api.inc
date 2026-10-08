@@ -108,11 +108,14 @@ function dcv_user_centres() {
 
 /**
  * Access callback for the two download endpoints: centre users ('access zero day')
- * and teachers ('at view courses', the AT Portal role). What each may load is
- * narrowed per course by dcv_build_course_list() / dcv_user_can_access_course().
+ * and teachers ('dcv teacher access'). What each may load is narrowed per course by
+ * dcv_build_course_list() / dcv_user_can_access_course().
+ *
+ * Teachers have their own permission, separate from the AT Portal's 'at view courses',
+ * so the AT course view on the website can be on while the app stays off for teachers.
  */
 function dcv_api_access() {
-  return user_access('access zero day') || user_access('at view courses');
+  return user_access('access zero day') || user_access('dcv teacher access');
 }
 
 /**
@@ -129,7 +132,7 @@ function dcv_scope_centres() {
  * t_code.t_gender), so no AT portal module → no teacher access.
  */
 function dcv_teacher_id() {
-  if (!user_access('at view courses') || !function_exists('_at_view_teacher_id')) {
+  if (!user_access('dcv teacher access') || !function_exists('_at_view_teacher_id')) {
     return FALSE;
   }
   $tid = _at_view_teacher_id();

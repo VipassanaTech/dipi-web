@@ -211,12 +211,6 @@ function dh_atportal_menu()
            'access arguments' => array('at view courses'),
            'type' => MENU_CALLBACK);
 
-    $items['at-portal/my-course/%at_view_course/cells'] = array( 'title' => t('Cell List'),
-           'page callback' => 'at_view_course_cells',
-           'page arguments' => array(2),
-           'access arguments' => array('at view courses'),
-           'type' => MENU_CALLBACK);
-
     $items['at-portal/my-course/%at_view_course/report'] = array( 'title' => t('Course Summary Report'),
            'page callback' => 'at_view_course_report',
            'page arguments' => array(2),

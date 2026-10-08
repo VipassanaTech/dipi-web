@@ -98,13 +98,17 @@ try {
   ok(!dcv_user_can_access_course(COURSE), 'no role → course refused');
 
   as_user($uid, $name, array($at_rid));   // AT only (also has a centre link, which must not count)
-  // Dipi withdrew 'at view courses' from every role today (none has it any more) —
-  // confirm the real AT Portal role, as currently configured, is still refused...
-  ok(!user_access('at view courses'), 'AT Portal role (as configured): at view courses refused');
-  // ...then grant it to this test's AT role ONLY inside this rolled-back transaction
-  // (never touching the real, deployed role), so the dormant teacher-access code
-  // below stays exercised instead of permanently failing until Dipi restores it.
+  // Teachers use the app only with 'dcv teacher access', which no role has (the AT
+  // Portal's 'at view courses' no longer opens the app) — confirm the real AT Portal
+  // role is refused even when it holds 'at view courses'...
+  ok(!user_access('dcv teacher access'), 'AT Portal role (as configured): dcv teacher access refused');
   user_role_grant_permissions($at_rid, array('at view courses'));
+  drupal_static_reset('user_access');
+  ok(!dcv_api_access() && dcv_teacher_id() === FALSE, "AT Portal course view on ('at view courses') → app still refused");
+  // ...then grant the app permission to this test's AT role ONLY inside this rolled-back
+  // transaction (never touching the real, deployed role), so the dormant teacher-access
+  // code below stays exercised.
+  user_role_grant_permissions($at_rid, array('dcv teacher access'));
   ok(dcv_api_access(), 'AT → API allowed');
   ok(dcv_teacher_id() === $tid, 'AT → resolved to their teacher id');
   ok(dcv_scope_centres() === array(), 'AT without "access zero day" → no centre scope');

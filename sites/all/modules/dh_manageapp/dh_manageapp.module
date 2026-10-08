@@ -636,6 +636,11 @@ function dh_manageapp_menu()
 	       'access arguments' => array('at scheduling'),
 	       'type' => MENU_CALLBACK);
 
+    $items['at-schedule/change-sees/%atappid'] = array( 'title' => t('AT Scheduling'),
+	       'page callback' => 'at_app_change',
+	       'access arguments' => array('at scheduling'),
+	       'type' => MENU_CALLBACK);
+
     $items['at-schedule/del-trainee-teacher/%centre_id/%course_id/%atappid'] = array( 'title' => t('AT Scheduling'),
 	       'page callback' => 'del_trainee_teacher',
 	       'access arguments' => array('at scheduling'),

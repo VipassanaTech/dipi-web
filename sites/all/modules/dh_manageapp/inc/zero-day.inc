@@ -1040,6 +1040,37 @@ function dh_manageapp_attended( $centre, $course_id )
 	return $out;
 }
 
+
+/**
+ * Optional side (gender) scope for the read-only lists: teacher list and seating plan.
+ * NULL (the default) = both genders, which is what the centre's own pages use.
+ * The AT course view (dh_atportal/view-courses.inc) sets the teacher's side before it
+ * calls a list, so the other side is left out of the query and of the output.
+ */
+function dh_view_gender_scope($set = NULL)
+{
+	$scope = &drupal_static(__FUNCTION__);
+	if ($set !== NULL)
+		$scope = array_values(array_intersect(array('M', 'F'), (array) $set));
+	return $scope;
+}
+
+/* " and a_gender in (...)" for the current side scope; '' when no scope is set; an empty scope shows nobody. */
+function dh_view_gender_sql($col = 'a_gender')
+{
+	$scope = dh_view_gender_scope();
+	if ($scope === NULL)
+		return '';
+	return $scope ? " and $col in ('".implode("','", $scope)."')" : ' and 1=0';
+}
+
+/* TRUE if gender M or F is shown under the current side scope. */
+function dh_view_gender_on($g)
+{
+	$scope = dh_view_gender_scope();
+	return $scope === NULL || in_array($g, $scope);
+}
+
 function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
 	global $base_url;
@@ -1077,7 +1108,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$orderby = " order by a_gender, aa_group, a_type desc, aa_chowky_chair desc, $seatrow asc, $seatcol asc ";
 
 	$course_name = db_query("select c_name from dh_course where c_id=$course")->fetchField();
-	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 $orderby";
+	$q = "select a_id, a_gender, a_old, a_f_name, a_m_name, a_l_name, concat(a_f_name, ' ',a_m_name, ' ',a_l_name) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_group, aa_acco, aa_section, aa_laundry, GREATEST(aa_chowky, aa_chair) as aa_chowky_chair, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, a_occupation, a_education, a_lang_discourse, a_lang_1, a_lang_2, a_langs, aa_comment, $cellcol as aa_cell, aa_cell_batch, $diningcol as aa_dining, $seatlbl as aa_seat, IF(a_city is null, a_city_str, c_name) as 'City', ae_pregnant, ae_pregnant_detail, ae_desc_physical, ae_desc_mental, ae_desc_addiction_past, ae_desc_addiction_current, ae_desc_other_technique, ae_desc_other_technique_old, ae_desc_medication, ae_nationality, a_type, t_sat, t_full_t, t_bhante, t_year_appointed from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant left join dh_city on a_city=c_id left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender ))  where a_course='$course' and a_attended=1 ".dh_view_gender_sql()." $orderby";
 
 	$result = db_query($q);
 	$data = array();
@@ -1123,7 +1154,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$out .= '</span></div>';
 	}
 
-	$gender = array('M', 'F');
+	$gender = array_values(array_filter(array('M', 'F'), 'dh_view_gender_on'));
 	$type = array('old', 'new');
 	$first_block = true;
 
@@ -2137,7 +2168,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 			$course_name .= $r['c_name']." / ";
 	}
 
-	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, aa_seat_row, aa_seat_col from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
+	$q = "select a_id, aa_id, a_gender, a_old,  CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Full Name', TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) as 'Age', ac_teen, ac_10d, ac_stp, ac_spl, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_teacher, aa_cell, aa_group, aa_acco, aa_section, aa_laundry, aa_valuable, aa_chowky, aa_chair, aa_backrest, aa_seat_aid, aa_seat_row, aa_seat_col from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant  left join dh_teacher t on ( ac_teacher_code = CONCAT(t_code,'-',t_gender )) where a_course in (".implode(",", $course).") and a_attended=1 and a_type='Student' ".dh_view_gender_sql()." order by  a_gender, IFNULL(ac_teacher,0) desc, IFNULL(t_seniority,0) desc, IFNULL(t_year_appointed,".date("Y").") , IFNULL(ac_60d,0) desc, IFNULL(ac_45d,0) desc, IFNULL(ac_30d,0) desc, IFNULL(ac_20d,0) desc, IFNULL(ac_tsc,0) desc, IFNULL(ac_spl,0) desc, IFNULL(ac_stp,0) desc, IFNULL(ac_10d,0) desc, IFNULL(ac_teen,0) desc, IFNULL(ac_service,0) desc, TIMESTAMPDIFF( YEAR, a_dob, CURDATE() ) desc";
 	$result = db_query($q);
 	$seats['chowky'] = $seats['seats'] = array();
 	$max_col_chowky['M'] = 0; $max_col_chowky['F'] = 0; $max_col['M'] = 0; $max_col['F'] = 0;
@@ -2176,6 +2207,12 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$male_dir = dh_seat_direction(isset($ini[$male_section]['SeatDirection']) ? $ini[$male_section]['SeatDirection'] : '', $male_dir);
 	$male_chowky_pos = dh_chowky_position(isset($ini[$male_section]['ChowkyPosition']) ? $ini[$male_section]['ChowkyPosition'] : '', $male_dir);
 
+	// Read-only surface (AT view): never persist seat labels or enable drag.
+	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only,
+		'seat_aid_edit' => (!$read_only && $pdf == '' && !$return_html));
+	// A side scope (AT view) shows only that side's section.
+	if (dh_view_gender_on('M'))
+	{
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
 	$out .= '<div class="seat-section" data-section="M" data-section-label="Male">';
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
@@ -2184,9 +2221,6 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
 		. '</div>';
-	// Read-only surface (AT view): never persist seat labels or enable drag.
-	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only,
-		'seat_aid_edit' => (!$read_only && $pdf == '' && !$return_html));
 	if ($mopts['seat_aid_edit'])
 		$out .= dh_seat_aid_js($centre, $course[0]);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
@@ -2196,6 +2230,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '</div>';   // .seat-section (Male)
 	$out .= '<div class="footer"></div>';
+	}
 
 	if ($ini['LEFT']['gender'] == 'F')
 		$female_dir = RIGHT_TO_LEFT;
@@ -2207,6 +2242,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 
 	$place = 'LEFT';
 
+	if (dh_view_gender_on('F'))
+	{
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
 	$out .= '<div class="seat-section" data-section="F" data-section-label="Female">';
 	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
@@ -2222,6 +2259,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= '<div class="teacher-seat">TEACHER</div>';
 	$out .= '</div>';   // .seat-section (Female)
 	$out .= '<div class="footer"></div>';
+	}
 
 	$out .= '<script>
 (function($){
