@@ -145,17 +145,12 @@ function dh_course_dashboard()
 //	else
 		$out .= course_summary( arg(1), "where c_id=".arg(2), array() );
 
-	// Change Log: every change to this course (who, when, old -> new), latest first.
-	// A closed section with the same green +/red - toggle as Centre Settings (a theme
-	// panel styled by centre-settings-collapse.css).
+	// Change Log: every change to this course and its teacher assignments (who, when,
+	// old -> new), latest first. A closed section with the same green +/red - toggle as
+	// Centre Settings (a theme panel styled by centre-settings-collapse.css).
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/centre-settings-collapse.css');
-	$log_n = dh_course_log_count((int) arg(2));
-	$log = array('#type' => 'fieldset', '#id' => 'course-change-log',
-		'#title' => 'Change Log ('.$log_n.' '.($log_n == 1 ? 'change' : 'changes').')',
-		'#collapsible' => TRUE, '#collapsed' => TRUE,
-		'log' => array('#markup' => dh_course_log_viewer((int) arg(2))));
-	$out .= drupal_render($log);
+	$out .= dh_course_log_section((int) arg(2));
 	return $out;
 }
 

@@ -1283,6 +1283,7 @@ function dh_assign_trainee_teacher_form_submit($form, &$form_state)
 
 	if($course_teacher_id)
 	{
+		log_course_teacher($course_teacher_id, "Center added Trainee as Confirmed");
 		drupal_set_message("Trainee Teacher added successfully");
 	}
 	else
@@ -1386,10 +1387,13 @@ function at_app_change()
 
 		
 
+		$old_type = db_query("select ct_type from dh_course_teacher where ct_id=:id", array(':id' => $course_teacher_id))->fetchField();
 		db_update('dh_course_teacher')
 			->fields( array('ct_type' => $type) )
 			->condition('ct_id', $course_teacher_id, '=')
 			->execute();
+		if ($old_type !== $type)
+			log_course_teacher($course_teacher_id, "Type changed from $old_type to $type");
 
 
 		$out['msg'] ="AT Application type updated to $type.";
@@ -1409,10 +1413,13 @@ function at_app_change()
 
 		
 
+		$old_group = db_query("select ct_group from dh_course_teacher where ct_id=:id", array(':id' => $course_teacher_id))->fetchField();
 		db_update('dh_course_teacher')
 			->fields( array('ct_group' => $group) )
 			->condition('ct_id', $course_teacher_id, '=')
 			->execute();
+		if ((string) $old_group !== (string) $group)
+			log_course_teacher($course_teacher_id, "Group changed from $old_group to $group");
 
 
 		$out['msg'] ="AT Application Group updated to $group.";
@@ -1477,6 +1484,7 @@ function get_at_info ()
 
 function del_trainee_teacher()
 {
+	global $user;
 	$center = arg(2);
 	$course = arg(3);
 	$at_app_id = arg(4);
@@ -1485,6 +1493,13 @@ function del_trainee_teacher()
 
 	if ($check)
 	{
+		// Log first: the row is deleted, so its course and teacher cannot be read afterwards.
+		// Logged under the course id (module Course-Teacher-Del) so the course Change Log
+		// can find it; the assignment and teacher ids in the text link it to the earlier lines.
+		$tr = db_query("select ct.ct_course, ct.ct_teacher, co.c_center, concat(t.t_f_name, ' ', t.t_l_name) as name from dh_course_teacher ct left join dh_course co on co.c_id = ct.ct_course left join dh_teacher t on t.t_id = ct.ct_teacher where ct.ct_id = :id", array(':id' => $at_app_id))->fetchAssoc();
+		db_insert('dh_log')->fields(array('l_center' => (int) $tr['c_center'], 'l_module' => 'Course-Teacher-Del', 'l_identifier' => (int) $tr['ct_course'],
+			'l_event' => 'Delete', 'l_msg' => "Trainee removed: ".check_plain($tr['name'])." (assignment ".(int) $at_app_id.", teacher ".(int) $tr['ct_teacher'].")",
+			'l_tstamp' => date('Y-m-d H:i:s'), 'l_user' => $user->uid))->execute();
 		$r = db_query("delete from dh_course_teacher where ct_id=$at_app_id and ct_type='Training'");
 
 		if ($r)

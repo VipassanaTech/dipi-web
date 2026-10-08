@@ -439,3 +439,6 @@ fieldset#edit-advanced {
 .dh-course-log .cl-act { font-weight: bold; }
 .dh-course-log .cl-empty { color: #999; font-style: italic; }
 #course-change-log .cl-note { font-size: 12px; color: #666; }
+.dh-course-log .cl-sub { color: #777; }
+.dh-course-log .cl-cmt { color: #555; margin-top: 3px; }
+.dh-course-log .cl-cmt:before { content: "Comment: "; color: #999; }
