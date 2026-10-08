@@ -72,9 +72,16 @@ function _dh_course_log_value($kind, $value, $names)
 	}
 }
 
+/* Number of logged changes (rows) for one course - shown in the section heading. */
+function dh_course_log_count($course_id)
+{
+	if (!db_table_exists('dh_course_log'))
+		return 0;
+	return (int) db_query("select count(*) from dh_course_log where crl_course = :c", array(':c' => $course_id))->fetchField();
+}
+
 /**
  * The "Change Log" table for one course: latest first, one line per changed field.
- * Lines from the old text log (before the change log existed) are marked.
  */
 function dh_course_log_viewer($course_id)
 {
@@ -104,21 +111,15 @@ function dh_course_log_viewer($course_id)
 		$names['course'] = db_query("select c_id, c_name from dh_course where c_id in (:ids)", array(':ids' => array_values($ids['course'])))->fetchAllKeyed();
 
 	$actions = array('create' => 'Created', 'update' => '', 'delete' => 'Deleted', 'restore' => 'Restored');
-	$rows = array(); $has_old = FALSE;
+	$rows = array();
 	foreach ($res as $r)
 	{
 		$f = isset($fields[$r->crl_field]) ? $fields[$r->crl_field] : array($r->crl_field, 'text');
 		$what = check_plain($f[0]);
 		if (!empty($actions[$r->crl_action]))
 			$what = '<span class="cl-act">'.$actions[$r->crl_action].'</span> &middot; '.$what;
-		$when = date('d M Y H:i', strtotime($r->crl_tstamp));
-		if ($r->crl_dh_log_id)
-		{
-			$when .= ' <span class="cl-old" title="From the old text log, before the change log started">*</span>';
-			$has_old = TRUE;
-		}
 		$rows[] = array(
-			$when,
+			date('d M Y H:i', strtotime($r->crl_tstamp)),
 			$what,
 			array('data' => $r->crl_action == 'create' ? '' : _dh_course_log_value($f[1], $r->crl_old, $names), 'class' => array('cl-val')),
 			array('data' => _dh_course_log_value($f[1], $r->crl_new, $names), 'class' => array('cl-val')),
@@ -126,8 +127,6 @@ function dh_course_log_viewer($course_id)
 		);
 	}
 	$out = theme('table', array('header' => array('When', 'What', 'Old', 'New', 'By'), 'rows' => $rows, 'attributes' => array('class' => array('dh-centre-log', 'dh-course-log'))));
-	if ($has_old)
-		$out .= '<p class="cl-note">* From the old text log (before October 2026). For automatic changes in those lines, "By" may name the last person who saved the course rather than who made the change.</p>';
 	if ($more)
 		$out .= '<p class="cl-note">Showing the latest 1,000 changes.</p>';
 	return $out;

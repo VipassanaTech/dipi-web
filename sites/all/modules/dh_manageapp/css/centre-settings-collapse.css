@@ -10,7 +10,8 @@
  * original look; we only prepend the same green-plus / red-minus icons the
  * search results table uses (imgs/details_open.png, imgs/details_close.png).
  *
- * Loaded only on the centre add/edit form (see dh_ma_centre_form()).
+ * Loaded on the centre add/edit form (see dh_ma_centre_form()) and for the
+ * Change Log section on the course page (dh_course_dashboard()).
  */
 
 fieldset.panel > legend.panel-heading > a.fieldset-legend::before {
