@@ -33,6 +33,7 @@ function dh_manage_centre()
 	$out = dh_announcements_block('centre', 'centre/'.arg(1).'/announcements');
 	$modules = array(
 		'Centre Settings' => 'centre/'.arg(1).'/edit',
+		'Certificate Settings' => 'centre/'.arg(1).'/certificate',
 		'Manage Courses' => 'manage-course/'.arg(1) ,
 		'Manage Letters' => 'letters/'.arg(1), 
 		'Search' => 'search-app/'.arg(1),

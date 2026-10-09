@@ -14,6 +14,7 @@ include_once(dirname(__FILE__)."/inc/letters.inc");
 include_once(dirname(__FILE__)."/inc/zero-day.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/course-log.inc");
+include_once(dirname(__FILE__)."/inc/certificate.inc");
 include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");
 include_once(dirname(__FILE__)."/inc/reports.inc");
@@ -86,6 +87,7 @@ function dh_manageapp_permission()
 	$perms['mass mail'] = array('title' => t('Send mass mails'));
 	$perms['admin mass mail'] = array('title' => t('Send administrator (cross-centre) bulk emails'));
 	$perms['at scheduling'] = array('title' => t('AT Scheduling'));
+	$perms['generate certificate'] = array('title' => t('Generate course certificates (attended students and servers)'));
 	$perms['view referral list'] = array('title' => t('View referral list'));
   $perms['add referral list'] = array('title' => t('add referral list'));
 	$perms['manage referral list'] = array('title' => t('Manage referral list'));
@@ -202,6 +204,25 @@ function dh_manageapp_menu()
     $items['centre/add'] = array('title' => t('Add Centre'),
 	       'page callback' => 'dh_addedit_centre',
 	       'access arguments' => array('access all centres'),
+	       'type' => MENU_CALLBACK);
+
+    // Course certificates (inc/certificate.inc).
+    $items['certificate/%app_id'] = array('title' => t('Certificate'),
+	       'page callback' => 'dh_certificate_pdf',
+	       'page arguments' => array(1),
+	       'access arguments' => array('generate certificate'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/certificate'] = array('title' => t('Certificate settings'),
+	       'page callback' => 'drupal_get_form',
+	       'page arguments' => array('dh_cert_settings_form', 1),
+	       'access arguments' => array('access centre settings'),
+	       'type' => MENU_CALLBACK);
+
+    $items['centre/%centre_id/certificate/preview'] = array('title' => t('Sample certificate'),
+	       'page callback' => 'dh_certificate_preview',
+	       'page arguments' => array(1),
+	       'access arguments' => array('access centre settings'),
 	       'type' => MENU_CALLBACK);
 
     $items['centre/%centre_id/edit'] = array('title' => t('Edit Centre'),

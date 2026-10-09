@@ -50,6 +50,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statues = db_query($q)->fetchAllKeyed();
+	// Certificate action (inc/certificate.inc): not on the read-only AT view.
+	$can_cert = !$read_only && user_access('generate certificate');
 
 	$q = "select td_key, td_key from dh_type_detail where td_type='COURSE-STATUS' and td_key != 'Reconfirmation'";
 	$statuses = db_query($q)->fetchAllKeyed();
@@ -326,6 +328,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			$rs['allowtransfer'] = 0;
 		if (date('Y-m-d') > $r['c_end'])
 			$rs['allowtransfer'] = 0;
+		// Certificate (inc/certificate.inc): attended student or server, from Day 1, real course types.
+		$rs['cert'] = ($can_cert && dh_cert_eligible($r)) ? 1 : 0;
 		if ( $r['a_uri'] <> '' )
 		{
 			//$pdf_link = '&nbsp;('.l("PDF", file_create_url($r['a_uri']), array('attributes' => array("target" => "_blank") ) ).')';
@@ -810,7 +814,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	
 //	$add_action = 'return "<a href=\"#\" action=\"Add\" class=\"applicant-add\">Add</a>";';
 
-	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')) || (user_access('add applicant review')))
+	if ((user_access('transfer course')) || (user_access('add application')) || (user_access('delete application')) || (user_access('add applicant review')) || $can_cert)
 	{
 		$action_select = '<option value=\"\" selected=\"selected\">Choose</option>';
 		$actions = array();
@@ -839,6 +843,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
             $action_select .='<option value=\"Send LC Review Email\">Send LC Review Email</option>';
             $actions[] = "Send LC Review Email";
         }
+        if ($can_cert)
+            $actions[] = "Certificate";   // shown per row only when the row is eligible (row.cert)
 		//$action = 'return "<select id=\"action-type\" class=\"action-select\">'.$action_select.'</select>";';
 		// Read-only surface (AT portal): drop all write actions (transfer/add/
 		// referral/delete/Send-LC-Review-Email). "Add Review" stays — it is gated
@@ -1205,6 +1211,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						        			{
 						        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
 						        			}
+					        			}
+					        			else if ( t[i] == "Certificate" )
+					        			{
+					        				if (data.cert == 1)
+					        					str += "<option value=\"Certificate\">Certificate</option>";
 					        			}
 					        			else
 					        				str += "<option value=\""+t[i]+"\">"+t[i]+"</option>";
@@ -1639,6 +1650,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                         app_at_email(s);
                         return;
                     }
+			        if ( action == "Certificate" )
+			        {
+			        	window.open("/certificate/" + row.data().aid, "_blank");
+			        	s.val("");
+			        	return;
+			        }
 			        var comment_transfer = "";
 			        if ( action == "Transfer")
 			        	comment_transfer = "<label>Comment</label><br><textarea name=\"comment\" id=\"trf-comment\" size=\"30\"></textarea>";
@@ -1892,7 +1909,14 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		if ( $storage['l_name'] <> '' )
 			$where .= " and a_l_name like '".trim($storage['l_name'])."%'";
 		if ( $storage['conf_no'] <> '' )
-			$where .= " and a_conf_no = '".trim($storage['conf_no'])."'";
+		{
+			$cn = trim($storage['conf_no']);
+			// A certificate number (e.g. CAKKA/2026/0001) finds the student it was issued to.
+			if (strpos($cn, '/') !== FALSE)
+				$where .= " and a_id in (select cert_applicant from dh_certificate where cert_number = ".Database::getConnection()->quote(strtoupper($cn)).")";
+			else
+				$where .= " and a_conf_no = ".Database::getConnection()->quote($cn);
+		}
 		if ( $storage['phone_home'] <> '' )
 			$where .= " and a_phone_home like '".trim($storage['phone_home'])."%'";
 		if ( $storage['mobile'] <> '' )
@@ -2165,7 +2189,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		/*$form['db_type'] = array('#title' => 'DB Type', '#type' => 'radios', '#options' => array('s' => 'Student', 'a' => 'Applicant' ), '#default_value' => 'a',  '#weight' => 2);*/
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['f_name']:'', '#weight' => 3);
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['l_name']:'', '#weight' => 4 );
-		$form['conf_no'] = array('#title' => 'Confirmation No', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['conf_no']:'', '#size' => 15, '#weight' => 5 );
+		$form['conf_no'] = array('#title' => 'Confirmation / Certificate No', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['conf_no']:'', '#size' => 15, '#weight' => 5 );
 		$form['status'] = array('#title' => 'Status', '#type' => 'select', '#default_value' => $update_bm?$edit_data['status']:'', '#options' => $statuses, '#multiple' => "multiple", '#weight' => 6, '#attributes' => array('id' => 'edit-app-status'));
 		$form['type'] = array('#title' => 'Applicant Type', '#type' => 'radios', '#options' => array('Student' => 'Applicant', 'Sevak' => 'Sevak', 'Both' => 'Both'), '#default_value' => $update_bm?$edit_data['type']:'Both',  '#weight' => 7);
 		$form['gender'] = array('#title' => 'Gender', '#type' => 'select', '#options' => array( '' => 'Choose', 'M' => 'Male', 'F' => 'Female'), '#default_value' => $update_bm?$edit_data['gender']:'',  '#weight' => 8);
