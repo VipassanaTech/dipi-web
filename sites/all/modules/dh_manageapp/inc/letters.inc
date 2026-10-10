@@ -21,6 +21,9 @@ function dh_manage_letters()
 			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
 			return dh_letters_view($row);
 			break;
+		case 'preview':
+			$row = db_query("select * from dh_letter where l_id = :l and l_center = :c", array(':l' => arg(3), ':c' => arg(1)))->fetchAssoc();
+			return dh_letters_preview($row);
 		case 'edit':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
@@ -60,7 +63,8 @@ function dh_letters_listing()
 	drupal_add_css( libraries_get_path("editor"). "/DataTables/datatables.min.css");
 	drupal_add_js( libraries_get_path("editor").  "/DataTables/datatables.min.js");
 
-	$q = "select l_id, l_name as 'LetterName', l_event as 'Status', tdc.td_val1 as 'Course Type', l_subject as 'Subject' from dh_letter left join dh_type_detail tdc on l_course_type=tdc.td_id where l_center='$centre_id' and l_deleted=0 order by l_event , tdc.td_val1";
+	$q = "select l_id, l_name as 'LetterName', l_event as 'Status', tdc.td_val1 as 'Course Type', l_subject as 'Subject', l_event, l_course_type, l_subject, l_body, l_sms from dh_letter left join dh_type_detail tdc on l_course_type=tdc.td_id where l_center='$centre_id' and l_deleted=0 order by l_event , tdc.td_val1";
+	$n_err = 0; $n_warn = 0;
 //and a_status='Confirmed' 
 	$result = db_query($q);
 	$rows = array();
@@ -72,6 +76,15 @@ function dh_letters_listing()
 		$rs[] = $r['Status'];
 		$rs[] = $r['Course Type']?$r['Course Type']:"All";
 		$rs[] = $r['Subject'];
+		// merge-field check (inc/letter-check.inc): mistakes students would see, and missing combined fields
+		$c = dh_letter_check_counts(dh_letter_check($centre_id, $r));
+		$bad = $c['error'] + $c['fixed'] + $c['field'];
+		if ($bad) $n_err++; elseif ($c['warning']) $n_warn++;
+		$rs[] = $bad
+			? l(format_plural($bad, '1 to fix', '@count to fix'), "letters/$centre_id/view/".$r['l_id'], array('attributes' => array('class' => array('lc-badge', 'lc-badge-err'))))
+			: ($c['warning']
+				? l(format_plural($c['warning'], '1 warning', '@count warnings'), "letters/$centre_id/view/".$r['l_id'], array('attributes' => array('class' => array('lc-badge', 'lc-badge-warn'))))
+				: '<span class="lc-ok">OK</span>');
 		$rs[] = l("View", "letters/$centre_id/view/".$r['l_id'] );
 		if ($can_manage)
 		{
@@ -81,14 +94,23 @@ function dh_letters_listing()
 		}
 		$rows[] = array_values($rs);
 	}
-	$header = $can_manage ? array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action', 'Action', 'Action')
-	                     : array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action');
+	$header = $can_manage ? array('Letter Name', 'Status', 'Course Type', 'Subject', 'Merge Fields', 'Action', 'Action', 'Action', 'Action')
+	                     : array('Letter Name', 'Status', 'Course Type', 'Subject', 'Merge Fields', 'Action');
 	$attributes = array('id' => 'table-letters');
 	if ($can_manage)
 		$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	else
 		$out = '<h2>'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	$out .= "<h2>Active Letters</h2>";
+	if ($n_err || $n_warn)
+	{
+		$out .= '<div class="lc-summary">';
+		if ($n_err)
+			$out .= '<p>'.format_plural($n_err, '<strong>1 letter</strong> has merge fields that DIPI cannot fill. Students will see them as written, for example "Dear [firstname]".', '<strong>@count letters</strong> have merge fields that DIPI cannot fill. Students will see them as written, for example "Dear [firstname]".').'</p>';
+		if ($n_warn)
+			$out .= '<p>'.format_plural($n_warn, '1 letter uses a combined field, like [Time-[CourseType]], without a letter field for every course type you run.', '@count letters use a combined field, like [Time-[CourseType]], without a letter field for every course type you run.').'</p>';
+		$out .= '<p>'.t('Click the red or orange label to see what to change.').' <label class="lc-filter"><input type="checkbox" id="lc-only"> '.t('Show only these letters').'</label></p></div>';
+	}
 	$out .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => $attributes));
 
 
@@ -125,7 +147,10 @@ function dh_letters_listing()
 	$js = '
 		(function ($) {
 			$(document).ready(function(){
-				$("#table-letters").DataTable();
+				var lettersTable = $("#table-letters").DataTable();
+				$("#lc-only").on("change", function () {
+					lettersTable.column(4).search(this.checked ? "to fix|warning" : "", true, false).draw();
+				});
                 $("#table-letters-d").DataTable();
 				$("#table-letters tbody").on("click", ".delete-letter", function () {
 					var lname = $(this).attr("txt");
@@ -188,6 +213,29 @@ function dh_letters_view($row)
 	$out .= '<tr><th>'.t('Subject').'</th><td>'.check_plain($row['l_subject']).'</td></tr>';
 	$out .= '</tbody></table>';
 
+	/* merge-field check (inc/letter-check.inc) */
+	$problems = dh_letter_check($row['l_center'], $row);
+	$c = dh_letter_check_counts($problems);
+	$out .= '<div class="lc-box">';
+	if ($c['error'] + $c['fixed'] + $c['warning'] + $c['field'] == 0)
+		$out .= '<p class="lc-ok-line">'.t('Merge fields: all OK.').'</p>';
+	else
+	{
+		$out .= '<h3>'.t('Merge field check').'</h3>';
+		if ($c['error'])
+			$out .= '<p>'.t('DIPI cannot fill these, so students see them as written:').'</p>'.dh_letter_problems_html($problems, array('error'));
+		if ($c['fixed'])
+			$out .= '<p>'.t('These look right but have hidden formatting inside. DIPI removes it when you open this letter in Edit and save it:').'</p>'.dh_letter_problems_html($problems, array('fixed'));
+		if ($c['field'])
+			$out .= '<p>'.t('These are in your letter fields that this letter uses, so they are fixed in Manage Fields:').'</p>'.dh_letter_problems_html($problems, array('field'));
+		if ($c['warning'])
+			$out .= dh_letter_problems_html($problems, array('warning'));
+		if (dh_letters_access('manage'))
+			$out .= '<p>'.l(t('Edit this letter to fix them'), "letters/$centre_id/edit/".$row['l_id']).' &nbsp;|&nbsp; '.l(t('Manage Fields'), "letter-fields/$centre_id").'</p>';
+	}
+	$out .= '<p>'.l(t('Preview this letter for a course'), "letters/$centre_id/preview/".$row['l_id']).' '.t('(shows it as a student would get it)').'</p>';
+	$out .= '</div>';
+
 	/* body - stored and sent as HTML, so shown as HTML; tokens stay literal */
 	$out .= '<h3>'.t('Letter Body').'</h3>';
 	$out .= '<div class="letter-view-body" style="border:1px solid #ccc;padding:12px;background:#fff;">'
@@ -212,6 +260,90 @@ function dh_letters_view($row)
 	return $out;
 }
 
+/**
+ * Preview a letter as a student would get it, for one of the centre's courses. Uses a
+ * sample person (no real applicant, nothing is saved or sent) with the course's and
+ * centre's real details, and marks in red any field DIPI could not fill.
+ */
+function dh_letters_preview($row)
+{
+	if (!$row)
+		return '<p>'.t('Letter not found.').'</p>';
+	$centre_id = arg(1);
+	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
+	$type = (isset($_GET['type']) && $_GET['type'] == 'Sevak') ? 'Sevak' : 'Student';
+
+	// courses from two months ago onward, or else the last 30; only the letter's course type when it has one
+	$args = array(':c' => $centre_id);
+	$q = "select c_id, c_name, c_start from dh_course where c_center = :c and c_deleted = 0";
+	if ($row['l_course_type'])
+	{
+		$q .= " and c_course_type = :t";
+		$args[':t'] = $row['l_course_type'];
+	}
+	$courses = db_query($q." and c_start >= curdate() - interval 60 day order by c_start limit 300", $args)->fetchAllAssoc('c_id', PDO::FETCH_ASSOC);
+	if (!$courses)
+		$courses = array_reverse(db_query($q." order by c_start desc limit 30", $args)->fetchAllAssoc('c_id', PDO::FETCH_ASSOC), TRUE);
+	$course_id = (isset($_GET['course']) && isset($courses[$_GET['course']])) ? $_GET['course'] : NULL;
+	if (!$course_id)
+		foreach ($courses as $id => $c)
+		{
+			$course_id = $id;
+			if ($c['c_start'] >= date('Y-m-d'))
+				break;
+		}
+
+	$out = '<h2>'.l(t('Back to the letter'), "letters/$centre_id/view/".$row['l_id']).' &nbsp;|&nbsp; '.l(t('Back to Manage Letters'), "letters/$centre_id").'</h2>';
+	$out .= '<h3>'.t('Preview: @n', array('@n' => $row['l_name'])).'</h3>';
+	if (!$course_id)
+		return $out.'<p>'.t('This centre has no course to preview this letter with.').'</p>';
+
+	$opts = '';
+	foreach ($courses as $id => $c)
+		$opts .= '<option value="'.$id.'"'.($id == $course_id ? ' selected' : '').'>'.check_plain(date('j M Y', strtotime($c['c_start'])).' - '.$c['c_name']).'</option>';
+	$out .= '<form method="get" class="lc-preview-form">'
+		.'<label>'.t('Course').' <select name="course">'.$opts.'</select></label> '
+		.'<label>'.t('For a').' <select name="type"><option value="Student"'.($type == 'Student' ? ' selected' : '').'>'.t('Student').'</option>'
+		.'<option value="Sevak"'.($type == 'Sevak' ? ' selected' : '').'>'.t('Server (Sevak)').'</option></select></label> '
+		.'<input type="submit" class="form-submit" value="'.t('Show').'"></form>';
+
+	$sample = db_query("select ce.c_id as 'CentreID', ce.c_name as 'a_center', ce.c_phone, ce.c_fax, ce.c_email, ce.c_url, ce.c_address, ce.c_pincode, cco.c_name 'c_country', cci.c_name as 'c_city', cs.s_name as 'c_state', cr.c_name as 'CourseName', cr.c_start, cr.c_end, cr.c_description, td.td_val1 as 'c_course_type_str', cr.c_course_type, '' as 'ct_teacher', ce.c_sms
+		from dh_course cr join dh_center ce on cr.c_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_type_detail td on cr.c_course_type=td.td_id
+		where cr.c_id = :id", array(':id' => $course_id))->fetchAssoc();
+	$sample += array('a_id' => 0, 'a_type' => $type, 'a_f_name' => 'Sample', 'a_m_name' => '', 'a_l_name' => ($type == 'Sevak' ? 'Server' : 'Student'),
+		'a_address' => 'Sample address', 'a_zip' => '000000', 'a_phone_mobile' => '9000000000', 'a_email' => 'sample@example.com', 'a_gender' => 'F',
+		'a_dob' => date('Y-m-d', strtotime('-30 years')), 'a_conf_no' => 'SAMPLE', 'a_auth_code' => 'SAMPLE', 'a_login' => 'sample@example.com',
+		'a_lang_discourse' => 'English', 'a_city' => 'Sample City', 'a_country' => 'India', 'a_state' => 'Sample State',
+		'al_recommending' => 'Sample AT', 'al_area_at' => 'Sample AT');
+	$search = dh_letter_is_at_event($row['l_event']) ? array('[RAuth]' => 'SAMPLE', '[AAuth]' => 'SAMPLE') : array();
+	$search = _dh_letter_values($sample, 0, t('(the comment typed when the status is changed)'), $search);
+	$search['[LetterDetailURL]'] = variable_get('applicant_url', '').'/l.php?a=SAMPLE';
+	list($subject, $body, $sms) = _dh_letter_merge($row, $search);
+	$unfilled = _dh_letter_unfilled_all($subject, $body, $sms, $search, $centre_id);
+
+	// mark unfilled fields in red (in text only, never inside a tag)
+	$mark = function ($text, $is_html) use ($unfilled) {
+		// HTML: even pieces are text between tags; plain text: one piece, escaped
+		$segs = $is_html ? preg_split('/(<[^>]*>)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE) : array(check_plain($text));
+		foreach ($segs as $i => $seg)
+			if ($i % 2 == 0)
+				foreach ($unfilled as $t)
+					$segs[$i] = str_replace(check_plain($t), '<mark class="lc-unfilled">'.check_plain($t).'</mark>', $segs[$i]);
+		return implode('', $segs);
+	};
+	if ($unfilled)
+		$out .= '<div class="lc-box lc-box-err"><strong>'.t('Students on this course would see these as written:').'</strong> '.check_plain(implode('  ', $unfilled)).'</div>';
+	else
+		$out .= '<div class="lc-box lc-box-ok">'.t('All merge fields are filled for this course.').'</div>';
+
+	$out .= '<table class="letter-view"><tbody><tr><th>'.t('Subject').'</th><td>'.$mark($subject, FALSE).'</td></tr></tbody></table>';
+	$out .= '<h3>'.t('Letter Body').'</h3><div class="letter-view-body" style="border:1px solid #ccc;padding:12px;background:#fff;">'.$mark($body, TRUE).'</div>';
+	if (trim($row['l_sms']) !== '')
+		$out .= '<h3>'.t('SMS Text').'</h3><div class="letter-view-sms" style="border:1px solid #ccc;padding:12px;white-space:pre-wrap;">'.$mark($sms, FALSE).'</div>';
+	$out .= '<p class="lf-help">'.t('This preview uses a sample person ("Sample @l"). The teacher details field [ATDetails] is empty in a preview.', array('@l' => $sample['a_l_name'])).'</p>';
+	return $out;
+}
+
 function dh_letters_form($form, &$form_state, $edit_data = array())
 {
 	$out = '<h2>'.l("Back to Manage Letters", "letters/".arg(1)).'</h2>';
@@ -226,19 +358,16 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 
 	$action = arg(2);
 
-	$merge_fields = _get_letter_fields(arg(1));
-	$field_count = 1;
-	$merge_block = '<table class="table-merge-fields"><tr><td colspan='.$field_count.'>';
-	$i = 0;
-	foreach($merge_fields as $v)
-	{
-		if ( ($i % $field_count) == 0 )
-			$merge_block .= '</tr><tr>';
-		//$merge_block .= '<td><a class="merge-field-link" href="#">'.$v.'</a></td>';
-    $merge_block .= '<td>'.$v.'</td>';
-		$i++;
-	}
-	$merge_block .= '</tr></table>';
+	// Merge fields as click-to-insert buttons, so nobody has to type (and mistype) them.
+	$chips = array('dipi' => '', 'centre' => '');
+	foreach (dh_letter_known_fields(arg(1)) as $tok => $src)
+		$chips[$src] .= '<a href="#" class="merge-field-link lf-chip">'.check_plain($tok).'</a> ';
+	$merge_block = '<p class="lf-help">'.t('Click a field to put it where your cursor is, in the Subject, Letter Body or SMS Text. Square brackets [ ] are only for merge fields: for ordinary text use round brackets ( ).').'</p>'
+		.'<input type="text" id="lf-filter" class="form-text" placeholder="'.t('Find a field').'" autocomplete="off">'
+		.'<div class="lf-group"><div class="lf-title">'.t('DIPI fields').'</div>'.$chips['dipi'].'</div>'
+		.'<div class="lf-group"><div class="lf-title">'.t("Your centre's fields").' &nbsp;'.l(t('Manage Fields'), 'letter-fields/'.arg(1), array('attributes' => array('target' => '_blank'))).'</div>'
+		.($chips['centre'] !== '' ? $chips['centre'] : '<em>'.t('none').'</em>').'</div>'
+		.'<p class="lf-help">'.t('Combined field: put [CourseType] or [ApplicantType] inside another field, for example [Time-[CourseType]]. For a 10 Day course DIPI then uses your field [Time-10 Day Course], so you need one such field for every course type you run.').'</p>';
 	$q = "select td_key, td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
 	$system_statuses = db_query($q)->fetchAllKeyed();
 
@@ -268,7 +397,8 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 
 	$form['#attributes'] = array('class' => array('container-inline')); 
 	$form['a'] = array('#markup' => $out);
-	$form['b'] = array('#type' => 'fieldset', '#title' => 'Merge Fields', '#collapsed' => true, '#collapsible' => true);
+	$form['b'] = array('#type' => 'fieldset', '#title' => 'Merge Fields', '#collapsed' => false, '#collapsible' => true, '#weight' => 3.5,
+		'#attributes' => array('class' => array('lf-fieldset')));
 	$form['b']['a'] = array('#markup' => $merge_block);
  	//$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
 	$form['l_name'] = array('#title' => 'Letter Name', '#type' => 'textfield', '#size' => '50', '#weight' => 1, 
@@ -337,18 +467,56 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 					});
 				}
 
-				// Insert a merge field at the cursor inside the WYSIWYG (falls back to the
-				// raw textarea if CKEditor is not active).
+				// Insert a merge field where the cursor was: Subject, SMS Text or the letter body.
+				var lfTarget = "body";
+				$("#edit-l-subject").on("focus", function () { lfTarget = "subject"; });
+				$("#edit-l-sms").on("focus", function () { lfTarget = "sms"; });
+				if (window.CKEDITOR && CKEDITOR.instances["edit-l-body"]) {
+					CKEDITOR.instances["edit-l-body"].on("focus", function () { lfTarget = "body"; });
+				}
+				function lfInsertPlain($txt, txtToAdd) {
+					var el = $txt[0], pos = (typeof el.selectionStart == "number") ? el.selectionStart : el.value.length;
+					var end = (typeof el.selectionEnd == "number") ? el.selectionEnd : pos;
+					el.value = el.value.substring(0, pos) + txtToAdd + el.value.substring(end);
+					el.focus();
+					el.selectionStart = el.selectionEnd = pos + txtToAdd.length;
+				}
 				$(".merge-field-link").click(function(){
 					var txtToAdd = $(this).text();
-					if (window.CKEDITOR && CKEDITOR.instances["edit-l-body"]) {
+					if (lfTarget == "subject") {
+						lfInsertPlain($("#edit-l-subject"), txtToAdd);
+					} else if (lfTarget == "sms") {
+						lfInsertPlain($("#edit-l-sms"), txtToAdd);
+					} else if (window.CKEDITOR && CKEDITOR.instances["edit-l-body"]) {
 						CKEDITOR.instances["edit-l-body"].insertText(txtToAdd);
+						CKEDITOR.instances["edit-l-body"].focus();
 					} else {
-						var $txt = $("#edit-l-body");
-						var caretPos = $txt[0].selectionStart;
-						var textAreaTxt = $txt.val();
-						$txt.val(textAreaTxt.substring(0, caretPos) + txtToAdd + textAreaTxt.substring(caretPos) );
+						lfInsertPlain($("#edit-l-body"), txtToAdd);
 					}
+					return false;
+				});
+				$("#lf-filter").on("input", function () {
+					var q = this.value.toLowerCase();
+					$(".lf-chip").each(function () { $(this).toggle($(this).text().toLowerCase().indexOf(q) >= 0); });
+				}).on("keydown", function (e) { if (e.which == 13) { e.preventDefault(); } });
+
+				// "Fix these for me" on the save error: apply the suggested fixes in the form, then the user saves again.
+				$(document).on("click", ".lc-fix-btn", function () {
+					var fixes = [], done = 0, left = 0;
+					try { fixes = JSON.parse(decodeURIComponent(escape(window.atob($(this).attr("data-fixes"))))); } catch (e) {}
+					var ed = (window.CKEDITOR && CKEDITOR.instances["edit-l-body"]) ? CKEDITOR.instances["edit-l-body"] : null;
+					var body = ed ? ed.getData() : $("#edit-l-body").val();
+					var plain = { subject: $("#edit-l-subject"), sms: $("#edit-l-sms") };
+					$.each(fixes, function (i, f) {
+						if (f.part == "body") {
+							if (body.indexOf(f.from) >= 0) { body = body.split(f.from).join(f.to); done++; } else { left++; }
+						} else if (plain[f.part]) {
+							var v = plain[f.part].val();
+							if (v.indexOf(f.from) >= 0) { plain[f.part].val(v.split(f.from).join(f.to)); done++; } else { left++; }
+						}
+					});
+					if (ed) { ed.setData(body); } else { $("#edit-l-body").val(body); }
+					$(this).replaceWith("<strong class=\"lc-fix-done\">" + done + " " + Drupal.t("fixed.") + (left ? " " + left + " " + Drupal.t("could not be fixed automatically, please correct by hand.") : "") + " " + Drupal.t("Check the letter, then click the button at the bottom to save.") + "</strong>");
 					return false;
 				});
 				$("#delete-letter-attachment").click(function () {
@@ -368,6 +536,59 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 }
 
 /**
+ * Merge-field check on save (inc/letter-check.inc). Hidden formatting inside a field is
+ * removed; clear mistakes stop the save, with a button that applies the suggested fixes;
+ * missing letter fields for combined fields are shown as a warning after saving.
+ */
+function _dh_letters_form_check_fields($form, &$form_state, $centre_id)
+{
+	$in = &$form_state['input'];
+	$letter = array();
+	foreach (array('l_event', 'l_course_type', 'l_subject', 'l_body', 'l_sms') as $k)
+		$letter[$k] = isset($in[$k]) ? (string) $in[$k] : '';
+	$problems = dh_letter_check($centre_id, $letter);
+
+	$fixed = 0;
+	foreach (array('subject' => 'l_subject', 'body' => 'l_body', 'sms' => 'l_sms') as $part => $k)
+	{
+		$new = dh_letter_apply_fixes($letter[$k], $problems, $part);
+		if ($new !== $letter[$k])
+		{
+			$in[$k] = $new;
+			form_set_value($form[$k], $new, $form_state);
+		}
+	}
+	$counts = dh_letter_check_counts($problems);
+	$form_state['lc_fixed'] = $counts['fixed'];
+	$form_state['lc_warnings'] = array_filter($problems, function ($p) { return $p['level'] == 'warning' || $p['level'] == 'field'; });
+
+	$errors = array_filter($problems, function ($p) { return $p['level'] == 'error'; });
+	if (!$errors)
+		return;
+	$fixes = array();
+	foreach ($errors as $p)
+		if ($p['fix'] !== NULL)
+			$fixes[] = array('part' => $p['part'], 'from' => $p['raw'], 'to' => $p['fix']);
+	$msg = '<strong>'.t('The letter was not saved. Students would see these as written, because DIPI fills a merge field only when it is exactly right:').'</strong>'
+		.dh_letter_problems_html($errors, array('error'));
+	if ($fixes)
+		// a link, not a <button>: the theme's message filter removes <button> tags
+		// the fixes travel as base64 JSON: the message filter mangles quotes inside attributes
+		$msg .= '<a href="#" class="lc-fix-btn" role="button" data-fixes="'.base64_encode(json_encode($fixes)).'">'
+			.format_plural(count($fixes), 'Fix the 1 with a suggestion for me', 'Fix the @count with a suggestion for me').'</a>';
+	$parts = array('subject' => 'l_subject', 'body' => 'l_body', 'sms' => 'l_sms');
+	$first = TRUE;
+	foreach ($parts as $part => $k)
+		foreach ($errors as $p)
+			if ($p['part'] == $part)
+			{
+				form_set_error($k, $first ? $msg : '');
+				$first = FALSE;
+				break;
+			}
+}
+
+/**
  * Sanitise an uploaded file's base name (without extension) for safe on-disk
  * storage: strip any path parts, replace anything outside [A-Za-z0-9_-] with
  * "_", cap the length, and trim stray separators. Returns $fallback when nothing
@@ -384,6 +605,8 @@ function _dh_letter_safe_basename($name, $fallback = 'file', $maxlen = 60)
 function dh_letters_form_validate($form, &$form_state)
 {
 	$centre_id = arg(1);
+	_dh_letters_form_check_fields($form, $form_state, $centre_id);
+
 	// Accept the common document + image types people actually attach. Modern
 	// formats (jpeg, png, xlsx, doc) were missing before, which caused most of
 	// the "failed" uploads.
@@ -479,6 +702,11 @@ function dh_letters_form_submit($form, &$form_state)
 
 	if($action == "copy") $action = "copi";
 	drupal_set_message("Letter ${action}ed successfully ");
+	if (!empty($form_state['lc_fixed']))
+		drupal_set_message(format_plural($form_state['lc_fixed'], 'DIPI removed hidden formatting from inside 1 merge field, so it will now be filled.', 'DIPI removed hidden formatting from inside @count merge fields, so they will now be filled.'));
+	if (!empty($form_state['lc_warnings']))
+		drupal_set_message(t('Please check this letter:').dh_letter_problems_html($form_state['lc_warnings'], array('field', 'warning'))
+			.l(t('Open Manage Fields'), "letter-fields/$centre_id"), 'warning');
 	drupal_goto("letters/$centre_id");
 }
 
@@ -711,15 +939,43 @@ function dh_manage_letter_fields_handler()
 	$centre_id = arg(2);
 	include_once "sites/all/libraries/editor/php/DataTables.php";
 
+	// A field is "deleted" by an edit that sets lf_deleted = 1: don't block that on the name/value rules.
+	$deleting = function ($data) {
+		return !empty($data['dh_letter_fields']['lf_deleted']);
+	};
 	$editor = \DataTables\Editor::inst( $db, 'dh_letter_fields', 'lf_id' ); 
 	 $editor->fields( \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_name' )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Field Name is required' )
-            ) ),
+            ) )
+            ->setFormatter( function ($val) { return trim($val); } )
+            // the name is used as [Name] in letters: no brackets, no clash with DIPI's or the centre's other fields
+            ->validator( function ($val, $data, $field, $host) use ($centre_id, $deleting) {
+                if ($deleting($data))
+                    return true;
+                $name = trim($val);
+                if (!preg_match('#^[A-Za-z0-9][A-Za-z0-9 _./()\-]*$#', $name))
+                    return 'Use only letters, numbers, spaces and - _ . / ( ) in the name. Do not type the square brackets: write Footer, not [Footer].';
+                if (in_array('['.$name.']', _dh_letter_builtin_fields()))
+                    return 'DIPI already has a field ['.$name.']. Please choose another name.';
+                $dup = db_query("select count(*) from dh_letter_fields where lf_center = :c and lf_deleted = 0 and lf_name = :n and lf_id <> :id",
+                    array(':c' => $centre_id, ':n' => $name, ':id' => (int) $host['id']))->fetchField();
+                return $dup ? 'Your centre already has a field with this name.' : true;
+            } ),
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_value' )
    	        ->validator( \DataTables\Editor\Validate::notEmpty( \DataTables\Editor\ValidateOptions::inst()
                 ->message( 'Field Value is required' )
-            ) ),
+            ) )
+            // the value may use other merge fields: same rules as a letter
+            ->validator( function ($val, $data, $field, $host) use ($centre_id, $deleting) {
+                if ($deleting($data))
+                    return true;
+                $msgs = array();
+                foreach (dh_letter_check($centre_id, array('lf_value' => $val)) as $p)
+                    if ($p['level'] == 'error')
+                        $msgs[] = $p['msg'];
+                return $msgs ? implode(' ', $msgs) : true;
+            } ),
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_deleted' ),	 
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_center' )
 	    	->setValue( $centre_id )
@@ -770,11 +1026,6 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	if (trim($row['a_email']) == '')
 		$delivery_type = DELIVERY_TYPE_SMS;
 
-	$age = 0;
-	if ( $row['a_dob'] )
-	{
-		$age = date_diff(date_create($row['a_dob']), date_create('today'))->y;
-	}
 	if ( $row['a_login'] == '' )
 	{
 		$row['a_login'] = $row['a_email'];
@@ -826,6 +1077,57 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$search['[RAuth]'] = $auth_reco;
 		$search['[AAuth]'] = $auth_area;
 	}
+	$search = _dh_letter_values($row, $id, $comment, isset($search) ? $search : array());
+
+	if ( $letter_id == 0)
+		$where = " and l_event='$event' and l_course_type in ('".$row['c_course_type']."', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1";  
+	else
+		$where = " and l_id=$letter_id";
+	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='".$row['CentreID']."' $where";
+	//watchdog('LETTER', $q);
+	$result = db_query($q);
+	$letter = $result->fetchAssoc();
+
+	if ($letter['l_subject'] == '')
+	{
+		watchdog('LETTER', $q);
+		logit($centre, 'Letter', $id, 'No letter Found!' );		
+		return array('result' => false, 'msg' => 'No Letter Found');
+	}
+	$search['[LetterDetailURL]']= variable_get('applicant_url', '')."/l.php?a=".simple_crypt($row['a_id']."-".$letter['l_id']); //http://applicant.vipassana.co
+
+	$letter_id = $letter['l_id'];
+	$letter_name = $letter['l_name'];
+	$event_name = $letter['l_event'];
+	list($subject, $body, $sms_body) = _dh_letter_merge($letter, $search);
+	$unfilled = _dh_letter_unfilled_all($subject, $body, $sms_body, $search, $centre);
+
+	$attachment = $letter['l_attachment'];
+	if ( $attachment <> '')
+		$attachment = str_replace('private://',drupal_realpath('private://'), $attachment );
+
+	if ($row['c_sms'])
+		$delivery_type = DELIVERY_TYPE_BOTH;
+	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 
+		'subject' => $subject, 'body' => $body, 'sms_body' => $sms_body, 
+		'delivery_type' => $delivery_type, 'letter_name' => $letter_name,
+		'letter_id' => $letter_id, 'conf_no' => $row['a_conf_no'], 'unfilled' => $unfilled );
+	return $out;
+}
+
+/**
+ * The merge-field values for one person and course: DIPI's own fields from $row (the
+ * applicant/course/centre row read by dh_get_letter), then the centre's letter fields,
+ * which may themselves use DIPI's fields. $id is the applicant (0 for a preview: no AT
+ * details). $search may already hold [RAuth]/[AAuth] for AT letters.
+ */
+function _dh_letter_values($row, $id, $comment, $search = array())
+{
+	$age = 0;
+	if ( $row['a_dob'] )
+	{
+		$age = date_diff(date_create($row['a_dob']), date_create('today'))->y;
+	}
 	$view_link = variable_get('applicant_url', ''); //'http://applicant.vipassana.co';
 
 	$search['[FirstName]'] 		= $row['a_f_name'];
@@ -867,6 +1169,9 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$search['[RecommendingAT]'] = $row['al_recommending'];
 	$search['[AreaTeacher]'] = $row['al_area_at'];
 	$search['[UserInput]'] 		= $comment;
+	// Start empty: when no teacher of the applicant's gender is confirmed, the loop below adds
+	// nothing, and [ATDetails] used to go out as written (prod: ~360 Attended letters in 6 months).
+	$search['[ATDetails]'] = '';
 	if ((strtotime(date('Y-m-d')) >= $row['c_end']) && $row['ct_teacher'] <> '')
 	{
 		$q = "select CONCAT(t_f_name,' ',t_l_name,' | ','Contact: ',t_mob_phone,' | ','Email: ',t_email) as 'teacher' from dh_teacher left join dh_course_teacher on ct_teacher = t_id left join dh_applicant on a_course = ct_course where a_id = '$id' and a_gender = t_gender  and ct_status='Confirmed' order by t_f_name asc ";
@@ -883,45 +1188,39 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	$merge_fields = db_query($q)->fetchAllKeyed();
 	foreach ($merge_fields as $key => $value) 
 		$search['['.$key.']'] = str_replace (array_keys($search), array_values($search), $value);
+	return $search;
+}
 
-	if ( $letter_id == 0)
-		$where = " and l_event='$event' and l_course_type in ('".$row['c_course_type']."', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1";  
-	else
-		$where = " and l_id=$letter_id";
-	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='".$row['CentreID']."' $where";
-	//watchdog('LETTER', $q);
-	$result = db_query($q);
-	$letter = $result->fetchAssoc();
-
-	if ($letter['l_subject'] == '')
-	{
-		watchdog('LETTER', $q);
-		logit($centre, 'Letter', $id, 'No letter Found!' );		
-		return array('result' => false, 'msg' => 'No Letter Found');
-	}
-	$search['[LetterDetailURL]']= variable_get('applicant_url', '')."/l.php?a=".simple_crypt($row['a_id']."-".$letter['l_id']); //http://applicant.vipassana.co
-
-	$letter_id = $letter['l_id'];
-	$letter_name = $letter['l_name'];
-	$event_name = $letter['l_event'];
+/**
+ * Fill the merge fields of a letter. The body and SMS are filled twice so a centre
+ * field whose value uses another centre field is filled too.
+ * @return array(subject, body, sms)
+ */
+function _dh_letter_merge($letter, $search)
+{
 	$subject = str_replace(array_keys($search), array_values($search), $letter['l_subject']);
 	$body = str_replace(array_keys($search), array_values($search), $letter['l_body']);
 	$body = str_replace(array_keys($search), array_values($search), $body);
 
 	$sms_body = str_replace(array_keys($search), array_values($search), $letter['l_sms']);
 	$sms_body = str_replace(array_keys($search), array_values($search), $sms_body);
+	return array($subject, $body, $sms_body);
+}
 
-	$attachment = $letter['l_attachment'];
-	if ( $attachment <> '')
-		$attachment = str_replace('private://',drupal_realpath('private://'), $attachment );
-
-	if ($row['c_sms'])
-		$delivery_type = DELIVERY_TYPE_BOTH;
-	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 
-		'subject' => $subject, 'body' => $body, 'sms_body' => $sms_body, 
-		'delivery_type' => $delivery_type, 'letter_name' => $letter_name,
-		'letter_id' => $letter_id, 'conf_no' => $row['a_conf_no'] );
-	return $out;
+/** Fields left unfilled after merging (see dh_letter_unfilled), across subject, body and SMS. */
+function _dh_letter_unfilled_all($subject, $body, $sms_body, $search, $centre)
+{
+	// only DIPI's own values count as "filled-in data"; brackets in a centre field's text are still checked
+	$values = array();
+	foreach (array_merge(_dh_letter_builtin_fields(), array('[RAuth]', '[AAuth]')) as $k)
+		if (isset($search[$k]))
+			$values[] = $search[$k];
+	$values = implode("\n", $values);
+	$known = dh_letter_known_fields($centre);
+	return array_values(array_unique(array_merge(
+		dh_letter_unfilled($subject, $values, FALSE, $known),
+		dh_letter_unfilled($body, $values, TRUE, $known),
+		dh_letter_unfilled($sms_body, $values, FALSE, $known))));
 }
 
 /**
@@ -1009,6 +1308,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	else
 		$delivery_type = $ret['delivery_type'];
 	$letter_name = $ret['letter_name'];
+	$unfilled = isset($ret['unfilled']) ? $ret['unfilled'] : array();
 	$delivery_type = DELIVERY_TYPE_BOTH;
 
 	$STATUS_CONFIRMED = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key in ('STATUS-CONFIRMED', 'STATUS-EXPECTED')")->fetchCol();
@@ -1100,6 +1400,9 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		$log = "Letter sent (Email: $to) - ".$letter_name." ( Response: ".$res->getId()." )";
 		if ($comment <> '')
 			$log .= " ($comment)";
+		// fields DIPI could not fill (a wrong or missing merge field in the letter) show in the activity
+		if ($unfilled)
+			$log .= " - unfilled: ".implode(' ', $unfilled);
 		logit($centre,  'Letter', $id, $log );
 
 		// Email accepted for this application -> clear any "Email Error" flag from
@@ -1191,13 +1494,19 @@ function dh_sms_billing( $centre, $course, $letter, $applicant, $mobile )
 }
 
 
-function _get_letter_fields( $centre )
+/** DIPI's own merge fields (filled by _dh_letter_values). */
+function _dh_letter_builtin_fields()
 {
-	$FIELDS = array('[FirstName]', '[MiddleName]', '[LastName]', '[RegisteredMobile]', '[Applicantadd]', '[ApplicantCity]', '[ApplicantCountry]', 
+	return array('[FirstName]', '[MiddleName]', '[LastName]', '[RegisteredMobile]', '[Applicantadd]', '[ApplicantCity]', '[ApplicantCountry]', 
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[StartDateNum]', '[EndDateNum]', '[CourseType]', '[CourseDescription]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]',
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[ApplicantID]', '[ApplicantLang]', '[ConfirmationNo]', '[UserInput]',
 		'[RecommendingAT]', '[AreaTeacher]', '[LetterDetailURL]', '[ApplicantType]', '[ATDetails]');
+}
+
+function _get_letter_fields( $centre )
+{
+	$FIELDS = _dh_letter_builtin_fields();
 
 	$q = "select lf_name from dh_letter_fields where lf_center = $centre  and lf_deleted =0  order by lf_name"; //(0, $centre)
 	$custom_fields = db_query($q)->fetchCol();

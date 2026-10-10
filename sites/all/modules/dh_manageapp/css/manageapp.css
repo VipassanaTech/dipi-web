@@ -442,3 +442,36 @@ fieldset#edit-advanced {
 .dh-course-log .cl-sub { color: #777; }
 .dh-course-log .cl-cmt { color: #555; margin-top: 3px; }
 .dh-course-log .cl-cmt:before { content: "Comment: "; color: #999; }
+
+/* Letter merge-field check (inc/letter-check.inc, inc/letters.inc) */
+.lf-fieldset .lf-help { font-size: 13px; color: #555; margin: 4px 0 8px; }
+.lf-fieldset #lf-filter { width: 220px; margin-bottom: 8px; }
+.lf-fieldset .lf-group { margin-bottom: 8px; line-height: 2; }
+.lf-fieldset .lf-title { font-weight: bold; font-size: 13px; }
+.lf-chip { display: inline-block; padding: 0 8px; margin: 0 2px 2px 0; border: 1px solid #b8c7d9; border-radius: 12px;
+	background: #f2f6fb; color: #234; font-size: 13px; line-height: 22px; text-decoration: none; white-space: nowrap; }
+.lf-chip:hover, .lf-chip:focus { background: #dce8f6; text-decoration: none; }
+.letter-check-list { margin: 6px 0 8px 18px; }
+.letter-check-list li { margin-bottom: 3px; }
+.letter-check-list li.lc-err { color: #a94442; }
+.letter-check-list li.lc-warn { color: #8a6d3b; }
+.letter-check-list .lc-part { font-weight: bold; }
+.lc-fix-btn { display: inline-block; margin: 6px 0 2px; padding: 4px 12px; cursor: pointer; border: 1px solid #a94442; border-radius: 4px;
+	background: #fff; color: #a94442; font-weight: bold; text-decoration: none; }
+.lc-fix-btn:hover, .lc-fix-btn:focus { background: #a94442; color: #fff; text-decoration: none; }
+.lc-fix-done { color: #2b7a3d; }
+.lc-badge { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 12px; line-height: 20px; white-space: nowrap; text-decoration: none; }
+.lc-badge-err { background: #f2dede; color: #a94442; border: 1px solid #e4b9b9; }
+.lc-badge-warn { background: #fcf8e3; color: #8a6d3b; border: 1px solid #f0dca4; }
+.lc-ok { color: #2b7a3d; font-size: 12px; }
+.lc-summary { border: 1px solid #e4b9b9; background: #fdf5f5; padding: 6px 12px; margin-bottom: 10px; }
+.lc-summary p { margin: 4px 0; }
+.lc-filter { font-weight: normal; margin-left: 10px; white-space: nowrap; }
+.lc-box { border: 1px solid #ddd; background: #fafafa; padding: 8px 12px; margin: 10px 0; }
+.lc-box h3 { margin-top: 0; }
+.lc-box-err { border-color: #e4b9b9; background: #fdf5f5; color: #a94442; }
+.lc-box-ok { border-color: #b9dcc2; background: #f3faf5; color: #2b7a3d; }
+.lc-ok-line { color: #2b7a3d; margin: 0 0 4px; }
+.lc-preview-form { margin: 8px 0 12px; }
+.lc-preview-form select { max-width: 100%; }
+mark.lc-unfilled { background: #f8d7da; color: #a94442; padding: 0 2px; }
