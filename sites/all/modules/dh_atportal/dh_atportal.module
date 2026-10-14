@@ -3,6 +3,7 @@
 include_once(dirname(__FILE__)."/address-book.inc");
 include_once(dirname(__FILE__)."/schedule.inc");
 include_once(dirname(__FILE__)."/view-courses.inc");
+include_once(dirname(__FILE__)."/acceptance.inc");
 
 
 /**
@@ -25,6 +26,15 @@ function dh_atportal_permission()
 	return $perms;
 }
 
+
+/**
+ * Implements hook_init(): a teacher who still has an acceptance letter to accept is sent
+ * to at-portal/acceptance first (acceptance.inc).
+ */
+function dh_atportal_init()
+{
+	dh_acceptance_gate();
+}
 
 function dh_atportal_menu() 
 {
@@ -197,6 +207,23 @@ function dh_atportal_menu()
            'page callback' => 'at_view_course_applicants',
            'page arguments' => array(2),
            'access arguments' => array('at view courses'),
+           'type' => MENU_CALLBACK);
+
+    // Acceptance letters (acceptance.inc): the letter to accept, my letters, read one letter.
+    $items['at-portal/acceptance'] = array( 'title' => t('Acceptance Letter'),
+           'page callback' => 'dh_acceptance_page',
+           'access arguments' => array('access at portal'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/acceptance/letters'] = array( 'title' => t('My Acceptance Letters'),
+           'page callback' => 'dh_acceptance_letters_page',
+           'access arguments' => array('access at portal'),
+           'type' => MENU_CALLBACK);
+
+    $items['at-portal/acceptance/letter/%/%'] = array( 'title' => t('Acceptance Letter'),
+           'page callback' => 'dh_acceptance_letter_page',
+           'page arguments' => array(3, 4),
+           'access arguments' => array('access at portal'),
            'type' => MENU_CALLBACK);
 
     $items['at-portal/my-course/%at_view_course/seating'] = array( 'title' => t('Seating Plan'),
@@ -477,6 +504,7 @@ function dh_atportal_dashboard()
     'CAT Voting' => 'cat-voting',
     'Create Request for Comments' => 'node/add/request-for-comments',
     'Request for Comments' => 'request-for-comments',
+    'My Acceptance Letters' => 'at-portal/acceptance/letters',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1>';

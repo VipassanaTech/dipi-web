@@ -1,0 +1,27 @@
+/* Teacher acceptance letters (acceptance.inc). */
+.dh-accept-lang { margin: 0 0 14px; }
+.dh-accept-lang a, .dh-accept-lang a.active { background: #fff; color: #2c6e9b; display: inline-block; padding: 4px 16px; margin: 0 6px 6px 0; border: 1px solid #c9d3dc; border-radius: 16px; text-decoration: none; }
+.dh-accept-lang a.dh-on { background: #2c6e9b; border-color: #2c6e9b; color: #fff; }
+.dh-accept-lang a.dh-accept-print { border-style: dashed; }
+.dh-accept-intro { max-width: 820px; padding: 10px 14px; background: #fff8e1; border: 1px solid #f0d78c; border-radius: 6px; font-weight: 400; }
+.dh-accept-done { max-width: 820px; padding: 10px 14px; background: #eaf6ec; border: 1px solid #b7dfbf; border-radius: 6px; }
+.dh-accept-ok { color: #2b7a3d; }
+.dh-letter { max-width: 820px; margin: 12px 0 16px; padding: 20px 26px; background: #fff; border: 1px solid #dfe4e8; border-radius: 6px;
+	font-size: 16px; font-weight: 400; line-height: 1.7; color: #222; }
+.dh-letter[lang="hi"] { font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", sans-serif; font-size: 17px; line-height: 1.9; }
+.dh-letter h2 { margin: 0 0 14px; font-size: 20px; font-weight: bold; line-height: 1.5; text-align: center; }
+.dh-letter .dh-letter-head { text-align: center; }
+.dh-letter h3.dh-letter-sub { margin: 22px 0 10px; font-size: 17px; font-weight: bold; text-align: center; }
+.dh-letter ol, .dh-letter ul { padding-left: 26px; }
+.dh-letter li { margin-bottom: 8px; }
+.dh-accept-form { max-width: 820px; padding: 12px 16px; background: #f5f7f9; border: 1px solid #dfe4e8; border-radius: 6px; }
+.dh-accept-form .form-type-checkbox label { font-size: 16px; font-weight: bold; }
+.dh-accept-logout, .dh-accept-back { margin-top: 14px; }
+@media (max-width: 600px) {
+	.dh-letter { padding: 14px; font-size: 15px; }
+	.dh-letter[lang="hi"] { font-size: 16px; }
+}
+@media print {
+	.dh-accept-lang, .dh-accept-back { display: none; }
+	.dh-letter { max-width: none; border: 0; padding: 0; }
+}
