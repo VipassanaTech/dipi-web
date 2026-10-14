@@ -29,6 +29,8 @@ function dh_acceptance_ui($lang)
 	$ui = array(
 		'en' => array(
 			'intro' => 'Before you continue to the AT Portal, please read this letter carefully and accept it.',
+			'signed' => 'You may already have signed the printed AT Acceptance Letter in the past, and the CT Acceptance Letter if you are a Centre Teacher. This is the digital version of the same letter, to be accepted here once.',
+			'training' => 'As an existing AT, you have already completed the three-step AT training, so the undertaking in this letter to complete it within one year does not apply to you.',
 			'step' => 'Letter @n of @t',
 			'accept' => 'I Accept',
 			'need_tick' => 'Please tick the box to accept the letter.',
@@ -50,6 +52,8 @@ function dh_acceptance_ui($lang)
 		),
 		'hi' => array(
 			'intro' => 'एटी पोर्टल पर आगे बढ़ने से पहले, कृपया यह पत्र ध्यान से पढ़ें और इसे स्वीकार करें।',
+			'signed' => 'हो सकता है कि आपने पहले छपे हुए सहायक आचार्य स्वीकृति पत्र पर, और यदि आप केंद्र आचार्य हैं तो केंद्र आचार्य स्वीकृति पत्र पर भी, हस्ताक्षर किए हों। यह उसी पत्र का डिजिटल रूप है, जिसे यहां एक बार स्वीकार करना है।',
+			'training' => 'आप पहले से सहायक आचार्य हैं और तीन चरणों वाला सहायक आचार्य प्रशिक्षण पूरा कर चुके हैं, इसलिए इस पत्र में इसे एक वर्ष के भीतर पूरा करने का वचन आप पर लागू नहीं होता।',
 			'step' => 'पत्र @n / @t',
 			'accept' => 'मैं स्वीकार करता/करती हूं',
 			'need_tick' => 'पत्र स्वीकार करने के लिए कृपया बॉक्स पर टिक करें।',
@@ -224,9 +228,13 @@ function dh_acceptance_page()
 		$d = _dh_acceptance_doc($doc, 'en');
 	drupal_set_title($names[$doc][$lang]);
 	$out = _dh_acceptance_lang_switch($lang, 'at-portal/acceptance');
-	$out .= '<div class="dh-accept-intro">'.$ui['intro'];
+	$out .= '<div class="dh-accept-intro"><p>'.$ui['intro'];
 	if (count($required) > 1)
 		$out .= ' <b>'.t($ui['step'], array('@n' => array_search($doc, $required) + 1, '@t' => count($required))).'</b>';
+	$out .= '</p><p>'.$ui['signed'].'</p>';
+	// The training undertaking is in the ATAL only (senior teacher's note, 2026-10-14).
+	if ($doc == 'ATAL')
+		$out .= '<p>'.$ui['training'].'</p>';
 	$out .= '</div>';
 	$out .= _dh_acceptance_letter_html($d);
 	$form = drupal_get_form('dh_acceptance_form', $doc, $d->ad_version, $d->ad_lang, $d->ad_ack);

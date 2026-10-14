@@ -25,3 +25,5 @@
 	.dh-accept-lang, .dh-accept-back { display: none; }
 	.dh-letter { max-width: none; border: 0; padding: 0; }
 }
+.dh-accept-intro p { margin: 0 0 6px; }
+.dh-accept-intro p:last-child { margin-bottom: 0; }
