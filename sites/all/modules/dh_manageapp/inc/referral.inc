@@ -1461,7 +1461,7 @@ function dh_referral_results()
                   "<b>Status:</b> "+json.at_status+"<br>"+
                   "<b>Mobile:</b> "+json.at_phone+"<br>"+
                   "<b>Email:</b> "+json.at_email+"<br>"+
-                  "<b>Address:</b> "+json.at_address+"<br>"
+                  "<b>Location:</b> "+json.at_location+"<br>"
                 );
               }
               else

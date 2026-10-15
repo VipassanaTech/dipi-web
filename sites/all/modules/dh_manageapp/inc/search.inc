@@ -1771,7 +1771,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                   "<b>Status:</b> "+json.at_status+"<br>"+
                   "<b>Mobile:</b> "+json.at_phone+"<br>"+
                   "<b>Email:</b> "+json.at_email+"<br>"+
-                  "<b>Address:</b> "+json.at_address+"<br>"
+                  "<b>Location:</b> "+json.at_location+"<br>"
                 );
               }
               else

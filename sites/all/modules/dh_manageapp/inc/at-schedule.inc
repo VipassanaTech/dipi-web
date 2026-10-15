@@ -524,7 +524,7 @@ function dh_manage_at_schedule()
 									"<b>Status:</b> "+json.at_status+"<br>"+
 									"<b>Mobile:</b> "+json.at_phone+"<br>"+
 									"<b>Email:</b> "+json.at_email+"<br>"+
-									"<b>Address:</b> "+json.at_address+"<br>"
+									"<b>Location:</b> "+json.at_location+"<br>"
 								);
 							}
 							else
@@ -1169,7 +1169,7 @@ function dh_assign_teacher()
 									"<b>Status:</b> "+json.at_status+"<br>"+
 									"<b>Mobile:</b> "+json.at_phone+"<br>"+
 									"<b>Email:</b> "+json.at_email+"<br>"+
-									"<b>Address:</b> "+json.at_address+"<br>"
+									"<b>Location:</b> "+json.at_location+"<br>"
 								);
 							}
 							else
@@ -1568,7 +1568,7 @@ function get_at_info ()
 	$out['at_year'] ="";
 	$out['at_phone'] ="";
 	$out['at_email'] ="";
-	$out['at_address'] ="";
+	$out['at_location'] ="";
 
 	if (!is_numeric($at_id))
 	{
@@ -1578,7 +1578,13 @@ function get_at_info ()
 		exit;
 	}
 
-	$r = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'teacher', t_address, t_sat, t_full_t, t_year_appointed, t_mob_phone, t_email, t_status from dh_teacher where t_id=$at_id")->fetchAssoc();
+	// The full address is not sent (senior teachers, 2026-10-15): only city, state and country.
+	$r = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'teacher', t_city, coalesce(s_name, t_state) as 'state', coalesce(c_name, t_country) as 'country',
+		t_sat, t_full_t, t_year_appointed, t_mob_phone, t_email, t_status
+		from dh_teacher
+		left join dh_state on (t_state = s_code and t_country = s_country)
+		left join dh_country on (t_country = c_code)
+		where t_id = :t", array(':t' => $at_id))->fetchAssoc();
 
 	if (!$r)
 	{
@@ -1599,7 +1605,8 @@ function get_at_info ()
 
 	$out['at_phone'] = $r['t_mob_phone'];
 	$out['at_email'] = $r['t_email'];
-	$out['at_address'] = $r['t_address'];
+	// the teacher types their own city, and the popups insert this as HTML
+	$out['at_location'] = check_plain(implode(', ', array_filter(array_map('trim', array($r['t_city'], $r['state'], $r['country'])))));
 	$out['at_status'] = $r['t_status'];
 	
 	drupal_json_output($out);
