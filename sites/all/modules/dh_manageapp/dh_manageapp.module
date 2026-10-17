@@ -3388,6 +3388,12 @@ function dipi_mail_consumer_callback($msg)
         $q = "update dh_bulk_mail set bm_processed=1, bm_updated=:bm_updated, bm_updated_by=:bm_updated_by where bm_id=:bm_id";
         db_query($q, array(':bm_updated' =>$bm_updated, ':bm_updated_by' => $bm_updated_by, ':bm_id' => $data->bulk_mail_id));
       }
+      elseif (db_query("select 1 from dh_bulk_mail_log where bml_bulk_mail=:bm and bml_applicant=:a limit 1",
+        array(':bm' => $data->bulk_mail_id, ':a' => $data->applicant_id))->fetchField())
+      {
+        // Already sent to this applicant for this bulk mail (a message handed back after a dropped
+        // connection): do not send it again, only ack it below. Uses the bml_bulk_mail_applicant index.
+      }
       else
       {
         $app = db_query("select CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as name, concat(ifnull(a_mob_country, '') ,ifnull(a_phone_mobile, '')) as phone, a_email, a_center from dh_applicant where a_id=:a_id", array(':a_id' => $data->applicant_id))->fetchAssoc();
@@ -3443,6 +3449,12 @@ function dipi_mail_consumer($vhost, $queue )
 	$channel->exchange_declare($queue, AMQPExchangeType::DIRECT, false, true, false);
 
 	$channel->queue_bind($queue, $queue);
+
+	// One message at a time: RabbitMQ hands over the next message only after this one is acked.
+	// Without it each consumer was handed a quarter of a whole bulk mail at once; on a large mail
+	// the end of that pile waited over RabbitMQ's 30-minute ack limit, the consumer was dropped,
+	// and its unacked messages were sent again by the others (bulk mail 676, 17 Oct 2026).
+	$channel->basic_qos(0, 1, false);   // prefetch size (no limit), prefetch count 1, per consumer
 
 	$channel->basic_consume($queue, '', false, false, false, false, 'dipi_mail_consumer_callback');
 
