@@ -42,6 +42,7 @@ function dh_show_bulk_mail_schedule()
 
 
   $res = db_query("select bm.*, l_name, uc.name as 'created_by', uu.name as 'updated_by' from dh_bulk_mail bm left join dh_letter l on l.l_id=bm.bm_letter left join users uc on bm_created_by=uc.uid left join users uu on bm_updated_by=uu.uid where l_center=$centre_id and bm_deleted=0 order by bm_id desc");
+  $can_view_letter = dh_letters_access('view');
   $rows = array();
   while( $r = $res->fetchAssoc() )
   {
@@ -54,7 +55,10 @@ function dh_show_bulk_mail_schedule()
       $temp['name'] = $r['bm_name'];
     }
     $temp['count'] = $r['bm_count'];
-    $temp['letter'] = $r['l_name'];
+    // Letter name opens the read-only letter view in a new tab, so the centre team can check what is sent
+    $temp['letter'] = $can_view_letter
+      ? l($r['l_name'], "letters/$centre_id/view/{$r['bm_letter']}", array('attributes' => array('target' => '_blank')))
+      : check_plain($r['l_name']);
     $temp['schedule'] = date('Y-m-d', strtotime($r['bm_schedule_date']));;
     $temp['created_by'] = $r['created_by']."<br>".$r['bm_created'];
     $temp['updated_by'] = $r['updated_by']."<br>".$r['bm_updated'];
