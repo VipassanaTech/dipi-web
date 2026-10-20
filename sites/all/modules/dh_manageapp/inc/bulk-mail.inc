@@ -67,6 +67,8 @@ function dh_show_bulk_mail_schedule()
     {
       // Internal-only key that leaks into older saved criteria; never a filter.
       if ($key === 'bm_id') { continue; }
+      // Older mails saved the language match even when no language was chosen.
+      if ($key === 'lang_discourse_op' && empty($criteria->lang_discourse)) { continue; }
       // Show the course NAME instead of the stored course id (users find the raw
       // id confusing).
       if ($key === 'course' && $value)

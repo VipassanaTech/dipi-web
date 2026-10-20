@@ -70,6 +70,10 @@ function dh_bulk_mail_clean_criteria($criteria) {
       unset($criteria[$key]);
     }
   }
+  // The match (is any of / is none of) always has a value; it means nothing without a language.
+  if (empty($criteria['lang_discourse'])) {
+    unset($criteria['lang_discourse_op']);
+  }
   return json_encode($criteria);
 }
 

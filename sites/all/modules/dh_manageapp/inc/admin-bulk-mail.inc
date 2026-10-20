@@ -131,6 +131,8 @@ function dh_admin_bulk_mail_criteria_html($abm) {
   if ($crit) {
     foreach ($crit as $key => $value) {
       if (in_array($key, array('bm_id', 'abm_centres'), TRUE)) { continue; }
+      // Older blasts saved the language match even when no language was chosen.
+      if ($key === 'lang_discourse_op' && empty($crit->lang_discourse)) { continue; }
       if (is_array($value)) { $value = implode(', ', $value); }
       if (trim((string) $value) === '') { continue; }
       if ($key === 'course') {
