@@ -129,6 +129,14 @@ function dh_atportal_address_book_form($form, &$form_state)
         ),
     );
 
+    // AT: an Active teacher who is not SAT, Full-T or Bhante Teacher (see the filter below)
+    $form['t_at'] = array(
+        '#title' => '&nbsp;Assistant Teacher (AT)',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 9
+    );
+
     $form['t_sat'] = array(
         '#title' => '&nbsp;Senior Assistant Teacher (SAT)',
         '#type' => 'checkbox',
@@ -207,6 +215,21 @@ function dh_atportal_address_book_form($form, &$form_state)
         '#weight' => 18.4
     );
 
+    $form['t_gender_m'] = array(
+        '#title' => '&nbsp;Male',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#prefix' => '<br>',
+        '#weight' => 18.5
+    );
+
+    $form['t_gender_f'] = array(
+        '#title' => '&nbsp;Female',
+        '#type' => 'checkbox',
+        '#default_value' => '0',
+        '#weight' => 18.6
+    );
+
     $form['sub'] = array(
         '#type' => 'submit',
         '#value' => 'Search',
@@ -264,6 +287,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 
     $or_desigation = array();
 
+    if (!empty($values['t_at']))
+        $or_desigation[] = " (t_status = 'Active' and coalesce(t_sat, 0) = 0 and coalesce(t_full_t, 0) = 0 and coalesce(t_bhante, 0) = 0) ";
+
     if (!empty($values['t_sat']))
         $or_desigation[] = " t_sat = 1 ";
 
@@ -304,6 +330,17 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 
     if (!empty($or_status))
         $search_filters .= " AND (" . implode(" OR ", $or_status) . ") ";
+
+    $or_gender = array();
+
+    if (!empty($values['t_gender_m']))
+        $or_gender[] = " t_gender = 'M' ";
+
+    if (!empty($values['t_gender_f']))
+        $or_gender[] = " t_gender = 'F' ";
+
+    if (!empty($or_gender))
+        $search_filters .= " AND (" . implode(" OR ", $or_gender) . ") ";
 
 
 }
@@ -554,8 +591,8 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
                         { data: "t_country", "title" : "Country" },
                         // { data: "t_mob_phone", "title" : "Mobile" },
                         { data: "t_sat", "title" : "SAT" },
-                        { data: "t_ct", "title" : "CT" },
                         { data: "t_full_t", "title" : "FullT" },
+                        { data: "t_ct", "title" : "CT" },
                         { data: "t_cat", "title" : "CAT" },
                         { data: "t_bhante", "title" : "Bhante" },
                     ],
