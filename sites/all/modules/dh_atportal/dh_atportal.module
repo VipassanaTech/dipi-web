@@ -4,6 +4,7 @@ include_once(dirname(__FILE__)."/address-book.inc");
 include_once(dirname(__FILE__)."/schedule.inc");
 include_once(dirname(__FILE__)."/view-courses.inc");
 include_once(dirname(__FILE__)."/acceptance.inc");
+include_once(dirname(__FILE__)."/bio.inc");
 
 
 /**
@@ -77,6 +78,15 @@ function dh_atportal_menu()
 	       'page callback' => 'dh_manage_at',
 	       'page arguments' => array('me'),
 	       'access arguments' => array('access at profile'),
+	       'type' => MENU_CALLBACK);
+
+    // A teacher's photo (bio.inc): 'me' for one's own; a t_id for the AT Book team and for those
+    // who can open the AT Address Book (dh_teacher_photo_access).
+    $items['at-portal/teacher-photo/%'] = array( 'title' => t('Teacher Photo'),
+	       'page callback' => 'dh_teacher_photo_page',
+	       'page arguments' => array(2),
+	       'access callback' => 'dh_teacher_photo_access',
+	       'access arguments' => array(2),
 	       'type' => MENU_CALLBACK);
 
     $items['at-portal/address-book'] = array( 'title' => t('AT Address Book'),
@@ -508,6 +518,8 @@ function dh_atportal_dashboard()
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1>';
+	// Reminder to fill in the bio data from the acceptance letter (bio.inc); never blocks.
+	$out .= dh_teacher_bio_reminder();
 	// Recent AT announcements (dh_manageapp inc/announcements.inc).
 	if (function_exists('dh_announcements_block'))
 		$out .= dh_announcements_block('at', 'at-portal/announcements');

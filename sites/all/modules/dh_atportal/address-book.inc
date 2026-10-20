@@ -65,6 +65,7 @@ function dh_atportal_address_book_form($form, &$form_state)
     drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
     drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
+    drupal_add_css(drupal_get_path('module', 'dh_atportal').'/css/bio.css');   // the photo in an opened row
 
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
@@ -351,7 +352,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
         t_ct,
         t_full_t,
         t_cat,
-        t_bhante
+        t_bhante,
+        (coalesce(t_photo, '') <> '') as has_photo,
+        t_updated
         from dh_teacher
         left join dh_state on (t_state = s_code and t_country = s_country)
         $where";
@@ -375,6 +378,9 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
         $r["t_act_info"] = $act_info[$r["t_id"]]?$act_info[$r["t_id"]]:'';
         $r["t_cat_info"] = $cat_info[$r["t_id"]]?$cat_info[$r["t_id"]]:'';
         $r["t_acat_info"] = $acat_info[$r["t_id"]]?$acat_info[$r["t_id"]]:'';
+        // the teacher's photo (bio.inc), shown on the right when the row is opened
+        $r["photo_url"] = $r["has_photo"] ? url('at-portal/teacher-photo/'.$r['t_id'], array('query' => array('v' => substr(md5((string) $r['t_updated']), 0, 8)))) : '';
+        unset($r["has_photo"], $r["t_updated"]);
 
 
         $data[] = $r;
@@ -389,6 +395,21 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
   $form['a'] = array('#markup' => $out, '#weight' => 101,);
 
 	$js = '
+            // a value for the opened row: empty instead of "null", and safe to put in the page
+            function ab_v ( x ) {
+                return (x === null || x === undefined) ? "" : String(x).replace(/[&<>"]/g, function (c) {
+                    return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c];
+                });
+            }
+            function ab_phone ( cc, ph ) {
+                if (!ph) return "";
+                if (String(ph).charAt(0) == "+") return ab_v(ph);   // already the full international number
+                return ((cc && cc != "0") ? "+" + ab_v(cc) + " " : "") + ab_v(ph);
+            }
+            // one label / value line of the opened row (an empty value stays as an empty line)
+            function ab_row ( label, value ) {
+                return "<tr><td><label>" + label + ":</label></td><td colspan=\"3\">" + value + "</td></tr>";
+            }
             function format ( d ) {
 
             var t_at_appointed = "";
@@ -482,47 +503,32 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
                     "</tr>";
             }
 
-            return "<div class=\"slider\">"+
-                "<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\" style=\"padding-left:50px;\">"+
+            // the photo on the left, the details beside it (option B, 2026-10-15); it is only fetched when a row is opened
+            var photo = d.photo_url
+                ? "<img class=\"dh-ab-photo\" alt=\"\" src=\"" + d.photo_url + "\">"
+                : "<div class=\"dh-ab-nophoto\">No photo</div>";
+
+            return "<div class=\"slider\"><div class=\"dh-ab-detail\">"+
+                photo+
+                "<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">"+
                     t_at_appointed+
                     t_sat_appointed+
                     t_full_t_appointed+
                     t_bt_appointed+
-                    "<tr>"+
-                        "<td><label>Age:</label></td>"+
-                        "<td colspan=\"3\">"+d.age+" years</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>City:</label></td>"+
-                        "<td colspan=\"3\">"+d.t_city+"</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>State:</label></td>"+
-                        "<td colspan=\"3\">"+d.s_name+"</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>Mobile-1:</label></td>"+
-                        "<td colspan=\"3\">\+"+d.t_mob_country+" "+d.t_mob_phone+"</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>Mobile-2:</label></td>"+
-                        "<td colspan=\"3\">\+"+d.t_mob_country_alt+" "+d.t_mob_phone_alt+"</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>Email-1:</label></td>"+
-                        "<td colspan=\"3\">"+d.t_email+"</td>"+
-                    "</tr>"+
-                    "<tr>"+
-                        "<td><label>Email-2:</label></td>"+
-                        "<td colspan=\"3\">"+d.t_email_alt+"</td>"+
-                    "</tr>"+
+                    ab_row("Age", (d.age !== null && d.age !== "") ? ab_v(d.age) + " years" : "")+
+                    ab_row("City", ab_v(d.t_city))+
+                    ab_row("State", ab_v(d.s_name))+
+                    ab_row("Mobile-1", ab_phone(d.t_mob_country, d.t_mob_phone))+
+                    ab_row("Mobile-2", ab_phone(d.t_mob_country_alt, d.t_mob_phone_alt))+
+                    ab_row("Email-1", ab_v(d.t_email))+
+                    ab_row("Email-2", ab_v(d.t_email_alt))+
                     t_ct_info+
                     t_act_info+
                     t_cat_info+
                     t_acat_info+
                     t_responsibility+
                 "</table>"+
-            "</div>";
+            "</div></div>";
         }
 
 		(function ($) {
@@ -637,8 +643,10 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 
 
 	$group = 'Personal Information';
-	$form['#attributes'] = array('class' => array('container-inline'));
-	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false);
+	$form['#attributes'] = array('class' => array('dh-at-profile'));
+	$form[$group] = array('#type' => 'fieldset', '#title' => 'Personal Information',  '#collapsible' => true, '#collapsed' => false, '#weight' => 1);
+	$form['Contact'] = array('#type' => 'fieldset', '#title' => 'Contact', '#weight' => 2);
+	$form['Address'] = array('#type' => 'fieldset', '#title' => 'Address', '#weight' => 3);
   if (user_access('add assistant teacher'))
   {
       $form[$group]['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 1.1,
@@ -669,21 +677,17 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
   }
 
 
-	$form[$group]['t_dob'] = array('#title' => 'Date of Birth', '#type' => 'date_popup', '#size' => '20', '#weight' => 4, 
-		'#default_value' => isset($edit_data['t_dob'])?$edit_data['t_dob']:'', '#date_format' => 'Y-m-d', '#datepicker_options' => array(
-    		'maxDate' => 0, '#required' => 1, 
-    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-100:-10', '#date_label_position' => 'above',
-		'#theme_wrappers' => array('date_popup'), '#suffix' => '');
+	$form[$group]['t_dob'] = dh_teacher_dob_field(isset($edit_data['t_dob']) ? $edit_data['t_dob'] : '', 4);
 
-	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#size' => '150', '#weight' => 5, 
+	$group = 'Address';
+	$form[$group]['t_address'] = array('#title' => 'Address', '#type' => 'textarea', '#rows' => 2, '#weight' => 5, 
 		'#default_value' => isset($edit_data['t_address'])?$edit_data['t_address']:'', '#required' => 1, '#maxlength' => 200);	
-	$form[$group]['t_pincode'] = array('#title' => 'Zip', '#type' => 'textfield', '#size' => '10', '#weight' => 5.2, 
+	$form[$group]['t_pincode'] = array('#title' => 'PIN / Zip code', '#type' => 'textfield', '#size' => '10', '#weight' => 6.3, 
 		'#default_value' => (isset($edit_data['t_pincode']))?$edit_data['t_pincode']:'', '#maxlength' => 10 );
 
 	$country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();	
 	$country_codes['0'] = 'Choose';
-	$form[$group]['t_country'] = array('#title' => 'Country Code', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
+	$form[$group]['t_country'] = array('#title' => 'Country', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
 
 	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
@@ -695,25 +699,39 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
      );
 
 	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
-		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 20 );
+		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 50 );
 
-    $country_codes = db_query("select c_isd_code, CONCAT(c_name,' ','(+',c_isd_code,')') from dh_country order by c_name")->fetchAllKeyed();
-    $country_codes['0'] = 'Choose';
-
-    $form[$group]['t_mob_country'] = array('#title' => 'Country Code 1', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6.3,
-        '#default_value' => isset($edit_data['t_mob_country'])?$edit_data['t_mob_country']:'0', '#required' => 0, );
-	$form[$group]['t_mob_phone'] = array('#title' => 'Mobile 1', '#type' => 'textfield', '#size' => '20', '#weight' => 6.4,
-		'#default_value' => isset($edit_data['t_mob_phone'])?$edit_data['t_mob_phone']:'', '#required' => 0, '#maxlength' => 50 );
-
-    $form[$group]['t_mob_country_alt'] = array('#title' => 'Country Code 2', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6.5,
-        '#default_value' => isset($edit_data['t_mob_country_alt'])?$edit_data['t_mob_country_alt']:'0', '#required' => 0, );
-    $form[$group]['t_mob_phone_alt'] = array('#title' => 'Mobile 2', '#type' => 'textfield', '#size' => '20', '#weight' => 6.6,
-        '#default_value' => isset($edit_data['t_mob_phone_alt'])?$edit_data['t_mob_phone_alt']:'', '#required' => 0, '#maxlength' => 50 );
+    // Mobiles: one field each with a country flag and dial code (as on the schedule site's forms).
+    // The country code is worked out from the number on save (dh_atportal_phone_parse).
+    $group = 'Contact';
+    $home = isset($edit_data['t_country']) ? $edit_data['t_country'] : '';
+    foreach (array('t_mob_phone' => array('Mobile 1', 't_mob_country', 6.4), 't_mob_phone_alt' => array('Mobile 2', 't_mob_country_alt', 6.6)) as $key => $m)
+    {
+        $phone = isset($edit_data[$key]) ? $edit_data[$key] : '';
+        $region = dh_atportal_phone_region($phone, isset($edit_data[$m[1]]) ? $edit_data[$m[1]] : '', $home);
+        $form[$group][$key] = array('#title' => $m[0], '#type' => 'textfield', '#size' => '20', '#weight' => $m[2],
+            '#default_value' => $phone, '#required' => 0, '#maxlength' => 30,
+            '#attributes' => array('class' => array('dh-intl-tel'), 'inputmode' => 'tel', 'data-region' => strtolower($region),
+                'data-region-field' => drupal_html_class('edit-'.$key.'-region')));
+        // the country chosen in the widget, so a number typed without +code is read for that country
+        $form[$group][$key.'_region'] = array('#type' => 'hidden', '#default_value' => $region,
+            '#attributes' => array('id' => drupal_html_class('edit-'.$key.'-region')));
+    }
+    $itl = libraries_get_path('intl-tel-input');
+    drupal_add_css($itl.'/build/css/intlTelInput.min.css');
+    drupal_add_js($itl.'/build/js/intlTelInput.min.js');
+    drupal_add_js(drupal_get_path('module', 'dh_atportal').'/js/phone.js');
+    drupal_add_js(array('dhIntlTel' => array('utils' => base_path().$itl.'/build/js/utils.js')), 'setting');
 
 	$form[$group]['t_email'] = array('#title' => 'Email 1', '#type' => 'textfield', '#size' => '25', '#weight' => 8,
-		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 50 );
+		'#default_value' => isset($edit_data['t_email'])?$edit_data['t_email']:'', '#required' => 0, '#maxlength' => 100 );
     $form[$group]['t_email_alt'] = array('#title' => 'Email 2', '#type' => 'textfield', '#size' => '25', '#weight' => 8.1,
-        '#default_value' => isset($edit_data['t_email_alt'])?$edit_data['t_email_alt']:'', '#required' => 0, '#maxlength' => 50 );
+        '#default_value' => isset($edit_data['t_email_alt'])?$edit_data['t_email_alt']:'', '#required' => 0, '#maxlength' => 100 );
+
+	// Bio data from the AT acceptance letter (bio.inc): marital status, place of birth,
+	// nationality, photo, first course, family, background and service.
+	$bio_id = $add ? 0 : (int) $at_id;
+	dh_teacher_bio_form($form, $bio_id, $edit_data, !$add && (arg(3) == 'me' || $bio_id == dh_teacher_own_id()));
 
 	if (user_access('add assistant teacher'))
 	{
@@ -721,6 +739,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 		$form[$group] = array(
             '#type' => 'fieldset',
             '#title' => 'Role Information',
+            '#weight' => 40,
             '#collapsible' => true,
             '#collapsed' => false,
             '#description' => "<b>In case of direct appointment to SAT, please use AT appointment date same as SAT</b><br><b>In case of direct appointment to Full-T, please use AT and SAT appointment date same as Full-T</b><br><b>Similarly in case of direct appointment from AT to Full-T, please use SAT appointment date same as Full-T</b><br><br>",
@@ -931,6 +950,7 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
             ),
         );
 
+        dh_atportal_role_layout($form[$group]);
 
 	}	
 
@@ -1102,6 +1122,26 @@ function dh_manage_at()
 
 function dh_atportal_profile_validate($form, &$form_state)
 {
+    $in = $form_state['input'];
+    foreach (array('t_email' => 'Email 1', 't_email_alt' => 'Email 2') as $k => $label)
+        if (isset($in[$k]) && trim($in[$k]) !== '' && !valid_email_address(trim($in[$k])))
+            form_set_error($k, t('@f: please enter a valid email address.', array('@f' => $label)));
+    foreach (array('t_mob_phone' => 'Mobile 1', 't_mob_phone_alt' => 'Mobile 2') as $k => $label)
+        if (isset($in[$k]) && trim($in[$k]) !== '')
+        {
+            $p = dh_atportal_phone_parse($in[$k], isset($in[$k.'_region']) ? $in[$k.'_region'] : '');
+            if ($p)
+                $form_state['storage']['phones'][$k] = $p;
+            else
+                form_set_error($k, t('@f: this is not a valid mobile number for the chosen country.', array('@f' => $label)));
+        }
+    if (isset($in['t_dob']) && dh_teacher_dob_value($in['t_dob']) === FALSE)
+        form_set_error('t_dob][day', t('Date of Birth: please choose a day, month and year that make a real date (or leave all three empty).'));
+    // The photo (already cropped by the photo editor in the browser), saved on submit.
+    $photo = file_save_upload('upload_photo', array('file_validate_extensions' => array('png jpg jpeg'), 'file_validate_size' => array(10 * 1024 * 1024)));
+    if ($photo)
+        $form_state['storage']['teacher_photo'] = $photo;
+
     if ($form_state['input']['t_full_t'])
     {
         if($form_state['input']['t_full_t_appointed']['date'] == '')
@@ -1148,20 +1188,31 @@ function dh_atportal_profile_submit($form, &$form_state)
 	// elseif ( arg(2) == 'add')
 	// 	$form_state['redirect'] = 'at-portal/address-book';
 
-	foreach ($form_state['input'] as $key => $value) 
-	{
-		if ( substr($key,0,2) == 't_')
-			$t[$key] = $value;
-	}
+	// Only the fields this person may change. This used to copy every posted t_* key into
+	// dh_teacher, so a crafted POST could set its own t_status, t_code or role flags.
+	$t = array();
+	foreach (dh_atportal_profile_fields(user_access('add assistant teacher')) as $key)
+		if (array_key_exists($key, $form_state['input']))
+			$t[$key] = $form_state['input'][$key];
+	if (user_access('add assistant teacher'))
+		foreach (array('t_sat', 't_full_t', 't_bhante', 't_lc_area', 't_allow_cat_emails', 't_disable_group_emails', 't_ct_centers', 't_act_centers', 't_cat_areas', 't_acat_areas') as $key)
+			if (!isset($t[$key]))
+				$t[$key] = '';
 
 	if ($t['t_email'])
 		$t['t_email'] = trim($t['t_email']);
 
-	if ($t['t_mob_phone'])
-		$t['t_mob_phone'] = trim($t['t_mob_phone']);
+	// mobiles are kept as the full international number (+9198…), with the country code beside it
+	foreach (array('t_mob_phone' => 't_mob_country', 't_mob_phone_alt' => 't_mob_country_alt') as $k => $cc)
+		if (array_key_exists($k, $t))
+		{
+			$t[$k] = trim((string) $t[$k]);
+			if ($t[$k] !== '' && isset($form_state['storage']['phones'][$k]))
+				list($t[$k], $t[$cc]) = $form_state['storage']['phones'][$k];
+		}
 
-	if ($t['t_dob']['date'] == '')
-		$t['t_dob'] = NULL;
+	if (array_key_exists('t_dob', $t))
+		$t['t_dob'] = dh_teacher_dob_value($t['t_dob']);
 
 	if (user_access('add assistant teacher'))
 	{
@@ -1232,6 +1283,11 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 
 
+	// date_popup fields post array('date' => 'Y-m-d'): store the date text, or NULL when empty
+	foreach (array('t_at_appointed', 't_sat_appointed', 't_full_t_appointed', 't_bt_appointed') as $key)
+		if (isset($t[$key]) && is_array($t[$key]))
+			$t[$key] = (isset($t[$key]['date']) && $t[$key]['date'] !== '') ? $t[$key]['date'] : NULL;
+
     $at_id = "";
 	if ( arg(2) == 'edit')
 	{
@@ -1247,6 +1303,11 @@ function dh_atportal_profile_submit($form, &$form_state)
 			$at_id = arg(3);
 		}
 		//drupal_set_message(print_r($t, true));
+		// a field that was never filled and is still empty stays NULL, so the Change Log shows no false change
+		$old = db_query("select * from dh_teacher where t_id = :t", array(':t' => $at_id))->fetchAssoc();
+		foreach ($t as $k => $v)
+			if ($v === '' && $old && array_key_exists($k, $old) && $old[$k] === NULL)
+				$t[$k] = NULL;
 		$t['t_updated_by'] = $user->uid;
 		$t['t_updated'] = date('Y-m-d H:i:s');
 		db_update('dh_teacher')->fields($t)->condition('t_id', $at_id )->execute();
@@ -1349,8 +1410,148 @@ function dh_atportal_profile_submit($form, &$form_state)
     }
 
 
+	// Bio data, family members and photo (bio.inc).
+	if ($at_id && dh_teacher_bio_ready())
+	{
+		dh_teacher_bio_save($at_id, $form_state['input']);
+		if (isset($form_state['input']['family_json']))
+			dh_teacher_family_save($at_id, dh_teacher_family_clean($form_state['input']['family_json']));
+	}
+	if ($at_id && !empty($form_state['storage']['teacher_photo']))
+	{
+		if (!dh_teacher_photo_save($at_id, $form_state['storage']['teacher_photo']))
+			drupal_set_message(t('The photo could not be saved. Please try again.'), 'error');
+		unset($form_state['storage']['teacher_photo']);
+	}
+
 	drupal_set_message(t("Details added/updated successfully"), 'status');
 
+}
+
+/**
+ * The dh_teacher fields the profile form may change: the teacher's own details, plus the
+ * role fields for the AT Book team ('add assistant teacher').
+ */
+function dh_atportal_profile_fields($admin)
+{
+	$own = array('t_dob', 't_address', 't_pincode', 't_country', 't_state', 't_city', 't_mob_country', 't_mob_phone',
+		't_mob_country_alt', 't_mob_phone_alt', 't_email', 't_email_alt', 't_martial_status');
+	if (!$admin)
+		return $own;
+	return array_merge($own, array('t_f_name', 't_l_name', 't_gender', 't_status', 't_code', 't_at_appointed', 't_sat', 't_sat_appointed',
+		't_full_t', 't_full_t_appointed', 't_bhante', 't_bt_appointed', 't_responsibility', 't_comments', 't_lc_area',
+		't_allow_cat_emails', 't_disable_group_emails', 't_ct_centers', 't_act_centers', 't_cat_areas', 't_acat_areas'));
+}
+
+/**
+ * The country a stored mobile belongs to, for the phone widget: from a number written with +code,
+ * else from its saved country code (the teacher's own country when several share that code),
+ * else the teacher's country, else India. An empty field starts on India.
+ */
+function dh_atportal_phone_region($phone, $cc, $home)
+{
+	$util = \libphonenumber\PhoneNumberUtil::getInstance();
+	$phone = trim((string) $phone);
+	$home = strtoupper(trim((string) $home));
+	if ($phone === '')
+		return 'IN';
+	if ($phone[0] == '+')
+	{
+		try
+		{
+			$r = $util->getRegionCodeForNumber($util->parse($phone, NULL));
+			if ($r)
+				return $r;
+		}
+		catch (\Exception $e) {}
+	}
+	if ((int) $cc > 0)
+	{
+		$regions = $util->getRegionCodesForCountryCode((int) $cc);
+		if ($regions)
+			return in_array($home, $regions) ? $home : $regions[0];
+	}
+	return in_array($home, $util->getSupportedRegions()) ? $home : 'IN';
+}
+
+/**
+ * A mobile number as typed, read for the chosen country: array(E.164, country code), or FALSE.
+ * Accepted when libphonenumber calls it valid, or when its length fits a mobile in that country
+ * (new number ranges are not in the library's list yet), the same rule as the schedule site.
+ */
+function dh_atportal_phone_parse($value, $region)
+{
+	$util = \libphonenumber\PhoneNumberUtil::getInstance();
+	$region = preg_match('/^[A-Za-z]{2}$/', (string) $region) ? strtoupper($region) : 'IN';
+	try
+	{
+		$p = $util->parse(trim((string) $value), $region);
+	}
+	catch (\Exception $e)
+	{
+		return FALSE;
+	}
+	if (!$util->isValidNumber($p) && !$util->isPossibleNumberForType($p, \libphonenumber\PhoneNumberType::MOBILE))
+		return FALSE;
+	return array($util->format($p, \libphonenumber\PhoneNumberFormat::E164), (string) $p->getCountryCode());
+}
+
+/**
+ * Lays out the Role Information section (AT Book team) in groups, top to bottom: status and code;
+ * appointments, one row per role with its tick box beside its date; centres and areas; notes;
+ * settings. Field names and ids stay the same, so validation, saving and the page script that
+ * switches the dates on and off are unchanged. The CT and CAT tick boxes and the CAT Area box
+ * are left out: they could not be edited, and saving works them out from the centre and area lists.
+ */
+function dh_atportal_role_layout(&$g)
+{
+	$take = function ($keys) use (&$g) {
+		$out = array();
+		foreach ($keys as $k)
+			if (isset($g[$k]))
+			{
+				$out[$k] = $g[$k];
+				unset($g[$k]);
+			}
+		return $out;
+	};
+	$box = function ($weight, $classes, $heading = '') {
+		$b = array('#type' => 'container', '#weight' => $weight, '#attributes' => array('class' => $classes));
+		if ($heading)
+			$b['head'] = array('#markup' => '<h4>'.$heading.'</h4>', '#weight' => -100);
+		return $b;
+	};
+	unset($g['#description'], $g['t_ct'], $g['t_cat'], $g['t_area']);
+	$g['t_full_t']['#title'] = '&nbsp;Full-T';
+	$g['t_ct_centers']['#title'] = 'Center Teacher for';
+	$g['t_act_centers']['#title'] = 'Assistant to Center Teacher for';
+	$g['t_cat_areas']['#title'] = 'Coordinating Area Teacher for';
+	$g['t_acat_areas']['#title'] = 'Assistant to Coordinating Area Teacher for';
+	$g['t_responsibility']['#rows'] = 3;
+	$g['t_comments']['#rows'] = 3;
+
+	$g['role_main'] = $box(1, array('dh-role-grid', 'dh-role-3')) + $take(array('t_status', 't_code', 't_year_appointed'));
+
+	$g['role_appoint'] = $box(2, array('dh-role-appoint'), 'Appointments');
+	$g['role_appoint']['cols'] = array('#markup' => '<div class="dh-role-row dh-role-cols"><span>Role</span><span>Date appointed</span></div>', '#weight' => -99);
+	$w = 1;
+	foreach (array('t_at_appointed' => 'AT', 't_sat_appointed' => 't_sat', 't_full_t_appointed' => 't_full_t', 't_bt_appointed' => 't_bhante') as $date => $tick)
+	{
+		$row = $box($w++, array('dh-role-row'));
+		if (isset($g[$tick]))
+			$row += $take(array($tick));
+		else
+			$row['name'] = array('#markup' => '<span class="dh-role-name">'.$tick.'</span>', '#weight' => -1);
+		$g['role_appoint']['row'.$w] = $row + $take(array($date));
+	}
+	$g['role_appoint']['note'] = array('#weight' => 10, '#markup' => '<ul class="dh-role-note">'.
+		'<li>In case of direct appointment to SAT, please use AT appointment date same as SAT</li>'.
+		'<li>In case of direct appointment to Full-T, please use AT and SAT appointment date same as Full-T</li>'.
+		'<li>Similarly in case of direct appointment from AT to Full-T, please use SAT appointment date same as Full-T</li></ul>');
+
+	$g['role_places'] = $box(3, array('dh-role-grid'), 'Centres and areas') + $take(array('t_ct_centers', 't_act_centers', 't_cat_areas', 't_acat_areas'));
+	$g['role_notes'] = $box(4, array('dh-role-grid'), 'Notes') + $take(array('t_responsibility', 't_comments'));
+	$g['role_flags'] = $box(5, array('dh-role-flags'), 'Settings') + $take(array('t_lc_area', 't_allow_cat_emails', 't_disable_group_emails'));
 }
 
 

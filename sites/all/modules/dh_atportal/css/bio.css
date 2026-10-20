@@ -1,0 +1,110 @@
+/* Teacher profile (address-book.inc dh_atportal_profile) and bio data (bio.inc). */
+
+/* Two columns inside each section on wide screens, one on phones. */
+form.dh-at-profile fieldset > .fieldset-wrapper,
+form.dh-at-profile fieldset > .panel-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 24px; align-items: start; }
+form.dh-at-profile fieldset > .fieldset-wrapper > .fieldset-description,
+form.dh-at-profile fieldset > .panel-body > .fieldset-description,
+form.dh-at-profile fieldset > .fieldset-wrapper > .form-type-textarea,
+form.dh-at-profile fieldset > .panel-body > .form-type-textarea,
+form.dh-at-profile fieldset > .fieldset-wrapper > .form-type-checkboxes,
+form.dh-at-profile fieldset > .panel-body > .form-type-checkboxes,
+form.dh-at-profile fieldset > .fieldset-wrapper > .form-type-select.form-item-tb-languages,
+form.dh-at-profile fieldset > .panel-body > .form-type-select.form-item-tb-languages,
+form.dh-at-profile fieldset > .fieldset-wrapper > p,
+form.dh-at-profile fieldset > .panel-body > p,
+form.dh-at-profile fieldset > .fieldset-wrapper > .help-block,
+form.dh-at-profile fieldset > .panel-body > .help-block,
+form.dh-at-profile fieldset > .fieldset-wrapper > #dh-family,
+form.dh-at-profile fieldset > .panel-body > #dh-family,
+form.dh-at-profile fieldset > .fieldset-wrapper > table,
+form.dh-at-profile fieldset > .panel-body > table,
+form.dh-at-profile fieldset > .fieldset-wrapper > .table-responsive,
+form.dh-at-profile fieldset > .panel-body > .table-responsive { grid-column: 1 / -1; }
+/* Bootstrap's clearfix :before/:after would take the first and last grid cells */
+form.dh-at-profile fieldset > .panel-body:before,
+form.dh-at-profile fieldset > .panel-body:after { content: none; display: none; }
+/* a collapsed section (Bootstrap collapse) stays hidden */
+form.dh-at-profile fieldset > .panel-body.collapse:not(.in) { display: none; }
+form.dh-at-profile .form-item { margin: 6px 0; }
+form.dh-at-profile .form-item label { display: block; font-weight: 600; margin-bottom: 2px; }
+form.dh-at-profile .form-type-checkbox label { display: inline; }
+form.dh-at-profile input.form-text, form.dh-at-profile select, form.dh-at-profile textarea { max-width: 100%; box-sizing: border-box; }
+form.dh-at-profile input.form-text { width: 100%; }
+form.dh-at-profile textarea { width: 100%; }
+form.dh-at-profile .description { font-size: 13px; color: #666; }
+@media (max-width: 700px) {
+	form.dh-at-profile fieldset > .fieldset-wrapper,
+	form.dh-at-profile fieldset > .panel-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Role Information (AT Book team; dh_atportal_role_layout): groups one below the other */
+form.dh-at-profile #edit-at-role-information > .panel-body { display: block; }
+form.dh-at-profile .dh-role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 24px; align-items: start; }
+form.dh-at-profile .dh-role-grid.dh-role-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+form.dh-at-profile #edit-at-role-information h4 { grid-column: 1 / -1; flex: 0 0 100%; margin: 18px 0 6px; padding-bottom: 4px;
+	font-size: 15px; font-weight: 600; color: #444; border-bottom: 1px solid #e5e5e5; }
+form.dh-at-profile .dh-role-row { display: grid; grid-template-columns: 240px 200px; gap: 0 16px; align-items: center; padding: 3px 0; }
+form.dh-at-profile .dh-role-row .form-item, form.dh-at-profile .dh-role-row .checkbox { margin: 0; }
+form.dh-at-profile .dh-role-cols { font-size: 12px; color: #777; padding: 0 0 2px; }
+form.dh-at-profile .dh-role-cols span:first-child { padding-left: 20px; }
+form.dh-at-profile .dh-role-name { font-weight: 600; padding-left: 20px; }
+/* the column heading names the dates, so each date's own label is for screen readers only */
+form.dh-at-profile .dh-role-row .form-type-date-popup > label { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); }
+form.dh-at-profile .dh-role-note { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #666; }
+form.dh-at-profile .dh-role-flags { display: flex; flex-wrap: wrap; gap: 0 32px; }
+@media (max-width: 700px) {
+	form.dh-at-profile .dh-role-grid, form.dh-at-profile .dh-role-grid.dh-role-3 { grid-template-columns: minmax(0, 1fr); }
+	form.dh-at-profile .dh-role-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* Mobiles: the international telephone widget takes the field's full width (as on the schedule site) */
+form.dh-at-profile .iti { display: block; width: 100%; }
+form.dh-at-profile .iti input.form-text { width: 100%; box-sizing: border-box; }
+
+/* Date of birth: Day / Month / Year dropdowns on one line, sharing the field's width */
+form.dh-at-profile .dh-dob { display: flex; flex-wrap: wrap; gap: 0 8px; margin: 6px 0; }
+form.dh-at-profile .dh-dob > label { flex: 0 0 100%; display: block; font-weight: 600; margin-bottom: 2px; }
+form.dh-at-profile .dh-dob > .form-item { flex: 1 1 0; margin: 0; }
+form.dh-at-profile .dh-dob select { width: 100%; min-width: max-content; }
+
+.dh-bio-status { margin: 8px 0 12px; padding: 8px 12px; background: #fff8e1; border: 1px solid #f0d78c; border-radius: 6px; }
+.dh-bio-status.dh-bio-done { background: #edf7ee; border-color: #b9dcc2; }
+.dh-bio-reminder { margin: 10px 0 16px; padding: 10px 14px; background: #fff8e1; border: 1px solid #f0d78c; border-radius: 6px; font-size: 16px; }
+.dh-bio-reminder a { font-weight: 600; margin-left: 6px; }
+.dh-helpline { display: inline-block; margin-left: 6px; }
+.dh-bio-reminder .dh-helpline a { margin-left: 0; }
+form.dh-at-profile .dh-bio-note { margin: 10px 0 2px; padding: 8px 12px; background: #f4f7f9; border-left: 3px solid #9bb7c9; border-radius: 4px; font-size: 14px; }
+
+/* AT Address Book: an opened row shows the teacher's photo on the left, the details beside it */
+.dh-ab-detail { display: flex; justify-content: flex-start; align-items: flex-start; gap: 20px; padding: 8px 0 8px 50px; }
+img.dh-ab-photo, .dh-ab-nophoto { flex: none; width: 120px; height: 155px; border-radius: 6px; box-sizing: border-box; }
+img.dh-ab-photo { object-fit: cover; border: 1px solid #ccc; }
+.dh-ab-nophoto { display: flex; align-items: center; justify-content: center; border: 1px dashed #bbb; color: #888; font-size: 13px; }
+@media (max-width: 600px) {
+	.dh-ab-detail { gap: 12px; padding-left: 8px; }
+	img.dh-ab-photo, .dh-ab-nophoto { width: 84px; height: 108px; }
+}
+
+/* Photo section: the photo (35x45 proportion, twice the old size) beside the change buttons */
+img.dh-bio-photo { display: block; width: 210px; height: 270px; object-fit: cover; border: 1px solid #ccc; border-radius: 6px; }
+.dh-bio-nophoto { display: flex; align-items: center; justify-content: center; width: 210px; height: 270px; border: 1px dashed #bbb; border-radius: 6px; color: #888; font-style: italic; }
+form.dh-at-profile #edit-photo .dh-bio-photo-wrap { margin: 6px 0; }
+form.dh-at-profile #edit-photo > .panel-body { grid-template-columns: 230px minmax(0, 1fr); align-items: center; }
+@media (max-width: 700px) {
+	form.dh-at-profile #edit-photo > .panel-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+table.dh-family-table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; }
+table.dh-family-table th, table.dh-family-table td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: middle; }
+table.dh-family-table th { background: #f5f5f5; }
+table.dh-family-table input[type=text] { width: 100%; box-sizing: border-box; }
+table.dh-family-table input[type=number] { width: 90px; }
+.dh-family-add { display: inline-block; margin: 2px 0 6px; font-weight: 600; }
+@media (max-width: 700px) {
+	table.dh-family-table thead { display: none; }
+	table.dh-family-table, table.dh-family-table tbody, table.dh-family-table tr, table.dh-family-table td { display: block; width: 100%; box-sizing: border-box; }
+	table.dh-family-table tr { border: 1px solid #ddd; margin-bottom: 8px; }
+	table.dh-family-table td { border: 0; }
+	table.dh-family-table td[data-label]:before { content: attr(data-label); display: block; font-size: 12px; color: #666; }
+}
