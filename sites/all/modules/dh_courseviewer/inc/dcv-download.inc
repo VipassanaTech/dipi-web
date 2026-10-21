@@ -2,8 +2,8 @@
 /**
  * @file
  * The Dipi App download page (/dipi-app) and the APK download (/dipi-app/download),
- * for the people who can use the app (dcv_api_access: centre team with 'access zero day',
- * teachers with 'dcv teacher access').
+ * for the people who can use the app (dcv_api_access: centre team with 'access zero day' and
+ * at least one of the Male / Female permissions, teachers with 'dcv teacher access').
  *
  * The APK is not in git: it sits in the private files folder, private://dipi-app/.
  * A new release = copy its APK there and change dcv_app_release().

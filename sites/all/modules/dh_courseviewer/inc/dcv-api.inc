@@ -107,17 +107,18 @@ function dcv_user_centres() {
 }
 
 /**
- * Access callback for the two download endpoints: centre users ('access zero day')
- * and teachers ('dcv teacher access'). What each may load is narrowed per course by
- * dcv_build_course_list() (the list) and dcv_bundle_scope() / dcv_course_access() (the
- * download).
+ * Access callback for the two download endpoints: centre users ('access zero day' with at
+ * least one of Dipi's gender permissions, see dcv_centre_sides()) and teachers ('dcv teacher
+ * access'). What each may load is narrowed per course by dcv_build_course_list() (the list)
+ * and dcv_bundle_scope() / dcv_course_access() (the download).
  *
  * Teachers have their own permission, separate from the AT Portal's 'at view courses',
  * so the AT course view on the website can be on while the app stays off for teachers.
  * The app needs both on for a teacher (see dcv_teacher_id()).
  */
 function dcv_api_access() {
-  return user_access('access zero day') || user_access('dcv teacher access');
+  return (user_access('access zero day') && dcv_centre_sides())
+    || user_access('dcv teacher access');
 }
 
 /**
@@ -126,6 +127,40 @@ function dcv_api_access() {
  */
 function dcv_scope_centres() {
   return user_access('access zero day') ? dcv_user_centres() : array();
+}
+
+/** The sides Dipi's gender permissions allow (array('M','F'), array('M'), array('F') or array()). Pure. */
+function dcv_gender_sides($male, $female) {
+  $sides = array();
+  if ($male) { $sides[] = 'M'; }
+  if ($female) { $sides[] = 'F'; }
+  return $sides;
+}
+
+/**
+ * A centre user's sides: Dipi's 'access male' / 'access female' ("Access Male / Female
+ * Applications"), which limit the website's applicant pages and lists the same way. With both,
+ * a course of their centre comes whole; with one, only that side; with neither, nothing.
+ * These are the user's effective permissions over all their roles, as the website uses them —
+ * e.g. the AT Portal role itself holds both, so a centre login that is also an AT gets both.
+ */
+function dcv_centre_sides() {
+  return dcv_gender_sides(user_access('access male'), user_access('access female'));
+}
+
+/**
+ * The sides a caller gets of one course: NULL = the whole course (a centre user of its centre
+ * with both genders); else their centre sides (if it is their centre) plus their teacher
+ * sides ($teacher_sides: an array, or FALSE when not a teacher of it), in M, F order —
+ * array() = nothing. Pure.
+ */
+function dcv_course_sides($in_centre, array $centre_sides, $teacher_sides) {
+  if ($in_centre && in_array('M', $centre_sides, TRUE) && in_array('F', $centre_sides, TRUE)) {
+    return NULL;
+  }
+  $sides = $in_centre ? $centre_sides : array();
+  if (is_array($teacher_sides)) { $sides = array_merge($sides, $teacher_sides); }
+  return array_values(array_intersect(array('M', 'F'), $sides));
 }
 
 /**
@@ -190,25 +225,25 @@ function dcv_teacher_sides($tid, $course_id) {
 }
 
 /**
- * What the caller may load of a course: 'full' (a centre user of the course's centre — the
- * centre role wins, as on Dipi's centre pages), the teacher's sides (a non-empty array), or
- * FALSE.
+ * What the caller may load of a course: 'full' (a centre user of the course's centre with
+ * both gender permissions, as on Dipi's centre pages), their sides (a non-empty array: their
+ * centre side and/or their teacher side, see dcv_course_sides()), or FALSE.
  */
 function dcv_course_access($course_id) {
   $course_centre = db_query("select c_center from dh_course where c_id = :c",
     array(':c' => (int) $course_id))->fetchField();
-  if (dcv_centres_allow(dcv_scope_centres(), $course_centre)) {
-    return 'full';
-  }
-  $sides = dcv_teacher_sides(dcv_teacher_id(), $course_id);
+  $sides = dcv_course_sides(dcv_centres_allow(dcv_scope_centres(), $course_centre),
+    dcv_centre_sides(), dcv_teacher_sides(dcv_teacher_id(), $course_id));
+  if ($sides === NULL) { return 'full'; }
   return $sides ? $sides : FALSE;
 }
 
 /**
  * The plans and sides a bundle request gets, or the error message to send. Full access:
- * the requested plans (NULL = the whole course). A teacher: only plans on their sides —
- * none asked (apps before 1.1.4) = all their plans, never the whole course — and every
- * query also limited to their sides' genders.
+ * the requested plans (NULL = the whole course). Limited to sides (a teacher, or a centre
+ * user with only one gender permission): only plans on their sides — none asked (apps before
+ * 1.1.4) = all their plans, never the whole course — and every query also limited to their
+ * sides' genders.
  */
 function dcv_bundle_scope($course_id, $raw) {
   $access = dcv_course_access($course_id);
@@ -229,14 +264,17 @@ function dcv_bundle_scope($course_id, $raw) {
 /**
  * Build the loadable-course list: the running courses of the given centres plus
  * those teacher $teacher_id serves (each listed once).
- * A course in one of the centres lists all its plans; a teacher-only course lists only
- * the plans on the teacher's sides (dcv_teacher_sides()) and is skipped when their sides
- * come to nothing.
+ * A course lists the plans of the caller's sides there (dcv_course_sides(): all of them for a
+ * centre user with both gender permissions; else their centre side and/or teacher side) and
+ * is skipped when their sides come to nothing.
  * $centres is an array of ints, or array('*') for all centres; $teacher_id is a
- * dh_teacher id or FALSE; $today defaults to the real date (tests pass one).
+ * dh_teacher id or FALSE; $today defaults to the real date (tests pass one);
+ * $centre_sides: the caller's sides as a centre user; NULL (default) = the current user's own
+ * dcv_centre_sides(), so a caller that leaves it out never gets more than that user may see.
  * Excludes deleted/cancelled courses. Read-only, parameterized.
  */
-function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
+function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL, $centre_sides = NULL) {
+  if ($centre_sides === NULL) { $centre_sides = dcv_centre_sides(); }
   // Who may see what: centre courses and/or the teacher's own courses.
   $scope = array();
   $args = array();
@@ -266,9 +304,10 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
           order by c_start desc";
   $out = array();
   foreach (db_query($sql, $args) as $r) {
-    // A centre user of the course's centre sees all its plans; a teacher only their sides'
-    // (a served course whose sides come to nothing is not listed).
-    $sides = dcv_centres_allow($centres, (int) $r->c_center) ? NULL : dcv_teacher_sides($teacher_id, (int) $r->c_id);
+    // The caller's sides of this course (NULL = all of it); a course whose sides come to
+    // nothing is not listed.
+    $sides = dcv_course_sides(dcv_centres_allow($centres, (int) $r->c_center), $centre_sides,
+      dcv_teacher_sides($teacher_id, (int) $r->c_id));
     if ($sides !== NULL && !$sides) { continue; }
     $out[] = array(
       'id'         => (int) $r->c_id,
@@ -285,7 +324,7 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL) {
 
 /** GET dcv/courses — courses the logged-in caller may load (centre and/or teacher). */
 function dcv_courses() {
-  $list = dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id());
+  $list = dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id(), NULL, dcv_centre_sides());
   dcv_json('OK', array('courses' => $list));
 }
 
@@ -303,8 +342,7 @@ function dcv_centres_allow($centres, $course_centre) {
 }
 
 /**
- * True if the current user may load this course: a centre user of its centre, or a teacher of
- * it with at least one side.
+ * True if the current user may load at least one side of this course (dcv_course_access()).
  */
 function dcv_user_can_access_course($course_id) {
   return dcv_course_access($course_id) !== FALSE;

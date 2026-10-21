@@ -55,7 +55,7 @@ $plans = dcv_course_plans(COURSE);
 ok(ids($plans) === array('RIGHT', 'LEFT'), 'main: RIGHT then LEFT');
 ok($plans[0]['label'] === 'Male' && $plans[1]['label'] === 'Female', 'main labels');
 ok($plans[0]['students'] === $count['RIGHT'] && $plans[1]['students'] === $count['LEFT'], 'main counts');
-$list = dcv_build_course_list(array(5), FALSE, '2026-10-01');
+$list = dcv_build_course_list(array(5), FALSE, '2026-10-01', array('M', 'F'));
 $mine = array_values(array_filter($list, function ($c) { return $c['id'] === COURSE; }));
 ok(count($mine) === 1 && $mine[0]['plans'] === $plans, 'the course list carries the plans');
 ok(json_encode($mine[0]['plans']) !== FALSE, 'plans JSON-encode');

@@ -125,7 +125,7 @@ function dcv_read_file_bytes($uri) {
 
 /**
  * Full Dipi application view for every attending student (or, with $type 'Sevak', Dhamma
- * server), keyed by id. $sides: a teacher's side limit (dcv_sides_sql).
+ * server), keyed by id. $sides: the caller's side limit (dcv_sides_sql; NULL = whole course).
  * Mirrors dh_application_view (search.inc) field set; grouped JSON; read-only.
  */
 function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = 'Student') {

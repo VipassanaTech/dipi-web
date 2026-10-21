@@ -39,9 +39,10 @@ function dcv_plan_id($gender, $group, $kind) {
 }
 
 /**
- * SQL limiting rows to a teacher's sides (their "Sees": array('M'), array('F') or both) by
- * exact gender, appended to a WHERE; NULL = no limit (centre users). Applicants whose gender
- * is neither M nor F match no side, as on Dipi's AT course view. Pure.
+ * SQL limiting rows to a caller's sides (array('M'), array('F') or both: a teacher's "Sees",
+ * or a centre user's Male / Female permissions) by exact gender, appended to a WHERE;
+ * NULL = no limit (the whole course). Applicants whose gender is neither M nor F match no
+ * side, as on Dipi's AT course view. Pure.
  */
 function dcv_sides_sql($sides) {
   if ($sides === NULL) { return array('', array()); }
@@ -86,7 +87,7 @@ function dcv_plans_sql(array $ids, $kind) {
 /**
  * The course's plans with their student and server counts, in the order the app's plan
  * switcher shows them (main: RIGHT then LEFT; group-wise: by group, then LEFT before RIGHT);
- * only plans with at least one attended student or server. $sides (a teacher's) limits rows
+ * only plans with at least one attended student or server. $sides (dcv_sides_sql) limits rows
  * by exact gender, so only that side's plans and people are counted.
  */
 function dcv_course_plans($course_id, $sides = NULL) {

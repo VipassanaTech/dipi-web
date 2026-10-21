@@ -83,13 +83,13 @@ try {
   ok(ids($t_only) === array(COURSE), 'teacher-only list = just their course');
   ok(array_keys($t_only[0]) === array('id', 'name', 'centre', 'start_date', 'end_date', 'plans'), 'field whitelist unchanged');
   ok(dcv_build_course_list(array(), FALSE, DAY) === array(), 'no centres + no teacher → empty');
-  $c_only = ids(dcv_build_course_list(array(5), FALSE, DAY));
+  $c_only = ids(dcv_build_course_list(array(5), FALSE, DAY, array('M', 'F')));
   ok(in_array(COURSE, $c_only), 'centre user (regression): centre 5 lists the course');
-  $both = ids(dcv_build_course_list(array(5), $tid, DAY));
+  $both = ids(dcv_build_course_list(array(5), $tid, DAY, array('M', 'F')));
   ok(count(array_keys($both, COURSE)) === 1, 'dual role: course listed once');
   ok(count($both) === count($c_only), 'dual role: nothing extra when mapped course is in their centre');
   map_teacher($tid, $other, 'Assisting', 'Confirmed');
-  $both = ids(dcv_build_course_list(array(5), $tid, DAY));
+  $both = ids(dcv_build_course_list(array(5), $tid, DAY, array('M', 'F')));
   ok(in_array($other, $both) && in_array(COURSE, $both), 'dual role: centre courses + mapped course at another centre');
 
   // --- Who the API lets in, and to what --------------------------------------

@@ -140,7 +140,7 @@ try {
   as_user($uid, $name, array($at_rid, $ca_rid));
   ok(dcv_course_access(COURSE) === 'full', 'dual role: the centre role wins');
   ok(dcv_bundle_scope(COURSE, NULL) === array(NULL, NULL), 'dual role: the whole course');
-  ok(listed_plans(dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id(), DAY), COURSE) === array('RIGHT', 'LEFT'), 'dual role: both plans listed');
+  ok(listed_plans(dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id(), DAY, dcv_centre_sides()), COURSE) === array('RIGHT', 'LEFT'), 'dual role: both plans listed');
 
   // --- without the app permission → not a teacher
   as_user($uid, $name, array($at_rid));

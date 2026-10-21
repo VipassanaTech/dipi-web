@@ -15,7 +15,7 @@ ok(function_exists('dcv_build_course_list'), 'dcv_build_course_list defined');
 // test without faking a session).
 // Fixed date (inside the fixture course's 2026-09-30 → 10-03 run) so this stays
 // green after the fixture course ends, instead of depending on today's date.
-$list = dcv_build_course_list(array(5), FALSE, '2026-10-01');
+$list = dcv_build_course_list(array(5), FALSE, '2026-10-01', array('M', 'F'));
 ok(is_array($list), 'course list is array');
 ok(count($list) > 0, 'centre 5 has courses');
 $ids = array();
