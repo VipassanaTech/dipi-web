@@ -168,11 +168,13 @@ function _dh_acceptance_letter_html($d)
 	return '<div class="dh-letter" lang="'.$d->ad_lang.'"><h2>'.check_plain($d->ad_title).'</h2>'.filter_xss_admin($d->ad_body).'</div>';
 }
 
-/* Pages a teacher can open while a letter is pending: the letters, log out, and the first-login password step. */
+/* Pages a teacher can open while a letter is pending: the letters, log out, and the first-login password step.
+   Also the Dipi App's data calls (dcv/...): the app expects data, and a redirect to this web page broke it. */
 function _dh_acceptance_path_open($path, $uid)
 {
 	return $path == 'at-portal/acceptance' || strpos($path, 'at-portal/acceptance/') === 0
-		|| $path == 'user/logout' || strpos($path, 'user/reset/') === 0 || $path == "user/$uid/edit";
+		|| $path == 'user/logout' || strpos($path, 'user/reset/') === 0 || $path == "user/$uid/edit"
+		|| strpos($path, 'dcv/') === 0;
 }
 
 /**
