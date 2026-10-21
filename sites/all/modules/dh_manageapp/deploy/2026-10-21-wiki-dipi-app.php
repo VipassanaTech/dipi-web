@@ -45,7 +45,7 @@ $centre_body = <<<HTML
 
 <h3 id="da-who">1. Who can use it</h3>
 <ul>
-<li><b>Centre team</b>: logins with Zero Day access. They can load any running course of their centre.</li>
+<li><b>Centre team</b>: logins with the role <b>Centre Admin</b>, <b>Data Entry Operator</b> (also the Male and Female ones) or <b>Day Zero User</b>. They can load any running course of their centre. A <b>View Only</b> login cannot use the app.</li>
 <li><b>Teachers</b>: an Active teacher can load the courses they serve as Conducting or Assisting teacher, after you <b>Confirm</b> them on <b>Assign Teachers</b>. They see only the side you set for them there (<b>Sees</b>: Male, Female or Both).</li>
 </ul>
 <p>Log in to the app with the same username and password as on this website.</p>
