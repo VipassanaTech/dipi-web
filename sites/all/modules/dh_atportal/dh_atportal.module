@@ -515,6 +515,7 @@ function dh_atportal_dashboard()
     'Create Request for Comments' => 'node/add/request-for-comments',
     'Request for Comments' => 'request-for-comments',
     'My Acceptance Letters' => 'at-portal/acceptance/letters',
+    'Dipi App (Android)' => 'dipi-app',
 	);
 
 	$out = '<h1>AT Portal Dashboard</h1>';

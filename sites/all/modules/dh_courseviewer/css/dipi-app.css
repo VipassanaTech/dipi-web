@@ -1,0 +1,11 @@
+/* Dipi App download page (/dipi-app) */
+.dipi-app { max-width: 700px; font-size: 16px; line-height: 1.5; }
+.dipi-app-lead { font-size: 17px; margin-bottom: 16px; }
+.dipi-app-box { border: 1px solid #c8dcc8; border-left: 5px solid #3c8d3c; background: #f6fbf6; border-radius: 4px; padding: 16px 18px; margin: 0 0 20px; }
+.dipi-app-name { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
+.dipi-app-meta { color: #555; margin-bottom: 2px; }
+a.dipi-app-button { display: inline-block; margin-top: 12px; padding: 10px 22px; background: #3c8d3c; color: #fff; font-size: 18px; font-weight: bold; border-radius: 4px; text-decoration: none; }
+a.dipi-app-button:hover, a.dipi-app-button:focus { background: #2f7030; color: #fff; text-decoration: none; }
+.dipi-app-missing { margin: 10px 0 0; color: #a94442; font-weight: bold; }
+.dipi-app h3 { margin-top: 20px; }
+.dipi-app ol li { margin-bottom: 6px; }

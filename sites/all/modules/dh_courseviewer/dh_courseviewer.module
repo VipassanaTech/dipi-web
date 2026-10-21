@@ -9,6 +9,7 @@
 include_once(dirname(__FILE__) . "/inc/dcv-api.inc");
 include_once(dirname(__FILE__) . "/inc/dcv-bundle.inc");
 include_once(dirname(__FILE__) . "/inc/dcv-plans.inc");
+include_once(dirname(__FILE__) . "/inc/dcv-download.inc");
 
 /**
  * Implements hook_permission(). Teachers' use of the app has its own switch, apart from
@@ -43,6 +44,18 @@ function dh_courseviewer_menu() {
   $items['dcv/course/%/bundle'] = array(
     'page callback'   => 'dcv_course_bundle',
     'page arguments'  => array(2),
+    'access callback' => 'dcv_api_access',
+    'type'            => MENU_CALLBACK,
+  );
+  // Download page for the app (inc/dcv-download.inc), for the people who can use it.
+  $items['dipi-app'] = array(
+    'title'           => 'Dipi App',
+    'page callback'   => 'dcv_app_page',
+    'access callback' => 'dcv_api_access',
+    'type'            => MENU_CALLBACK,
+  );
+  $items['dipi-app/download'] = array(
+    'page callback'   => 'dcv_app_download',
     'access callback' => 'dcv_api_access',
     'type'            => MENU_CALLBACK,
   );

@@ -45,6 +45,7 @@ function dh_manage_centre()
 		'SMS Report' => 'centre/'.arg(1).'/sms-report' ,
 		'Course Report' => 'centre/'.arg(1).'/course-report',
     'Bulk Mail Schedule' => 'centre/'.arg(1).'/bulk-mail-schedule',
+		'Dipi App (Android)' => 'dipi-app',
 	);
 	$out .= '<ul class="multi-column">';
 	foreach($modules as $key => $val )
