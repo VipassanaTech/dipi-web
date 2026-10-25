@@ -17,16 +17,21 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 
   $at_referral = false;
   $at_id = 0;
+  $at_return = '';
   if(arg(0) == 'at-portal')
   {
     $at_referral = true;
-    $at_id = $at_name = db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '".$user->name."'")->fetchField();
+    $at_id = _dh_referral_at_teacher_id();
+    // Opened from a course's applicant list (details filled in): go back there afterwards.
+    if (!empty($edit_data['s_course']))
+      $at_return = 'at-portal/my-course/'.(int) $edit_data['s_course'].'/applicants';
+    $form['at_return'] = array('#type' => 'value', '#value' => $at_return);
   }
- 	
+
 	if ($center_id)
 		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Center Referral List", "center-referral/".arg(1)).'</h3>');
   elseif($at_referral)
-    $form['b'] = array('#markup' => '<h2>Add Referral</h2>');
+    $form['b'] = array('#markup' => '<h2>Add Referral</h2>'.($at_return ? '<p>'.l(t('← Back to the applicant list'), $at_return).'</p>' : ''));
  	else
  		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Referral List", "referral/".arg(1)).'</h3>');
  	
@@ -248,7 +253,9 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#type' => 'textfield',
 		'#size' => '20',
 		'#weight' => 28, 
-		'#default_value' => $add?'':$city_name,
+		// On "add" a city is there only when the form opens with an application's details
+		// (?aid=): the city's name, or else the city the applicant typed (a_city_str).
+		'#default_value' => $add ? ($city_name <> '' ? $city_name : (isset($edit_data['s_city_str']) ? $edit_data['s_city_str'] : '')) : $city_name,
 		'#description' => isset($edit_data['s_city'])?$edit_data['s_city']:'',
 		'#maxlength' => 100,
 	);
@@ -738,6 +745,11 @@ function dh_referral_form_submit($form, &$form_state)
   else
     $app['s_dob'] = $app['s_dob']['date'];
 
+  // AT Portal form of a teacher: the referring teacher is always the logged-in teacher, not
+  // a posted value. (A login without an Active teacher record keeps choosing from the list.)
+  if (arg(0) == 'at-portal' && ($at_id = _dh_referral_at_teacher_id()))
+    $app_r['r_teacher'] = $at_id;
+
   if ($app_r['r_teacher'] == '')
     $app_r['r_teacher'] = NULL;
 
@@ -869,9 +881,19 @@ function dh_referral_form_submit($form, &$form_state)
 	if (arg(0) == 'center-referral')
 		drupal_goto ('center-referral/'.arg(1));
   elseif (arg(0) == 'at-portal')
-    drupal_goto ('at-portal');
+    drupal_goto (!empty($form_state['values']['at_return']) ? $form_state['values']['at_return'] : 'at-portal');
 	else
 		drupal_goto ('referral/'.arg(1));
+}
+
+/**
+ * The dh_teacher id of the logged-in user when the login is an Active teacher
+ * (user name = t_code.t_gender), else FALSE.
+ */
+function _dh_referral_at_teacher_id()
+{
+  global $user;
+  return db_query("select t_id from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = :name", array(':name' => $user->name))->fetchField();
 }
 
 
@@ -911,10 +933,24 @@ function dh_addedit_referral()
 		$new_row = array();
 		if (isset($_REQUEST['aid']) && ($_REQUEST['aid'] <> '') )
 		{
-			$row = db_query("select a.*, c.c_name as r_course_center, co.c_start as r_course_start, td_id as r_course_type from dh_applicant a left join dh_center c on a.a_center=c.c_id left join dh_course co on a.a_course=co.c_id left join dh_type_detail td on co.c_course_type=td.td_id where a_id='".$_REQUEST['aid']."'")->fetchAssoc();
-			foreach( $row as $k => $v)
-				$new_row[ str_replace("a_", "s_", $k) ] = $v;			
-		} 
+			// Fill in the form from an application. The id must be a number, and on the
+			// AT Portal form the student must be one the teacher may see in their own
+			// courses (the same rule as My Courses: course, side, from Day 1 attended/left).
+			$aid = (string) $_REQUEST['aid'];
+			$allowed = ctype_digit($aid);
+			if ($allowed && arg(0) == 'at-portal')
+				$allowed = function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($aid);
+			$row = $allowed ? db_query("select a.*, c.c_name as r_course_center, co.c_start as r_course_start, td_id as r_course_type from dh_applicant a left join dh_center c on a.a_center=c.c_id left join dh_course co on a.a_course=co.c_id left join dh_type_detail td on co.c_course_type=td.td_id where a_id = :aid", array(':aid' => $aid))->fetchAssoc() : FALSE;
+			if ($row)
+			{
+				foreach( $row as $k => $v)
+					$new_row[ str_replace("a_", "s_", $k) ] = $v;
+			}
+			elseif (arg(0) == 'at-portal')
+				drupal_set_message(t('Details can be filled in only for a student of your own courses. You can type the details below.'), 'warning');
+			else
+				drupal_set_message(t('The student details could not be filled in. You can type the details below.'), 'warning');
+		}
 
 		return drupal_get_form('dh_referral_form', $new_row);
 	}		

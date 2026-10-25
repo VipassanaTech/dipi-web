@@ -857,6 +857,13 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	else
 		$action = '';
 		//$action = 'return "No access"';
+
+	// AT Portal list (read-only): the only action is "Add Referral". It opens the teacher's
+	// own referral form with this student's details filled in; that form checks the student
+	// is in one of the teacher's courses (dh_addedit_referral).
+	if ($read_only)
+		$action = user_access('add referral list') ? 'Add Referral' : '';
+	$referral_add_url = $read_only ? '/at-portal/referral/add' : '/referral/'.arg(1).'/add';
 	$can_add_review = user_access('add applicant review') ? 1 : 0;
 
 
@@ -1581,7 +1588,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        var row = table.row( tr );
 			        var id = row.data().aid;
 					
-					window.location.href = "/referral/'.arg(1).'/add?aid="+id;					
+					window.location.href = "'.$referral_add_url.'?aid="+id;					
 				}
 				function add_center_referral( s )
 				{
