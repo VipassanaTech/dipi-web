@@ -109,9 +109,13 @@ function dh_patrika_permission()
 }
 
 
+// Menu loaders run BEFORE Drupal's access check, so they must never put the
+// URL segment into SQL text: digits only, passed as a placeholder.
 function patrika_id_load( $id )
 {
-	$res = db_query("select p_id from dh_patrika where p_id='$id'")->fetchField();
+	if ( !ctype_digit((string) $id) )
+		return false;
+	$res = db_query("select p_id from dh_patrika where p_id=:id", array(':id' => $id))->fetchField();
 	if ($res <> $id)
 		return false;
 	return $id;
@@ -119,7 +123,9 @@ function patrika_id_load( $id )
 
 function payment_id_load( $id )
 {
-	$res = db_query("select pp_id from dh_patrika_payment where pp_id='$id'")->fetchField();
+	if ( !ctype_digit((string) $id) )
+		return false;
+	$res = db_query("select pp_id from dh_patrika_payment where pp_id=:id", array(':id' => $id))->fetchField();
 	if ($res <> $id)
 		return false;
 	return $id;
