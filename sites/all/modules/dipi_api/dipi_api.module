@@ -775,7 +775,9 @@ function _api_courses_get( $centre, $lastupdated )
     if (!$lastupdated)
       return array('Error' => 'Invalid hours');
 
-    if (!$centre)
+    // Services does NOT enforce the declared 'int' arg type, so check it here:
+    // $centre goes into the SQL below and must be digits only.
+    if (!$centre || !ctype_digit((string) $centre))
       return array('Error' => 'Invalid Centre');
 
     $last = date("YmdHi", strtotime("-$lastupdated hours"));
@@ -810,10 +812,12 @@ function log_app( $data )
 function _api_post_application( $centre, $course, $data )
 {
     log_app( "Centre: $centre, Course: $course, D: ".print_r($data, true) );
-    if (!$centre)
+    // Services does NOT enforce the declared 'int' arg types; both ids are used
+    // in SQL text further down, so they must be digits only.
+    if (!$centre || !ctype_digit((string) $centre))
       return array( "Result" => "Error", 'Message' => 'Invalid Centre');
 
-    if (!$course)
+    if (!$course || !ctype_digit((string) $course))
       return array( "Result" => "Error", "Message" => 'Invalid Course');
 
     if (!$data)
@@ -2721,11 +2725,13 @@ function _api_cities_get( $lastupdated )
 
 function _api_application_status($appid)
 {
-    if (!$appid)
+    // One id or a comma-separated list of ids; digits only, passed as a placeholder.
+    if (!$appid || !preg_match('/^\d+(\s*,\s*\d+)*$/', (string) $appid))
       return array('Error' => 'Invalid AppID');
+    $ids = preg_split('/\s*,\s*/', trim($appid));
 
-    $q = "select a_id as 'ID', a_status as 'Status', CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Name', a_conf_no as 'ConfNo', c_name as 'CourseName'  from dh_applicant left join dh_course on (a_course=c_id) where  a_id in ($appid)";
-    $res = db_query($q);
+    $q = "select a_id as 'ID', a_status as 'Status', CONCAT_WS(' ', NULLIF(TRIM(a_f_name),''), NULLIF(TRIM(a_m_name),''), NULLIF(TRIM(a_l_name),'')) as 'Name', a_conf_no as 'ConfNo', c_name as 'CourseName'  from dh_applicant left join dh_course on (a_course=c_id) where  a_id in (:ids)";
+    $res = db_query($q, array(':ids' => $ids));
 
     $rows = array();
     while($r = $res->fetchAssoc())
