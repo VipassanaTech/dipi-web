@@ -2751,7 +2751,10 @@ function dh_app_update_attended()
 		exit;				
 	}
 
-	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and a_gender='$gender' and  aa_section='".$fields['aa_section']."' and aa_acco='".$fields['aa_acco']."' and aa_applicant <> '$app_id'")->fetchField();
+	// Request values go in as placeholders, never into the SQL text (SQL injection fix).
+	// (string) keeps a missing parameter comparing as '' exactly as before.
+	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and aa_section=:section and aa_acco=:acco and aa_applicant <> :app",
+		array(':course' => $course_id, ':gender' => $gender, ':section' => (string) $fields['aa_section'], ':acco' => (string) $fields['aa_acco'], ':app' => $app_id))->fetchField();
 	if ($check_id > 0 && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
 		$out['status'] = false; 
@@ -2760,7 +2763,8 @@ function dh_app_update_attended()
 		exit;		
 	}
 
-	$lv_check = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=$course_id and a_gender='$gender' and ((aa_laundry='".$fields['aa_laundry']."' and aa_laundry <> '') or (aa_valuable='".$fields['aa_valuable']."' and aa_valuable <> '')) and aa_applicant <> '$app_id'")->fetchField();
+	$lv_check = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and ((aa_laundry=:laundry and aa_laundry <> '') or (aa_valuable=:valuable and aa_valuable <> '')) and aa_applicant <> :app",
+		array(':course' => $course_id, ':gender' => $gender, ':laundry' => (string) $fields['aa_laundry'], ':valuable' => (string) $fields['aa_valuable'], ':app' => $app_id))->fetchField();
 	if ($lv_check > 0 && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
 		$out['status'] = false; 
