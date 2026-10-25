@@ -312,6 +312,11 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 
 
 
+	$form[$group]['r_listed_hint'] = array(
+		'#markup' => '<div class="ref-listed-hint">'.t('Listed for: tick at least one').' <span class="form-required" title="'.t('This field is required.').'">*</span></div>',
+		'#weight' => 12.9,
+	);
+
 	$form[$group]['r_listed_10d'] = array(
 		'#title' => '&nbsp;10-Day',
 		'#type' => 'checkbox',
@@ -691,6 +696,11 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		.form-item.form-item-r-course-center.form-type-textfield.form-group, .form-item-r-special {
     clear: left;
 		}
+		#dh-referral-form .ref-listed-hint {
+			display: block;
+			margin: 0 0 6px;
+			font-weight: 600;
+		}
 	';
 
 	drupal_add_js($js, 'inline');
@@ -713,6 +723,16 @@ function dh_referral_form_validate($form, &$form_state)
 
   if($end_date > $date_after_2_years)
     form_set_error('r_end', t('Referral end date can not be greater then 2 years from now'));
+
+  // At least one "listed for" course type. A referral with none never shows on any
+  // application: the referral flag in the search list appears only for a ticked type.
+  $listed = FALSE;
+  foreach (array('r_listed_10d', 'r_listed_stp', 'r_listed_spl', 'r_listed_20d', 'r_listed_30d', 'r_listed_45d',
+      'r_listed_60d', 'r_listed_tsc', 'r_listed_10d_seva', 'r_listed_lc_seva', 'r_listed_longseva') as $k)
+    if (!empty($form_state['values'][$k]))
+      $listed = TRUE;
+  if (!$listed)
+    form_set_error('r_listed_10d', t('Referral Information: tick at least one course type (10-Day, STP, 10D-SPL, ...).'));
 
   // ID numbers: the real number or nothing. A placeholder ("NO", "-", "NIL",
   // "ADHAR CARD") or a masked number would match every applicant who typed the
@@ -940,11 +960,23 @@ function dh_addedit_referral()
 			$allowed = ctype_digit($aid);
 			if ($allowed && arg(0) == 'at-portal')
 				$allowed = function_exists('_at_view_applicant_in_my_courses') && _at_view_applicant_in_my_courses($aid);
-			$row = $allowed ? db_query("select a.*, c.c_name as r_course_center, co.c_start as r_course_start, td_id as r_course_type from dh_applicant a left join dh_center c on a.a_center=c.c_id left join dh_course co on a.a_course=co.c_id left join dh_type_detail td on co.c_course_type=td.td_id where a_id = :aid", array(':aid' => $aid))->fetchAssoc() : FALSE;
+			$row = $allowed ? db_query("select a.*, c.c_name as r_course_center, co.c_start as r_course_start, td_id as r_course_type,
+					ac.ac_teen as sci_teen, ac.ac_10d as sci_10d, ac.ac_stp as sci_stp, ac.ac_spl as sci_spl, ac.ac_20d as sci_20d,
+					ac.ac_30d as sci_30d, ac.ac_45d as sci_45d, ac.ac_60d as sci_60d, ac.ac_tsc as sci_tsc, ac.ac_service as sci_service
+				from dh_applicant a left join dh_center c on a.a_center=c.c_id left join dh_course co on a.a_course=co.c_id left join dh_type_detail td on co.c_course_type=td.td_id
+				left join dh_applicant_course ac on ac.ac_applicant = a.a_id
+				where a_id = :aid limit 1", array(':aid' => $aid))->fetchAssoc() : FALSE;
 			if ($row)
 			{
 				foreach( $row as $k => $v)
 					$new_row[ str_replace("a_", "s_", $k) ] = $v;
+				// Course Information: the application's course counts, each only when it fits its box
+				// (some applications hold impossible numbers such as 32767); else the box stays 0.
+				$count_box = array('sci_teen' => 3, 'sci_10d' => 3, 'sci_stp' => 2, 'sci_spl' => 2, 'sci_20d' => 2,
+					'sci_30d' => 2, 'sci_45d' => 2, 'sci_60d' => 2, 'sci_tsc' => 2, 'sci_service' => 3);
+				foreach ($count_box as $k => $len)
+					if (!ctype_digit((string) $new_row[$k]) || strlen((string) $new_row[$k]) > $len)
+						unset($new_row[$k]);
 			}
 			elseif (arg(0) == 'at-portal')
 				drupal_set_message(t('Details can be filled in only for a student of your own courses. You can type the details below.'), 'warning');
