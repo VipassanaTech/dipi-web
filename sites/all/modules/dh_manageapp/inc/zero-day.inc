@@ -1135,8 +1135,9 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'langs' => 'Languages', 'comments' => 'Comments');
 	$ncol = count($cols);
 
-	$out .= '<div class="header-teacher"><div class="title">Teacher List</div>'.
+	$title = '<div class="header-teacher"><div class="title">Teacher List</div>'.
 		'<div class="title-head">'.check_plain($course_name).'</div></div>';
+	$out .= $title;
 
 	// Screen-only toolbar: seniority/seating sort toggle + column hide/show.
 	if (!$is_pdf)
@@ -1178,7 +1179,9 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 				$at = isset($teacher[$g][$group]) ? $teacher[$g][$group] : array('t_name' => '', 't_code' => '');
 				$at_name = trim($at['t_name']) !== '' ? check_plain(dh_day0_case($at['t_name'])).' ['.check_plain($at['t_code']).']' : '(unassigned)';
 
-				$out .= '<div class="tl-block'.$brk.'"><div class="tl-scroll"><table class="table-teacher-list"><colgroup>';
+				// Every group after the first starts with the list title again (the first
+				// one has it at the top of the page), so each printed group is labelled.
+				$out .= '<div class="tl-block'.$brk.'">'.($brk ? $title : '').'<div class="tl-scroll"><table class="table-teacher-list"><colgroup>';
 				foreach ($cols as $c)
 					$out .= '<col class="'.$c[1].'">';
 				$out .= '</colgroup><thead>';
@@ -1367,8 +1370,9 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 	$toggle = array('cell' => 'Cell', 'dining' => 'Dining');
 	$ncol = count($cols);
 
-	$out .= '<div class="header-manager"><div class="title">Manager List</div>'.
+	$title = '<div class="header-manager"><div class="title">Manager List</div>'.
 		'<div class="title-head">'.check_plain($course_name).'</div></div>';
+	$out .= $title;
 
 	// Screen-only toolbar: column hide/show (e.g. Cell, for centres without cells).
 	if (!$is_pdf)
@@ -1391,7 +1395,9 @@ function dh_generate_manager_list($centre, $course, $pdf = '')
 		$brk = $first_block ? '' : ' ml-break';
 		$first_block = false;
 
-		$out .= '<div class="ml-block'.$brk.'"><div class="ml-scroll"><table class="table-manager-list"><colgroup>';
+		// The second section (Female) starts with the list title again (the first one
+		// has it at the top of the page), so each printed section is labelled.
+		$out .= '<div class="ml-block'.$brk.'">'.($brk ? $title : '').'<div class="ml-scroll"><table class="table-manager-list"><colgroup>';
 		foreach ($cols as $c)
 			$out .= '<col class="'.$c[1].'">';
 		$out .= '</colgroup><thead>';
@@ -3633,7 +3639,9 @@ function dh_zero_day_list($centre, $course, $pdf = '')
 			$brk = $first_block ? '' : ' day0-break';
 			$first_block = false;
 
-			$out .= '<div class="day0-block'.$brk.'"><div class="day0-scroll"><table class="table-day0-list"><colgroup>';
+			// Every section after the first starts with the list title again (the first
+			// one has it at the top of the page), so each printed section is labelled.
+			$out .= '<div class="day0-block'.$brk.'">'.($brk ? $title : '').'<div class="day0-scroll"><table class="table-day0-list"><colgroup>';
 			foreach ($cols as $key => $c)
 				$out .= '<col class="'.$c[1].' d0-'.$key.'">';
 			$out .= '</colgroup><thead>';
