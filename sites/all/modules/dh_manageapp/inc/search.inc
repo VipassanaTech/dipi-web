@@ -2323,6 +2323,7 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
           $("#edit-app-status").select2();
           $("#edit-lang-discourse").select2({ placeholder: "Choose language(s)", allowClear: true, width: "260px" });
           $("#edit-state").select2({ placeholder: "Choose state(s)", allowClear: true, width: "220px" });
+          $("#edit-letters").select2({ width: "100%" });   // Custom Letter to Send: type to find a letter
           var STATES = '.drupal_json_encode($states_by_country).';
           var curState = '.drupal_json_encode($cur_state).';
           function fillStates(cc, sel){
