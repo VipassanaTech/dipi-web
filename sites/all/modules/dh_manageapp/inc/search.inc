@@ -2150,8 +2150,27 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		if ( $centre_id <> '' )
 			$centre_append = ' and c_center='.$centre_id.' ';
 		$q = "select c_id, c_name from dh_course where c_start >= '$max_old_courses' $centre_append and c_deleted=0 order by c_start asc";
-		$courses = db_query($q)->fetchAllKeyed();
+		$courses = $admin_mode ? array() : db_query($q)->fetchAllKeyed();
 		$courses[''] = 'Choose';
+
+		// Admin bulk email: a course can be picked only when exactly ONE centre is chosen,
+		// from that centre's courses. Every centre's courses go to the page as data and the
+		// page script fills the Course box (disabled for no centre or 2+ centres).
+		$abm_courses_by_centre = array();
+		$abm_one_centre = '';
+		if ($admin_mode) {
+			foreach (db_query("select c_id, c_name, c_center from dh_course where c_start >= :d and c_deleted=0 order by c_start asc", array(':d' => $max_old_courses)) as $cr) {
+				$abm_courses_by_centre[$cr->c_center][] = array($cr->c_id, $cr->c_name);
+			}
+			$abm_sel = array();
+			if (isset($form_state['storage']['abm_centres']) && is_array($form_state['storage']['abm_centres'])) { $abm_sel = $form_state['storage']['abm_centres']; }
+			elseif ($update_bm && isset($edit_data['abm_centres']) && is_array($edit_data['abm_centres'])) { $abm_sel = $edit_data['abm_centres']; }
+			$abm_sel = array_values(array_filter(array_map('intval', $abm_sel)));
+			$abm_one_centre = (count($abm_sel) == 1) ? (string) $abm_sel[0] : '';
+			if ($abm_one_centre !== '' && isset($abm_courses_by_centre[$abm_one_centre])) {
+				foreach ($abm_courses_by_centre[$abm_one_centre] as $cr) { $courses[$cr[0]] = $cr[1]; }
+			}
+		}
 
 		$q = "select c_code, c_name from dh_country order by c_name";
 		$countries = db_query($q)->fetchAllKeyed();
@@ -2193,6 +2212,14 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			);
 		}
 		$form['course'] = array('#title' => 'Course', '#type' => 'select','#default_value' => $update_bm?$edit_data['course']:'', '#options' => $courses, '#weight' => 1);
+		if ($admin_mode) {
+			// The page script changes the options, so the posted course is checked in
+			// dh_manageapp_search_form_validate() instead of against #options.
+			$form['course']['#validated'] = TRUE;
+			$form['course']['#description'] = '<span class="abm-course-hint"' . ($abm_one_centre !== '' ? ' style="display:none"' : '') . '>Choose one centre to pick a course.</span>';
+			$form['course']['#smart_description'] = FALSE;   // show the hint under the box, not as a tooltip
+			if ($abm_one_centre === '') { $form['course']['#attributes'] = array('disabled' => 'disabled'); }
+		}
 		/*$form['db_type'] = array('#title' => 'DB Type', '#type' => 'radios', '#options' => array('s' => 'Student', 'a' => 'Applicant' ), '#default_value' => 'a',  '#weight' => 2);*/
 		$form['f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['f_name']:'', '#weight' => 3);
 		$form['l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['l_name']:'', '#weight' => 4 );
@@ -2313,11 +2340,30 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 		if ($update_bm && isset($edit_data['state']) && is_array($edit_data['state'])) { $cur_state = array_values($edit_data['state']); }
 		elseif (isset($form_state['storage']['state']) && is_array($form_state['storage']['state'])) { $cur_state = array_values($form_state['storage']['state']); }
 
+		// Admin bulk email: Course shows the courses of the one chosen centre; it is
+		// disabled (and emptied) for no centre or 2+ centres. Changing centres clears it.
+		$abm_js = '';
+		if ($admin_mode) {
+			$abm_js = '
+					var ABM_COURSES = ' . drupal_json_encode($abm_courses_by_centre) . ';
+					function abmCourses(keep) {
+						var cs = $("#edit-abm-centres").val() || [], $c = $("#edit-course"), cur = keep ? ($c.val() || "") : "";
+						$c.empty().append(new Option("Choose", "", false, cur === ""));
+						if (cs.length === 1) {
+							(ABM_COURSES[cs[0]] || []).forEach(function (r) { $c.append(new Option(r[1], r[0], false, String(r[0]) === cur)); });
+						}
+						$c.prop("disabled", cs.length !== 1).trigger("change.select2");
+						$(".abm-course-hint").toggle(cs.length !== 1);
+					}
+					abmCourses(true);
+					$("#edit-abm-centres").on("change", function () { abmCourses(false); });';
+		}
+
 		$js = '
 			(function ($) {
 				$(document).ready(function(){
 					$("#edit-course").select2();
-					if ($("#edit-abm-centres").length) { $("#edit-abm-centres").select2({ placeholder: "All centres", allowClear: true, width: "260px" }); }
+					if ($("#edit-abm-centres").length) { $("#edit-abm-centres").select2({ placeholder: "All centres", allowClear: true, width: "260px" }); }'.$abm_js.'
 					$("#edit-country").select2({ placeholder: "Choose country(ies)", allowClear: true, width: "220px" });
           $("#edit-nationality").select2({ placeholder: "Choose nationality(ies)", allowClear: true, width: "220px" });
           $("#edit-app-status").select2();
@@ -2442,6 +2488,20 @@ function dh_manageapp_search_form_validate($form, &$form_state)
   	if ( $values['phone_home'] <> '' ) $count++;
   	if ( $count == 0 && !$values['bulk-mail'])
   		form_set_error('course', 'Please select a Course or Name or Conf No or Email');
+	}
+	// Admin bulk email: a course only with exactly one chosen centre, and only that centre's course.
+	// Checks the POSTED values, which the audience is built from (submit stores the input). A
+	// disabled Course box is not posted; $values would then fall back to the saved course.
+	$abm_in = $form_state['input'];
+	$abm_course = (isset($abm_in['course']) && is_scalar($abm_in['course'])) ? (string) $abm_in['course'] : '';
+	if ($admin_mode && (isset($abm_in['course']) && !is_scalar($abm_in['course']) || $abm_course !== '')) {
+		$abm_sel = (isset($abm_in['abm_centres']) && is_array($abm_in['abm_centres'])) ? array_values(array_filter(array_map('intval', $abm_in['abm_centres']))) : array();
+		if (count($abm_sel) != 1) {
+			form_set_error('course', 'Course: choose exactly one centre to pick a course, or leave Course empty.');
+		}
+		elseif (!ctype_digit($abm_course) || !db_query("select 1 from dh_course where c_id = :c and c_center = :ce and c_deleted = 0", array(':c' => $abm_course, ':ce' => $abm_sel[0]))->fetchField()) {
+			form_set_error('course', 'Course: this is not a course of the chosen centre.');
+		}
 	}
 
     if($values['bulk-mail'])
