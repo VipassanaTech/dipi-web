@@ -1345,6 +1345,7 @@ function finalize_course( $course_id )
 			if ($student['s_photo'] == '')
 				unset($student['s_photo']);
 
+			dh_finalize_fit('dh_student', $student, $r['a_id']);
 			if ($sid > 0 )
 			{
 				db_update('dh_student')->fields($student)->condition('s_id', $sid)->execute();
@@ -1393,6 +1394,7 @@ function finalize_course( $course_id )
 			$student_sci['sci_first_location_str'] = $r['ac_first_teacher_str'];
 			$student_sci['sci_first_teacher_str'] = $r['ac_first_teacher_str'];
 
+			dh_finalize_fit('dh_student_course_input', $student_sci, $r['a_id']);
 			if ($sid_sci > 0 )
 				db_update('dh_student_course_input')->fields($student_sci)->condition('sci_id', $sid_sci)->execute();
 			else
@@ -1445,6 +1447,7 @@ function finalize_course( $course_id )
 
 			}
 
+			dh_finalize_fit('dh_student_course', $student_c, $r['a_id']);
 			if ($sid_c > 0 )
 				db_update('dh_student_course')->fields($student_c)->condition('sc_id', $sid_c)->execute();
 			else
@@ -1458,13 +1461,35 @@ function finalize_course( $course_id )
 		}
 		catch(Throwable $t)
 		{
-			watchdog("Finalization Error", $t->getTraceAsString());
+			watchdog("Finalization Error", "Applicant @a, course @c: @m\n@trace", array('@a' => $r['a_id'], '@c' => $course_id, '@m' => $t->getMessage(), '@trace' => $t->getTraceAsString()));
 		}
 
 	}
 	$res['status'] = true;
 	$res['msg'] = 'OK';
-	return $res;		
+	return $res;
+}
+
+/* Text longer than its column makes the database refuse the whole row, and finalize then
+   skips that student. The student columns are as wide as the application columns they copy
+   from (deploy/2026-10-29-widen-student-columns.php), so this should not happen; if a column
+   is ever too short again, cut that one value to fit and log it rather than lose the student. */
+function dh_finalize_fit($table, &$row, $a_id)
+{
+	static $max = array();
+	if (!isset($max[$table]))
+		$max[$table] = db_query("select column_name, character_maximum_length from information_schema.columns where table_schema = database() and table_name = :t and data_type in ('varchar', 'char')", array(':t' => $table))->fetchAllKeyed();
+	foreach ($row as $col => $val)
+	{
+		if (!is_string($val) || !isset($max[$table][$col]))
+			continue;
+		$len = drupal_strlen($val);
+		if ($len > $max[$table][$col])
+		{
+			$row[$col] = truncate_utf8($val, $max[$table][$col]);
+			watchdog('Finalization', 'Applicant @a: @t.@c was @n characters, cut to @m to fit.', array('@a' => $a_id, '@t' => $table, '@c' => $col, '@n' => $len, '@m' => $max[$table][$col]), WATCHDOG_WARNING);
+		}
+	}
 }
 
 

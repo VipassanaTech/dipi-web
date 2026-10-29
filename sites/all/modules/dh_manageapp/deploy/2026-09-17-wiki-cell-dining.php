@@ -10,6 +10,7 @@
 // Idempotent: updates the page if it already exists (matched by title in book 10),
 // sets the alias, and adds the root-TOC link once.
 // ============================================================================
+if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
 require_once DRUPAL_ROOT.'/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
