@@ -16,6 +16,9 @@ function dipi_api_permission() {
     $perms['at portal access'] = array('title' => t('Access AT Portal APIs'));
     $perms['zero day by conf num access'] = array('title' => t('Access Zero Day by Conf Num'));
     $perms['mitra upakram'] = array('title' => t('Mitra Upakram'));
+    // partner portal sync APIs (partner-api.inc)
+    $perms['api upcoming courses'] = array('title' => t('API: upcoming courses of all centres (partner sync)'));
+    $perms['api at book'] = array('title' => t('API: AT-Book teachers, their CT/ACT/CAT/ACAT roles and photos (partner sync)'));
 
     return $perms;
 }
@@ -716,6 +719,58 @@ function dipi_api_services_resources() {
                   'source' => array('path' => 1),
                   'type' => 'string',
                   'description' => 'Mitra transferred apps updated in last n hours',
+                ),
+              ),
+          ),
+
+        // Partner portal sync APIs (partner-api.inc): <n> minutes, 0 = everything.
+        'upcoming-courses-updated-last-n-minutes' => array(
+              'help' => t("Upcoming courses of all centres updated in the last n minutes (0 = all)"),
+              'access arguments' => array('api upcoming courses'),
+              'access arguments append' => FALSE,
+              'file' => array('type' => 'inc', 'module' => 'dipi_api', 'name' => 'partner-api'),
+              'callback' => '_api_partner_upcoming_courses',
+              'args' => array(
+                array(
+                  'name' => 'minutes',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Courses updated in the last n minutes (0 = all upcoming courses)',
+                ),
+              ),
+          ),
+
+        'at-book-updated-last-n-minutes' => array(
+              'help' => t("AT-Book teachers (with CT/ACT/CAT/ACAT roles) updated in the last n minutes (0 = all)"),
+              'access arguments' => array('api at book'),
+              'access arguments append' => FALSE,
+              'file' => array('type' => 'inc', 'module' => 'dipi_api', 'name' => 'partner-api'),
+              'callback' => '_api_partner_at_book',
+              'args' => array(
+                array(
+                  'name' => 'minutes',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Teachers updated in the last n minutes (0 = all AT-Book teachers)',
+                ),
+              ),
+          ),
+
+        'at-book-photo' => array(
+              'help' => t("Photo of one AT-Book teacher (base64)"),
+              'access arguments' => array('api at book'),
+              'access arguments append' => FALSE,
+              'file' => array('type' => 'inc', 'module' => 'dipi_api', 'name' => 'partner-api'),
+              'callback' => '_api_partner_at_book_photo',
+              'args' => array(
+                array(
+                  'name' => 'id',
+                  'optional' => FALSE,
+                  'source' => array('path' => 1),
+                  'type' => 'string',
+                  'description' => 'Teacher ID (from the AT-Book feed)',
                 ),
               ),
           ),
