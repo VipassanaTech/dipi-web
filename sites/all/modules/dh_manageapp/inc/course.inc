@@ -1468,37 +1468,28 @@ function finalize_course( $course_id )
 }
 
 
+/* Find the existing student record for an attended applicant, trying in order:
+   Aadhaar, PAN, Voter ID, Passport, then name + email, name + mobile, name + date of birth.
+   The applicant's values go in as placeholders, never pasted into the SQL: a name like
+   D'Souza used to break the query (the student was then skipped at finalize), and any
+   text typed on the application form could change what the query did. */
 function check_student($r)
 {
 	$sid = '';
-	if ($r['a_aadhar'] <> '')
-		$sid = db_query("select s_id from dh_student where s_aadhar='".$r['a_aadhar']."'")->fetchField();
-	if ($sid > 0)  return $sid; 
+	foreach (array('aadhar', 'pancard', 'voter_id', 'passport') as $f)
+	{
+		if ($r['a_'.$f] <> '')
+			$sid = db_query("select s_id from dh_student where s_$f = :v", array(':v' => (string) $r['a_'.$f]))->fetchField();
+		if ($sid > 0) return $sid;
+	}
 
-	if ($r['a_pancard'] <> '')
-		$sid = db_query("select s_id from dh_student where s_pancard='".$r['a_pancard']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
-
-	if ($r['a_voter_id'] <> '')
-		$sid = db_query("select s_id from dh_student where s_voter_id='".$r['a_voter_id']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
-
-	if ($r['a_passport'] <> '')
-		$sid = db_query("select s_id from dh_student where s_passport='".$r['a_passport']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
-
-	if ($r['a_email'] <> '')
-		$sid = db_query("select s_id from dh_student where s_f_name='".$r['a_f_name']."' and  s_l_name='".$r['a_l_name']."' and s_email='".$r['a_email']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
-
-	if ($r['a_phone_mobile'] <> '')
-		$sid = db_query("select s_id from dh_student where s_f_name='".$r['a_f_name']."' and  s_l_name='".$r['a_l_name']."' and s_phone_mobile='".$r['a_phone_mobile']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
-
-
-	if ($r['a_dob'] <> '')
-		$sid = db_query("select s_id from dh_student where s_f_name='".$r['a_f_name']."' and  s_l_name='".$r['a_l_name']."' and s_dob='".$r['a_dob']."'")->fetchField();
-	if ($sid > 0 ) return $sid;
+	$name = array(':f' => (string) $r['a_f_name'], ':l' => (string) $r['a_l_name']);
+	foreach (array('email', 'phone_mobile', 'dob') as $f)
+	{
+		if ($r['a_'.$f] <> '')
+			$sid = db_query("select s_id from dh_student where s_f_name = :f and s_l_name = :l and s_$f = :v", $name + array(':v' => (string) $r['a_'.$f]))->fetchField();
+		if ($sid > 0) return $sid;
+	}
 
 	return $sid;
 }

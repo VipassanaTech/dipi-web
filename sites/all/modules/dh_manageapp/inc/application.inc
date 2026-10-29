@@ -966,10 +966,10 @@ function dh_ma_applicant_form_validate($form, &$form_state)
   foreach (element_children($form) as $grp)
     if (isset($form[$grp]['al_last_lc_date']['#default_value']))
       $lc_date_was = trim($form[$grp]['al_last_lc_date']['#default_value']);
-  /* Photo ID numbers: letters, digits, space, - and / only. A quote in an ID
-     breaks the student match at course finalize (check_student() builds its SQL
-     from these values). As with the LC date, only an ID the operator changed is
-     checked, so an existing odd value never blocks saving the rest of the form. */
+  /* Photo ID numbers: letters, digits, space, - and / only, so the IDs stay clean
+     for the student match at course finalize (check_student()). As with the LC date,
+     only an ID the operator changed is checked, so an existing odd value never
+     blocks saving the rest of the form. */
   foreach (dh_photo_id_fields() as $k => $label)
   {
     $id_now = isset($form_state['input'][$k]) ? trim($form_state['input'][$k]) : '';
