@@ -1260,213 +1260,30 @@ Thanks,
 	$res = $mg->messages()->send($mailgun_domain, $options );
 }
 
+/* Finalize = mark attended applicants Attended, then sync the student records (inc/student-sync.inc).
+   Safe to run again: no copies, and nobody gets the Attended email twice. */
 function finalize_course( $course_id )
 {
-	global $user;
-	$res['status'] = false;
-	$end_date = db_query("select c_end from dh_course where c_id=$course_id")->fetchField();
-	if ( $end_date > date('Y-m-d') )
+	$res = array('status' => false, 'msg' => '', 'summary' => array());
+	$course_id = (int) $course_id;
+	$c = db_query('select c_end, c_finalize_mail from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
+	if (!$c || $c['c_end'] > date('Y-m-d'))
 	{
-		$res['msg'] = "Course not completed, cannot finalize";
+		$res['msg'] = 'Course not completed, cannot finalize';
 		echo $res['msg'];
 		return $res;
 	}
-
-	$q = "select td_key,td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS'";
-	$system_statuses = db_query($q)->fetchAllKeyed();
-
-	$statuses = $system_statuses;
-	$q = "select td_key from dh_type_detail where td_type='COURSE-STATUS'";
-	$s_res = db_query($q);
-	while ($r = $s_res->fetchAssoc()) $statuses[] = $r['td_key'];		
-
-	$q = "update dh_applicant set a_status='".$system_statuses['STATUS-ATTENDED']."' where a_course='$course_id' and a_attended=1";
-	db_query($q);
-
-	$q = "select c.c_id,c.c_name,a_gender,a_status,a_old, count(a_id) as 'tot' from dh_applicant a left join dh_course c on (a_course=c.c_id) where c_id=$course_id  group by c.c_id,c.c_name, a_gender,a_status, a_old";
-
-	$out = '';
-	$course_data = db_query($q);
-	while( $r = $course_data->fetchAssoc())
-	{
-		unset($row);
-		$row['cs_course'] = $r['c_id'];
-		$row['cs_old'] = $r['a_old'];
-		$row['cs_gender'] = $r['a_gender'];
-		$row['cs_status'] = $r['a_status'];
-		$row['cs_count'] = $r['tot'];
-		//$row['cs_created_by'] = $user->uid;
-		db_insert('dh_course_stat')->fields($row)->execute();
-	}
-
-	/* Copy Applicant to Student DB */
-
-	$q = "select ct_teacher, ct_group, t_gender from dh_course_teacher left join dh_teacher on ct_teacher=t_id where ct_course=$course_id";
-	$result = db_query($q);
-	$teacher['M'] = $teacher['F'] = array();
-	while($r = $result->fetchAssoc())
-		$teacher[$r['t_gender']][$r['ct_group']] = $r['ct_teacher'];
-
-	$result = db_query("desc dh_student");
-	$fields = array();
-	while($r = $result->fetchAssoc())
-	{
-		if (! in_array($r['Field'], array('s_id', 's_updated', 's_created', 's_created_by', 's_updated_by', 's_first')) )
-		   $fields[]  = $r['Field'];
-	}
+	$attended = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-ATTENDED'")->fetchField();
+	db_update('dh_applicant')->fields(array('a_status' => $attended))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
 
 	if (posix_getuid() == 0)
 		posix_setuid(33);
 
-	$q = "select * from dh_applicant left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_attended on a_id=aa_applicant left join dh_applicant_extra ae on a_id=ae_applicant where a_course='$course_id' and a_attended=1 and a_type IN ('Student','Sevak')";
-	$result = db_query($q);
-	while( $r = $result->fetchAssoc() )
-	{
-		try
-		{
-
-			unset($student); unset($student_sci); unset($student_c);
-			$sid_sci = $sid_c = '';
-			$sid = check_student($r);
-			if ($sid > 0)
-			{
-				//$sid_sci = db_query("select sci_id from dh_student_course_input where sci_student=$sid")->fetchField();
-				//$sid_c = db_query("select sc_id from dh_student_course where sc_student=$sid")->fetchField();			
-			}
-
-			foreach($fields as $v)
-				$student[$v] = $r[str_replace('s_', 'a_', $v)];
-			if ( ! $r['a_old'] )
-				$student['s_first'] = 1;
-			$student['s_created_by'] = $user->uid;
-			$student['s_updated_by'] = $user->uid;
-			$student['s_updated'] = date('Y-m-d H:i:s');
-
-			if ($student['s_photo'] == '')
-				unset($student['s_photo']);
-
-			dh_finalize_fit('dh_student', $student, $r['a_id']);
-			if ($sid > 0 )
-			{
-				db_update('dh_student')->fields($student)->condition('s_id', $sid)->execute();
-
-			}
-			else
-				$sid = db_insert('dh_student')->fields($student)->execute();
-
-			if ( isset($student['s_photo']))
-			{
-				//Copy photo to final dir
-				$path = drupal_realpath('private://');
-				$old_photo = $path.'/'. str_replace("private://", "", $student['s_photo']);
-				$temp = 'final/photo-id/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).".jpg";
-				$new_photo = $path.'/'.$temp;
-				$new_photo_uri = 'private://'.$temp;
-				//$student['s_photo'] = $new_photo_uri;
-				db_update('dh_student')->fields(array('s_photo' => $new_photo_uri))->condition('s_id', $sid)->execute();
-				/*if (!is_dir(dirname($new_photo)))
-					mkdir(dirname($new_photo), 0775, true);		
-				copy($old_photo, $new_photo);
-				*/
-				$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private://", "", $student['s_photo']), 'file' );
-				if (!$ret['success'])
-					watchdog('S3Photo', $ret['message']);
-
-				$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
-				if (!$ret['success'])
-					watchdog('S3Photo', $ret['message']);
-			}
-
-
-			$student_sci['sci_10d'] = $r['ac_10d']?$r['ac_10d']:'1';
-			$student_sci['sci_stp'] = $r['ac_stp']?$r['ac_stp']:'0';
-			$student_sci['sci_spl'] = $r['ac_spl']?$r['ac_spl']:'0';
-			$student_sci['sci_20d'] = $r['ac_20d']?$r['ac_20d']:'0';
-			$student_sci['sci_30d'] = $r['ac_30d']?$r['ac_30d']:'0';
-			$student_sci['sci_45d'] = $r['ac_45d']?$r['ac_45d']:'0';
-			$student_sci['sci_60d'] = $r['ac_60d']?$r['ac_60d']:'0';
-			$student_sci['sci_tsc'] = $r['ac_tsc']?$r['ac_tsc']:'0';
-			$student_sci['sci_teacher'] = $r['ac_teacher']?$r['ac_teacher']:'0';
-			$student_sci['sci_service'] = $r['ac_service']?$r['ac_service']:'0';
-			$student_sci['sci_first_year'] = $r['ac_first_year'];
-			$student_sci['sci_first_month'] = $r['ac_first_month'];
-			$student_sci['sci_first_day'] = $r['ac_first_day'];
-			$student_sci['sci_first_location_str'] = $r['ac_first_teacher_str'];
-			$student_sci['sci_first_teacher_str'] = $r['ac_first_teacher_str'];
-
-			dh_finalize_fit('dh_student_course_input', $student_sci, $r['a_id']);
-			if ($sid_sci > 0 )
-				db_update('dh_student_course_input')->fields($student_sci)->condition('sci_id', $sid_sci)->execute();
-			else
-			{
-				$student_sci['sci_student'] = $sid;
-				db_insert('dh_student_course_input')->fields($student_sci)->execute();
-			}
-
-			//$student_c['sc_student'] = ;
-			$student_c['sc_center'] = $r['a_center'];
-			$student_c['sc_course'] = $r['a_course'];
-			$student_c['sc_teacher'] = $teacher[$r['a_gender']][$r['aa_group']];
-			$student_c['sc_group'] = $r['aa_group'];
-			$student_c['sc_acco'] = $r['aa_section'].'-'.$r['aa_acco'];
-			$student_c['sc_laundry'] = $r['aa_laundry'];
-			$student_c['sc_valuable'] = $r['aa_valuable'];
-			$student_c['sc_cell'] = $r['aa_cell'];
-			$student_c['sc_chowky'] = $r['aa_chowky'];
-			$student_c['sc_chair'] = $r['aa_chair'];
-			$student_c['sc_seat_row'] = $r['aa_seat_row'];
-			$student_c['sc_seat_col'] = $r['aa_seat_col'];
-			$student_c['sc_comment'] = $r['aa_comment'];
-			$student_c['sc_desc_physical'] = $r['ae_desc_physical'];
-			$student_c['sc_desc_mental'] = $r['ae_desc_mental'];
-			$student_c['sc_addiction_past'] = $r['ae_desc_addiction_past'];
-			$student_c['sc_addiction_current'] = $r['ae_desc_addiction_current'];
-			$student_c['sc_desc_other_technique'] = $r['ae_desc_other_technique'];
-			$student_c['sc_desc_medication'] = $r['ae_desc_medication'];
-			$student_c['sc_teach_other_details'] = $r['ae_teach_other_details'];
-			if ( $r['a_uri'] <> '')
-			{
-				$path = drupal_realpath('private://');
-				$app_pdf = $path.'/'.str_replace("private://", "", $r['a_uri']);
-				$temp = 'final/applications/'.$r['a_center'].'/'.$r['a_course'].'/'.sprintf("%08d", $sid).'-'.sprintf("%06d", $r['a_course']).".pdf";
-				$new_pdf = $path.'/'.$temp;
-				$new_uri = 'private://'.$temp;
-				$student_c['sc_uri'] = $new_uri;
-				/*
-				if (!is_dir(dirname($new_pdf)))
-					mkdir(dirname($new_pdf), 0775, true);		
-				copy($app_pdf, $new_pdf);
-				*/
-				$ret = s3_get_file(variable_get('s3_bucket_name', ''), str_replace("private:///", "", $r['a_uri']), 'file' );
-				if (!$ret['success'])
-					watchdog('S3Photo', $ret['message']);
-
-				$ret = s3_put_file(variable_get('s3_bucket_name', ''), $ret['data'], $temp  );
-				if (!$ret['success'])
-					watchdog('S3Photo', $ret['message']);
-
-			}
-
-			dh_finalize_fit('dh_student_course', $student_c, $r['a_id']);
-			if ($sid_c > 0 )
-				db_update('dh_student_course')->fields($student_c)->condition('sc_id', $sid_c)->execute();
-			else
-			{
-				$student_c['sc_student'] = $sid;
-				db_insert('dh_student_course')->fields($student_c)->execute();
-
-			}
-			dh_send_letter('applicant', $r['a_id'], $system_statuses['STATUS-ATTENDED'] );
-
-		}
-		catch(Throwable $t)
-		{
-			watchdog("Finalization Error", "Applicant @a, course @c: @m\n@trace", array('@a' => $r['a_id'], '@c' => $course_id, '@m' => $t->getMessage(), '@trace' => $t->getTraceAsString()));
-		}
-
-	}
+	$sum = dh_course_sync($course_id, array('mail' => (bool) $c['c_finalize_mail'], 'files' => 'copy', 'uid' => dh_system_uid()));
+	dh_course_log_note($course_id, 'finalize_summary', dh_course_sync_summary_text($sum), dh_system_uid());
 	$res['status'] = true;
 	$res['msg'] = 'OK';
+	$res['summary'] = $sum;
 	return $res;
 }
 
