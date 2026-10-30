@@ -163,31 +163,66 @@ function s3_set_env(){
     return array('s3' => $s3, 'e' => null);
 }
 
-/* Size in bytes of an object in the bucket, or FALSE when it is not there. */
-function s3_head_file($bucket, $key){
-    $s3_result = s3_set_env();
-    if (! $s3_result['s3'])
-        return FALSE;
+/* One S3 client for the head and copy helpers below: built once per process, then reused.
+   Returns the client, or NULL when none can be built ($err then holds the reason). */
+function s3_cached_client(&$err = NULL){
+    static $client = NULL, $e = NULL, $done = FALSE;
+    if (! $done){
+        $r = s3_set_env();
+        $client = $r['s3'];
+        $e = $r['e'];
+        $done = TRUE;
+    }
+    $err = $e;
+    return $client;
+}
+
+/* TRUE when an S3 error means "that object does not exist" (HTTP 404, NotFound or NoSuchKey). */
+function s3_error_is_not_found($e){
+    if (method_exists($e, 'getStatusCode') && (int) $e->getStatusCode() == 404)
+        return TRUE;
+    if (method_exists($e, 'getAwsErrorCode') && in_array($e->getAwsErrorCode(), array('NotFound', 'NoSuchKey'), TRUE))
+        return TRUE;
+    return FALSE;
+}
+
+/* Size in bytes (int) of an object in the bucket. FALSE only when S3 says the object is not there.
+   NULL for any other problem (no client, no permission, network); that is written to the S3Photo log.
+   $client is for tests; leave it out to use the shared client. */
+function s3_head_file($bucket, $key, $client = NULL){
+    $err = NULL;
+    if (! $client)
+        $client = s3_cached_client($err);
+    if (! $client){
+        watchdog('S3Photo', 'S3: no client to check @key in bucket @bucket: @msg', array('@key' => $key, '@bucket' => $bucket, '@msg' => $err), WATCHDOG_ERROR);
+        return NULL;
+    }
     try {
-        $r = $s3_result['s3']->headObject(['Bucket' => $bucket, 'Key' => $key]);
+        $r = $client->headObject(['Bucket' => $bucket, 'Key' => $key]);
         return (int) $r['ContentLength'];
     }
     catch (Exception $e) {
-        return FALSE;
+        if (s3_error_is_not_found($e))
+            return FALSE;
+        watchdog('S3Photo', 'S3: checking @key in bucket @bucket failed: @msg', array('@key' => $key, '@bucket' => $bucket, '@msg' => $e->getMessage()), WATCHDOG_ERROR);
+        return NULL;
     }
 }
 
-/* Copy an object inside the bucket; the file never passes through this server. */
-function s3_copy_file($bucket, $from, $to){
+/* Copy an object inside the bucket; the file never passes through this server.
+   $client is for tests; leave it out to use the shared client. */
+function s3_copy_file($bucket, $from, $to, $client = NULL){
     $ret = array('success' => false, 'message' => '');
-    $s3_result = s3_set_env();
-    if (! $s3_result['s3']){
-        $ret['message'] = "S3: Not able to create s3 client for copying '$from'\n".$s3_result['e'];
+    $err = NULL;
+    if (! $client)
+        $client = s3_cached_client($err);
+    if (! $client){
+        $ret['message'] = "S3: Not able to create s3 client for copying '$from'\n".$err;
         return $ret;
     }
     for ($i = 1; $i <= 5; $i++){
         try {
-            $s3_result['s3']->copyObject([
+            $client->copyObject([
                 'Bucket'     => $bucket,
                 'Key'        => $to,
                 'CopySource' => $bucket.'/'.str_replace('%2F', '/', rawurlencode($from)),

@@ -230,10 +230,14 @@ function dh_course_sync_summary_text($sum)
 
 /* Photo and application PDF into the final folders. files: 'copy' (download and upload, as finalize
    always did), 's3copy' (copy inside S3, skipped when already there), 'count' (dry run), 'none'.
-   Returns the paths to store on the student and course records. */
+   Returns the paths to store on the student and course records: a path comes back only when the
+   final file is known to be there. $sum: files_copied, files_missing (S3 says the source is not there),
+   files_failed (S3 gave an error, or a copy failed; already in the log), bytes. */
 function dh_course_sync_files($r, $sid, $opts, &$sum)
 {
 	$mode = $opts['files'];
+	if (!in_array($mode, array('none', 'copy', 's3copy', 'count'), TRUE))
+		throw new Exception("Unknown files mode: $mode");
 	$head = isset($opts['s3_head']) ? $opts['s3_head'] : 's3_head_file';
 	$copy = isset($opts['s3_copy']) ? $opts['s3_copy'] : 's3_copy_file';
 	$out = array('s_photo' => NULL, 'sc_uri' => NULL);
@@ -250,17 +254,21 @@ function dh_course_sync_files($r, $sid, $opts, &$sum)
 		list($from, $to) = $j;
 		if ($mode === 'count' || $mode === 's3copy')
 		{
+			// A head gives the size, FALSE (S3 says it is not there) or NULL (some other error, already logged).
 			$size = $head($bucket, $from);
 			if ($size === FALSE) { $sum['files_missing']++; continue; }
-			$sum['bytes'] += $size;
-			if ($mode === 'count') { $sum['files_copied']++; continue; }      // would be copied
-			if ($head($bucket, $to) === FALSE)
+			if ($size === NULL) { $sum['files_failed']++; continue; }
+			if ($mode === 'count') { $sum['files_copied']++; $sum['bytes'] += $size; continue; }      // would be copied
+			$there = $head($bucket, $to);
+			if ($there === NULL) { $sum['files_failed']++; continue; }      // cannot tell if it is there: do not copy blind
+			if ($there === FALSE)
 			{
 				$cp = $copy($bucket, $from, $to);
-				if (!$cp['success']) { watchdog('S3Photo', $cp['message']); continue; }
+				if (!$cp['success']) { $sum['files_failed']++; watchdog('S3Photo', $cp['message']); continue; }
 			}
 			$out[$k] = 'private://'.$to;
 			$sum['files_copied']++;
+			$sum['bytes'] += $size;
 			continue;
 		}
 		$out[$k] = 'private://'.$to;
@@ -293,7 +301,7 @@ function dh_course_sync($course_id, $opts = array())
 {
 	global $user;
 	$opts += array('mail' => TRUE, 'mail_fn' => 'dh_send_letter', 'files' => 'copy', 'batch' => NULL, 'uid' => (int) $user->uid);
-	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'errors', 'files_copied', 'files_missing', 'bytes'), 0);
+	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'errors', 'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
 	$teacher = array('M' => array(), 'F' => array());
 	foreach (db_query('select ct_teacher, ct_group, t_gender from dh_course_teacher left join dh_teacher on ct_teacher = t_id where ct_course = :c', array(':c' => $course_id)) as $t)
