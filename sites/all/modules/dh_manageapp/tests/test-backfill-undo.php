@@ -142,35 +142,44 @@ t_in_txn(function () {
   t_eq(t_row('dh_student', 's_id', $s)['s_photo'], 'private://old/photo.jpg', 'B5: undo walks both steps back');
 });
 
-// D3/D4: the 'created' undo keeps a student that a legacy applicant link or a patrika subscription points to.
+// D3: the 'created' undo keeps a student that a patrika subscription or a referral points to. (The legacy dh_applicant.a_student /
+// a_old_student links are not checked: unused, unindexed, a full scan of a 3-million-row table per lookup.)
 t_in_txn(function () {
   $c = t_make_course(array('c_finalized' => 1));
   $a = array();
-  foreach (array('A', 'B', 'C', 'D') as $k) $a[$k] = t_make_applicant($c, array('a_l_name' => "Pointed$k"));
+  foreach (array('A', 'B', 'C') as $k) $a[$k] = t_make_applicant($c, array('a_l_name' => "Pointed$k"));
   dh_course_sync($c, array('mail' => FALSE, 'files' => 'none', 'batch' => 'test-bf-d3'));
   $sid = function ($k) use ($a) { return (int) t_n("select sl_student from dh_student_log where sl_batch = 'test-bf-d3' and sl_action = 'created' and sl_applicant = :a", array(':a' => $a[$k])); };
-  db_update('dh_applicant')->fields(array('a_student' => $sid('A'), 'a_updated_by' => 0))->condition('a_id', $a['A'])->execute();
-  db_update('dh_applicant')->fields(array('a_old_student' => $sid('B'), 'a_updated_by' => 0))->condition('a_id', $a['B'])->execute();
-  db_insert('dh_patrika')->fields(array('p_student' => $sid('C'), 'p_updated' => date('Y-m-d H:i:s')))->execute();
+  db_insert('dh_patrika')->fields(array('p_student' => $sid('A'), 'p_updated' => date('Y-m-d H:i:s')))->execute();
+  $ref = db_query("select * from dh_referral order by r_id desc limit 1")->fetchAssoc();
+  unset($ref['r_id']);
+  db_insert('dh_referral')->fields(array('r_student' => $sid('B')) + $ref)->execute();
+  db_update('dh_applicant')->fields(array('a_student' => $sid('C'), 'a_updated_by' => 0))->condition('a_id', $a['C'])->execute();     // a legacy link does not keep a student
   $n = dh_backfill_undo('test-bf-d3', TRUE);
   $there = function ($k) use ($sid) { return t_n("select count(*) from dh_student where s_id = :s", array(':s' => $sid($k))); };
-  t_eq(array($there('A'), $there('B'), $there('C'), $there('D')), array(1, 1, 1, 0), 'D3: students pointed to by a_student, a_old_student or a patrika row stay; the other one goes');
-  t_eq(array($n['_undone'], $n['_skipped'], $n['_failed']), array(5, 3, 0), 'D3: 4 course records and 1 student undone; 3 students counted as skipped');
+  t_eq(array($there('A'), $there('B'), $there('C')), array(1, 1, 0), 'D3: students a patrika row or a referral points to stay; the other one goes (also when a legacy a_student points to it)');
+  t_eq(array($n['_undone'], $n['_skipped'], $n['_failed']), array(4, 2, 0), 'D3: 3 course records and 1 student undone; 2 students counted as skipped');
 });
 
-// D4: a student is not removed while an applicant points to it; when it is removed the patrika subscription stays with its link set to 0, and the undo relinks it.
+// D4: when a student with a patrika subscription is removed, the subscription stays with its link set to 0, and the undo relinks it.
+// A student a referral points to is not removed.
 t_in_txn(function () {
   $c = t_make_course(array('c_finalized' => 1));
   $centre = (int) t_n("select c_center from dh_course where c_id = :c", array(':c' => $c));
   $linked = t_make_student(array('s_l_name' => 'Linked'));
   $gone = t_make_student(array('s_l_name' => 'Gone'));
-  foreach (array($linked, $gone) as $s) db_insert('dh_student_course')->fields(array('sc_student' => $s, 'sc_center' => $centre, 'sc_course' => $c))->execute();
-  $other = t_make_applicant(t_make_course(), array('a_l_name' => 'Pointer'));
-  db_update('dh_applicant')->fields(array('a_student' => $linked, 'a_updated_by' => 0))->condition('a_id', $other)->execute();
+  $legacy = t_make_student(array('s_l_name' => 'Legacy'));
+  foreach (array($linked, $gone, $legacy) as $s) db_insert('dh_student_course')->fields(array('sc_student' => $s, 'sc_center' => $centre, 'sc_course' => $c))->execute();
+  $ref = db_query("select * from dh_referral order by r_id desc limit 1")->fetchAssoc();
+  unset($ref['r_id']);
+  db_insert('dh_referral')->fields(array('r_student' => $linked) + $ref)->execute();
   $pid = (int) db_insert('dh_patrika')->fields(array('p_student' => $gone, 'p_updated' => date('Y-m-d H:i:s')))->execute();
+  $other = t_make_applicant(t_make_course(), array('a_l_name' => 'Pointer'));
+  db_update('dh_applicant')->fields(array('a_student' => $legacy, 'a_updated_by' => 0))->condition('a_id', $other)->execute();          // a legacy link does not keep a student
   $s = dh_course_sync($c, array('mail' => FALSE, 'files' => 'none', 'batch' => 'test-bf-d4'));
-  t_eq(array($s['removed'], $s['students_removed']), array(2, 1), 'D4: both course records are removed, only one student');
-  t_eq(t_n("select count(*) from dh_student where s_id = :s", array(':s' => $linked)), 1, 'D4: a student an applicant points to (a_student) is kept');
+  t_eq(array($s['removed'], $s['students_removed']), array(3, 2), 'D4: all three course records are removed, two students (the one a referral points to is kept)');
+  t_eq(t_n("select count(*) from dh_student where s_id = :s", array(':s' => $legacy)), 0, 'D4: a student only a legacy a_student link points to is removed');
+  t_eq(t_n("select count(*) from dh_student where s_id = :s", array(':s' => $linked)), 1, 'D4: a student a referral points to is kept');
   t_eq(array(t_n("select count(*) from dh_student where s_id = :s", array(':s' => $gone)), t_n("select p_student from dh_patrika where p_id = :p", array(':p' => $pid))), array(0, 0), 'D4: the other student is removed and the patrika link is set to 0');
   t_eq(t_n("select count(*) from dh_patrika where p_id = :p", array(':p' => $pid)), 1, 'D4: the patrika subscription itself is kept');
   dh_backfill_undo('test-bf-d4', TRUE);

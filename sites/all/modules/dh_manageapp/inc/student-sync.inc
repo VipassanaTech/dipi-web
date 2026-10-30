@@ -307,13 +307,13 @@ function dh_course_sync_files($r, $sid, $opts, &$sum)
 	return $out;
 }
 
-/* Remove a student record that has no course left and nothing else pointing to it: no referral, and no applicant
-   (the legacy a_student / a_old_student links). A patrika subscription is kept; its student link is set to 0 ("not a student"). */
+/* Remove a student record that has no course left and no referral pointing to it. A patrika subscription is kept; its
+   student link is set to 0 ("not a student"). */
 function dh_student_remove_if_empty($sid, $log, &$sum)
 {
+	// dh_applicant.a_student / a_old_student are not checked on purpose: unused, unindexed, a lookup is a full scan of 3.2 million rows.
 	if (db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $sid))->fetchField()
-		|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField()
-		|| db_query('select 1 from dh_applicant where a_student = :s1 or a_old_student = :s2 limit 1', array(':s1' => $sid, ':s2' => $sid))->fetchField())
+		|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField())
 		return;
 	foreach (db_query('select * from dh_student_course_input where sci_student = :s', array(':s' => $sid))->fetchAll(PDO::FETCH_ASSOC) as $sci)
 		dh_student_log(array('sl_student' => $sid, 'sl_action' => 'sci-removed', 'sl_old' => json_encode($sci)) + $log);
@@ -688,16 +688,12 @@ function dh_backfill_undo($batch, $apply = FALSE)
 			}
 			if (!$apply)
 				continue;
-			// Students that a legacy applicant link or a patrika subscription points to are kept. Looked up once per chunk:
-			// those columns have no index, so a lookup per row would read the whole table every time.
+			// Students that a patrika subscription points to are kept (looked up once per chunk).
+			// dh_applicant.a_student / a_old_student are not checked on purpose: unused, unindexed, a lookup is a full scan of 3.2 million rows.
 			$ctx['pointed'] = array();
 			if ($created)
-			{
-				foreach (db_query('select a_student, a_old_student from dh_applicant where a_student in (:i1) or a_old_student in (:i2)', array(':i1' => $created, ':i2' => $created)) as $a)
-					$ctx['pointed'][(int) $a->a_student] = $ctx['pointed'][(int) $a->a_old_student] = TRUE;
 				foreach (db_query('select p_student from dh_patrika where p_student in (:i)', array(':i' => $created))->fetchCol() as $p)
 					$ctx['pointed'][(int) $p] = TRUE;
-			}
 			foreach ($rows as $l)
 			{
 				try

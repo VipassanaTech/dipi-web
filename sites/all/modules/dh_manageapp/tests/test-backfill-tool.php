@@ -2,8 +2,10 @@
 require __DIR__ . '/lib.php';
 echo "Back-fill tool (command line)\n";
 // Runs the tool as a child process from the Drupal root (this test is run from there too). Returns array(exit code, output).
-function t_tool($args) {
-  exec(escapeshellarg(PHP_BINARY) . ' sites/all/modules/dh_manageapp/deploy/2026-11-backfill-student-records.php ' . $args . ' 2>&1', $out, $code);
+$TOOL = 'sites/all/modules/dh_manageapp/deploy/2026-11-backfill-student-records.php';
+function t_tool($args, $script = NULL) {
+  global $TOOL;
+  exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script ? $script : $TOOL) . ' ' . $args . ' 2>&1', $out, $code);
   return array($code, implode("\n", $out));
 }
 function t_n($sql, $args = array()) { return (int) db_query($sql, $args)->fetchField(); }
@@ -21,7 +23,7 @@ t_eq(t_n('select count(*) from dh_student_log'), $logs, 'the bad options wrote n
 
 // A made-up course that is committed (the tool runs in another process), removed again at the end.
 $before = $counts();
-$c = 0; $apps = array();
+$c = 0; $apps = array(); $tmp = '';
 try {
   $c = t_make_course(array('c_finalized' => 1));
   foreach (array(1, 2) as $i) $apps[] = t_make_applicant($c, array('a_l_name' => 'Cli' . mt_rand(100000, 999999) . $i));
@@ -31,6 +33,23 @@ try {
   t_eq($code, 0, 'dry run of the made-up course: exit 0');
   t_ok(strpos($out, 'DRY RUN: 1 courses, email OFF, files none') !== FALSE && strpos($out, '2 students, +2,') !== FALSE, 'dry run output: one course, email off, +2');
   t_eq($counts(), $made, 'dry run wrote nothing');
+
+  // When a course's sync throws, the screen gets only the course id, the exception class and the SQLSTATE; the message (it can echo an ID or a name) goes to the log.
+  // A copy of the tool whose sync call throws a PDOException with a recognisable message stands in for a database error.
+  $src = file_get_contents($TOOL);
+  $copy = str_replace("dh_course_sync(\$c, array('mail' => FALSE", "t_boom(\$c, array('mail' => FALSE", $src);
+  t_ok($copy !== $src, 'the stand-in copy of the tool replaced the sync call');
+  $copy = preg_replace('/^<\?php/', "<?php\nfunction t_boom() { \$e = new PDOException('Incorrect value SECRET-ID-123456789 for column x'); \$e->errorInfo = array('22007', 1292, 'x'); throw \$e; }", $copy, 1);
+  $tmp = tempnam(sys_get_temp_dir(), 'bf');
+  file_put_contents($tmp, $copy);
+  list($code, $out) = t_tool("--courses=$c --apply --no-files", $tmp);
+  t_eq($code, 1, 'D1: a sync that throws stops the tool with exit 1');
+  t_ok(strpos($out, "course $c: STOPPED by an error: PDOException (SQLSTATE 22007)") !== FALSE, 'the screen shows the course id, the exception class and the SQLSTATE');
+  t_ok(strpos($out, 'SECRET-ID') === FALSE, 'the exception message is not printed');
+  t_ok(strpos($out, "STOP: course $c stopped with an error") !== FALSE && strpos($out, '--undo=bf-list-') !== FALSE, 'and the STOP line names the undo');
+  $w = db_query("select severity, variables from watchdog where type = 'StudentBackfill' and variables like '%SECRET-ID-123456789%' order by wid desc limit 1")->fetchAssoc();
+  t_ok($w && (int) $w['severity'] === WATCHDOG_ERROR && strpos($w['variables'], "i:$c;") !== FALSE, 'the full message is in the log (type StudentBackfill, error) with the course id');
+  t_eq($counts(), $made, 'the stopped run wrote nothing');
 
   list($code, $out) = t_tool("--courses=$c --apply --no-files");
   t_eq($code, 0, 'apply of the made-up course: exit 0');
@@ -61,6 +80,8 @@ try {
   t_ok(in_array($c, dh_backfill_courses($b)), 'after the undo the course can be picked by its batch again');
 }
 finally {
+  if ($tmp) @unlink($tmp);
+  db_delete('watchdog')->condition('type', 'StudentBackfill')->condition('variables', '%SECRET-ID-123456789%', 'LIKE')->execute();
   // Remove everything the test made: students it created (if an undo did not), then the course, its applicants and the rows triggers wrote.
   if ($c) {
     $students = db_query("select distinct sl_student from dh_student_log where sl_course = :c and sl_action = 'created'", array(':c' => $c))->fetchCol();

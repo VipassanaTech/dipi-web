@@ -31,10 +31,10 @@ t_in_txn(function () {
   $aid = t_make_applicant($older, array('a_l_name' => 'Older', 'a_dob' => '1970-01-01'));
   // The applicant row as the older course has it; the contact and work values exist only in memory (nothing is stored or sent).
   $a = db_query("select * from dh_applicant where a_id = :a", array(':a' => $aid))->fetchAssoc();
-  $a = array('a_email' => 'older@example.invalid', 'a_phone_mobile' => '9000000012', 'a_occupation' => 'Older job', 'a_company' => 'Older company',
+  $a = array('a_email' => 'older@example.invalid', 'a_phone_mobile' => 'not-a-phone-old', 'a_occupation' => 'Older job', 'a_company' => 'Older company',
     'a_address' => 'Older address', 'a_photo' => 'private://older/photo.jpg', 'a_education' => 'Older education', 'a_f_name' => 'Zzqtest', 'a_l_name' => 'Older',
     'a_problem_physical' => 1) + $a;
-  $keeps = array('s_f_name' => 'Zzqtest', 's_l_name' => 'Newer', 's_dob' => '1970-01-01', 's_gender' => 'M', 's_email' => 'newer@example.invalid', 's_phone_mobile' => '9000000011',
+  $keeps = array('s_f_name' => 'Zzqtest', 's_l_name' => 'Newer', 's_dob' => '1970-01-01', 's_gender' => 'M', 's_email' => 'newer@example.invalid', 's_phone_mobile' => 'not-a-phone-new',
     's_occupation' => 'Newer job', 's_company' => 'Newer company', 's_address' => 'Newer address', 's_photo' => 'private://newer/photo.jpg', 's_education' => '', 's_problem_physical' => 0);
   $s = t_make_student($keeps);
   db_insert('dh_student_course')->fields(array('sc_student' => $s, 'sc_center' => $centre, 'sc_course' => $newer))->execute();

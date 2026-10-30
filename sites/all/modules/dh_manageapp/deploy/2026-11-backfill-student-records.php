@@ -72,9 +72,11 @@ foreach ($courses as $i => $c)
     }
     catch (Throwable $e)
     {
-      echo "  course $c: STOPPED by an error: " . substr($e->getMessage(), 0, 300) . "\n";
-      watchdog('Finalization Error', 'Back-fill @b, course @c: @m', array('@b' => $batch, '@c' => $c, '@m' => $e->getMessage()));
-      $stop = "course $c stopped with an error (message above); what was done can be undone with --undo=$batch";
+      // Only the course id, the exception class and (database errors) the SQLSTATE go to the screen: a message can echo an ID number or a name.
+      $code = ($e instanceof PDOException) ? ' (SQLSTATE ' . (isset($e->errorInfo[0]) ? $e->errorInfo[0] : $e->getCode()) . ')' : '';
+      echo "  course $c: STOPPED by an error: " . get_class($e) . $code . "; the full message is in the Recent log messages (type StudentBackfill)\n";
+      watchdog('StudentBackfill', 'Back-fill @b, course @c: @m', array('@b' => $batch, '@c' => $c, '@m' => $e->getMessage()), WATCHDOG_ERROR);
+      $stop = "course $c stopped with an error; what was done can be undone with --undo=$batch";
       break;
     }
   }

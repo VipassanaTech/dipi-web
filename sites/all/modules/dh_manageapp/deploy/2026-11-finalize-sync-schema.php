@@ -20,6 +20,10 @@ function fs_has_col($t, $c) {
 function fs_has_index($t, $i) {
   return (bool) db_query("select 1 from information_schema.statistics where table_schema = database() and table_name = :t and index_name = :i", array(':t' => $t, ':i' => $i))->fetchField();
 }
+// An index whose FIRST column is $c (any name).
+function fs_has_index_on($t, $c) {
+  return (bool) db_query("select 1 from information_schema.statistics where table_schema = database() and table_name = :t and column_name = :c and seq_in_index = 1", array(':t' => $t, ':c' => $c))->fetchField();
+}
 function fs_run($sql, $label) { $t0 = microtime(TRUE); db_query($sql); echo "$label: done in " . round(microtime(TRUE) - $t0, 1) . "s\n"; }
 
 $adds = array(
@@ -35,6 +39,10 @@ foreach ($adds as $a)
 
 if (fs_has_index('dh_student_course', 'sc_applicant')) echo "index sc_applicant: already there\n";
 else fs_run('ALTER TABLE dh_student_course ADD INDEX sc_applicant (sc_applicant), ALGORITHM=INPLACE, LOCK=NONE', 'index sc_applicant added');
+
+// The sync unlinks a patrika subscription from a student it removes, and the back-fill undo looks students up here.
+if (fs_has_index_on('dh_patrika', 'p_student')) echo "index p_student: already there\n";
+else fs_run('ALTER TABLE dh_patrika ADD INDEX p_student (p_student), ALGORITHM=INPLACE, LOCK=NONE', 'index p_student added');
 
 if (db_table_exists('dh_student_log')) echo "dh_student_log: already there\n";
 else fs_run("CREATE TABLE dh_student_log (
