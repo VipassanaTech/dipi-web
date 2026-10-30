@@ -22,21 +22,23 @@ $body = <<<'HTML'
 </ul>
 <h3>How to reopen</h3>
 <ol>
-<li>Open the course page: click the course on your Dashboard, or in <b>Manage Courses</b> open <b>Finalized Courses</b> and click <b>View</b>.</li>
+<li>Open the course page: on your Dashboard choose the course in <b>Select Course</b> or <b>Go to any course</b>, or in <b>Manage Courses</b> open <b>Finalized Courses</b> and click <b>View</b>.</li>
 <li>Click <b>Reopen for correction</b>.</li>
 <li>Write the reason, for example "Teacher was not assigned", and click <b>Reopen</b>.</li>
 </ol>
+<p>Only people who can finalize courses see the <b>Reopen for correction</b> button.</p>
 <p>You can reopen a course within <b>30 days</b> of finalizing it. After 30 days, ask the DIPI team to reopen it.</p>
 <h3>Fix the course</h3>
 <p>The course page now shows <b>Reopened for correction</b>. You can use Zero Day, Assign Teachers and edit applications as before.</p>
 <h3>Finalize again</h3>
 <ol>
-<li>Go to <b>Manage Courses</b>, select the course and click <b>Finalize Course</b>.</li>
+<li>Go to <b>Manage Courses</b>, select the course and click <b>Finalize Course</b>. Click <b>OK</b> when it asks if you are sure.</li>
 <li>A box asks: <b>Send the Attended email to students newly marked attended</b>. Keep it ticked to send the email to the students you newly marked Attended. Untick it if you do not want to send it.</li>
 <li>Click <b>Finalize again</b>.</li>
 </ol>
+<p>Finalizing runs in the background and can take up to 10 minutes.</p>
 <p>Students who already got the Attended email will not get it again. Students you marked Left are taken out of this course in the student records.</p>
-<p>The course <b>Change Log</b> shows who reopened the course, when, and why.</p>
+<p>The <b>Change Log</b> on the course page shows who reopened the course, when, and why.</p>
 HTML;
 
 $root_mlid = db_query("select mlid from book where bid = 10 and nid = 10")->fetchField();
@@ -74,15 +76,16 @@ else {
 }
 
 $an = array('an_audience' => 'centre', 'an_title' => 'You can now correct a finalized course',
-  'an_body' => '<p>If you finalized a course with a mistake (teachers not assigned, Left students not marked), you can now fix it:</p>'
+  'an_body' => '<p>If you finalized a course with a mistake, for example teachers not assigned or Left students not marked, you can now fix it:</p>'
     . '<ol><li>Open the course page and click <b>Reopen for correction</b>.</li>'
     . '<li>Fix the course in Zero Day or Assign Teachers.</li>'
     . '<li>Finalize it again from <b>Manage Courses</b>.</li></ol>'
     . '<p>You can reopen within 30 days of finalizing. More help: <a href="/' . $alias . '">DIPI Wiki &rarr; ' . $title . '</a>.</p>');
 $id = db_query("select an_id from dh_announcement where an_audience = :a and an_title = :t and an_deleted = 0", array(':a' => $an['an_audience'], ':t' => $an['an_title']))->fetchField();
 if ($id) {
-  db_update('dh_announcement')->fields(array('an_body' => $an['an_body'], 'an_updated' => date('Y-m-d H:i:s'), 'an_updated_by' => 1))->condition('an_id', $id)->execute();
-  echo "announcement an_id $id updated\n";
+  $n = db_update('dh_announcement')->fields(array('an_body' => $an['an_body'], 'an_updated' => date('Y-m-d H:i:s'), 'an_updated_by' => 1))
+    ->condition('an_id', $id)->condition('an_body', $an['an_body'], '<>')->execute();
+  echo "announcement an_id $id already posted" . ($n ? ", text updated" : "") . "\n";
 }
 else echo 'announcement posted an_id ' . db_insert('dh_announcement')->fields($an + array('an_posted' => date('Y-m-d H:i:s'), 'an_created_by' => 1))->execute() . "\n";
 drupal_flush_all_caches();
