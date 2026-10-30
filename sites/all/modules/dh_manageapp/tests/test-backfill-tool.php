@@ -56,6 +56,19 @@ try {
   db_update('dh_course')->fields(array('c_finalize_requested' => 0, 'c_processed' => 1))->condition('c_id', $c)->execute();
   t_eq($counts(), $made, 'waiting: nothing written, no Change Log note');
 
+  // A 1-Day course is refused even when named with --courses, dry run and apply (1-Day courses never get student records).
+  $type = t_n('select c_course_type from dh_course where c_id = :c', array(':c' => $c));
+  $oneday = t_n("select td_id from dh_type_detail where td_type = 'COURSE-TYPE' and td_key = '1-DayOSC' limit 1");
+  db_update('dh_course')->fields(array('c_course_type' => $oneday))->condition('c_id', $c)->execute();
+  $made1 = $counts();
+  list($code, $out) = t_tool("--courses=$c --no-files");
+  t_ok(strpos($out, "course $c: a 1-Day course (1-Day courses never get student records), skipped") !== FALSE && strpos($out, '2 students') === FALSE, 'C: the dry run refuses a named 1-Day course');
+  list($code, $out) = t_tool("--courses=$c --apply --no-files");
+  t_ok(strpos($out, "course $c: a 1-Day course (1-Day courses never get student records), skipped") !== FALSE, 'C: the apply refuses it too');
+  t_eq($counts(), $made1, 'C: nothing written for the 1-Day course');
+  db_update('dh_course')->fields(array('c_course_type' => $type))->condition('c_id', $c)->execute();
+  $made = $counts();                                             // (the two type changes wrote Change Log rows; the cleanup removes them)
+
   // When a course's sync throws, the screen gets only the course id, the exception class and the SQLSTATE; the message (it can echo an ID or a name) goes to the log.
   // A copy of the tool whose sync call throws a PDOException with a recognisable message stands in for a database error.
   $src = file_get_contents($TOOL);

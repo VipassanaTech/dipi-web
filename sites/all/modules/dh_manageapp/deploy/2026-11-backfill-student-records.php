@@ -9,6 +9,7 @@
 // or an error that stopped the sync, and exits 1; it also exits 1 when any course had errors or an undo row failed.
 // A batch skips courses that already carry a back-fill Change Log row (not undone); name them with --courses to run again.
 // A course whose finalize is running (lock dh_finalize_<id>) or waiting for the cron is skipped and listed at the end.
+// A 1-Day course is skipped, also when named with --courses (1-Day courses never get student records).
 // An apply dates the attended students as emailed (a_attended_mail, no email sent), so a later Finalize again never emails them.
 // Prints counts and course ids only. There is no option to send email.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
@@ -67,8 +68,10 @@ foreach ($courses as $i => $c)
   if (!lock_acquire(dh_finalize_lock_name($c), 3600)) { echo "  course $c busy (finalize running), skipped\n"; $busy[] = $c; continue; }
   try
   {
-    $info = db_query('select c_center, c_start, c_finalize_requested, c_processed from dh_course where c_id = :c and c_finalized = 1', array(':c' => $c))->fetchAssoc();
+    $info = db_query('select c.c_center, c.c_start, c.c_finalize_requested, c.c_processed, td.td_key from dh_course c left join dh_type_detail td on td.td_id = c.c_course_type where c.c_id = :c and c.c_finalized = 1', array(':c' => $c))->fetchAssoc();
     if (!$info) { echo "  course $c: not finalized, skipped\n"; continue; }
+    // 1-Day courses never get student records (the cron finalizes them without the sync); a batch never picks one.
+    if ($info['td_key'] === '1-DayOSC') { echo "  course $c: a 1-Day course (1-Day courses never get student records), skipped\n"; continue; }
     // A finalize is waiting for the cron: the course is about to change, so leave it to the finalize.
     if ($info['c_finalize_requested'] && $info['c_processed'] <= 0) { echo "  course $c busy (finalize waiting), skipped\n"; $busy[] = $c; continue; }
     if ($o['apply'])

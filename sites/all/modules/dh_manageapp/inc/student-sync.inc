@@ -254,6 +254,7 @@ function dh_course_sync_summary_text($sum)
 	$parts[] = $sum['emails'].' '.($sum['emails'] == 1 ? 'email' : 'emails').' sent';
 	if (!empty($sum['mail_failed'])) $parts[] = $sum['mail_failed'].' '.($sum['mail_failed'] == 1 ? 'email' : 'emails').' failed';
 	if ($sum['errors']) $parts[] = $sum['errors'].' failed (see the Finalization Error log)';
+	if (!empty($sum['stats_failed'])) $parts[] = 'course statistics not saved (see the Finalization Error log)';
 	return $sum['students'].' students: '.implode(', ', $parts);
 }
 
@@ -394,7 +395,7 @@ function dh_course_sync($course_id, $opts = array())
 		throw new Exception("Unknown files mode: {$opts['files']}");      // before any write, not once per applicant
 	$wd = $opts['log_fn'];
 	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'removed_kept', 'emails', 'mail_failed', 'errors',
-		'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
+		'files_copied', 'files_missing', 'files_failed', 'bytes', 'stats_failed'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
 	$mailed_at = NULL;                                              // mark_mailed: the date the course counts as emailed
 	if ($opts['mark_mailed'])
@@ -571,9 +572,21 @@ function dh_course_sync($course_id, $opts = array())
 		}
 	}
 
-	db_delete('dh_course_stat')->condition('cs_course', $course_id)->execute();
-	foreach (db_query('select a_gender, a_status, a_old, count(a_id) tot from dh_applicant where a_course = :c group by a_gender, a_status, a_old', array(':c' => $course_id)) as $s)
-		db_insert('dh_course_stat')->fields(array('cs_course' => $course_id, 'cs_old' => $s->a_old, 'cs_gender' => $s->a_gender, 'cs_status' => $s->a_status, 'cs_count' => $s->tot))->execute();
+	// Course statistics (a report summary). An old broken application with no gender or status is counted as blank:
+	// the statistics columns refuse an empty value, and one such application used to stop the whole finalize.
+	// A failure here is logged and never stops a finalize or a back-fill: the students are already done.
+	try
+	{
+		db_delete('dh_course_stat')->condition('cs_course', $course_id)->execute();
+		foreach (db_query("select ifnull(a_gender, '') g, ifnull(a_status, '') st, a_old, count(a_id) tot from dh_applicant where a_course = :c
+			group by ifnull(a_gender, ''), ifnull(a_status, ''), a_old", array(':c' => $course_id)) as $s)
+			db_insert('dh_course_stat')->fields(array('cs_course' => $course_id, 'cs_old' => $s->a_old, 'cs_gender' => $s->g, 'cs_status' => $s->st, 'cs_count' => $s->tot))->execute();
+	}
+	catch (Throwable $t)
+	{
+		$sum['stats_failed'] = 1;
+		$wd('Finalization Error', 'Course @c: the course statistics could not be saved: @m', array('@c' => (int) $course_id, '@m' => $t->getMessage()), WATCHDOG_ERROR);
+	}
 	return $sum;
 }
 
@@ -698,10 +711,7 @@ function dh_attended_mail_note($type, $id, $event)
    a course with --courses to run it again. */
 function dh_backfill_courses($batch, $migrated = array(335, 343, 344))
 {
-	$ran = "exists (select 1 from dh_course_log l where l.crl_course = c.c_id and l.crl_field = 'finalize_summary' and l.crl_new like 'Back-fill bf-%(no emails)%'
-		and not exists (select 1 from dh_course_log u where u.crl_course = c.c_id and u.crl_field = 'finalize_summary'
-			and u.crl_new = concat('Back-fill batch ', substring_index(substring_index(l.crl_new, ' ', 2), ' ', -1), ' undone')))";
-	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC' and not $ran";
+	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC'";
 	$att = "(select count(*) from dh_applicant a where a.a_course = c.c_id and a.a_attended = 1 and a.a_type in ('Student', 'Sevak'))";
 	$has = 'exists (select 1 from dh_student_course sc where sc.sc_course = c.c_id)';
 	switch ((int) $batch)
@@ -713,7 +723,29 @@ function dh_backfill_courses($batch, $migrated = array(335, 343, 344))
 		default: return array();
 	}
 	$args = in_array((int) $batch, array(3, 4)) ? array(':m' => $migrated) : array();
-	return array_map('intval', db_query($q.' order by c.c_start, c.c_id', $args)->fetchCol());
+	$ids = array_map('intval', db_query($q.' order by c.c_start, c.c_id', $args)->fetchCol());
+	$ran = dh_backfill_done_courses();
+	return $ran ? array_values(array_diff($ids, $ran)) : $ids;
+}
+
+/* Courses with an applied back-fill that was not undone: a "Back-fill <batch id> (no emails): ..." Change Log
+   note and no "Back-fill batch <batch id> undone" note for the same batch id. Read once and matched here: as a
+   subquery per course, a stale row estimate made the database read the whole Change Log for every course. */
+function dh_backfill_done_courses()
+{
+	$applied = $undone = array();
+	foreach (db_query("select crl_course, crl_new from dh_course_log where crl_field = 'finalize_summary' and crl_new like 'Back-fill %'") as $r)
+	{
+		if (preg_match('/^Back-fill batch (\S+) undone$/', $r->crl_new, $m))
+			$undone[(int) $r->crl_course][$m[1]] = TRUE;
+		elseif (preg_match('/^Back-fill (bf-\S+) \(no emails\)/', $r->crl_new, $m))
+			$applied[(int) $r->crl_course][] = $m[1];
+	}
+	$done = array();
+	foreach ($applied as $c => $batches)
+		foreach ($batches as $b)
+			if (empty($undone[$c][$b])) { $done[] = $c; break; }
+	return $done;
 }
 
 /* What a back-fill would do to one course: a real sync in a transaction that is rolled back.

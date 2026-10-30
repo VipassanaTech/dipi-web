@@ -115,4 +115,21 @@ t_in_txn(function () {
   dh_patrika_add_course_students($course);
   t_eq(db_query("select count(*) from dh_patrika where p_student = :s", array(':s' => $students[0]))->fetchField(), 1, 'newsletter: a second run adds none');
 });
+// An old broken application with no gender or no status (prod has a few) used to stop the whole finalize at the statistics.
+t_in_txn(function () {
+  $course = t_make_course();
+  t_make_applicant($course, array('a_l_name' => 'Statsfine'));
+  t_make_applicant($course, array('a_type' => '', 'a_gender' => NULL, 'a_attended' => 0, 'a_f_name' => '', 'a_l_name' => ''));
+  t_make_applicant($course, array('a_status' => NULL, 'a_attended' => 0));
+  $s = dh_course_sync($course, array('mail_fn' => 't_record_mail', 'files' => 'none'));
+  t_eq(array($s['added'], $s['errors'], $s['stats_failed']), array(1, 0, 0), 'no-gender and no-status applications: 1 added, no errors, statistics saved');
+  t_eq((int) db_query("select sum(cs_count) from dh_course_stat where cs_course = :c", array(':c' => $course))->fetchField(), 3, 'the statistics count all 3 applications');
+  t_eq((int) db_query("select sum(cs_count) from dh_course_stat where cs_course = :c and cs_gender = ''", array(':c' => $course))->fetchField(), 1, 'the no-gender application is counted with a blank gender');
+  t_eq((int) db_query("select sum(cs_count) from dh_course_stat where cs_course = :c and cs_status = ''", array(':c' => $course))->fetchField(), 1, 'the no-status application is counted with a blank status');
+  $s = dh_course_sync($course, array('mail_fn' => 't_record_mail', 'files' => 'none'));
+  t_eq((int) db_query("select sum(cs_count) from dh_course_stat where cs_course = :c", array(':c' => $course))->fetchField(), 3, 'a second run replaces the statistics (still 3)');
+  $sum = array_fill_keys(array('students', 'added', 'removed', 'copies', 'students_removed', 'emails', 'mail_failed', 'errors'), 0);
+  t_ok(strpos(dh_course_sync_summary_text($sum + array('stats_failed' => 1)), 'course statistics not saved') !== FALSE, 'the Change Log summary says when the statistics were not saved');
+  t_ok(strpos(dh_course_sync_summary_text($sum + array('stats_failed' => 0)), 'statistics') === FALSE, 'and says nothing about them otherwise');
+});
 t_done();
