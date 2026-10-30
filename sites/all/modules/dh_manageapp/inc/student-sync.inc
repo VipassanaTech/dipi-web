@@ -301,6 +301,8 @@ function dh_course_sync($course_id, $opts = array())
 {
 	global $user;
 	$opts += array('mail' => TRUE, 'mail_fn' => 'dh_send_letter', 'files' => 'copy', 'batch' => NULL, 'uid' => (int) $user->uid);
+	if (!in_array($opts['files'], array('none', 'copy', 's3copy', 'count'), TRUE))
+		throw new Exception("Unknown files mode: {$opts['files']}");      // before any write, not once per applicant
 	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'errors', 'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
 	$teacher = array('M' => array(), 'F' => array());
@@ -457,5 +459,105 @@ function dh_fill_attended_mail_dates()
 		$n += db_query('UPDATE dh_applicant a JOIN tmp_att_mail x ON x.a_id = a.a_id SET a.a_attended_mail = x.t
 			WHERE a.a_attended_mail IS NULL AND x.a_id BETWEEN :f AND :t', array(':f' => $from, ':t' => $from + 49999), array('return' => Database::RETURN_AFFECTED));
 	db_query('DROP TEMPORARY TABLE IF EXISTS tmp_att_mail');
+	return $n;
+}
+
+/* Courses of a back-fill batch, oldest first. 1 = gaps, 2 = copies, 3 = migrated centres with no
+   records, 4 = other courses with no records. A course that is done no longer matches. */
+function dh_backfill_courses($batch, $migrated = array(335, 343, 344))
+{
+	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC'";
+	$att = "(select count(*) from dh_applicant a where a.a_course = c.c_id and a.a_attended = 1 and a.a_type in ('Student', 'Sevak'))";
+	$has = 'exists (select 1 from dh_student_course sc where sc.sc_course = c.c_id)';
+	switch ((int) $batch)
+	{
+		case 1: $q = "select c.c_id $base and $has and $att > (select count(distinct sc.sc_student) from dh_student_course sc where sc.sc_course = c.c_id)"; break;
+		case 2: $q = "select c.c_id $base and (select count(*) - count(distinct sc.sc_student) from dh_student_course sc where sc.sc_course = c.c_id) > 0"; break;
+		case 3: $q = "select c.c_id $base and c.c_center in (:m) and not $has and $att > 0"; break;
+		case 4: $q = "select c.c_id $base and c.c_center not in (:m) and not $has and $att > 0"; break;
+		default: return array();
+	}
+	$args = in_array((int) $batch, array(3, 4)) ? array(':m' => $migrated) : array();
+	return array_map('intval', db_query($q.' order by c.c_start, c.c_id', $args)->fetchCol());
+}
+
+/* What a back-fill would do to one course: a real sync in a transaction that is rolled back.
+   $files is 'count' (photos and PDFs are only counted) or 'none'; a dry run never copies a file,
+   because a copy inside S3 cannot be rolled back. */
+function dh_backfill_dry_run($course_id, $files = 'count')
+{
+	if (!in_array($files, array('none', 'count'), TRUE))
+		throw new Exception("Dry run files mode must be none or count, not: $files");
+	$msg = NULL;
+	$txn = db_transaction();
+	try
+	{
+		$sum = dh_course_sync($course_id, array('mail' => FALSE, 'files' => $files, 'batch' => 'dry-run', 'uid' => dh_system_uid()));
+	}
+	catch (Throwable $e)
+	{
+		$sum = array('errors' => 1);
+		$msg = $e->getMessage();
+	}
+	$txn->rollback();
+	if ($msg !== NULL)                                              // written after the rollback, or it would be rolled back too
+		watchdog('Finalization Error', 'Back-fill dry run, course @c: @m', array('@c' => $course_id, '@m' => $msg));
+	return $sum;
+}
+
+/* Undo one back-fill batch from dh_student_log, newest change first. Returns counts per action.
+   Not reversed: course-count rows updated in place, course statistics, files already copied to S3. */
+function dh_backfill_undo($batch, $apply = FALSE)
+{
+	$n = array();
+	$types = NULL;
+	foreach (db_query('select * from dh_student_log where sl_batch = :b order by sl_id desc', array(':b' => $batch))->fetchAll(PDO::FETCH_ASSOC) as $l)
+	{
+		$a = $l['sl_action'];
+		$n[$a] = (isset($n[$a]) ? $n[$a] : 0) + 1;
+		if (!$apply)
+			continue;
+		$row = $l['sl_old'] ? json_decode($l['sl_old'], TRUE) : NULL;
+		switch ($a)
+		{
+			case 'course-added':
+				db_delete('dh_student_course')->condition('sc_id', (int) $l['sl_new'])->execute();
+				break;
+			case 'course-removed':
+			case 'copy-removed':
+				if (!db_query('select 1 from dh_student_course where sc_id = :i', array(':i' => $row['sc_id']))->fetchField())
+					db_insert('dh_student_course')->fields($row)->execute();
+				break;
+			case 'student-removed':
+				if (!db_query('select 1 from dh_student where s_id = :i', array(':i' => $row['s_id']))->fetchField())
+					db_insert('dh_student')->fields($row)->execute();
+				break;
+			case 'sci-removed':
+				if (!db_query('select 1 from dh_student_course_input where sci_id = :i', array(':i' => $row['sci_id']))->fetchField())
+					db_insert('dh_student_course_input')->fields($row)->execute();
+				break;
+			case 'updated':
+			case 'name-change':
+				if ($types === NULL)
+					$types = db_query('desc dh_student')->fetchAllKeyed(0, 1);
+				if (!isset($types[$l['sl_field']]))
+					break;
+				// An empty old value was NULL or ''. A date or number column refuses '' (strict mode), so it goes back as NULL.
+				$old = $l['sl_old'];
+				if ($old === '' && !preg_match('/char|text|enum/i', $types[$l['sl_field']]))
+					$old = NULL;
+				// Only when nobody changed it since.
+				db_update('dh_student')->fields(array($l['sl_field'] => $old))->condition('s_id', $l['sl_student'])->condition($l['sl_field'], $l['sl_new'])->execute();
+				break;
+			case 'created':
+				if (!db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $l['sl_student']))->fetchField()
+					&& !db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $l['sl_student']))->fetchField())
+				{
+					db_delete('dh_student_course_input')->condition('sci_student', $l['sl_student'])->execute();
+					db_delete('dh_student')->condition('s_id', $l['sl_student'])->execute();
+				}
+				break;
+		}
+	}
 	return $n;
 }
