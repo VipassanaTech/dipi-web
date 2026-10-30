@@ -1,0 +1,20 @@
+<?php
+require __DIR__ . '/lib.php';
+echo "Test helper t_same (the comparison behind t_eq)\n";
+t_ok(!t_same(NULL, 0), 'NULL is not 0');
+t_ok(!t_same(0, NULL), '0 is not NULL');
+t_ok(!t_same(NULL, ''), 'NULL is not an empty string');
+t_ok(!t_same('', 0), 'an empty string is not 0');
+t_ok(!t_same('abc', 0), "'abc' is not 0");
+t_ok(t_same('1', 1), "'1' equals 1 (database values come back as strings)");
+t_ok(t_same(TRUE, TRUE), 'TRUE equals TRUE');
+t_ok(t_same(FALSE, FALSE), 'FALSE equals FALSE');
+t_ok(t_same(NULL, NULL), 'NULL equals NULL');
+t_ok(t_same(array(0, 2), array('0', '2')), 'arrays with equal values compare equal');
+t_ok(t_same(array('a' => 1, 'b' => 2), array('b' => '2', 'a' => 1)), 'array keys may be in any order');
+t_ok(!t_same(array(1), array(1, 2)), 'arrays of different size differ');
+t_ok(!t_same(array('a' => 1), array('b' => 1)), 'arrays with different keys differ');
+t_ok(!t_same(array(NULL), array(0)), 'values inside arrays use the same rules');
+t_ok(!t_same(array(1), 1), 'an array is not a scalar');
+t_ok(!t_same(1, array(1)), 'a scalar is not an array');
+t_done();
