@@ -106,3 +106,86 @@ function dh_student_find($a)
 	}
 	return array('sid' => 0, 'how' => 'none', 'strong' => FALSE);
 }
+
+/* One row in the student change log (created, name-change, updated). */
+function dh_student_log($row)
+{
+	global $user;
+	$row += array('sl_student' => NULL, 'sl_applicant' => NULL, 'sl_course' => NULL, 'sl_field' => NULL, 'sl_old' => NULL, 'sl_new' => NULL, 'sl_batch' => NULL);
+	$row['sl_user'] = isset($row['sl_user']) ? $row['sl_user'] : (int) $user->uid;
+	$row['sl_tstamp'] = date('Y-m-d H:i:s');
+	db_insert('dh_student_log')->fields($row)->execute();
+}
+
+/* The dh_student columns finalize copies from the applicant (s_x <- a_x). */
+function dh_student_fields()
+{
+	static $fields = NULL;
+	if ($fields === NULL)
+		$fields = array_values(array_diff(db_query('desc dh_student')->fetchCol(),
+			array('s_id', 's_updated', 's_created', 's_created_by', 's_updated_by', 's_first')));
+	return $fields;
+}
+
+/* Create or update the student record for one attended applicant. Returns the student id.
+   $a = the full applicant row; $strong = the match was strong (may change the name);
+   $ctx = course, applicant, batch (string or NULL), uid. A zero or unknown date counts as empty. */
+function dh_student_apply($sid, $a, $strong, $ctx)
+{
+	$log = array('sl_applicant' => $ctx['applicant'], 'sl_course' => $ctx['course'], 'sl_batch' => $ctx['batch'], 'sl_user' => $ctx['uid']);
+	$new = array();
+	foreach (dh_student_fields() as $f)
+	{
+		$k = str_replace('s_', 'a_', $f);
+		if (array_key_exists($k, $a))
+			$new[$f] = $a[$k];
+	}
+	$now = array('s_updated' => date('Y-m-d H:i:s'), 's_updated_by' => $ctx['uid']);
+	if (!$sid)
+	{
+		if (isset($new['s_photo']) && $new['s_photo'] === '')
+			unset($new['s_photo']);
+		if (isset($new['s_dob']) && !dh_dob_known($new['s_dob']))
+			unset($new['s_dob']);                                  // a zero date is no date: leave the box empty
+		$row = $new + $now + array('s_created_by' => $ctx['uid'], 's_first' => empty($a['a_old']) ? 1 : 0);
+		dh_finalize_fit('dh_student', $row, $ctx['applicant']);
+		$sid = (int) db_insert('dh_student')->fields($row)->execute();
+		dh_student_log(array('sl_student' => $sid, 'sl_action' => 'created') + $log);
+		return $sid;
+	}
+	$old = db_query('select * from dh_student where s_id = :s', array(':s' => $sid))->fetchAssoc();
+	$own = !db_query('select 1 from dh_student_course where sc_student = :s and sc_course <> :c limit 1', array(':s' => $sid, ':c' => $ctx['course']))->fetchField();
+	$set = array();
+	foreach ($new as $f => $v)
+	{
+		$v = ($v === NULL) ? '' : (string) $v;
+		$was = ($old[$f] === NULL) ? '' : (string) $old[$f];
+		if ($f === 's_dob')
+		{
+			if (!dh_dob_known($v))
+				$v = '';
+			if (!dh_dob_known($was))
+				$was = '';
+		}
+		if ($v === '' || $v === $was)
+			continue;                                              // a blank never wipes; nothing changed
+		if (!$own)
+		{
+			if (in_array($f, array('s_f_name', 's_m_name', 's_l_name')) && !$strong)
+				continue;
+			if (in_array($f, array('s_gender', 's_dob', 's_aadhar', 's_pancard', 's_voter_id', 's_passport')) && $was !== '')
+				continue;
+		}
+		$set[$f] = $v;
+		if (in_array($f, array('s_f_name', 's_m_name', 's_l_name')))
+			dh_student_log(array('sl_student' => $sid, 'sl_action' => 'name-change', 'sl_field' => $f, 'sl_old' => $was, 'sl_new' => $v) + $log);
+		elseif ($ctx['batch'])
+			dh_student_log(array('sl_student' => $sid, 'sl_action' => 'updated', 'sl_field' => $f, 'sl_old' => $was, 'sl_new' => $v) + $log);
+	}
+	if (empty($a['a_old']))
+		$set['s_first'] = 1;
+	$set += $now;
+	dh_finalize_fit('dh_student', $set, $ctx['applicant']);
+	db_update('dh_student')->fields($set)->condition('s_id', $sid)->execute();
+	return $sid;
+}
