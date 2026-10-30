@@ -228,9 +228,14 @@ function dh_course_sync_summary_text($sum)
 	return $sum['students'].' students: '.implode(', ', $parts);
 }
 
-/* Photo and application PDF into the final folders. Returns the new paths to store. */
-function dh_course_sync_files($r, $sid, $mode, &$sum)
+/* Photo and application PDF into the final folders. files: 'copy' (download and upload, as finalize
+   always did), 's3copy' (copy inside S3, skipped when already there), 'count' (dry run), 'none'.
+   Returns the paths to store on the student and course records. */
+function dh_course_sync_files($r, $sid, $opts, &$sum)
 {
+	$mode = $opts['files'];
+	$head = isset($opts['s3_head']) ? $opts['s3_head'] : 's3_head_file';
+	$copy = isset($opts['s3_copy']) ? $opts['s3_copy'] : 's3_copy_file';
 	$out = array('s_photo' => NULL, 'sc_uri' => NULL);
 	if ($mode === 'none')
 		return $out;
@@ -243,6 +248,21 @@ function dh_course_sync_files($r, $sid, $mode, &$sum)
 	foreach ($jobs as $k => $j)
 	{
 		list($from, $to) = $j;
+		if ($mode === 'count' || $mode === 's3copy')
+		{
+			$size = $head($bucket, $from);
+			if ($size === FALSE) { $sum['files_missing']++; continue; }
+			$sum['bytes'] += $size;
+			if ($mode === 'count') { $sum['files_copied']++; continue; }      // would be copied
+			if ($head($bucket, $to) === FALSE)
+			{
+				$cp = $copy($bucket, $from, $to);
+				if (!$cp['success']) { watchdog('S3Photo', $cp['message']); continue; }
+			}
+			$out[$k] = 'private://'.$to;
+			$sum['files_copied']++;
+			continue;
+		}
 		$out[$k] = 'private://'.$to;
 		$ret = s3_get_file($bucket, $from, 'file');
 		if (!$ret['success']) { $sum['files_missing']++; watchdog('S3Photo', $ret['message']); continue; }
@@ -312,7 +332,7 @@ function dh_course_sync($course_id, $opts = array())
 				'sc_comment' => $r['aa_comment'], 'sc_desc_physical' => $r['ae_desc_physical'], 'sc_desc_mental' => $r['ae_desc_mental'],
 				'sc_addiction_past' => $r['ae_desc_addiction_past'], 'sc_addiction_current' => $r['ae_desc_addiction_current'],
 				'sc_desc_other_technique' => $r['ae_desc_other_technique'], 'sc_desc_medication' => $r['ae_desc_medication'], 'sc_teach_other_details' => $r['ae_teach_other_details']);
-			$files = dh_course_sync_files($r, $sid, $opts['files'], $sum);
+			$files = dh_course_sync_files($r, $sid, $opts, $sum);
 			if ($files['sc_uri']) $c['sc_uri'] = $files['sc_uri'];
 			if ($files['s_photo']) db_update('dh_student')->fields(array('s_photo' => $files['s_photo']))->condition('s_id', $sid)->execute();
 			dh_finalize_fit('dh_student_course', $c, $r['a_id']);

@@ -163,3 +163,46 @@ function s3_set_env(){
     return array('s3' => $s3, 'e' => null);
 }
 
+/* Size in bytes of an object in the bucket, or FALSE when it is not there. */
+function s3_head_file($bucket, $key){
+    $s3_result = s3_set_env();
+    if (! $s3_result['s3'])
+        return FALSE;
+    try {
+        $r = $s3_result['s3']->headObject(['Bucket' => $bucket, 'Key' => $key]);
+        return (int) $r['ContentLength'];
+    }
+    catch (Exception $e) {
+        return FALSE;
+    }
+}
+
+/* Copy an object inside the bucket; the file never passes through this server. */
+function s3_copy_file($bucket, $from, $to){
+    $ret = array('success' => false, 'message' => '');
+    $s3_result = s3_set_env();
+    if (! $s3_result['s3']){
+        $ret['message'] = "S3: Not able to create s3 client for copying '$from'\n".$s3_result['e'];
+        return $ret;
+    }
+    for ($i = 1; $i <= 5; $i++){
+        try {
+            $s3_result['s3']->copyObject([
+                'Bucket'     => $bucket,
+                'Key'        => $to,
+                'CopySource' => $bucket.'/'.str_replace('%2F', '/', rawurlencode($from)),
+                'ACL'        => 'private',
+            ]);
+            $ret['success'] = true;
+            return $ret;
+        }
+        catch (Exception $e) {
+            if ($i == 5){
+                $ret['message'] = "S3: copying '$from' to '$to' in bucket '$bucket' failed.\n".$e->getMessage();
+                return $ret;
+            }
+            usleep(500000);
+        }
+    }
+    return $ret;
+}
