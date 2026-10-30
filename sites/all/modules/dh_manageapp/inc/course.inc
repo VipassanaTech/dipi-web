@@ -1274,7 +1274,7 @@ function finalize_course( $course_id )
 		return $res;
 	}
 	$attended = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-ATTENDED'")->fetchField();
-	db_update('dh_applicant')->fields(array('a_status' => $attended))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
+	db_update('dh_applicant')->fields(array('a_status' => $attended, 'a_updated_by' => dh_system_uid()))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
 
 	if (posix_getuid() == 0)
 		posix_setuid(33);
