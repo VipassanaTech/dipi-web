@@ -63,8 +63,15 @@ function dh_course_dashboard()
 		$out .= '<p><a href="#" id="course-reopen" class="button" data-centre="'.(int) arg(1).'" data-course="'.(int) arg(2).'" data-token="'.drupal_get_token('course-reopen-'.(int) arg(2)).'">Reopen for correction</a></p>';
 		drupal_add_js('(function($){$(document).ready(function(){
 			$("#course-reopen").on("click",function(e){e.preventDefault();var a=$(this);
-				$.confirm({title:"Reopen for correction",columnClass:"medium",
-					content:"<p>The course opens again so you can fix it in Zero Day, Assign Teachers and the applications. Finalize it again when you are done.</p><label>Reason (required)</label><textarea id=\"reopen-reason\" rows=\"3\" style=\"width:100%\"></textarea>",
+				$.confirm({title:"Reopen this course for correction?",columnClass:"medium",
+					content:"<ul style=\"padding-left:18px\">"
+						+"<li>The course opens again. You can fix it in Zero Day, Assign Teachers and the applications (for example, mark a student Left, or add a missed teacher).</li>"
+						+"<li>Nothing is deleted now. Student records stay as they are until you finalize again.</li>"
+						+"<li>When you are done, press <b>Finalize Course</b> again on Manage Courses. DIPI then updates the student records: students newly marked attended are added, and students no longer marked attended are removed from this course.</li>"
+						+"<li>The Attended email goes only to students newly marked attended, and only if you tick <b>Send the Attended email</b> when you finalize. No one gets it twice.</li>"
+						+"<li>Your reason is saved in the course Change Log.</li></ul>"
+						+"<p>More help: <a href=\"/wiki-finalize-correction\" target=\"_blank\">Correcting a Finalized Course</a></p>"
+						+"<label>Reason (required)</label><textarea id=\"reopen-reason\" rows=\"3\" style=\"width:100%\"></textarea>",
 					buttons:{reopen:{text:"Reopen",btnClass:"btn-warning",action:function(){
 						var reason=$.trim(this.$content.find("#reopen-reason").val());
 						if(reason.length<5){alert("Please write the reason for reopening.");return false;}
