@@ -8,7 +8,11 @@ require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 if (stripos(db_query("select @@hostname")->fetchField(), 'vri') !== FALSE) { echo "Refusing: tests run on local only.\n"; exit(1); }
 
-$GLOBALS['t_fail'] = 0; $GLOBALS['t_pass'] = 0; $GLOBALS['t_mail'] = array();
+$GLOBALS['t_fail'] = 0; $GLOBALS['t_pass'] = 0; $GLOBALS['t_mail'] = array(); $GLOBALS['t_finished'] = FALSE;
+// A test that dies before t_done() (fatal error, undefined function, exit) must never look green.
+register_shutdown_function(function () {
+  if (empty($GLOBALS['t_finished'])) { echo "\nTEST DID NOT FINISH (crashed before t_done)\n"; exit(1); }
+});
 function t_ok($cond, $label) { if ($cond) { $GLOBALS['t_pass']++; echo "  ok   $label\n"; } else { $GLOBALS['t_fail']++; echo "  FAIL $label\n"; } }
 // Strict-enough comparison. Database values come back as strings, so '1' equals 1, but NULL, '' and 0 are all different.
 // NULL equals only NULL. Arrays are equal when they have the same keys (any order) and equal values (same rules).
@@ -23,7 +27,7 @@ function t_same($got, $want) {
   return (string) $got === (string) $want;
 }
 function t_eq($got, $want, $label) { $same = t_same($got, $want); t_ok($same, $label . ($same ? '' : ' (got ' . var_export($got, TRUE) . ', want ' . var_export($want, TRUE) . ')')); }
-function t_done() { echo "\n{$GLOBALS['t_pass']} passed, {$GLOBALS['t_fail']} failed\n"; exit($GLOBALS['t_fail'] ? 1 : 0); }
+function t_done() { $GLOBALS['t_finished'] = TRUE; echo "\n{$GLOBALS['t_pass']} passed, {$GLOBALS['t_fail']} failed\n"; exit($GLOBALS['t_fail'] ? 1 : 0); }
 // Used as mail_fn: records the applicant, sends nothing.
 function t_record_mail($type, $a_id, $event) { $GLOBALS['t_mail'][] = (int) $a_id; return array('email_res_id' => 'test'); }
 // Runs $fn inside a transaction that is always rolled back.

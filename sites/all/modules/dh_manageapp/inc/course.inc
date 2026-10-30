@@ -1493,30 +1493,11 @@ function dh_finalize_fit($table, &$row, $a_id)
 }
 
 
-/* Find the existing student record for an attended applicant, trying in order:
-   Aadhaar, PAN, Voter ID, Passport, then name + email, name + mobile, name + date of birth.
-   The applicant's values go in as placeholders, never pasted into the SQL: a name like
-   D'Souza used to break the query (the student was then skipped at finalize), and any
-   text typed on the application form could change what the query did. */
+/* Kept for old scripts that call it; finalize uses dh_course_sync() (inc/student-sync.inc). */
 function check_student($r)
 {
-	$sid = '';
-	foreach (array('aadhar', 'pancard', 'voter_id', 'passport') as $f)
-	{
-		if ($r['a_'.$f] <> '')
-			$sid = db_query("select s_id from dh_student where s_$f = :v", array(':v' => (string) $r['a_'.$f]))->fetchField();
-		if ($sid > 0) return $sid;
-	}
-
-	$name = array(':f' => (string) $r['a_f_name'], ':l' => (string) $r['a_l_name']);
-	foreach (array('email', 'phone_mobile', 'dob') as $f)
-	{
-		if ($r['a_'.$f] <> '')
-			$sid = db_query("select s_id from dh_student where s_f_name = :f and s_l_name = :l and s_$f = :v", $name + array(':v' => (string) $r['a_'.$f]))->fetchField();
-		if ($sid > 0) return $sid;
-	}
-
-	return $sid;
+	$m = dh_student_find($r);
+	return $m['sid'] ? $m['sid'] : '';
 }
 
 function generate_course_pdf($course_id, $seating=0, $type = 'M')
