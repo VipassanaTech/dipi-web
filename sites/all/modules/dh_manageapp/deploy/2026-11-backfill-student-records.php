@@ -5,7 +5,9 @@
 //   php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-backfill-student-records.php --courses=60099,62604   named courses (dry run)
 //   php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-backfill-student-records.php --undo=<batch id>     what undo would do; --apply undoes
 // --limit=N runs only the first N courses; --no-files skips the photo and PDF copies (dry run and apply; local tests).
-// A dry run counts the photos and PDFs (S3 heads only). The tool stops after the first course with a file failure.
+// A dry run counts the photos and PDFs (S3 heads only). The tool stops after the first course with a file failure
+// or an error that stopped the sync, and exits 1; it also exits 1 when any course had errors or an undo row failed.
+// A batch skips courses that already carry a back-fill Change Log row (not undone); name them with --courses to run again.
 // Prints counts and course ids only. There is no option to send email.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
@@ -24,31 +26,57 @@ foreach (array_slice($argv, 1) as $a)
   else { echo "Unknown option: $a (a mistyped option could run a whole batch, so nothing was done)\n"; exit(1); }
 }
 if (!empty($o['batch']) && !empty($o['courses'])) { echo "Use --batch or --courses, not both.\n"; exit(1); }
-if (!lock_acquire('dh_student_backfill', 6 * 3600)) { echo "Another back-fill is running.\n"; exit(1); }
+// One hour at a time: it is extended before every course, so a long run keeps it and a killed run frees it within the hour.
+if (!lock_acquire('dh_student_backfill', 3600)) { echo "Another back-fill is running.\n"; exit(1); }
 if (!empty($o['undo']))
 {
   $n = dh_backfill_undo($o['undo'], $o['apply']);
-  echo ($o['apply'] ? 'undone' : 'undo would reverse') . " for {$o['undo']}: " . json_encode($n) . "\n";
+  $x = array();
+  foreach ($n as $k => $v) if ($k[0] !== '_') $x[$k] = $v;
+  echo ($o['apply'] ? 'undo of' : 'undo would reverse') . " {$o['undo']}, log rows per action: " . json_encode($x) . "\n";
+  $code = 0;
+  if ($o['apply'])
+  {
+    echo "  rows undone {$n['_undone']}, skipped {$n['_skipped']} (changed since, row gone, or a guard kept it), failed {$n['_failed']}; "
+      . count($n['_courses']) . " courses got a Change Log note\n";
+    if ($n['_failed'])
+    {
+      $ids = $n['_failed_ids'];
+      echo '  failed log rows (sl_id): ' . implode(',', array_slice($ids, 0, 20)) . (count($ids) > 20 ? ' and ' . (count($ids) - 20) . ' more' : '') . "\n";
+      $code = 1;
+    }
+  }
   lock_release('dh_student_backfill');
-  exit(0);
+  exit($code);
 }
 // Email is off in the sync calls below, in code. A dry run only counts files; an apply copies them inside S3.
 $files = $o['nofiles'] ? 'none' : ($o['apply'] ? 's3copy' : 'count');
 $courses = !empty($o['courses']) ? $o['courses'] : (!empty($o['batch']) ? dh_backfill_courses($o['batch']) : array());
 if (!empty($o['limit'])) $courses = array_slice($courses, 0, $o['limit']);
 if (!$courses) { echo "No courses. Use --batch=1..4 or --courses=id,id\n"; lock_release('dh_student_backfill'); exit(1); }
-$batch = 'bf-' . (!empty($o['batch']) ? 'b' . $o['batch'] : 'list') . '-' . date('Ymd-Hi');
+$batch = 'bf-' . (!empty($o['batch']) ? 'b' . $o['batch'] : 'list') . '-' . date('Ymd-His');     // seconds, so two runs never share an id
 echo ($o['apply'] ? "APPLY, batch id $batch" : 'DRY RUN') . ': ' . count($courses) . " courses, email OFF, files $files\n";
 $keys = array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'files_copied', 'files_missing', 'files_failed', 'bytes', 'errors');
-$tot = array_fill_keys($keys, 0); $failed = array(); $stop = 0; $t0 = microtime(TRUE);
+$tot = array_fill_keys($keys, 0); $failed = array(); $stop = ''; $t0 = microtime(TRUE);
 foreach ($courses as $i => $c)
 {
+  if (!lock_acquire('dh_student_backfill', 3600)) { $stop = 'the lock was lost (another run took over); nothing more was done'; break; }
   $info = db_query('select c_center, c_start from dh_course where c_id = :c and c_finalized = 1', array(':c' => $c))->fetchAssoc();
   if (!$info) { echo "  course $c: not finalized, skipped\n"; continue; }
   if ($o['apply'])
   {
-    $s = dh_course_sync($c, array('mail' => FALSE, 'files' => $files, 'batch' => $batch, 'uid' => dh_system_uid()));
-    dh_course_log_note($c, 'finalize_summary', "Back-fill $batch (no emails): " . dh_course_sync_summary_text($s), dh_system_uid());
+    try
+    {
+      $s = dh_course_sync($c, array('mail' => FALSE, 'files' => $files, 'batch' => $batch, 'uid' => dh_system_uid()));
+      dh_course_log_note($c, 'finalize_summary', "Back-fill $batch (no emails): " . dh_course_sync_summary_text($s), dh_system_uid());
+    }
+    catch (Throwable $e)
+    {
+      echo "  course $c: STOPPED by an error: " . substr($e->getMessage(), 0, 300) . "\n";
+      watchdog('Finalization Error', 'Back-fill @b, course @c: @m', array('@b' => $batch, '@c' => $c, '@m' => $e->getMessage()));
+      $stop = "course $c stopped with an error (message above); what was done can be undone with --undo=$batch";
+      break;
+    }
   }
   else
     $s = dh_backfill_dry_run($c, $files);
@@ -58,15 +86,11 @@ foreach ($courses as $i => $c)
   printf("  %d/%d course %d (centre %d, %s): %d students, +%d, =%d, -%d, copies -%d, students -%d, files %d (%.1f MB), missing %d, failed %d%s\n",
     $i + 1, count($courses), $c, $info['c_center'], substr($info['c_start'], 0, 10), $s['students'], $s['added'], $s['updated'], $s['removed'],
     $s['copies'], $s['students_removed'], $s['files_copied'], $s['bytes'] / 1048576, $s['files_missing'], $s['files_failed'], $s['errors'] ? ", ERRORS {$s['errors']}" : '');
-  if ($s['files_failed'] > 0) { $stop = $c; $stopn = $s['files_failed']; break; }
+  if ($s['files_failed'] > 0) { $stop = "course $c had {$s['files_failed']} file failures (S3 settings or permissions?); fix and run again"; break; }
   usleep(200000);
 }
 echo 'TOTAL: ' . json_encode($tot) . ', ' . round(microtime(TRUE) - $t0) . "s\n";
 if ($failed) echo 'Courses with errors' . ($o['apply'] ? ' (see the Finalization Error log)' : '') . ': ' . implode(',', $failed) . "\n";
-if ($stop)
-{
-  echo "STOP: course $stop had $stopn file failures (S3 settings or permissions?); fix and run again\n";
-  lock_release('dh_student_backfill');
-  exit(1);
-}
+if ($stop) echo "STOP: $stop\n";
 lock_release('dh_student_backfill');
+exit(($stop || $failed) ? 1 : 0);

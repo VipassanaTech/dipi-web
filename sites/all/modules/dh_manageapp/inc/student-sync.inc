@@ -117,6 +117,23 @@ function dh_student_log($row)
 	db_insert('dh_student_log')->fields($row)->execute();
 }
 
+/* Two database values are the same: NULL equals only NULL, anything else is compared as text ('1' equals 1). */
+function dh_value_same($a, $b)
+{
+	if ($a === NULL || $b === NULL)
+		return $a === $b;
+	return (string) $a === (string) $b;
+}
+
+/* The student already has a record of a LATER course than this one (later start, or the same start and a higher id).
+   Such a student's stored data came from the later course and is newer than anything this course can say. */
+function dh_student_has_newer_course($sid, $course_id)
+{
+	return (bool) db_query('select 1 from dh_student_course sc join dh_course c on c.c_id = sc.sc_course join dh_course me on me.c_id = :c1
+		where sc.sc_student = :s and sc.sc_course <> :c2 and (c.c_start > me.c_start or (c.c_start = me.c_start and c.c_id > me.c_id)) limit 1',
+		array(':c1' => $course_id, ':c2' => $course_id, ':s' => $sid))->fetchField();
+}
+
 /* The dh_student columns finalize copies from the applicant (s_x <- a_x). */
 function dh_student_fields()
 {
@@ -166,6 +183,9 @@ function dh_student_apply($sid, $a, $strong, $ctx)
 				array(':s' => $sid, ':c' => $ctx['course'], ':a' => $ctx['applicant']))->fetchField()
 			|| (bool) db_query("select 1 from dh_student_log where sl_student = :s and sl_action = 'created' and sl_applicant = :a limit 1",
 				array(':s' => $sid, ':a' => $ctx['applicant']))->fetchField();
+	/* Newer data wins: when the student already has a later course, this (older) course only fills EMPTY fields.
+	   No stored value is changed (contact, work, medical, photo, IDs, name), whatever the match was. */
+	$newer = isset($ctx['newer']) ? $ctx['newer'] : dh_student_has_newer_course($sid, $ctx['course']);
 	$id_kind = array('s_aadhar' => 'aadhar', 's_pancard' => 'pancard', 's_voter_id' => 'voter_id', 's_passport' => 'passport');
 	$set = array();
 	foreach ($new as $f => $v)
@@ -188,6 +208,8 @@ function dh_student_apply($sid, $a, $strong, $ctx)
 		}
 		if ($v === '' || $v === $was)
 			continue;                                              // a blank never wipes; nothing changed
+		if ($newer && $was !== '')
+			continue;                                              // a later course already gave this value
 		if (!$own)
 		{
 			if (in_array($f, array('s_f_name', 's_m_name', 's_l_name')) && !$strong)
@@ -202,8 +224,12 @@ function dh_student_apply($sid, $a, $strong, $ctx)
 			dh_student_log(array('sl_student' => $sid, 'sl_action' => 'updated', 'sl_field' => $f, 'sl_old' => $was, 'sl_new' => $v) + $log);
 	}
 	if (empty($a['a_old']))
+	{
 		$set['s_first'] = 1;
-	$set += $now;
+		if ($ctx['batch'] && (string) $old['s_first'] !== '1')
+			dh_student_log(array('sl_student' => $sid, 'sl_action' => 'updated', 'sl_field' => 's_first', 'sl_old' => (string) $old['s_first'], 'sl_new' => '1') + $log);
+	}
+	$set += $now;          // s_updated and s_updated_by are audit stamps: not logged, not reversed by an undo
 	dh_finalize_fit('dh_student', $set, $ctx['applicant']);
 	db_update('dh_student')->fields($set)->condition('s_id', $sid)->execute();
 	return $sid;
@@ -281,15 +307,22 @@ function dh_course_sync_files($r, $sid, $opts, &$sum)
 	return $out;
 }
 
-/* Remove a student record that has no course left and no referral pointing to it. */
+/* Remove a student record that has no course left and nothing else pointing to it: no referral, and no applicant
+   (the legacy a_student / a_old_student links). A patrika subscription is kept; its student link is set to 0 ("not a student"). */
 function dh_student_remove_if_empty($sid, $log, &$sum)
 {
 	if (db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $sid))->fetchField()
-		|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField())
+		|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField()
+		|| db_query('select 1 from dh_applicant where a_student = :s1 or a_old_student = :s2 limit 1', array(':s1' => $sid, ':s2' => $sid))->fetchField())
 		return;
 	foreach (db_query('select * from dh_student_course_input where sci_student = :s', array(':s' => $sid))->fetchAll(PDO::FETCH_ASSOC) as $sci)
 		dh_student_log(array('sl_student' => $sid, 'sl_action' => 'sci-removed', 'sl_old' => json_encode($sci)) + $log);
 	db_delete('dh_student_course_input')->condition('sci_student', $sid)->execute();
+	foreach (db_query('select p_id from dh_patrika where p_student = :s', array(':s' => $sid))->fetchCol() as $pid)
+	{
+		dh_student_log(array('sl_student' => $sid, 'sl_action' => 'patrika-unlinked', 'sl_old' => (string) $pid) + $log);
+		db_update('dh_patrika')->fields(array('p_student' => 0))->condition('p_id', $pid)->execute();
+	}
 	$row = db_query('select * from dh_student where s_id = :s', array(':s' => $sid))->fetchAssoc();
 	dh_student_log(array('sl_student' => $sid, 'sl_action' => 'student-removed', 'sl_old' => json_encode($row)) + $log);
 	db_delete('dh_student')->condition('s_id', $sid)->execute();
@@ -333,6 +366,9 @@ function dh_course_sync($course_id, $opts = array())
 				if ($sid)
 					$sc = db_query('select sc_id, sc_student from dh_student_course where sc_course = :c and sc_student = :s and sc_applicant is null order by sc_id limit 1', array(':c' => $course_id, ':s' => $sid))->fetchAssoc();
 			}
+			$pre_sid = (int) $sid;                                 // 0 = this run makes the student
+			$newer = $pre_sid ? dh_student_has_newer_course($pre_sid, $course_id) : FALSE;
+			$ctx['newer'] = $newer;
 			$sid = dh_student_apply($sid, $r, $strong, $ctx);
 
 			$c = array('sc_student' => $sid, 'sc_applicant' => (int) $r['a_id'], 'sc_center' => $r['a_center'], 'sc_course' => $r['a_course'],
@@ -344,10 +380,31 @@ function dh_course_sync($course_id, $opts = array())
 				'sc_desc_other_technique' => $r['ae_desc_other_technique'], 'sc_desc_medication' => $r['ae_desc_medication'], 'sc_teach_other_details' => $r['ae_teach_other_details']);
 			$files = dh_course_sync_files($r, $sid, $opts, $sum);
 			if ($files['sc_uri']) $c['sc_uri'] = $files['sc_uri'];
-			if ($files['s_photo']) db_update('dh_student')->fields(array('s_photo' => $files['s_photo']))->condition('s_id', $sid)->execute();
+			if ($files['s_photo'])
+			{
+				// The final photo path. An older course never replaces the photo of a student who has a later course.
+				$cur = db_query('select s_photo from dh_student where s_id = :s', array(':s' => $sid))->fetchField();
+				if (!dh_value_same($cur, $files['s_photo']) && (!$newer || trim((string) $cur) === trim((string) $r['a_photo'])))
+				{
+					if ($opts['batch'] && $pre_sid)
+						dh_student_log(array('sl_student' => $sid, 'sl_applicant' => $r['a_id'], 'sl_action' => 'updated', 'sl_field' => 's_photo', 'sl_old' => (string) $cur, 'sl_new' => $files['s_photo']) + $log);
+					db_update('dh_student')->fields(array('s_photo' => $files['s_photo']))->condition('s_id', $sid)->execute();
+				}
+			}
 			dh_finalize_fit('dh_student_course', $c, $r['a_id']);
 			if ($sc)
 			{
+				if ($opts['batch'])
+				{
+					// Batch mode: what an existing (or claimed) course record had before, so an undo can put it back.
+					$was = db_query('select * from dh_student_course where sc_id = :i', array(':i' => $sc['sc_id']))->fetchAssoc();
+					$chg = array();
+					foreach ($c as $k => $v)
+						if ($was && !dh_value_same($was[$k], $v))
+							$chg[$k] = $v;
+					if ($chg)
+						dh_student_log(array('sl_student' => $sid, 'sl_applicant' => $r['a_id'], 'sl_action' => 'course-updated', 'sl_old' => json_encode($was), 'sl_new' => json_encode($chg)) + $log);
+				}
 				db_update('dh_student_course')->fields($c)->condition('sc_id', $sc['sc_id'])->execute();
 				$keep[] = (int) $sc['sc_id']; $sum['updated']++;
 			}
@@ -366,8 +423,29 @@ function dh_course_sync($course_id, $opts = array())
 				'sci_first_day' => $r['ac_first_day'], 'sci_first_location_str' => $r['ac_first_location_str'], 'sci_first_teacher_str' => $r['ac_first_teacher_str']);
 			dh_finalize_fit('dh_student_course_input', $sci, $r['a_id']);
 			$sci_id = db_query('select sci_id from dh_student_course_input where sci_student = :s order by sci_id desc limit 1', array(':s' => $sid))->fetchField();
-			if ($sci_id) db_update('dh_student_course_input')->fields($sci)->condition('sci_id', $sci_id)->execute();
-			else db_insert('dh_student_course_input')->fields($sci + array('sci_student' => $sid))->execute();
+			if ($sci_id)
+			{
+				if (!$newer)                                       // a later course already gave this student their numbers: keep them
+				{
+					if ($opts['batch'])
+					{
+						$was = db_query('select * from dh_student_course_input where sci_id = :i', array(':i' => $sci_id))->fetchAssoc();
+						$chg = array();
+						foreach ($sci as $k => $v)
+							if ($was && !dh_value_same($was[$k], $v))
+								$chg[$k] = $v;
+						if ($chg)
+							dh_student_log(array('sl_student' => $sid, 'sl_applicant' => $r['a_id'], 'sl_action' => 'sci-updated', 'sl_old' => json_encode($was), 'sl_new' => json_encode($chg)) + $log);
+					}
+					db_update('dh_student_course_input')->fields($sci)->condition('sci_id', $sci_id)->execute();
+				}
+			}
+			else
+			{
+				$new_sci = (int) db_insert('dh_student_course_input')->fields($sci + array('sci_student' => $sid))->execute();
+				if ($opts['batch'] && $pre_sid)                    // a student made in this run is removed with its numbers by the undo of 'created'
+					dh_student_log(array('sl_student' => $sid, 'sl_applicant' => $r['a_id'], 'sl_action' => 'sci-added', 'sl_new' => (string) $new_sci) + $log);
+			}
 
 			if ($opts['mail'] && empty($r['a_attended_mail']))
 			{
@@ -463,10 +541,17 @@ function dh_fill_attended_mail_dates()
 }
 
 /* Courses of a back-fill batch, oldest first. 1 = gaps, 2 = copies, 3 = migrated centres with no
-   records, 4 = other courses with no records. A course that is done no longer matches. */
+   records, 4 = other courses with no records. A course that is done no longer matches. A course that
+   already carries the back-fill's own Change Log row ("Back-fill <batch id> (no emails): ..." written by the
+   tool) from an applied run that was not undone is skipped too: a course whose students resolve to fewer
+   records, or with an erroring applicant, would otherwise be picked again on every run. The tool names such
+   a course with --courses to run it again. */
 function dh_backfill_courses($batch, $migrated = array(335, 343, 344))
 {
-	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC'";
+	$ran = "exists (select 1 from dh_course_log l where l.crl_course = c.c_id and l.crl_field = 'finalize_summary' and l.crl_new like 'Back-fill bf-%(no emails)%'
+		and not exists (select 1 from dh_course_log u where u.crl_course = c.c_id and u.crl_field = 'finalize_summary'
+			and u.crl_new = concat('Back-fill batch ', substring_index(substring_index(l.crl_new, ' ', 2), ' ', -1), ' undone')))";
+	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC' and not $ran";
 	$att = "(select count(*) from dh_applicant a where a.a_course = c.c_id and a.a_attended = 1 and a.a_type in ('Student', 'Sevak'))";
 	$has = 'exists (select 1 from dh_student_course sc where sc.sc_course = c.c_id)';
 	switch ((int) $batch)
@@ -505,59 +590,142 @@ function dh_backfill_dry_run($course_id, $files = 'count')
 	return $sum;
 }
 
-/* Undo one back-fill batch from dh_student_log, newest change first. Returns counts per action.
-   Not reversed: course-count rows updated in place, course statistics, files already copied to S3. */
+/* Put one row of a student table back from a JSON log row ($old = the whole row as it was). Returns 'skipped' when the row is there already. */
+function dh_backfill_restore_row($table, $key, $old)
+{
+	if (!is_array($old) || !isset($old[$key]))
+		throw new Exception("Unreadable log row for $table");
+	if (db_query("select 1 from $table where $key = :i", array(':i' => $old[$key]))->fetchField())
+		return 'skipped';
+	db_insert($table)->fields($old)->execute();
+	return 'undone';
+}
+
+/* Undo one log row. Returns 'undone' or 'skipped' (nothing to do: the value changed since, the row is gone or
+   there already, or a guard keeps the student); throws when the row cannot be undone. $ctx: column types of
+   dh_student and, for 'created' rows, the students that applicants or patrika rows still point to. */
+function dh_backfill_undo_row($l, &$ctx)
+{
+	$old = in_array($l['sl_action'], array('course-removed', 'copy-removed', 'student-removed', 'sci-removed', 'course-updated', 'sci-updated')) ? json_decode((string) $l['sl_old'], TRUE) : NULL;
+	switch ($l['sl_action'])
+	{
+		case 'course-added':
+			return db_delete('dh_student_course')->condition('sc_id', (int) $l['sl_new'])->execute() ? 'undone' : 'skipped';
+		case 'course-removed':
+		case 'copy-removed':
+			return dh_backfill_restore_row('dh_student_course', 'sc_id', $old);
+		case 'student-removed':
+			return dh_backfill_restore_row('dh_student', 's_id', $old);
+		case 'sci-removed':
+			return dh_backfill_restore_row('dh_student_course_input', 'sci_id', $old);
+		case 'course-updated':
+		case 'sci-updated':
+			// The columns the sync changed go back to what they were, if the row still exists.
+			list($table, $key) = ($l['sl_action'] === 'course-updated') ? array('dh_student_course', 'sc_id') : array('dh_student_course_input', 'sci_id');
+			$new = json_decode((string) $l['sl_new'], TRUE);
+			if (!is_array($old) || !is_array($new) || !isset($old[$key]))
+				throw new Exception("Unreadable log row for $table");
+			$set = array_intersect_key($old, $new);
+			return ($set && db_update($table)->fields($set)->condition($key, $old[$key])->execute()) ? 'undone' : 'skipped';
+		case 'sci-added':
+			return db_delete('dh_student_course_input')->condition('sci_id', (int) $l['sl_new'])->execute() ? 'undone' : 'skipped';
+		case 'patrika-unlinked':
+			return db_update('dh_patrika')->fields(array('p_student' => (int) $l['sl_student']))->condition('p_id', (int) $l['sl_old'])->condition('p_student', 0)->execute() ? 'undone' : 'skipped';
+		case 'updated':
+		case 'name-change':
+			if ($ctx['types'] === NULL)
+				$ctx['types'] = db_query('desc dh_student')->fetchAllKeyed(0, 1);
+			if (!isset($ctx['types'][$l['sl_field']]))
+				throw new Exception('Not a student column: ' . $l['sl_field']);
+			// An empty old value was NULL or ''. A date or number column refuses '' (strict mode), so it goes back as NULL.
+			$value = $l['sl_old'];
+			if ($value === '' && !preg_match('/char|text|enum/i', $ctx['types'][$l['sl_field']]))
+				$value = NULL;
+			// Only when nobody changed it since. (s_updated / s_updated_by are audit stamps and are not put back.)
+			return db_update('dh_student')->fields(array($l['sl_field'] => $value))->condition('s_id', $l['sl_student'])->condition($l['sl_field'], $l['sl_new'])->execute() ? 'undone' : 'skipped';
+		case 'created':
+			$s = (int) $l['sl_student'];
+			if (isset($ctx['pointed'][$s])
+				|| db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $s))->fetchField()
+				|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $s))->fetchField())
+				return 'skipped';
+			db_delete('dh_student_course_input')->condition('sci_student', $s)->execute();
+			return db_delete('dh_student')->condition('s_id', $s)->execute() ? 'undone' : 'skipped';
+	}
+	return 'skipped';
+}
+
+/* Undo one back-fill batch from dh_student_log, newest change first, in chunks of 2000 log rows.
+   Returns the number of log rows per action, and (with $apply) '_undone', '_skipped', '_failed', '_failed_ids' (sl_id
+   of the rows that could not be undone) and '_courses' (courses with at least one undone row, each gets a Change Log note).
+   Every row is undone on its own: one that fails is counted and the undo goes on. While rows go back, the session
+   SQL mode lets legacy zero dates in. Not reversed: s_updated / s_updated_by (audit stamps), course statistics
+   (rebuilt from applicants), files already copied to S3. */
 function dh_backfill_undo($batch, $apply = FALSE)
 {
 	$n = array();
-	$types = NULL;
-	foreach (db_query('select * from dh_student_log where sl_batch = :b order by sl_id desc', array(':b' => $batch))->fetchAll(PDO::FETCH_ASSOC) as $l)
+	$res = array('_undone' => 0, '_skipped' => 0, '_failed' => 0, '_failed_ids' => array(), '_courses' => array());
+	$ctx = array('types' => NULL, 'pointed' => array());
+	if ($apply)
 	{
-		$a = $l['sl_action'];
-		$n[$a] = (isset($n[$a]) ? $n[$a] : 0) + 1;
-		if (!$apply)
-			continue;
-		$row = $l['sl_old'] ? json_decode($l['sl_old'], TRUE) : NULL;
-		switch ($a)
-		{
-			case 'course-added':
-				db_delete('dh_student_course')->condition('sc_id', (int) $l['sl_new'])->execute();
-				break;
-			case 'course-removed':
-			case 'copy-removed':
-				if (!db_query('select 1 from dh_student_course where sc_id = :i', array(':i' => $row['sc_id']))->fetchField())
-					db_insert('dh_student_course')->fields($row)->execute();
-				break;
-			case 'student-removed':
-				if (!db_query('select 1 from dh_student where s_id = :i', array(':i' => $row['s_id']))->fetchField())
-					db_insert('dh_student')->fields($row)->execute();
-				break;
-			case 'sci-removed':
-				if (!db_query('select 1 from dh_student_course_input where sci_id = :i', array(':i' => $row['sci_id']))->fetchField())
-					db_insert('dh_student_course_input')->fields($row)->execute();
-				break;
-			case 'updated':
-			case 'name-change':
-				if ($types === NULL)
-					$types = db_query('desc dh_student')->fetchAllKeyed(0, 1);
-				if (!isset($types[$l['sl_field']]))
-					break;
-				// An empty old value was NULL or ''. A date or number column refuses '' (strict mode), so it goes back as NULL.
-				$old = $l['sl_old'];
-				if ($old === '' && !preg_match('/char|text|enum/i', $types[$l['sl_field']]))
-					$old = NULL;
-				// Only when nobody changed it since.
-				db_update('dh_student')->fields(array($l['sl_field'] => $old))->condition('s_id', $l['sl_student'])->condition($l['sl_field'], $l['sl_new'])->execute();
-				break;
-			case 'created':
-				if (!db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $l['sl_student']))->fetchField()
-					&& !db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $l['sl_student']))->fetchField())
-				{
-					db_delete('dh_student_course_input')->condition('sci_student', $l['sl_student'])->execute();
-					db_delete('dh_student')->condition('s_id', $l['sl_student'])->execute();
-				}
-				break;
-		}
+		$mode = db_query('select @@session.sql_mode')->fetchField();
+		db_query("SET SESSION sql_mode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'");
 	}
-	return $n;
+	try
+	{
+		$last = NULL;
+		do
+		{
+			$args = array(':b' => $batch) + ($last === NULL ? array() : array(':last' => $last));
+			$rows = db_query('select * from dh_student_log where sl_batch = :b'.($last === NULL ? '' : ' and sl_id < :last').' order by sl_id desc limit 2000', $args)->fetchAll(PDO::FETCH_ASSOC);
+			$created = array();
+			foreach ($rows as $l)
+			{
+				$n[$l['sl_action']] = (isset($n[$l['sl_action']]) ? $n[$l['sl_action']] : 0) + 1;
+				$last = $l['sl_id'];
+				if ($l['sl_action'] === 'created')
+					$created[] = (int) $l['sl_student'];
+			}
+			if (!$apply)
+				continue;
+			// Students that a legacy applicant link or a patrika subscription points to are kept. Looked up once per chunk:
+			// those columns have no index, so a lookup per row would read the whole table every time.
+			$ctx['pointed'] = array();
+			if ($created)
+			{
+				foreach (db_query('select a_student, a_old_student from dh_applicant where a_student in (:i1) or a_old_student in (:i2)', array(':i1' => $created, ':i2' => $created)) as $a)
+					$ctx['pointed'][(int) $a->a_student] = $ctx['pointed'][(int) $a->a_old_student] = TRUE;
+				foreach (db_query('select p_student from dh_patrika where p_student in (:i)', array(':i' => $created))->fetchCol() as $p)
+					$ctx['pointed'][(int) $p] = TRUE;
+			}
+			foreach ($rows as $l)
+			{
+				try
+				{
+					$r = dh_backfill_undo_row($l, $ctx);
+				}
+				catch (Throwable $e)
+				{
+					$r = 'failed';
+				}
+				$res['_'.$r]++;
+				if ($r === 'failed')
+					$res['_failed_ids'][] = (int) $l['sl_id'];
+				elseif ($r === 'undone' && $l['sl_course'])
+					$res['_courses'][(int) $l['sl_course']] = TRUE;
+			}
+		}
+		while (count($rows) == 2000);
+	}
+	finally
+	{
+		if ($apply)
+			db_query('SET SESSION sql_mode = :m', array(':m' => $mode));
+	}
+	if (!$apply)
+		return $n;
+	$res['_courses'] = array_keys($res['_courses']);
+	foreach ($res['_courses'] as $c)
+		dh_course_log_note($c, 'finalize_summary', "Back-fill batch $batch undone", dh_system_uid());
+	return $n + $res;
 }

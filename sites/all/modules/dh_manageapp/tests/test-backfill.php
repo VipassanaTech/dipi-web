@@ -14,10 +14,16 @@ t_in_txn(function () {
   t_ok(in_array($none, dh_backfill_courses($b)), "course with no records is in batch $b");
   t_ok(in_array($copies, dh_backfill_courses(2)), 'course with a copy is in batch 2');
 
-  $before = db_query("select count(*) from dh_student_course")->fetchField();
+  $counts = function () {
+    $o = array();
+    foreach (array('dh_student', 'dh_student_course', 'dh_student_course_input', 'dh_student_log', 'dh_course_stat', 'dh_course_log') as $t)
+      $o[$t] = (int) db_query("select count(*) from $t")->fetchField();
+    return $o;
+  };
+  $before = $counts();
   $s = dh_backfill_dry_run($none);
   t_eq($s['added'], 2, 'dry run: would add 2');
-  t_eq(db_query("select count(*) from dh_student_course")->fetchField(), $before, 'dry run writes nothing');
+  t_eq($counts(), $before, 'D7: dry run writes nothing (students, course records, numbers, student log, course statistics, course log)');
 
   $GLOBALS['t_mail'] = array();
   $s = dh_course_sync($none, array('mail' => FALSE, 'mail_fn' => 't_record_mail', 'files' => 'none', 'batch' => 'test-bf'));
@@ -63,6 +69,29 @@ t_in_txn(function () {
   $centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $fresh))->fetchField();
   t_ok(in_array($fresh, dh_backfill_courses(3, array($centre))) && !in_array($fresh, dh_backfill_courses(4, array($centre))), 'batch 3: a course of a migrated centre with no records (not in batch 4)');
   t_ok(in_array($fresh, dh_backfill_courses(4, array(-1))) && !in_array($fresh, dh_backfill_courses(3, array(-1))), 'batch 4: a course of another centre with no records (not in batch 3)');
+});
+
+// A course that carries a back-fill Change Log row is not picked again (unless the run was undone); an ordinary finalize note does not count.
+t_in_txn(function () {
+  $c = t_make_course(array('c_finalized' => 1)); t_make_applicant($c);
+  $centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $c))->fetchField();
+  $b = in_array($centre, array(335, 343, 344)) ? 3 : 4;
+  dh_course_log_note($c, 'finalize_summary', '1 students: 1 added, 1 emails sent', 0);
+  t_ok(in_array($c, dh_backfill_courses($b)), 'D2: an ordinary finalize summary note does not hide the course');
+  dh_course_log_note($c, 'finalize_summary', 'Back-fill bf-b4-20260101-000001 (no emails): 1 students: 1 added, 0 emails sent', 0);
+  t_ok(!in_array($c, dh_backfill_courses($b)), 'D2: a course with a back-fill note from an applied run is skipped');
+  dh_course_log_note($c, 'finalize_summary', 'Back-fill batch bf-b4-20260101-000001 undone', 0);
+  t_ok(in_array($c, dh_backfill_courses($b)), 'D2: after that run was undone the course is picked again');
+  dh_course_log_note($c, 'finalize_summary', 'Back-fill bf-b4-20260101-000002 (no emails): 1 students: 0 added, 0 emails sent', 0);
+  t_ok(!in_array($c, dh_backfill_courses($b)), 'D2: a second run that was not undone hides it again');
+
+  // The motivating case: two applicants that resolve to one student leave a gap for ever, so the note must stop batch 1 picking the course again.
+  $g = t_make_course(array('c_finalized' => 1));
+  t_make_applicant($g, array('a_l_name' => 'Same', 'a_dob' => '1980-02-02')); t_make_applicant($g, array('a_l_name' => 'Same', 'a_dob' => '1980-02-02'));
+  dh_course_sync($g, array('mail' => FALSE, 'files' => 'none'));
+  t_ok(in_array($g, dh_backfill_courses(1)), 'D2: two applicants that are one student keep the course in batch 1');
+  dh_course_log_note($g, 'finalize_summary', 'Back-fill bf-b1-20260101-000003 (no emails): 2 students: 1 added, 0 emails sent', 0);
+  t_ok(!in_array($g, dh_backfill_courses(1)), 'D2: and the back-fill note takes it out');
 });
 
 // Files mode: a made-up mode is refused before anything is written, in the sync and in the dry run.
