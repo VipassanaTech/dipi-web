@@ -66,6 +66,7 @@ function dh_manageapp_permission()
 	$perms['access centre settings'] = array('title' => t('Access Centre Settings') ) ;
 	$perms['access course'] = array('title' => t('Access Course Module') ) ;
 	$perms['manage course'] = array('title' => t('Manage Courses') ) ;
+	$perms['reopen any finalized course'] = array('title' => t('Reopen any finalized course (also after 30 days)'));
 	$perms['add application'] = array('title' => t('Add Application') ) ;
 	$perms['edit application'] = array('title' => t('Edit Application') ) ;
 	$perms['delete application'] = array('title' => t('Delete Application') ) ;
