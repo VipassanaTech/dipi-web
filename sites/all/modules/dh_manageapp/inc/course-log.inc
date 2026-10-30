@@ -38,6 +38,8 @@ function dh_course_log_fields()
 		'c_form_langs'           => array('Course Form Langs', 'text'),
 		'c_deleted'              => array('Deleted', 'yesno'),
 		'c_finalized'            => array('Finalized', 'yesno'),
+		'finalize_summary'       => array('Finalize result', 'longtext'),
+		'reopen_reason'          => array('Reopened for correction', 'longtext'),
 		'c_auto_confirm'         => array('Auto Confirm', 'yesno'),
 		'c_cell_plan'            => array('Cell Plan', 'plan'),
 		'c_dining_plan'          => array('Dining Plan', 'plan'),
