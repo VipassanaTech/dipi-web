@@ -47,3 +47,7 @@ else fs_run("CREATE TABLE dh_student_log (
 // The administrator role gets the new permission; other roles are given it in People > Permissions.
 $rid = db_query("select rid from role where name = 'administrator'")->fetchField();
 if ($rid) { user_role_grant_permissions($rid, array('reopen any finalized course')); echo "permission granted to administrator\n"; }
+
+// Past Attended emails: mark everyone who already got one, so a reopened course never re-sends to them.
+$t0 = microtime(TRUE);
+echo 'past Attended emails marked: ' . dh_fill_attended_mail_dates() . ' applicants in ' . round(microtime(TRUE) - $t0, 1) . "s\n";
