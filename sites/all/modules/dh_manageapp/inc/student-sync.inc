@@ -154,18 +154,37 @@ function dh_student_apply($sid, $a, $strong, $ctx)
 		return $sid;
 	}
 	$old = db_query('select * from dh_student where s_id = :s', array(':s' => $sid))->fetchAssoc();
-	$own = !db_query('select 1 from dh_student_course where sc_student = :s and sc_course <> :c limit 1', array(':s' => $sid, ':c' => $ctx['course']))->fetchField();
+	if (!$old)
+		throw new Exception("Student $sid not found");
+	/* Own record: this course is the only course the student has, and the student was made from this
+	   applicant (a course record of this course from this applicant or with no applicant noted, or a
+	   'created' log row for this applicant). Anything else, an orphan with no course record at all
+	   included, is a returning student whose name, gender, date of birth and IDs are protected. */
+	$own = FALSE;
+	if (!db_query('select 1 from dh_student_course where sc_student = :s and sc_course <> :c limit 1', array(':s' => $sid, ':c' => $ctx['course']))->fetchField())
+		$own = (bool) db_query('select 1 from dh_student_course where sc_student = :s and sc_course = :c and (sc_applicant = :a or sc_applicant is null) limit 1',
+				array(':s' => $sid, ':c' => $ctx['course'], ':a' => $ctx['applicant']))->fetchField()
+			|| (bool) db_query("select 1 from dh_student_log where sl_student = :s and sl_action = 'created' and sl_applicant = :a limit 1",
+				array(':s' => $sid, ':a' => $ctx['applicant']))->fetchField();
+	$id_kind = array('s_aadhar' => 'aadhar', 's_pancard' => 'pancard', 's_voter_id' => 'voter_id', 's_passport' => 'passport');
 	$set = array();
 	foreach ($new as $f => $v)
 	{
-		$v = ($v === NULL) ? '' : (string) $v;
-		$was = ($old[$f] === NULL) ? '' : (string) $old[$f];
+		$v = trim(($v === NULL) ? '' : (string) $v);
+		$was = trim(($old[$f] === NULL) ? '' : (string) $old[$f]);
 		if ($f === 's_dob')
 		{
 			if (!dh_dob_known($v))
 				$v = '';
 			if (!dh_dob_known($was))
 				$was = '';
+		}
+		if (isset($id_kind[$f]))
+		{
+			if ($v !== '' && dh_id_is_junk($id_kind[$f], $v))
+				$v = '';                                               // a junk ID is never written
+			if ($was !== '' && dh_id_is_junk($id_kind[$f], $was))
+				$was = '';                                             // a stored junk ID counts as empty
 		}
 		if ($v === '' || $v === $was)
 			continue;                                              // a blank never wipes; nothing changed
