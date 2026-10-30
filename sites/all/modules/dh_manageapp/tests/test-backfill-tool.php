@@ -33,6 +33,19 @@ try {
   t_eq($code, 0, 'dry run of the made-up course: exit 0');
   t_ok(strpos($out, 'DRY RUN: 1 courses, email OFF, files none') !== FALSE && strpos($out, '2 students, +2,') !== FALSE, 'dry run output: one course, email off, +2');
   t_eq($counts(), $made, 'dry run wrote nothing');
+  t_eq(t_n('select count(*) from dh_applicant where a_id in (:a) and a_attended_mail is not null', array(':a' => $apps)), 0, 'dry run: no applicant is dated as emailed');
+  t_ok(lock_may_be_available(dh_finalize_lock_name($c)), "dry run: the course's finalize lock is let go afterwards");
+
+  // A finalize of the course is running (another process holds its lock): the tool skips the course, dry run and apply.
+  db_insert('semaphore')->fields(array('name' => dh_finalize_lock_name($c), 'value' => 'test-other-process', 'expire' => microtime(TRUE) + 600))->execute();
+  list($code, $out) = t_tool("--courses=$c --no-files");
+  t_ok(strpos($out, "course $c busy (finalize running), skipped") !== FALSE && strpos($out, '2 students') === FALSE, 'busy: the dry run skips the course');
+  t_ok(strpos($out, "Courses skipped because a finalize was running (run them again later with --courses): $c") !== FALSE, 'busy: the skipped course is listed at the end');
+  list($code, $out) = t_tool("--courses=$c --apply --no-files");
+  t_ok(strpos($out, "course $c busy (finalize running), skipped") !== FALSE, 'busy: the apply skips the course');
+  t_eq($counts(), $made, 'busy: nothing written, no Change Log note');
+  t_eq(db_query('select value from semaphore where name = :n', array(':n' => dh_finalize_lock_name($c)))->fetchField(), 'test-other-process', "busy: the other process's lock is left alone");
+  db_delete('semaphore')->condition('name', dh_finalize_lock_name($c))->execute();
 
   // When a course's sync throws, the screen gets only the course id, the exception class and the SQLSTATE; the message (it can echo an ID or a name) goes to the log.
   // A copy of the tool whose sync call throws a PDOException with a recognisable message stands in for a database error.
@@ -47,9 +60,19 @@ try {
   t_ok(strpos($out, "course $c: STOPPED by an error: PDOException (SQLSTATE 22007)") !== FALSE, 'the screen shows the course id, the exception class and the SQLSTATE');
   t_ok(strpos($out, 'SECRET-ID') === FALSE, 'the exception message is not printed');
   t_ok(strpos($out, "STOP: course $c stopped with an error") !== FALSE && strpos($out, '--undo=bf-list-') !== FALSE, 'and the STOP line names the undo');
+  t_ok(strpos($out, "fix the cause, then run again with --courses=$c") !== FALSE, 'and says to fix the cause and run the course again by name');
   $w = db_query("select severity, variables from watchdog where type = 'StudentBackfill' and variables like '%SECRET-ID-123456789%' order by wid desc limit 1")->fetchAssoc();
   t_ok($w && (int) $w['severity'] === WATCHDOG_ERROR && strpos($w['variables'], "i:$c;") !== FALSE, 'the full message is in the log (type StudentBackfill, error) with the course id');
   t_eq($counts(), $made, 'the stopped run wrote nothing');
+  // The same, when even the log cannot be written (the database is gone): still the STOP line, exit 1, nothing from the failed log call.
+  $copy2 = str_replace("watchdog('StudentBackfill',", "t_wd_boom('StudentBackfill',", $copy);
+  t_ok($copy2 !== $copy, 'the second stand-in copy replaced the log call');
+  $copy2 = preg_replace('/^<\?php/', "<?php\nfunction t_wd_boom() { throw new Exception('stand-in LOG-GONE failure'); }", $copy2, 1);
+  file_put_contents($tmp, $copy2);
+  list($code, $out) = t_tool("--courses=$c --apply --no-files", $tmp);
+  t_eq($code, 1, 'M4: the log call fails too: still exit 1');
+  t_ok(strpos($out, "STOP: course $c stopped with an error") !== FALSE && strpos($out, 'LOG-GONE') === FALSE, 'M4: the STOP line is printed, the failed log call prints nothing');
+  t_ok(lock_may_be_available(dh_finalize_lock_name($c)) && lock_may_be_available('dh_student_backfill'), 'M4: the locks are let go');
 
   list($code, $out) = t_tool("--courses=$c --apply --no-files");
   t_eq($code, 0, 'apply of the made-up course: exit 0');
@@ -57,6 +80,8 @@ try {
   t_ok($id !== '', 'apply prints a batch id with seconds');
   t_eq(array(t_n('select count(*) from dh_student_course where sc_course = :c', array(':c' => $c)), t_n('select count(*) from dh_student_log where sl_batch = :b and sl_action = \'created\'', array(':b' => $id))), array(2, 2), 'apply: 2 course records, 2 students created');
   t_eq(t_n("select count(*) from dh_course_log where crl_course = :c and crl_new like :t", array(':c' => $c, ':t' => "Back-fill $id (no emails)%")), 1, 'apply: one Change Log row on the course');
+  $end = db_query('select c_end from dh_course where c_id = :c', array(':c' => $c))->fetchField();
+  t_eq(db_query('select distinct a_attended_mail from dh_applicant where a_id in (:a)', array(':a' => $apps))->fetchCol(), array("$end 00:00:00"), 'apply: both applicants are dated as emailed (the course end date: no finalize time), no email sent');
 
   // The tool's own Change Log row keeps a course out of its batch (checked in a transaction that is rolled back).
   $b = in_array(t_n('select c_center from dh_course where c_id = :c', array(':c' => $c)), array(335, 343, 344)) ? 3 : 4;
@@ -78,10 +103,20 @@ try {
   t_eq(array(t_n('select count(*) from dh_student_course where sc_course = :c', array(':c' => $c)), t_n('select count(*) from dh_student where s_id in (select sl_student from dh_student_log where sl_batch = :b)', array(':b' => $id))), array(0, 0), 'undo apply: course records and students gone');
   t_eq(t_n("select count(*) from dh_course_log where crl_course = :c and crl_new = :t", array(':c' => $c, ':t' => "Back-fill batch $id undone")), 1, 'undo apply: one Change Log note');
   t_ok(in_array($c, dh_backfill_courses($b)), 'after the undo the course can be picked by its batch again');
+
+  // A course with a failing applicant (its course record points to a student that is not there): listed, with both log names.
+  $ghost = 1 + t_n('select max(s_id) from dh_student');
+  db_insert('dh_student_course')->fields(array('sc_student' => $ghost, 'sc_applicant' => $apps[0], 'sc_center' => t_n('select c_center from dh_course where c_id = :c', array(':c' => $c)), 'sc_course' => $c))->execute();
+  list($code, $out) = t_tool("--courses=$c --no-files");
+  t_eq($code, 1, 'a course with errors: exit 1');
+  t_ok(strpos($out, "Courses with errors (see the 'Finalization Error' and 'StudentBackfill' logs): $c") !== FALSE, 'M6: the summary names both log types');
+  t_eq(t_n("select count(*) from watchdog where type = 'Finalization Error' and message like 'Back-fill dry run:%' and variables like :v", array(':v' => '%i:' . $apps[0] . ';%')), 1, 'M1: the dry run kept the per-applicant error in the log');
 }
 finally {
   if ($tmp) @unlink($tmp);
   db_delete('watchdog')->condition('type', 'StudentBackfill')->condition('variables', '%SECRET-ID-123456789%', 'LIKE')->execute();
+  if ($c) db_delete('semaphore')->condition('name', dh_finalize_lock_name($c))->execute();
+  if ($apps) db_delete('watchdog')->condition('type', 'Finalization Error')->condition('message', 'Back-fill dry run:%', 'LIKE')->condition('variables', '%i:' . $apps[0] . ';%', 'LIKE')->execute();
   // Remove everything the test made: students it created (if an undo did not), then the course, its applicants and the rows triggers wrote.
   if ($c) {
     $students = db_query("select distinct sl_student from dh_student_log where sl_course = :c and sl_action = 'created'", array(':c' => $c))->fetchCol();
