@@ -12,7 +12,7 @@ t_in_txn(function () {
   t_eq(dh_finalize_lock_name(123), 'dh_finalize_123', 'the lock is named after the course');
 
   // The lock is held: finalize gives up, asks the cron to try again, and changes nothing.
-  $course = t_make_course(array('c_finalize_mail' => 0));
+  $course = t_make_course(array('c_finalize_mail' => 0, 'c_finalized' => 1));
   $a = t_make_applicant($course, array('a_status' => 'Confirmed'));
   t_hold($course);
   $wid = t_n('select max(wid) from watchdog');
@@ -37,6 +37,18 @@ t_in_txn(function () {
   ob_start(); $r = finalize_course($course, 0); ob_end_clean();
   t_eq(array($r['status'], $r['summary']['added']), array(TRUE, 1), 'lock free: finalize runs');
   t_ok(lock_may_be_available('dh_finalize_' . $course), 'lock free: the lock is released after the finalize');
+
+  // OS1: the course was reopened between the cron clearing the request and finalize taking the lock: nothing is done.
+  $re = t_make_course(array('c_finalize_mail' => 0, 'c_finalized' => 0, 'c_reopened' => date('Y-m-d H:i:s')));
+  $x = t_make_applicant($re, array('a_status' => 'Confirmed'));
+  $before = db_query('select c_finalize_requested, c_processed from dh_course where c_id = :c', array(':c' => $re))->fetchAssoc();
+  ob_start(); $r = finalize_course($re, 0); ob_end_clean();
+  t_eq(array($r['status'], $r['msg']), array(FALSE, 'Course was reopened before finalize ran; nothing changed'), 'reopened: finalize returns a failed status and says why');
+  t_eq(array(t_n('select count(*) from dh_student_course where sc_course = :c', array(':c' => $re)), db_query('select a_status from dh_applicant where a_id = :a', array(':a' => $x))->fetchField()),
+    array(0, 'Confirmed'), 'reopened: no student record, no status change');
+  t_eq(db_query('select c_finalize_requested, c_processed from dh_course where c_id = :c', array(':c' => $re))->fetchAssoc(), $before, 'reopened: the course row is not changed');
+  t_eq(t_n("select count(*) from dh_course_log where crl_course = :c and crl_field = 'finalize_summary'", array(':c' => $re)), 0, 'reopened: no finalize summary in the Change Log');
+  t_ok(lock_may_be_available('dh_finalize_' . $re), 'reopened: the lock is released');
 });
 
 t_in_txn(function () use ($admin) {

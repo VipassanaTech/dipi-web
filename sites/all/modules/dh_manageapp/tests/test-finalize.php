@@ -7,7 +7,7 @@ t_in_txn(function () {
   ob_start(); $r = finalize_course($future); ob_end_clean();
   t_eq($r['status'], FALSE, 'a course that has not ended is refused');
 
-  $course = t_make_course(array('c_finalize_mail' => 0));
+  $course = t_make_course(array('c_finalize_mail' => 0, 'c_finalized' => 1));      // the cron runs finalize only on a finalized course
   $a = t_make_applicant($course); $b = t_make_applicant($course);
   ob_start(); $r = finalize_course($course); ob_end_clean();
   t_eq($r['status'], TRUE, 'finalize runs');

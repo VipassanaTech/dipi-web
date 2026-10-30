@@ -1372,7 +1372,8 @@ Thanks,
 /* Finalize = mark attended applicants Attended, then sync the student records (inc/student-sync.inc).
    Safe to run again: no copies, and nobody gets the Attended email twice.
    One run per course at a time: it holds the lock dh_finalize_<course id>, waiting up to $wait seconds for another run
-   (or the back-fill) to finish. If the lock stays busy, the course is requested again and the cron retries later. */
+   (or the back-fill) to finish. If the lock stays busy, the course is requested again and the cron retries later.
+   Under the lock the course is read again: one reopened meanwhile is left alone. */
 function finalize_course( $course_id, $wait = 3600 )
 {
 	$res = array('status' => false, 'msg' => '', 'summary' => array());
@@ -1402,6 +1403,14 @@ function finalize_course( $course_id, $wait = 3600 )
 	}
 	try
 	{
+		// Read again under the lock: the course may have been reopened in the seconds between the cron clearing the request and now.
+		$c = db_query('select c_finalized, c_finalize_mail from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
+		if (!$c || (int) $c['c_finalized'] !== 1)
+		{
+			watchdog('Finalization', 'Course @c: reopened before finalize ran; nothing changed.', array('@c' => $course_id), WATCHDOG_WARNING);
+			$res['msg'] = 'Course was reopened before finalize ran; nothing changed';
+			return $res;
+		}
 		$attended = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-ATTENDED'")->fetchField();
 		db_update('dh_applicant')->fields(array('a_status' => $attended, 'a_updated_by' => dh_system_uid()))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
 
