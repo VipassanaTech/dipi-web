@@ -64,7 +64,8 @@ t_in_txn(function () use ($opts) {
   t_eq(t_row('dh_student_course', 'sc_id', $first)['sc_applicant'], $b, 'one student with two old records: the first record is claimed');
 });
 
-// A record claimed by one applicant is not claimed again by the next one with the same name.
+// Order does not matter: when ANOTHER attended applicant of the course could also be the record's person (same first and
+// last name, or same first name and known date of birth as its student), nobody claims it by name.
 t_in_txn(function () use ($opts) {
   $course = t_make_course(array('c_finalized' => 1));
   $s = t_make_student(array('s_l_name' => 'Same'));                                    // no date of birth
@@ -72,9 +73,8 @@ t_in_txn(function () use ($opts) {
   $a1 = t_make_applicant($course, array('a_l_name' => 'Same', 'a_dob' => '1984-04-04'));
   $a2 = t_make_applicant($course, array('a_l_name' => 'Same', 'a_dob' => '1985-05-05'));
   $r = dh_course_sync($course, $opts);
-  t_eq(array($r['added'], $r['updated']), array(1, 1), 'claimed once: one claim, one new student');
-  t_eq(array(t_sc_of($course, $a1), t_row('dh_student_course', 'sc_id', $sc)['sc_applicant']), array($s, $a1), 'claimed once: the first applicant has the old record');
-  t_ok(t_sc_of($course, $a2) > 0 && t_sc_of($course, $a2) != $s, 'claimed once: the second applicant gets a new student');
+  t_eq(array($r['added'], $r['updated'], $r['removed']), array(2, 0, 1), 'two applicants could claim it: neither does (two new students, the old record removed)');
+  t_ok(!in_array($s, array(t_sc_of($course, $a1), t_sc_of($course, $a2))) && t_sc_of($course, $a1) != t_sc_of($course, $a2), 'two applicants: two new students, not the old one');
   // A student another applicant of this course already has is not a candidate either (its spare record is a copy).
   $c2 = t_make_course(array('c_finalized' => 1));
   $b1 = t_make_applicant($c2, array('a_l_name' => 'Kept', 'a_dob' => '1987-07-07'));
@@ -85,6 +85,24 @@ t_in_txn(function () use ($opts) {
   $r = dh_course_sync($c2, $opts);
   t_eq(array($r['added'], $r['copies']), array(1, 1), 'a student already kept in this run is not claimed: new student, spare record removed as a copy');
   t_ok(t_sc_of($c2, $b2) != $sb, 'the second applicant is not put on the first one\'s student');
+});
+
+// B1: first run of an old course. A (lower a_id, no ID, no match) shares the name of B, whose old record is on S; B matches S
+// strongly by ID. A must not take S's record (that would change S's contact details and leave B a copy or a new student).
+t_in_txn(function () use ($opts) {
+  $course = t_make_course(array('c_finalized' => 1));
+  $s = t_make_student(array('s_l_name' => 'Pairname', 's_dob' => '1955-05-05', 's_passport' => 'ZQ8880001', 's_address' => 'Zzq old address', 's_occupation' => 'Zzq old work'));
+  $r1 = t_old_record($course, $s);
+  $a = t_make_applicant($course, array('a_l_name' => 'Pairname', 'a_dob' => '1956-06-06', 'a_address' => 'Zzq address of A', 'a_occupation' => 'Zzq work of A'));
+  $b = t_make_applicant($course, array('a_l_name' => 'Pairname', 'a_dob' => '1955-05-05', 'a_passport' => 'ZQ8880001'));
+  t_ok($a < $b, 'B1: A has the lower a_id (it is synced first)');
+  $r = dh_course_sync($course, $opts);
+  t_eq(array($r['added'], $r['updated'], $r['removed'], $r['errors']), array(1, 1, 0, 0), 'B1: A gets a new student, B keeps the old record');
+  t_ok(t_sc_of($course, $a) > 0 && t_sc_of($course, $a) != $s, 'B1: A is not put on S');
+  t_eq(array(t_sc_of($course, $b), t_row('dh_student_course', 'sc_id', $r1)['sc_applicant']), array($s, $b), "B1: B has S and S's old record r1");
+  $st = t_row('dh_student', 's_id', $s);
+  t_eq(array($st['s_address'], $st['s_occupation']), array('Zzq old address', 'Zzq old work'), "B1: S's contact details are not changed by A");
+  t_eq(t_n('select count(*) from dh_student_course where sc_course = :c and sc_student = :s', array(':c' => $course, ':s' => $s)), 1, 'B1: S has one record in the course (no merge of two people)');
 });
 
 // removed_kept: course records removed whose student keeps other courses.

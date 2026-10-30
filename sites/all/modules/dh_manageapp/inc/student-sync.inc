@@ -340,7 +340,8 @@ function dh_student_remove_if_empty($sid, $log, &$sum)
    such a record whose student has the same first and last name (trimmed, any case), or the same first name and the same
    known date of birth. Records claimed earlier in this run ($claimed: sc_id => TRUE) and students that an attended
    applicant of this course already has are not candidates. Returns the record (sc_id, sc_student) when all candidates
-   are one student (its first record), else NULL (none, or two people: unclear, so a new student is made as before). */
+   are one student (its first record) and no other attended applicant of the course matches that student the same way,
+   else NULL (none, or two people: unclear, so a new student is made as before). */
 function dh_course_record_claim($course_id, $a, $claimed)
 {
 	$f = trim((string) $a['a_f_name']);
@@ -359,9 +360,25 @@ function dh_course_record_claim($course_id, $a, $claimed)
 		$same_last = ($l !== '' && strcasecmp(trim((string) $r['s_l_name']), $l) === 0);
 		$same_dob = (dh_dob_known($dob) && dh_dob_known($r['s_dob']) && trim((string) $r['s_dob']) === $dob);
 		if (($same_last || $same_dob) && !isset($found[$r['sc_student']]))
-			$found[$r['sc_student']] = array('sc_id' => (int) $r['sc_id'], 'sc_student' => (int) $r['sc_student']);
+			$found[$r['sc_student']] = $r;
 	}
-	return (count($found) == 1) ? reset($found) : NULL;
+	if (count($found) != 1)
+		return NULL;
+	$r = reset($found);
+	// Another attended applicant of this course could be that record's person too (same first and last name, or same first
+	// name and known date of birth, as its student): unclear who is who, so nobody claims it by name. This does not depend
+	// on the order the applicants are synced in.
+	foreach (db_query("select a_f_name, a_l_name, a_dob from dh_applicant where a_course = :c and a_id <> :a and a_attended = 1 and a_type in ('Student', 'Sevak')",
+		array(':c' => $course_id, ':a' => (int) $a['a_id'])) as $o)
+	{
+		if (strcasecmp(trim((string) $o->a_f_name), trim((string) $r['s_f_name'])) !== 0)
+			continue;
+		$o_dob = trim((string) $o->a_dob);
+		if ((trim((string) $o->a_l_name) !== '' && strcasecmp(trim((string) $o->a_l_name), trim((string) $r['s_l_name'])) === 0)
+			|| (dh_dob_known($o_dob) && dh_dob_known($r['s_dob']) && trim((string) $r['s_dob']) === $o_dob))
+			return NULL;
+	}
+	return array('sc_id' => (int) $r['sc_id'], 'sc_student' => (int) $r['sc_student']);
 }
 
 /* Bring the student records of one course in line with its attended students and servers.
