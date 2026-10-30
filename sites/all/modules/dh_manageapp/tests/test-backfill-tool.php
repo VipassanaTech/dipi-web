@@ -40,12 +40,21 @@ try {
   db_insert('semaphore')->fields(array('name' => dh_finalize_lock_name($c), 'value' => 'test-other-process', 'expire' => microtime(TRUE) + 600))->execute();
   list($code, $out) = t_tool("--courses=$c --no-files");
   t_ok(strpos($out, "course $c busy (finalize running), skipped") !== FALSE && strpos($out, '2 students') === FALSE, 'busy: the dry run skips the course');
-  t_ok(strpos($out, "Courses skipped because a finalize was running (run them again later with --courses): $c") !== FALSE, 'busy: the skipped course is listed at the end');
+  t_ok(strpos($out, "Courses skipped because a finalize was running or waiting (run them again later with --courses): $c") !== FALSE, 'busy: the skipped course is listed at the end');
   list($code, $out) = t_tool("--courses=$c --apply --no-files");
   t_ok(strpos($out, "course $c busy (finalize running), skipped") !== FALSE, 'busy: the apply skips the course');
   t_eq($counts(), $made, 'busy: nothing written, no Change Log note');
   t_eq(db_query('select value from semaphore where name = :n', array(':n' => dh_finalize_lock_name($c)))->fetchField(), 'test-other-process', "busy: the other process's lock is left alone");
   db_delete('semaphore')->condition('name', dh_finalize_lock_name($c))->execute();
+
+  // A finalize of the course waits for the cron (flag 1, c_processed 0): skipped the same way, dry run and apply.
+  db_update('dh_course')->fields(array('c_finalize_requested' => 1, 'c_processed' => 0))->condition('c_id', $c)->execute();
+  list($code, $out) = t_tool("--courses=$c --no-files");
+  t_ok(strpos($out, "course $c busy (finalize waiting), skipped") !== FALSE && strpos($out, '2 students') === FALSE, 'waiting: the dry run skips the course');
+  list($code, $out) = t_tool("--courses=$c --apply --no-files");
+  t_ok(strpos($out, "course $c busy (finalize waiting), skipped") !== FALSE && strpos($out, "Courses skipped because a finalize was running or waiting (run them again later with --courses): $c") !== FALSE, 'waiting: the apply skips the course and lists it');
+  db_update('dh_course')->fields(array('c_finalize_requested' => 0, 'c_processed' => 1))->condition('c_id', $c)->execute();
+  t_eq($counts(), $made, 'waiting: nothing written, no Change Log note');
 
   // When a course's sync throws, the screen gets only the course id, the exception class and the SQLSTATE; the message (it can echo an ID or a name) goes to the log.
   // A copy of the tool whose sync call throws a PDOException with a recognisable message stands in for a database error.

@@ -8,7 +8,7 @@
 // A dry run counts the photos and PDFs (S3 heads only). The tool stops after the first course with a file failure
 // or an error that stopped the sync, and exits 1; it also exits 1 when any course had errors or an undo row failed.
 // A batch skips courses that already carry a back-fill Change Log row (not undone); name them with --courses to run again.
-// A course whose finalize is running (lock dh_finalize_<id>) is skipped and listed at the end.
+// A course whose finalize is running (lock dh_finalize_<id>) or waiting for the cron is skipped and listed at the end.
 // An apply dates the attended students as emailed (a_attended_mail, no email sent), so a later Finalize again never emails them.
 // Prints counts and course ids only. There is no option to send email.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
@@ -67,8 +67,10 @@ foreach ($courses as $i => $c)
   if (!lock_acquire(dh_finalize_lock_name($c), 3600)) { echo "  course $c busy (finalize running), skipped\n"; $busy[] = $c; continue; }
   try
   {
-    $info = db_query('select c_center, c_start from dh_course where c_id = :c and c_finalized = 1', array(':c' => $c))->fetchAssoc();
+    $info = db_query('select c_center, c_start, c_finalize_requested, c_processed from dh_course where c_id = :c and c_finalized = 1', array(':c' => $c))->fetchAssoc();
     if (!$info) { echo "  course $c: not finalized, skipped\n"; continue; }
+    // A finalize is waiting for the cron: the course is about to change, so leave it to the finalize.
+    if ($info['c_finalize_requested'] && $info['c_processed'] <= 0) { echo "  course $c busy (finalize waiting), skipped\n"; $busy[] = $c; continue; }
     if ($o['apply'])
     {
       try
@@ -107,7 +109,7 @@ foreach ($courses as $i => $c)
 echo 'TOTAL: ' . json_encode($tot) . ', ' . round(microtime(TRUE) - $t0) . "s\n";
 if ($tot['removed_kept']) echo "  kept: {$tot['removed_kept']} removed course records belong to students who keep other courses (worth a look: one person may be two students)\n";
 if ($failed) echo "Courses with errors (see the 'Finalization Error' and 'StudentBackfill' logs): " . implode(',', $failed) . "\n";
-if ($busy) echo 'Courses skipped because a finalize was running (run them again later with --courses): ' . implode(',', $busy) . "\n";
+if ($busy) echo 'Courses skipped because a finalize was running or waiting (run them again later with --courses): ' . implode(',', $busy) . "\n";
 if ($stop) echo "STOP: $stop\n";
 try { lock_release('dh_student_backfill'); } catch (Throwable $w) { }      // (a lost database frees it when the hour is up)
 exit(($stop || $failed) ? 1 : 0);
