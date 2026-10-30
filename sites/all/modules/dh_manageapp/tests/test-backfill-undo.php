@@ -10,6 +10,11 @@ function t_sql_mode($set = NULL) {
 function t_row($table, $key, $id) { return db_query("select * from $table where $key = :i", array(':i' => $id))->fetchAssoc(); }
 function t_n($sql, $args = array()) { return (int) db_query($sql, $args)->fetchField(); }
 $RELAXED = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION';
+// A made-up referral pointing to a student (needs no existing dh_referral row; only the required columns).
+function t_make_referral($sid) {
+  return (int) db_insert('dh_referral')->fields(array('r_student' => $sid, 'r_center' => 0, 'r_reason' => 'Zzq made-up referral',
+    'r_start' => date('Y-m-d'), 'r_end' => date('Y-m-d', strtotime('+1 year')), 'r_created_by' => 0))->execute();
+}
 
 // A1-A6: every kind of removed row comes back, also a student with legacy zero dates; a note per course.
 t_in_txn(function () use ($RELAXED) {
@@ -151,9 +156,7 @@ t_in_txn(function () {
   dh_course_sync($c, array('mail' => FALSE, 'files' => 'none', 'batch' => 'test-bf-d3'));
   $sid = function ($k) use ($a) { return (int) t_n("select sl_student from dh_student_log where sl_batch = 'test-bf-d3' and sl_action = 'created' and sl_applicant = :a", array(':a' => $a[$k])); };
   db_insert('dh_patrika')->fields(array('p_student' => $sid('A'), 'p_updated' => date('Y-m-d H:i:s')))->execute();
-  $ref = db_query("select * from dh_referral order by r_id desc limit 1")->fetchAssoc();
-  unset($ref['r_id']);
-  db_insert('dh_referral')->fields(array('r_student' => $sid('B')) + $ref)->execute();
+  t_make_referral($sid('B'));
   db_update('dh_applicant')->fields(array('a_student' => $sid('C'), 'a_updated_by' => 0))->condition('a_id', $a['C'])->execute();     // a legacy link does not keep a student
   $n = dh_backfill_undo('test-bf-d3', TRUE);
   $there = function ($k) use ($sid) { return t_n("select count(*) from dh_student where s_id = :s", array(':s' => $sid($k))); };
@@ -170,9 +173,7 @@ t_in_txn(function () {
   $gone = t_make_student(array('s_l_name' => 'Gone'));
   $legacy = t_make_student(array('s_l_name' => 'Legacy'));
   foreach (array($linked, $gone, $legacy) as $s) db_insert('dh_student_course')->fields(array('sc_student' => $s, 'sc_center' => $centre, 'sc_course' => $c))->execute();
-  $ref = db_query("select * from dh_referral order by r_id desc limit 1")->fetchAssoc();
-  unset($ref['r_id']);
-  db_insert('dh_referral')->fields(array('r_student' => $linked) + $ref)->execute();
+  t_make_referral($linked);
   $pid = (int) db_insert('dh_patrika')->fields(array('p_student' => $gone, 'p_updated' => date('Y-m-d H:i:s')))->execute();
   $other = t_make_applicant(t_make_course(), array('a_l_name' => 'Pointer'));
   db_update('dh_applicant')->fields(array('a_student' => $legacy, 'a_updated_by' => 0))->condition('a_id', $other)->execute();          // a legacy link does not keep a student
