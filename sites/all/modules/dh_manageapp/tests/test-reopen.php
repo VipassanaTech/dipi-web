@@ -44,4 +44,24 @@ t_in_txn(function () use ($manager, $admin) {
   dh_course_sync($course, $opts + array('mail' => FALSE));
   t_eq(count($GLOBALS['t_mail']) - $mailed, 0, 'tick box off: nobody emailed');
 });
+
+echo "Course page\n";
+// A manager who cannot reopen sees why, in one line, instead of the button.
+t_in_txn(function () use ($manager) {
+  global $user;
+  $saved = $user; $user = $manager; drupal_static_reset('user_access');
+  if (!isset($_SERVER['REQUEST_URI'])) $_SERVER['REQUEST_URI'] = '/';
+  $page = function ($ago) {
+    $c = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s', strtotime($ago))));
+    $_GET['q'] = 'course/' . db_query('select c_center from dh_course where c_id = :c', array(':c' => $c))->fetchField() . '/' . $c;
+    drupal_static_reset('arg');
+    return dh_course_dashboard();
+  };
+  $out = $page('-40 days');
+  t_ok(strpos($out, '<p class="course-reopen-na">Reopen for correction is not available: This course was finalized more than 30 days ago. Ask a DIPI administrator to reopen it.</p>') !== FALSE
+    && strpos($out, 'id="course-reopen"') === FALSE, 'course page: after 30 days the manager sees the reason, not the button');
+  $out = $page('-5 days');
+  t_ok(strpos($out, 'id="course-reopen"') !== FALSE && strpos($out, 'course-reopen-na') === FALSE, 'course page: within 30 days the manager sees the button');
+  $user = $saved; drupal_static_reset('user_access');
+});
 t_done();

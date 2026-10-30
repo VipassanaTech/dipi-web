@@ -52,7 +52,10 @@ function dh_course_dashboard()
 		$out .= '<div class="messages warning">Reopened for correction on '.date('d M Y H:i', strtotime($temp['c_reopened'])).' by '.check_plain($who)
 			.'. Fix what is needed, then press Finalize Course on Manage Courses again.</div>';
 	}
-	if ($finalized && dh_course_can_reopen((int) arg(2)) === TRUE)
+	$can_reopen = $finalized ? dh_course_can_reopen((int) arg(2)) : FALSE;
+	if ($finalized && $can_reopen !== TRUE && user_access('manage course'))
+		$out .= '<p class="course-reopen-na">Reopen for correction is not available: '.check_plain($can_reopen).'</p>';
+	if ($can_reopen === TRUE)
 	{
 		drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery-confirm.min.css');
 		drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery-confirm-responsive.css');
