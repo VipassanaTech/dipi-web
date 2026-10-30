@@ -221,7 +221,8 @@ function dh_course_sync_summary_text($sum)
 {
 	$parts = array($sum['added'].' added');
 	if ($sum['removed']) $parts[] = $sum['removed'].' removed';
-	if ($sum['copies']) $parts[] = $sum['copies'].' copies removed';
+	if ($sum['copies']) $parts[] = $sum['copies'].($sum['copies'] == 1 ? ' copy' : ' copies').' removed';
+	if ($sum['students_removed']) $parts[] = $sum['students_removed'].' student '.($sum['students_removed'] == 1 ? 'record' : 'records').' removed';
 	$parts[] = $sum['emails'].' '.($sum['emails'] == 1 ? 'email' : 'emails').' sent';
 	if ($sum['errors']) $parts[] = $sum['errors'].' failed (see the Finalization Error log)';
 	return $sum['students'].' students: '.implode(', ', $parts);
@@ -332,7 +333,7 @@ function dh_course_sync($course_id, $opts = array())
 				'sci_20d' => $r['ac_20d'] ? $r['ac_20d'] : '0', 'sci_30d' => $r['ac_30d'] ? $r['ac_30d'] : '0', 'sci_45d' => $r['ac_45d'] ? $r['ac_45d'] : '0',
 				'sci_60d' => $r['ac_60d'] ? $r['ac_60d'] : '0', 'sci_tsc' => $r['ac_tsc'] ? $r['ac_tsc'] : '0', 'sci_teacher' => $r['ac_teacher'] ? $r['ac_teacher'] : '0',
 				'sci_service' => $r['ac_service'] ? $r['ac_service'] : '0', 'sci_first_year' => $r['ac_first_year'], 'sci_first_month' => $r['ac_first_month'],
-				'sci_first_day' => $r['ac_first_day'], 'sci_first_location_str' => $r['ac_first_teacher_str'], 'sci_first_teacher_str' => $r['ac_first_teacher_str']);
+				'sci_first_day' => $r['ac_first_day'], 'sci_first_location_str' => $r['ac_first_location_str'], 'sci_first_teacher_str' => $r['ac_first_teacher_str']);
 			dh_finalize_fit('dh_student_course_input', $sci, $r['a_id']);
 			$sci_id = db_query('select sci_id from dh_student_course_input where sci_student = :s order by sci_id desc limit 1', array(':s' => $sid))->fetchField();
 			if ($sci_id) db_update('dh_student_course_input')->fields($sci)->condition('sci_id', $sci_id)->execute();
