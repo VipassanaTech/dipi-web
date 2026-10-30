@@ -117,6 +117,22 @@ t_in_txn(function () {
   t_eq(db_query("select count(*) from dh_student_course where sc_course = :c", array(':c' => $c))->fetchField(), 0, 'dry run with files none writes nothing');
 });
 
+// A dry run rolls back everything it wrote, but the per-applicant error messages are written after the rollback.
+t_in_txn(function () {
+  $c = t_make_course(array('c_finalized' => 1));
+  $x = t_make_applicant($c, array('a_l_name' => 'Dryfail'));
+  dh_course_sync($c, array('mail' => FALSE, 'files' => 'none'));
+  $sx = db_query("select sc_student from dh_student_course where sc_course = :c and sc_applicant = :a", array(':c' => $c, ':a' => $x))->fetchField();
+  db_delete('dh_student')->condition('s_id', $sx)->execute();        // the course record now points to a student that is not there: this applicant fails
+  $wid = (int) db_query('select max(wid) from watchdog')->fetchField();
+  $s = dh_backfill_dry_run($c, 'none');
+  t_eq($s['errors'], 1, 'dry run: the failing applicant is counted');
+  $w = db_query("select message, variables from watchdog where wid > :w and type = 'Finalization Error' order by wid", array(':w' => $wid))->fetchAll(PDO::FETCH_ASSOC);
+  t_eq(count($w), 1, 'dry run: one Finalization Error row is kept (written after the rollback)');
+  t_ok($w && strpos($w[0]['message'], 'Back-fill dry run') === 0 && strpos($w[0]['variables'], (string) $x) !== FALSE, 'dry run: the row says it is a dry run and names the applicant');
+  t_ok(!isset($s['_log']), 'dry run: no message text comes back in the summary');
+});
+
 // Undo: an unknown date comes back as NULL (a date column refuses ''), and a value someone changed since stays.
 t_in_txn(function () {
   $s1 = t_make_student(array('s_f_name' => 'Zzqtest', 's_l_name' => 'Nodob', 's_passport' => 'ZQ1234567'));

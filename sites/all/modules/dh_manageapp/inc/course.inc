@@ -1367,8 +1367,10 @@ Thanks,
 }
 
 /* Finalize = mark attended applicants Attended, then sync the student records (inc/student-sync.inc).
-   Safe to run again: no copies, and nobody gets the Attended email twice. */
-function finalize_course( $course_id )
+   Safe to run again: no copies, and nobody gets the Attended email twice.
+   One run per course at a time: it holds the lock dh_finalize_<course id>, waiting up to $wait seconds for another run
+   (or the back-fill) to finish. If the lock stays busy, the course is requested again and the cron retries later. */
+function finalize_course( $course_id, $wait = 3600 )
 {
 	$res = array('status' => false, 'msg' => '', 'summary' => array());
 	$course_id = (int) $course_id;
@@ -1379,17 +1381,40 @@ function finalize_course( $course_id )
 		echo $res['msg'];
 		return $res;
 	}
-	$attended = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-ATTENDED'")->fetchField();
-	db_update('dh_applicant')->fields(array('a_status' => $attended, 'a_updated_by' => dh_system_uid()))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
+	$lock = dh_finalize_lock_name($course_id);
+	$until = microtime(TRUE) + max(0, (int) $wait);
+	$got = lock_acquire($lock, 3600);
+	while (!$got && microtime(TRUE) < $until)
+	{
+		lock_wait($lock, max(1, min(30, (int) ceil($until - microtime(TRUE)))));
+		$got = lock_acquire($lock, 3600);
+	}
+	if (!$got)
+	{
+		watchdog('Finalization Error', 'Course @c: another finalize of this course was still running after @w s; it is requested again for the cron.',
+			array('@c' => $course_id, '@w' => (int) $wait), WATCHDOG_ERROR);
+		db_update('dh_course')->fields(array('c_finalize_requested' => 1, 'c_processed' => 0))->condition('c_id', $course_id)->execute();
+		$res['msg'] = 'Another finalize of this course is running; requested again';
+		return $res;
+	}
+	try
+	{
+		$attended = db_query("select td_val1 from dh_type_detail where td_type='COURSE-SYSTEM-STATUS' and td_key='STATUS-ATTENDED'")->fetchField();
+		db_update('dh_applicant')->fields(array('a_status' => $attended, 'a_updated_by' => dh_system_uid()))->condition('a_course', $course_id)->condition('a_attended', 1)->execute();
 
-	if (posix_getuid() == 0)
-		posix_setuid(33);
+		if (posix_getuid() == 0)
+			posix_setuid(33);
 
-	$sum = dh_course_sync($course_id, array('mail' => (bool) $c['c_finalize_mail'], 'files' => 'copy', 'uid' => dh_system_uid()));
-	dh_course_log_note($course_id, 'finalize_summary', dh_course_sync_summary_text($sum), dh_system_uid());
-	$res['status'] = true;
-	$res['msg'] = 'OK';
-	$res['summary'] = $sum;
+		$sum = dh_course_sync($course_id, array('mail' => (bool) $c['c_finalize_mail'], 'files' => 'copy', 'uid' => dh_system_uid()));
+		dh_course_log_note($course_id, 'finalize_summary', dh_course_sync_summary_text($sum), dh_system_uid());
+		$res['status'] = true;
+		$res['msg'] = 'OK';
+		$res['summary'] = $sum;
+	}
+	finally
+	{
+		lock_release($lock);
+	}
 	return $res;
 }
 

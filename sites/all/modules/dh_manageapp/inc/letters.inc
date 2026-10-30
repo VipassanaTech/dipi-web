@@ -1474,6 +1474,8 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 			
 		}
 	}
+	// An Attended letter to an applicant: store the date, so finalize never sends it again (inc/student-sync.inc).
+	dh_attended_mail_note($type, $id, $event);
   return $ret_val;
 }
 

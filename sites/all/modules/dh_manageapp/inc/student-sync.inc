@@ -250,6 +250,7 @@ function dh_course_sync_summary_text($sum)
 	if ($sum['copies']) $parts[] = $sum['copies'].($sum['copies'] == 1 ? ' copy' : ' copies').' removed';
 	if ($sum['students_removed']) $parts[] = $sum['students_removed'].' student '.($sum['students_removed'] == 1 ? 'record' : 'records').' removed';
 	$parts[] = $sum['emails'].' '.($sum['emails'] == 1 ? 'email' : 'emails').' sent';
+	if (!empty($sum['mail_failed'])) $parts[] = $sum['mail_failed'].' '.($sum['mail_failed'] == 1 ? 'email' : 'emails').' failed';
 	if ($sum['errors']) $parts[] = $sum['errors'].' failed (see the Finalization Error log)';
 	return $sum['students'].' students: '.implode(', ', $parts);
 }
@@ -329,15 +330,28 @@ function dh_student_remove_if_empty($sid, $log, &$sum)
 	$sum['students_removed']++;
 }
 
-/* Bring the student records of one course in line with its attended students and servers. */
+/* Bring the student records of one course in line with its attended students and servers.
+   $opts: mail (send the Attended email to those who never got it), mail_fn, files, batch, uid,
+   mark_mailed (no email: date the attended students as emailed, with the course's finalize time or end date; the back-fill),
+   log_fn (where the log rows go; a dry run keeps them until after its rollback). */
 function dh_course_sync($course_id, $opts = array())
 {
 	global $user;
-	$opts += array('mail' => TRUE, 'mail_fn' => 'dh_send_letter', 'files' => 'copy', 'batch' => NULL, 'uid' => (int) $user->uid);
+	$opts += array('mail' => TRUE, 'mail_fn' => 'dh_send_letter', 'files' => 'copy', 'batch' => NULL, 'uid' => (int) $user->uid,
+		'mark_mailed' => FALSE, 'log_fn' => 'watchdog');
 	if (!in_array($opts['files'], array('none', 'copy', 's3copy', 'count'), TRUE))
 		throw new Exception("Unknown files mode: {$opts['files']}");      // before any write, not once per applicant
-	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'errors', 'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
+	$wd = $opts['log_fn'];
+	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'mail_failed', 'errors',
+		'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
+	$mailed_at = NULL;                                              // mark_mailed: the date the course counts as emailed
+	if ($opts['mark_mailed'])
+	{
+		$cd = db_query('select c_finalized_tstamp, c_end from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
+		$mailed_at = ($cd && dh_dob_known($cd['c_finalized_tstamp'])) ? $cd['c_finalized_tstamp']
+			: (($cd && dh_dob_known($cd['c_end'])) ? $cd['c_end'].' 00:00:00' : date('Y-m-d H:i:s'));
+	}
 	$teacher = array('M' => array(), 'F' => array());
 	foreach (db_query('select ct_teacher, ct_group, t_gender from dh_course_teacher left join dh_teacher on ct_teacher = t_id where ct_course = :c', array(':c' => $course_id)) as $t)
 		$teacher[$t->t_gender][$t->ct_group] = $t->ct_teacher;
@@ -449,21 +463,38 @@ function dh_course_sync($course_id, $opts = array())
 
 			if ($opts['mail'] && empty($r['a_attended_mail']))
 			{
-				$fn = $opts['mail_fn'];
-				$ret = $fn('applicant', $r['a_id'], $attended);
-				db_update('dh_applicant')->fields(array('a_attended_mail' => date('Y-m-d H:i:s')))->condition('a_id', $r['a_id'])->execute();
-				if (empty($ret['error'])) $sum['emails']++;   // a letter that could not go out (no email or mobile) is not counted
+				// Claim first: only the run that dates the applicant sends (two finalize runs of one course never both send).
+				// The date stays even when the letter cannot go out or the send fails (nobody gets it twice).
+				$won = db_query('update dh_applicant set a_attended_mail = :t where a_id = :a and a_attended_mail is null',
+					array(':t' => date('Y-m-d H:i:s'), ':a' => $r['a_id']), array('return' => Database::RETURN_AFFECTED));
+				if ($won == 1)
+				{
+					try
+					{
+						$fn = $opts['mail_fn'];
+						$ret = $fn('applicant', $r['a_id'], $attended);
+						if (empty($ret['error'])) $sum['emails']++;   // a letter that could not go out (no email or mobile) is not counted
+					}
+					catch (Throwable $t)
+					{
+						// A mail failure is not a sync failure: it does not stop the removals.
+						$sum['mail_failed']++;
+						$wd('Finalization Error', 'Applicant @a, course @c: the Attended email failed: @m', array('@a' => (int) $r['a_id'], '@c' => (int) $course_id, '@m' => $t->getMessage()), WATCHDOG_ERROR);
+					}
+				}
 			}
+			elseif ($opts['mark_mailed'] && !$opts['mail'] && empty($r['a_attended_mail']))
+				db_update('dh_applicant')->fields(array('a_attended_mail' => $mailed_at))->condition('a_id', $r['a_id'])->isNull('a_attended_mail')->execute();
 		}
 		catch (Throwable $t)
 		{
 			$sum['errors']++;
-			watchdog('Finalization Error', "Applicant @a, course @c: @m\n@trace", array('@a' => $r['a_id'], '@c' => $course_id, '@m' => $t->getMessage(), '@trace' => $t->getTraceAsString()));
+			$wd('Finalization Error', "Applicant @a, course @c: @m\n@trace", array('@a' => (int) $r['a_id'], '@c' => (int) $course_id, '@m' => $t->getMessage(), '@trace' => $t->getTraceAsString()), WATCHDOG_NOTICE);
 		}
 	}
 
 	if ($sum['errors'])
-		watchdog('Finalization', 'Course @c: removals skipped because @n applicant(s) failed.', array('@c' => $course_id, '@n' => $sum['errors']), WATCHDOG_WARNING);
+		$wd('Finalization', 'Course @c: removals skipped because @n applicant(s) failed.', array('@c' => $course_id, '@n' => $sum['errors']), WATCHDOG_WARNING);
 	else
 	{
 		$q = 'select * from dh_student_course where sc_course = :c'.($keep ? ' and sc_id not in (:keep)' : '');
@@ -485,17 +516,25 @@ function dh_course_sync($course_id, $opts = array())
 	return $sum;
 }
 
+/* The Drupal lock that finalize_course() and the back-fill tool hold while they sync one course. */
+function dh_finalize_lock_name($course_id)
+{
+	return 'dh_finalize_'.(int) $course_id;
+}
+
 /* TRUE, or a message saying why this user cannot reopen this course. */
 function dh_course_can_reopen($course_id, $account = NULL)
 {
 	global $user;
 	$account = $account ? $account : $user;
-	$c = db_query('select c_finalized, c_finalized_tstamp, c_finalize_requested, c_deleted from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
+	$c = db_query('select c_finalized, c_finalized_tstamp, c_finalize_requested, c_processed, c_deleted from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
 	if (!$c || $c['c_deleted'])
 		return t('Course not found.');
 	if (!$c['c_finalized'])
 		return t('This course is not finalized.');
-	if ($c['c_finalize_requested'])
+	// Still running: the cron has not picked the request up yet, or a finalize (or the back-fill) is syncing the course now.
+	// A flag of 1 with c_processed 1 does not count: the old cron could leave that behind.
+	if (($c['c_finalize_requested'] && $c['c_processed'] <= 0) || !lock_may_be_available(dh_finalize_lock_name($course_id)))
 		return t('Finalize is still running for this course. Try again in 10 minutes.');
 	if (user_access('reopen any finalized course', $account))
 		return TRUE;
@@ -507,11 +546,14 @@ function dh_course_can_reopen($course_id, $account = NULL)
 	return t('This course was finalized more than 30 days ago. Ask a DIPI administrator to reopen it.');
 }
 
-/* Reopen a finalized course for correction. c_processed is left alone, so nothing goes to dhamma.org. */
+/* Reopen a finalized course for correction. c_processed is left alone, so nothing goes to dhamma.org.
+   A finalize request flag still set here is a stale one (dh_course_can_reopen() refuses while a request waits): it is
+   cleared, or the cron's dhamma.org update of the reopened course (it only marks courses with no request processed)
+   would never mark it processed, and the course would be sent again on every run. */
 function dh_course_reopen($course_id, $reason, $uid)
 {
 	$now = date('Y-m-d H:i:s');
-	db_update('dh_course')->fields(array('c_finalized' => 0, 'c_reopened' => $now, 'c_reopened_by' => $uid, 'c_updated' => $now, 'c_updated_by' => $uid))
+	db_update('dh_course')->fields(array('c_finalized' => 0, 'c_finalize_requested' => 0, 'c_reopened' => $now, 'c_reopened_by' => $uid, 'c_updated' => $now, 'c_updated_by' => $uid))
 		->condition('c_id', $course_id)->execute();
 	dh_course_log_note($course_id, 'reopen_reason', $reason, $uid);
 }
@@ -538,6 +580,53 @@ function dh_fill_attended_mail_dates()
 			WHERE a.a_attended_mail IS NULL AND x.a_id BETWEEN :f AND :t', array(':f' => $from, ':t' => $from + 49999), array('return' => Database::RETURN_AFFECTED));
 	db_query('DROP TEMPORARY TABLE IF EXISTS tmp_att_mail');
 	return $n;
+}
+
+/* a_attended_mail = the date the Attended email was sent or, for courses finalized before this change, the date the
+   course counted as emailed. Run once at deploy, after dh_fill_attended_mail_dates(): every attended student and server
+   of a finalized course with no date yet gets the course's finalize time (or its end date), because the letter log
+   cannot show every past Attended email (other letter names; migrated, old and back-filled students have no log rows),
+   and a reopen + Finalize again must not email them again. A course whose first finalize is still waiting
+   (c_processed <= 0, no finalize time, no student record) is left alone: its students get the email when it runs.
+   Only fills empty dates. In short chunks by a_id, one autocommit statement each (dh_applicant is big and busy), and the
+   waiting check is made in every chunk. Returns how many applicants were marked. $from: start at this a_id (tests). */
+function dh_stamp_finalized_attended_mail($from = NULL)
+{
+	$range = db_query('SELECT MIN(a_id) AS lo, MAX(a_id) AS hi FROM dh_applicant')->fetchAssoc();
+	if ($range['lo'] === NULL)
+		return 0;
+	$n = 0;
+	for ($f = max((int) $range['lo'], (int) $from); $f <= (int) $range['hi']; $f += 20000)
+		$n += db_query("UPDATE dh_applicant a JOIN dh_course c ON c.c_id = a.a_course
+			SET a.a_attended_mail = IF(c.c_finalized_tstamp >= '1900-01-01', c.c_finalized_tstamp, IF(c.c_end >= '1900-01-01', c.c_end, NOW()))
+			WHERE a.a_id BETWEEN :f AND :t AND a.a_attended = 1 AND a.a_type IN ('Student', 'Sevak') AND a.a_attended_mail IS NULL AND c.c_finalized = 1
+			AND NOT (c.c_processed <= 0 AND c.c_finalized_tstamp IS NULL AND NOT EXISTS (SELECT 1 FROM dh_student_course sc WHERE sc.sc_course = c.c_id))",
+			array(':f' => $f, ':t' => $f + 19999), array('return' => Database::RETURN_AFFECTED));
+	return $n;
+}
+
+/* dh_send_letter() calls this after it sent a letter. An Attended letter to an applicant (sent by finalize, or by hand
+   from search or the application) dates a_attended_mail, so a later finalize never sends it again. Only fills an empty
+   date. Never throws: the letter has gone out already. Returns 1 when it dated the applicant, else 0. */
+function dh_attended_mail_note($type, $id, $event)
+{
+	static $attended = NULL;
+	try
+	{
+		if ($type !== 'applicant')
+			return 0;
+		if ($attended === NULL)
+			$attended = (string) db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
+		if ($attended === '' || strcasecmp(trim((string) $event), $attended) !== 0)
+			return 0;
+		return (int) db_query('update dh_applicant set a_attended_mail = :t where a_id = :a and a_attended_mail is null',
+			array(':t' => date('Y-m-d H:i:s'), ':a' => (int) $id), array('return' => Database::RETURN_AFFECTED));
+	}
+	catch (Throwable $e)
+	{
+		watchdog('Finalization Error', 'Applicant @a: the Attended email date could not be stored: @m', array('@a' => (int) $id, '@m' => $e->getMessage()), WATCHDOG_ERROR);
+		return 0;
+	}
 }
 
 /* Courses of a back-fill batch, oldest first. 1 = gaps, 2 = copies, 3 = migrated centres with no
@@ -574,10 +663,13 @@ function dh_backfill_dry_run($course_id, $files = 'count')
 	if (!in_array($files, array('none', 'count'), TRUE))
 		throw new Exception("Dry run files mode must be none or count, not: $files");
 	$msg = NULL;
+	// The sync's log rows (e.g. why an applicant failed) are kept here and written after the rollback, or they would be rolled back too.
+	$held = array();
+	$keep = function ($type, $message, $vars = array(), $severity = WATCHDOG_NOTICE) use (&$held) { $held[] = array($type, 'Back-fill dry run: '.$message, $vars, $severity); };
 	$txn = db_transaction();
 	try
 	{
-		$sum = dh_course_sync($course_id, array('mail' => FALSE, 'files' => $files, 'batch' => 'dry-run', 'uid' => dh_system_uid()));
+		$sum = dh_course_sync($course_id, array('mail' => FALSE, 'files' => $files, 'batch' => 'dry-run', 'uid' => dh_system_uid(), 'log_fn' => $keep));
 	}
 	catch (Throwable $e)
 	{
@@ -585,7 +677,9 @@ function dh_backfill_dry_run($course_id, $files = 'count')
 		$msg = $e->getMessage();
 	}
 	$txn->rollback();
-	if ($msg !== NULL)                                              // written after the rollback, or it would be rolled back too
+	foreach ($held as $w)
+		watchdog($w[0], $w[1], $w[2], $w[3]);
+	if ($msg !== NULL)
 		watchdog('Finalization Error', 'Back-fill dry run, course @c: @m', array('@c' => $course_id, '@m' => $msg));
 	return $sum;
 }

@@ -7,7 +7,7 @@ t_in_txn(function () use ($manager, $admin) {
   $recent = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s', strtotime('-10 days'))));
   $old = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s', strtotime('-40 days'))));
   $open = t_make_course();
-  $waiting = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s'), 'c_finalize_requested' => 1));
+  $waiting = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s'), 'c_finalize_requested' => 1, 'c_processed' => 0));
   t_ok(dh_course_can_reopen($recent, $manager) === TRUE, 'manager can reopen within 30 days');
   t_ok(dh_course_can_reopen($old, $manager) !== TRUE, 'manager cannot reopen after 30 days');
   t_ok(dh_course_can_reopen($old, $admin) === TRUE, 'admin can reopen after 30 days');
@@ -18,6 +18,11 @@ t_in_txn(function () use ($manager, $admin) {
   $c = db_query("select c_finalized, c_reopened, c_processed from dh_course where c_id = :c", array(':c' => $recent))->fetchAssoc();
   t_eq($c['c_finalized'], 0, 'reopen clears finalized'); t_ok((bool) $c['c_reopened'], 'reopen time stored'); t_eq($c['c_processed'], 1, 'c_processed untouched (no dhamma.org resend)');
   t_eq(db_query("select crl_new from dh_course_log where crl_course = :c and crl_field = 'reopen_reason'", array(':c' => $recent))->fetchField(), 'Teacher was not assigned', 'reason in the Change Log');
+  // A stale request flag (left by the old cron: flag 1, c_processed 1) is cleared by the reopen, c_processed still untouched.
+  $stale = t_make_course(array('c_finalized' => 1, 'c_finalized_tstamp' => date('Y-m-d H:i:s'), 'c_finalize_requested' => 1, 'c_processed' => 1));
+  t_ok(dh_course_can_reopen($stale, $admin) === TRUE, 'a stale flag does not block the reopen');
+  dh_course_reopen($stale, 'Stale flag test', 1);
+  t_eq(array_values(db_query("select c_finalize_requested, c_processed from dh_course where c_id = :c", array(':c' => $stale))->fetchAssoc()), array(0, 1), 'reopen clears a stale request flag and leaves c_processed alone');
 
   // The whole correction cycle.
   $opts = array('mail_fn' => 't_record_mail', 'files' => 'none');
