@@ -409,13 +409,20 @@ function dh_course_reopen($course_id, $reason, $uid)
 }
 
 /* Mark applicants who already got the Attended email, from the letter log. Only fills empty dates.
-   Returns how many applicants were marked. */
+   Returns how many applicants were marked.
+   dh_log is huge and busy (status changes and letter sends insert into it), so it is read in short chunks by its
+   primary key l_id: one autocommit statement per chunk, so row locks are held only for a moment. A single
+   INSERT ... SELECT over the whole table would lock every scanned row until it ends. */
 function dh_fill_attended_mail_dates()
 {
 	db_query('DROP TEMPORARY TABLE IF EXISTS tmp_att_mail');
 	db_query('CREATE TEMPORARY TABLE tmp_att_mail (a_id BIGINT NOT NULL PRIMARY KEY, t DATETIME NOT NULL) ENGINE=InnoDB');
-	db_query("INSERT INTO tmp_att_mail (a_id, t) SELECT l_identifier, MIN(l_tstamp) FROM dh_log
-		WHERE l_module = 'Applicant' AND l_event = 'Letter' AND l_msg LIKE 'Letter sent%- Attended%' GROUP BY l_identifier");
+	$range = db_query('SELECT MIN(l_id) AS lo, MAX(l_id) AS hi FROM dh_log')->fetchAssoc();
+	if ($range['lo'] !== NULL)
+		for ($from = (int) $range['lo']; $from <= (int) $range['hi']; $from += 100000)
+			db_query("INSERT INTO tmp_att_mail (a_id, t) SELECT l_identifier, MIN(l_tstamp) FROM dh_log
+				WHERE l_id BETWEEN :f AND :t AND l_module = 'Applicant' AND l_event = 'Letter' AND l_msg LIKE 'Letter sent%- Attended%'
+				GROUP BY l_identifier ON DUPLICATE KEY UPDATE t = LEAST(t, VALUES(t))", array(':f' => $from, ':t' => $from + 99999));
 	$max = (int) db_query('SELECT MAX(a_id) FROM tmp_att_mail')->fetchField();
 	$n = 0;
 	for ($from = 0; $from <= $max; $from += 50000)
