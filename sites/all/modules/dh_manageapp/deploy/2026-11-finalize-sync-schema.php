@@ -44,6 +44,10 @@ else fs_run('ALTER TABLE dh_student_course ADD INDEX sc_applicant (sc_applicant)
 if (fs_has_index_on('dh_patrika', 'p_student')) echo "index p_student: already there\n";
 else fs_run('ALTER TABLE dh_patrika ADD INDEX p_student (p_student), ALGORITHM=INPLACE, LOCK=NONE', 'index p_student added');
 
+// The sync looks up a student's course numbers, and removes them with the student, by sci_student.
+if (fs_has_index_on('dh_student_course_input', 'sci_student')) echo "index sci_student: already there\n";
+else fs_run('ALTER TABLE dh_student_course_input ADD INDEX sci_student (sci_student), ALGORITHM=INPLACE, LOCK=NONE', 'index sci_student added');
+
 if (db_table_exists('dh_student_log')) echo "dh_student_log: already there\n";
 else fs_run("CREATE TABLE dh_student_log (
   sl_id BIGINT NOT NULL AUTO_INCREMENT, sl_student BIGINT NULL, sl_applicant BIGINT NULL, sl_course BIGINT NULL,
@@ -59,3 +63,11 @@ if ($rid) { user_role_grant_permissions($rid, array('reopen any finalized course
 // Past Attended emails: mark everyone who already got one, so a reopened course never re-sends to them.
 $t0 = microtime(TRUE);
 echo 'past Attended emails marked: ' . dh_fill_attended_mail_dates() . ' applicants in ' . round(microtime(TRUE) - $t0, 1) . "s\n";
+
+// a_attended_mail = the date the Attended email was sent or, for courses finalized before this change, the date the
+// course counted as emailed. The letter log does not show every past Attended email (other letter names; migrated, old
+// and back-filled students have no log rows), so every attended student of a finalized course still without a date
+// gets the finalize time (or the end date). A first finalize that is still waiting is left alone. Only empty dates are
+// filled, so a re-run is safe; but a re-run long after the deploy also dates students a Finalize with the email box unticked left out.
+$t0 = microtime(TRUE);
+echo 'finalized courses, attended students dated as emailed: ' . dh_stamp_finalized_attended_mail() . ' applicants in ' . round(microtime(TRUE) - $t0, 1) . "s\n";
