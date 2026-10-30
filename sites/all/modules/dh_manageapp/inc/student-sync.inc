@@ -178,7 +178,9 @@ function dh_student_apply($sid, $a, $strong, $ctx)
 	   'created' log row for this applicant). Anything else, an orphan with no course record at all
 	   included, is a returning student whose name, gender, date of birth and IDs are protected. */
 	$own = FALSE;
-	if (!db_query('select 1 from dh_student_course where sc_student = :s and sc_course <> :c limit 1', array(':s' => $sid, ':c' => $ctx['course']))->fetchField())
+	if (isset($ctx['own']))
+		$own = (bool) $ctx['own'];                                 // the caller knows (a course record claimed by name: never own)
+	elseif (!db_query('select 1 from dh_student_course where sc_student = :s and sc_course <> :c limit 1', array(':s' => $sid, ':c' => $ctx['course']))->fetchField())
 		$own = (bool) db_query('select 1 from dh_student_course where sc_student = :s and sc_course = :c and (sc_applicant = :a or sc_applicant is null) limit 1',
 				array(':s' => $sid, ':c' => $ctx['course'], ':a' => $ctx['applicant']))->fetchField()
 			|| (bool) db_query("select 1 from dh_student_log where sl_student = :s and sl_action = 'created' and sl_applicant = :a limit 1",
@@ -309,13 +311,15 @@ function dh_course_sync_files($r, $sid, $opts, &$sum)
 }
 
 /* Remove a student record that has no course left and no referral pointing to it. A patrika subscription is kept; its
-   student link is set to 0 ("not a student"). */
+   student link is set to 0 ("not a student"). Returns 'courses' (kept: the student has other courses), 'referral'
+   (kept: a referral points to it) or 'removed'. */
 function dh_student_remove_if_empty($sid, $log, &$sum)
 {
 	// dh_applicant.a_student / a_old_student are not checked on purpose: unused, unindexed, a lookup is a full scan of 3.2 million rows.
-	if (db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $sid))->fetchField()
-		|| db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField())
-		return;
+	if (db_query('select 1 from dh_student_course where sc_student = :s limit 1', array(':s' => $sid))->fetchField())
+		return 'courses';
+	if (db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $sid))->fetchField())
+		return 'referral';
 	foreach (db_query('select * from dh_student_course_input where sci_student = :s', array(':s' => $sid))->fetchAll(PDO::FETCH_ASSOC) as $sci)
 		dh_student_log(array('sl_student' => $sid, 'sl_action' => 'sci-removed', 'sl_old' => json_encode($sci)) + $log);
 	db_delete('dh_student_course_input')->condition('sci_student', $sid)->execute();
@@ -328,6 +332,36 @@ function dh_student_remove_if_empty($sid, $log, &$sum)
 	dh_student_log(array('sl_student' => $sid, 'sl_action' => 'student-removed', 'sl_old' => json_encode($row)) + $log);
 	db_delete('dh_student')->condition('s_id', $sid)->execute();
 	$sum['students_removed']++;
+	return 'removed';
+}
+
+/* No student matched an attended applicant. Before a new student is made: this course's own old record (no applicant
+   noted, as the old finalize wrote them) of the same person, so one person does not become two students. A candidate is
+   such a record whose student has the same first and last name (trimmed, any case), or the same first name and the same
+   known date of birth. Records claimed earlier in this run ($claimed: sc_id => TRUE) and students that an attended
+   applicant of this course already has are not candidates. Returns the record (sc_id, sc_student) when all candidates
+   are one student (its first record), else NULL (none, or two people: unclear, so a new student is made as before). */
+function dh_course_record_claim($course_id, $a, $claimed)
+{
+	$f = trim((string) $a['a_f_name']);
+	if ($f === '')
+		return NULL;
+	$l = trim((string) $a['a_l_name']);
+	$dob = trim((string) $a['a_dob']);
+	$found = array();
+	foreach (db_query("select sc.sc_id, sc.sc_student, s.s_f_name, s.s_l_name, s.s_dob from dh_student_course sc join dh_student s on s.s_id = sc.sc_student
+		where sc.sc_course = :c1 and sc.sc_applicant is null and not exists (select 1 from dh_student_course x join dh_applicant xa on xa.a_id = x.sc_applicant
+			where x.sc_course = :c2 and x.sc_student = sc.sc_student and xa.a_attended = 1 and xa.a_type in ('Student', 'Sevak'))
+		order by sc.sc_id", array(':c1' => $course_id, ':c2' => $course_id))->fetchAll(PDO::FETCH_ASSOC) as $r)
+	{
+		if (isset($claimed[$r['sc_id']]) || strcasecmp(trim((string) $r['s_f_name']), $f) !== 0)
+			continue;
+		$same_last = ($l !== '' && strcasecmp(trim((string) $r['s_l_name']), $l) === 0);
+		$same_dob = (dh_dob_known($dob) && dh_dob_known($r['s_dob']) && trim((string) $r['s_dob']) === $dob);
+		if (($same_last || $same_dob) && !isset($found[$r['sc_student']]))
+			$found[$r['sc_student']] = array('sc_id' => (int) $r['sc_id'], 'sc_student' => (int) $r['sc_student']);
+	}
+	return (count($found) == 1) ? reset($found) : NULL;
 }
 
 /* Bring the student records of one course in line with its attended students and servers.
@@ -342,7 +376,7 @@ function dh_course_sync($course_id, $opts = array())
 	if (!in_array($opts['files'], array('none', 'copy', 's3copy', 'count'), TRUE))
 		throw new Exception("Unknown files mode: {$opts['files']}");      // before any write, not once per applicant
 	$wd = $opts['log_fn'];
-	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'emails', 'mail_failed', 'errors',
+	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'removed_kept', 'emails', 'mail_failed', 'errors',
 		'files_copied', 'files_missing', 'files_failed', 'bytes'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
 	$mailed_at = NULL;                                              // mark_mailed: the date the course counts as emailed
@@ -352,6 +386,7 @@ function dh_course_sync($course_id, $opts = array())
 		$mailed_at = ($cd && dh_dob_known($cd['c_finalized_tstamp'])) ? $cd['c_finalized_tstamp']
 			: (($cd && dh_dob_known($cd['c_end'])) ? $cd['c_end'].' 00:00:00' : date('Y-m-d H:i:s'));
 	}
+	$claimed = array();                                             // old course records claimed by name in this run (sc_id => TRUE)
 	$teacher = array('M' => array(), 'F' => array());
 	foreach (db_query('select ct_teacher, ct_group, t_gender from dh_course_teacher left join dh_teacher on ct_teacher = t_id where ct_course = :c', array(':c' => $course_id)) as $t)
 		$teacher[$t->t_gender][$t->ct_group] = $t->ct_teacher;
@@ -379,6 +414,14 @@ function dh_course_sync($course_id, $opts = array())
 				$sid = $m['sid']; $strong = $m['strong'];
 				if ($sid)
 					$sc = db_query('select sc_id, sc_student from dh_student_course where sc_course = :c and sc_student = :s and sc_applicant is null order by sc_id limit 1', array(':c' => $course_id, ':s' => $sid))->fetchAssoc();
+				elseif ($sc = dh_course_record_claim($course_id, $r, $claimed))
+				{
+					// No match, but this course's own old record of the same person: a weak match (how 'course-record').
+					// Not strong and not own: no name change; gender, date of birth and IDs only fill empty boxes.
+					$m = array('sid' => $sc['sc_student'], 'how' => 'course-record', 'strong' => FALSE);
+					$sid = $m['sid']; $strong = FALSE; $ctx['own'] = FALSE;
+					$claimed[$sc['sc_id']] = TRUE;
+				}
 			}
 			$pre_sid = (int) $sid;                                 // 0 = this run makes the student
 			$newer = $pre_sid ? dh_student_has_newer_course($pre_sid, $course_id) : FALSE;
@@ -506,7 +549,8 @@ function dh_course_sync($course_id, $opts = array())
 			db_delete('dh_student_course')->condition('sc_id', $g['sc_id'])->execute();
 			if ($copy) { $sum['copies']++; continue; }
 			$sum['removed']++;
-			dh_student_remove_if_empty((int) $g['sc_student'], $log, $sum);
+			if (dh_student_remove_if_empty((int) $g['sc_student'], $log, $sum) === 'courses')
+				$sum['removed_kept']++;                            // the student keeps other courses (worth a look: maybe one person split in two)
 		}
 	}
 
