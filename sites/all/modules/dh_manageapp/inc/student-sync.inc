@@ -44,14 +44,28 @@ function dh_id_is_junk($kind, $v)
 	return FALSE;
 }
 
-/* An ID typed by more than DH_ID_SHARED_NAMES different first names among existing students. */
+/* A real date of birth: not empty and not a zero or placeholder date ('0000-00-00' and anything before 1900). */
+function dh_dob_known($d)
+{
+	$d = trim((string) $d);
+	return $d !== '' && strcmp($d, '1900-01-01') >= 0;
+}
+
+/* An ID typed by more than DH_ID_SHARED_NAMES different first names among existing students.
+   Only a TRUE answer is remembered (a value found shared stays shared for the whole run); a FALSE
+   answer is counted again on every call, because a long run (the back-fill) can make a value shared. */
 function dh_id_is_shared($kind, $v)
 {
-	static $seen = array();
+	static $shared = array();
 	$key = $kind . '|' . $v;
-	if (!isset($seen[$key]))
-		$seen[$key] = (int) db_query("select count(distinct s_f_name) from dh_student where s_$kind = :v", array(':v' => (string) $v))->fetchField() > DH_ID_SHARED_NAMES;
-	return $seen[$key];
+	if (isset($shared[$key]))
+		return TRUE;
+	if ((int) db_query("select count(distinct s_f_name) from dh_student where s_$kind = :v", array(':v' => (string) $v))->fetchField() > DH_ID_SHARED_NAMES)
+	{
+		$shared[$key] = TRUE;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /* The existing student for an applicant, or sid 0. IDs first (each needs the same first name or
@@ -59,7 +73,9 @@ function dh_id_is_shared($kind, $v)
 function dh_student_find($a)
 {
 	$f = trim((string) $a['a_f_name']);
-	$dob = isset($a['a_dob']) ? (string) $a['a_dob'] : '';
+	$dob = isset($a['a_dob']) ? trim((string) $a['a_dob']) : '';
+	if (!dh_dob_known($dob))
+		$dob = '';
 	foreach (array('aadhar', 'pancard', 'voter_id', 'passport') as $k)
 	{
 		$v = isset($a["a_$k"]) ? trim((string) $a["a_$k"]) : '';
@@ -68,7 +84,7 @@ function dh_student_find($a)
 		$best = NULL;
 		foreach (db_query("select s_id, s_f_name, s_dob from dh_student where s_$k = :v order by s_id", array(':v' => $v)) as $s)
 		{
-			$same_dob = ($dob !== '' && (string) $s->s_dob === $dob);
+			$same_dob = ($dob !== '' && dh_dob_known($s->s_dob) && (string) $s->s_dob === $dob);
 			$same_first = ($f !== '' && strcasecmp(trim((string) $s->s_f_name), $f) === 0);
 			if (!$same_dob && !$same_first)
 				continue;
@@ -82,7 +98,7 @@ function dh_student_find($a)
 	foreach (array('email', 'phone_mobile', 'dob') as $k)
 	{
 		$v = isset($a["a_$k"]) ? trim((string) $a["a_$k"]) : '';
-		if ($v === '' || $f === '')
+		if ($v === '' || $f === '' || ($k === 'dob' && !dh_dob_known($v)))
 			continue;
 		$sid = db_query("select s_id from dh_student where s_f_name = :f and s_l_name = :l and s_$k = :v order by s_id limit 1", $name + array(':v' => $v))->fetchField();
 		if ($sid)

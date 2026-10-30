@@ -13,6 +13,11 @@ t_ok(!dh_id_is_junk('pancard', 'ZZZPZ0001Z'), 'PAN in the right format is not ju
 t_ok(dh_id_is_junk('passport', '12345'), 'short passport is junk');
 t_ok(!dh_id_is_junk('passport', 'Z1234567'), 'passport of 8 is not junk');
 t_ok(dh_id_is_junk('voter_id', 'NA'), 'voter NA is junk');
+t_ok(!dh_dob_known('0000-00-00'), 'zero date is not a date of birth');
+t_ok(!dh_dob_known(''), 'empty is not a date of birth');
+t_ok(!dh_dob_known(NULL), 'NULL is not a date of birth');
+t_ok(!dh_dob_known('  '), 'blank is not a date of birth');
+t_ok(dh_dob_known('1980-01-01'), 'a real date is a date of birth');
 
 t_in_txn(function () {
   $base = array('a_f_name' => '', 'a_l_name' => '', 'a_dob' => '', 'a_email' => '', 'a_phone_mobile' => '', 'a_aadhar' => '', 'a_pancard' => '', 'a_voter_id' => '', 'a_passport' => '');
@@ -34,5 +39,26 @@ t_in_txn(function () {
   t_eq($m['sid'], $s3, 'name + email matches, apostrophe included'); t_eq($m['how'], 'name+email', 'how = name+email');
   $m = dh_student_find(array_merge($base, array('a_f_name' => 'Zzqnobody', 'a_l_name' => 'Nobody', 'a_dob' => '1979-12-31')));
   t_eq($m['how'], 'none', 'no match');
+
+  // A zero date of birth ('0000-00-00') is no date of birth: it never makes a match, and never a strong one.
+  db_query("SET SESSION sql_mode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'");
+  $z1 = t_make_student(array('s_f_name' => 'Zzqalpha', 's_l_name' => 'Zerodob', 's_pancard' => 'ZZZPZ0002Z', 's_dob' => '0000-00-00'));
+  $m = dh_student_find(array_merge($base, array('a_f_name' => 'Zzqbeta', 'a_l_name' => 'Zerodob', 'a_pancard' => 'ZZZPZ0002Z', 'a_dob' => '0000-00-00')));
+  t_eq($m['sid'], 0, 'ID + different first name + zero date on both sides does not match');
+  $m = dh_student_find(array_merge($base, array('a_f_name' => 'Zzqalpha', 'a_l_name' => 'Zerodob', 'a_pancard' => 'ZZZPZ0002Z', 'a_dob' => '0000-00-00')));
+  t_eq($m['sid'], $z1, 'ID + same first name still matches when the date is zero'); t_eq($m['strong'], FALSE, 'a zero date never makes an ID match strong');
+  t_make_student(array('s_f_name' => 'Zzqcommon', 's_l_name' => 'Namesake', 's_dob' => '0000-00-00'));
+  $m = dh_student_find(array_merge($base, array('a_f_name' => 'Zzqcommon', 'a_l_name' => 'Namesake', 'a_dob' => '0000-00-00')));
+  t_eq($m['how'], 'none', 'same name + zero date on both sides does not match'); t_eq($m['sid'], 0, 'same name + zero date gives sid 0');
+  $s4 = t_make_student(array('s_f_name' => 'Zzqreal', 's_l_name' => 'Dobtest', 's_dob' => '1985-03-03'));
+  $m = dh_student_find(array_merge($base, array('a_f_name' => 'Zzqreal', 'a_l_name' => 'Dobtest', 'a_dob' => '1985-03-03')));
+  t_eq($m['sid'], $s4, 'same name + real date of birth matches'); t_eq($m['how'], 'name+dob', 'how = name+dob'); t_eq($m['strong'], TRUE, 'name match is strong');
+
+  // Shared: a value found shared stays shared for the process; a value not shared is counted again every call.
+  t_ok(!dh_id_is_shared('pancard', 'ZZZPZ0003Z'), 'a value nobody has is not shared');
+  foreach (array('Ann', 'Bob', 'Cid', 'Dee') as $n) t_make_student(array('s_f_name' => $n, 's_pancard' => 'ZZZPZ0003Z'));
+  t_ok(dh_id_is_shared('pancard', 'ZZZPZ0003Z'), 'not shared before, shared now: counted again, no stale answer');
+  db_query("delete from dh_student where s_pancard = 'ZZZPZ0003Z'");
+  t_ok(dh_id_is_shared('pancard', 'ZZZPZ0003Z'), 'a value found shared stays shared');
 });
 t_done();
