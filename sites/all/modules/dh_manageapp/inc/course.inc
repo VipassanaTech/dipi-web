@@ -244,6 +244,9 @@ function _course_date_order_check($which, $val, $row)
 
 function dh_manage_courses()
 {
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm.min.css");
+	drupal_add_css( drupal_get_path('module', 'dh_manageapp'). "/css/jquery-confirm-responsive.css");
+	drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
 	$c_type = db_query("select c_subdomain, c_vri from dh_center where c_id=".arg(1))->fetchAssoc();
 	drupal_add_library('system', 'ui.core');
 	drupal_add_library('system', 'ui.dialog');
@@ -310,6 +313,9 @@ function dh_manage_courses()
                 { name: "dh_course.c_form_langs", label: "Course Form Langs", type: "select2", "opts": {"multiple": true, "placeholder": "Select Form Langguages"}, fieldInfo: "Apply button in schedule.vridhamma.org will show multiple language (entered here) options for application forms (<b>in case application form type has translation present for entered languages</b>)<br>English will be present by default and need not to be selected.<br>This field is only applicable for schedule.vridhamma.org and will not have any impact on dhamma.org schedule/search."},
 				        { name: "dh_course.c_deleted", type: "hidden" },
 				        { name: "dh_course.c_finalized", type: "hidden" },
+				        { name: "dh_course.c_finalize_requested", type: "hidden", def: "0" },
+				        { name: "dh_course.c_finalize_mail", type: "hidden", def: "1" },
+				        { name: "dh_course.c_reopened", type: "hidden" },
 				    ],	
 				 } );
 
@@ -466,9 +472,21 @@ function dh_manage_courses()
                                                     return;
                                                 }
 
-                                                editor.edit(row_finalized, false)
-                                                      .set("dh_course.c_finalized", "1")
-                                                      .submit();
+                                                var doFinalize = function (mail) {
+                                                    editor.edit(row_finalized, false)
+                                                          .set("dh_course.c_finalized", "1")
+                                                          .set("dh_course.c_finalize_mail", mail ? "1" : "0")
+                                                          .submit();
+                                                };
+                                                if (row[0].dh_course.c_reopened) {
+                                                    $.confirm({ title: "Finalize again", columnClass: "medium",
+                                                        content: "<label><input type=\"checkbox\" id=\"finalize-mail\" checked> Send the Attended email to students newly marked attended</label><p>Students who already got it will not get it again.</p>",
+                                                        buttons: { finalize: { text: "Finalize again", btnClass: "btn-primary",
+                                                            action: function () { doFinalize(this.$content.find("#finalize-mail").is(":checked")); } },
+                                                            cancel: function () {} } });
+                                                } else {
+                                                    doFinalize(true);
+                                                }
 
 			                				// editor.edit( table.row( { selected: true } ).index(), false )
 			                				// 	.set( "dh_course.c_finalized", "1" )
@@ -656,6 +674,16 @@ function dh_manage_course_handler()
                 }
                 return true;
             } ),
+	    // Finalize runs only when asked: saving c_finalized = 1 also sets the request the cron looks for.
+	    \DataTables\Editor\Field::inst( 'dh_course.c_finalize_requested' )
+	        ->setFormatter( function ( $val, $data ) {
+	            return ( isset($data['dh_course']['c_finalized']) && (string) $data['dh_course']['c_finalized'] === '1' ) ? 1 : 0;
+	        } ),
+	    \DataTables\Editor\Field::inst( 'dh_course.c_finalize_mail' )
+	        ->validator( function ( $val, $data, $field, $host ) {
+	            return in_array( (string) $val, array('0', '1'), true ) ? true : 'Invalid email choice';
+	        } ),
+	    \DataTables\Editor\Field::inst( 'dh_course.c_reopened' )->set( false ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_enrol_date' )
 	 	    ->getFormatter( 'Format::datetime', array(
 					'from' => 'Y-m-d',
@@ -1461,6 +1489,8 @@ function course_pdf()
 
 function dh_course_status_check( $center_id, $course_type, $gender, $course_id )
 {
+	if (db_query('select c_finalized from dh_course where c_id = :c', array(':c' => (int) $course_id))->fetchField())
+		return;   // a finalized course has no open places to track; touching it would restart finalize
 	//watchdog( "COURSE-STATUS", "Centre: $center_id, Course Id: $course_id, Gender: $gender");
 	$settings = db_query("select cs_course_config from dh_center_setting where cs_center=$center_id")->fetchField();
 	$ini = array();
