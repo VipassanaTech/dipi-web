@@ -37,7 +37,6 @@ $body = <<<'HTML'
 <li>Click <b>Finalize again</b>.</li>
 </ol>
 <p>Finalizing runs in the background and can take up to 10 minutes.</p>
-<p>If Finalize Course does nothing, reload the Manage Courses page and try again.</p>
 <p>Students who already got the Attended email will not get it again. Students you marked Left are taken out of this course in the student records.</p>
 <p>The <b>Change Log</b> on the course page shows who reopened the course, when, and why.</p>
 HTML;
@@ -81,7 +80,6 @@ $an = array('an_audience' => 'centre', 'an_title' => 'You can now correct a fina
     . '<ol><li>Open the course page and click <b>Reopen for correction</b>.</li>'
     . '<li>Fix the course in Zero Day or Assign Teachers.</li>'
     . '<li>Finalize it again from <b>Manage Courses</b>.</li></ol>'
-    . '<p>If Finalize Course does nothing, reload the Manage Courses page and try again.</p>'
     . '<p>You can reopen within 30 days of finalizing. More help: <a href="/' . $alias . '">DIPI Wiki &rarr; ' . $title . '</a>.</p>');
 $id = db_query("select an_id from dh_announcement where an_audience = :a and an_title = :t and an_deleted = 0", array(':a' => $an['an_audience'], ':t' => $an['an_title']))->fetchField();
 if ($id) {
