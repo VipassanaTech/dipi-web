@@ -38,7 +38,7 @@ function t_make_course($over = array()) {
   unset($c['c_id']);
   $c = array_merge($c, array('c_start' => date('Y-m-d', strtotime('-12 days')), 'c_end' => date('Y-m-d', strtotime('-2 days')),
     'c_finalized' => 0, 'c_processed' => 1, 'c_finalized_tstamp' => NULL, 'c_finalize_requested' => 0, 'c_finalize_mail' => 1,
-    'c_reopened' => NULL, 'c_reopened_by' => NULL, 'c_deleted' => 0, 'c_cancelled' => 0), $over);
+    'c_reopened' => NULL, 'c_reopened_by' => NULL, 'c_deleted' => 0, 'c_cancelled' => 0, 'c_list_only' => 0, 'c_date_change' => 0), $over);
   return (int) db_insert('dh_course')->fields($c)->execute();
 }
 // A made-up attended applicant: no email, no mobile, no photo, no PDF.
