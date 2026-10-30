@@ -376,3 +376,34 @@ function dh_course_sync($course_id, $opts = array())
 		db_insert('dh_course_stat')->fields(array('cs_course' => $course_id, 'cs_old' => $s->a_old, 'cs_gender' => $s->a_gender, 'cs_status' => $s->a_status, 'cs_count' => $s->tot))->execute();
 	return $sum;
 }
+
+/* TRUE, or a message saying why this user cannot reopen this course. */
+function dh_course_can_reopen($course_id, $account = NULL)
+{
+	global $user;
+	$account = $account ? $account : $user;
+	$c = db_query('select c_finalized, c_finalized_tstamp, c_finalize_requested, c_deleted from dh_course where c_id = :c', array(':c' => $course_id))->fetchAssoc();
+	if (!$c || $c['c_deleted'])
+		return t('Course not found.');
+	if (!$c['c_finalized'])
+		return t('This course is not finalized.');
+	if ($c['c_finalize_requested'])
+		return t('Finalize is still running for this course. Try again in 10 minutes.');
+	if (user_access('reopen any finalized course', $account))
+		return TRUE;
+	if (!user_access('manage course', $account))
+		return t('You are not allowed to reopen courses.');
+	$ts = strtotime((string) $c['c_finalized_tstamp']);
+	if ($ts > 0 && $ts >= time() - 30 * 86400)
+		return TRUE;
+	return t('This course was finalized more than 30 days ago. Ask a DIPI administrator to reopen it.');
+}
+
+/* Reopen a finalized course for correction. c_processed is left alone, so nothing goes to dhamma.org. */
+function dh_course_reopen($course_id, $reason, $uid)
+{
+	$now = date('Y-m-d H:i:s');
+	db_update('dh_course')->fields(array('c_finalized' => 0, 'c_reopened' => $now, 'c_reopened_by' => $uid, 'c_updated' => $now, 'c_updated_by' => $uid))
+		->condition('c_id', $course_id)->execute();
+	dh_course_log_note($course_id, 'reopen_reason', $reason, $uid);
+}

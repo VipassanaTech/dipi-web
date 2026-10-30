@@ -59,3 +59,11 @@ function t_make_student($over = array()) {
   return (int) db_insert('dh_student')->fields(array_merge(array('s_f_name' => 'Zzqtest', 's_l_name' => 'Existing', 's_created_by' => 0,
     's_updated_by' => 0, 's_updated' => date('Y-m-d H:i:s')), $over))->execute();
 }
+// Assign an existing teacher of that gender to a made-up course (copies one dh_course_teacher row).
+function t_add_teacher($course, $gender = 'M', $group = 1) {
+  $t = (int) db_query("select t_id from dh_teacher where t_gender = :g order by t_id limit 1", array(':g' => $gender))->fetchField();
+  $row = db_query("select * from dh_course_teacher order by ct_id desc limit 1")->fetchAssoc();
+  unset($row['ct_id']);
+  db_insert('dh_course_teacher')->fields(array_merge($row, array('ct_course' => $course, 'ct_teacher' => $t, 'ct_group' => $group)))->execute();
+  return $t;
+}

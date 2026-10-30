@@ -39,13 +39,39 @@ function dh_course_dashboard()
 
 		', 'inline');
 	$_SESSION['lasturi'] = $_SERVER['REQUEST_URI'];
-	$temp = db_query("select c_name, c_finalized from dh_course where c_id=".arg(2))->fetchAssoc();
+	$temp = db_query("select c_name, c_finalized, c_reopened, c_reopened_by from dh_course where c_id=".arg(2))->fetchAssoc();
 	$course_name = $temp['c_name'];
 	$finalized = $temp['c_finalized'];
 	$type = 'a';
 	//if ($finalized) $type = 's';
 	$out = "<h2>$course_name (".l("Edit", "manage-course/".arg(1), array('query' => array('c' => arg(2) ))).")</h2>";
 	$out .= "<h3>".l("Back to Dashboard", "centre/".arg(1))."</h3>";
+	if (!$finalized && $temp['c_reopened'])
+	{
+		$who = db_query('select name from users where uid = :u', array(':u' => (int) $temp['c_reopened_by']))->fetchField();
+		$out .= '<div class="messages warning">Reopened for correction on '.date('d M Y H:i', strtotime($temp['c_reopened'])).' by '.check_plain($who)
+			.'. Fix what is needed, then press Finalize Course on Manage Courses again.</div>';
+	}
+	if ($finalized && dh_course_can_reopen((int) arg(2)) === TRUE)
+	{
+		drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery-confirm.min.css');
+		drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/jquery-confirm-responsive.css');
+		drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/jquery-confirm.min.js');
+		$out .= '<p><a href="#" id="course-reopen" class="button" data-centre="'.(int) arg(1).'" data-course="'.(int) arg(2).'" data-token="'.drupal_get_token('course-reopen-'.(int) arg(2)).'">Reopen for correction</a></p>';
+		drupal_add_js('(function($){$(document).ready(function(){
+			$("#course-reopen").on("click",function(e){e.preventDefault();var a=$(this);
+				$.confirm({title:"Reopen for correction",columnClass:"medium",
+					content:"<p>The course opens again so you can fix it in Zero Day, Assign Teachers and the applications. Finalize it again when you are done.</p><label>Reason (required)</label><textarea id=\"reopen-reason\" rows=\"3\" style=\"width:100%\"></textarea>",
+					buttons:{reopen:{text:"Reopen",btnClass:"btn-warning",action:function(){
+						var reason=$.trim(this.$content.find("#reopen-reason").val());
+						if(reason.length<5){alert("Please write the reason for reopening.");return false;}
+						$.post("/course-reopen/"+a.data("centre")+"/"+a.data("course"),{reason:reason,token:a.data("token")},function(j){
+							if(j&&j.status){location.reload();}else{alert((j&&j.msg)?j.msg:"Could not reopen the course.");}
+						},"json").fail(function(){alert("Could not reopen the course.");});
+					}},cancel:function(){}}});
+			});
+		});})(jQuery);', 'inline');
+	}
 	// Pin-to-dashboard toggle (course managers only).
 	if (user_access('manage course'))
 	{
@@ -173,6 +199,35 @@ function _dh_course_pin_toggle()
 		->condition('c_id', $course)->execute();
 	$out['status'] = true;
 	$out['pinned'] = $new;
+	drupal_json_output($out);
+	exit;
+}
+
+/* Reopen a finalized course for correction (POST: reason, token). JSON. */
+function _dh_course_reopen()
+{
+	global $user;
+	$centre = (int) arg(1);
+	$course = (int) arg(2);
+	$out = array('status' => false);
+	if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['token']) || !drupal_valid_token($_POST['token'], 'course-reopen-'.$course))
+		$out['msg'] = t('Please reload the page and try again.');
+	elseif ((int) db_query('select c_center from dh_course where c_id = :c', array(':c' => $course))->fetchField() !== $centre)
+		$out['msg'] = t('Course not found.');
+	else
+	{
+		$reason = trim(isset($_POST['reason']) ? (string) $_POST['reason'] : '');
+		$ok = dh_course_can_reopen($course);
+		if (drupal_strlen($reason) < 5)
+			$out['msg'] = t('Please write the reason for reopening.');
+		elseif ($ok !== TRUE)
+			$out['msg'] = $ok;
+		else
+		{
+			dh_course_reopen($course, drupal_substr($reason, 0, 1000), $user->uid);
+			$out['status'] = true;
+		}
+	}
 	drupal_json_output($out);
 	exit;
 }
@@ -1263,7 +1318,7 @@ Thanks,
 - DIPI Automation. 
 
 	';
-	$q = "select c.c_name, c.c_id, cs.cs_email_reply_to from dh_course c left join dh_center_setting cs on (c.c_center=cs.cs_center) left join dh_type_detail td on (c.c_course_type=td.td_id) where date_format(c.c_end, '%Y%m%d') < '".date("Ymd")."' and td.td_val2 > 1 and c.c_deleted=0 and c.c_finalized=0 and c.c_cancelled=0";
+	$q = "select c.c_name, c.c_id, c.c_reopened, cs.cs_email_reply_to from dh_course c left join dh_center_setting cs on (c.c_center=cs.cs_center) left join dh_type_detail td on (c.c_course_type=td.td_id) where date_format(c.c_end, '%Y%m%d') < '".date("Ymd")."' and td.td_val2 > 1 and c.c_deleted=0 and c.c_finalized=0 and c.c_cancelled=0";
 	$result = db_query($q);
 	$mg = Mailgun::create(variable_get('mailgun_key', ''));
 	while($r = $result->fetchAssoc())
@@ -1276,7 +1331,7 @@ Thanks,
 		  'from'    => 'DIPI Automation <noreply@vridhamma.org>',
 		  'to'      => $to,  //info@dhamma.net.in
 		  'subject' => 'DIPI Course Finalization Reminder',
-		  'text'    => str_replace('[course-name]', $r['c_name'], $body) ,
+		  'text'    => str_replace('[course-name]', $r['c_name'].($r['c_reopened'] ? ' (reopened for correction)' : ''), $body) ,
 		  'v:test-mode' => $test_mode
 		);
     $mailgun_domain = get_mailgun_domain("DIPI Automation <noreply@vridhamma.org>");

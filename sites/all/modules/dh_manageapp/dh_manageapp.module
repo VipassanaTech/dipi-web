@@ -189,6 +189,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage course'),
 	       'type' => MENU_CALLBACK);
 
+    // Reopen a finalized course for correction (POST: reason, token).
+    $items['course-reopen/%centre_id/%course_id'] = array('title' => t('Reopen course for correction'),
+	       'page callback' => '_dh_course_reopen',
+	       'access arguments' => array('access course'),
+	       'type' => MENU_CALLBACK);
+
     $items['course-plan/%centre_id/%course_id'] = array('title' => t('Set course plan'),
 	       'page callback' => '_dh_course_plan_toggle',
 	       'access arguments' => array('manage course'),
