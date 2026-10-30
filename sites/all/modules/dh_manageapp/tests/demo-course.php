@@ -3,8 +3,8 @@
 //   php7.4 sites/all/modules/dh_manageapp/tests/demo-course.php --centre=<id>        creates it, prints the id
 //   php7.4 sites/all/modules/dh_manageapp/tests/demo-course.php --remove=<course id>  removes it and what finalize made
 require __DIR__ . '/lib.php';
-// lib.php makes a script that ends without t_done() look like a crash; this one ends by design.
-$GLOBALS['t_finished'] = TRUE;
+// lib.php makes a script that ends without t_done() look like a crash, so t_finished is set only
+// right before a successful exit; a refusal or a crash still prints lib.php's warning and exits 1.
 $args = array();
 foreach ($argv as $a) if (preg_match('/^--(centre|remove)=(\d+)$/', $a, $m)) $args[$m[1]] = (int) $m[2];
 if (!empty($args['remove'])) {
@@ -26,9 +26,11 @@ if (!empty($args['remove'])) {
   }
   db_delete('dh_course_log')->condition('crl_course', $c)->execute();
   db_delete('dh_course')->condition('c_id', $c)->execute();
-  echo "removed demo course $c\n"; exit(0);
+  echo "removed demo course $c\n"; $GLOBALS['t_finished'] = TRUE; exit(0);
 }
 if (empty($args['centre']) || $args['centre'] == 1) { echo "use --centre=<id, not 1> or --remove=<course id>\n"; exit(1); }
+if (!db_query("select count(*) from dh_center where c_id = :c", array(':c' => $args['centre']))->fetchField()) { echo "centre {$args['centre']} does not exist\n"; exit(1); }
 $c = t_make_course(array('c_center' => $args['centre'], 'c_description' => 'ZZQ finalize demo'));
 foreach (array('Demoone', 'Demotwo', 'Demothree') as $n) t_make_applicant($c, array('a_l_name' => $n));
 echo "demo course $c at centre {$args['centre']}: 3 attended applicants, no email or mobile\n";
+$GLOBALS['t_finished'] = TRUE;

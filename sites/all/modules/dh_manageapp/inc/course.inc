@@ -681,6 +681,11 @@ function dh_manage_course_handler()
 	        } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_finalize_mail' )
 	        ->validator( function ( $val, $data, $field, $host ) {
+	            // Not posted at all = a page opened before this field existed: the form-level "out of date"
+	            // check below answers it (a field error on a field that page does not have would break its script).
+	            if ( $val === null ) {
+	                return true;
+	            }
 	            return in_array( (string) $val, array('0', '1'), true ) ? true : 'Invalid email choice';
 	        } ),
 	    \DataTables\Editor\Field::inst( 'dh_course.c_reopened' )->set( false ),
@@ -862,6 +867,24 @@ function dh_manage_course_handler()
     ->pkey('c_id')
     ->on( 'preCreate', function ( $editor, $values ) { _course_set_default( $editor, 0, $values); } )
     ->on( 'preEdit', function ( $editor, $id, $values ) { _course_set_default( $editor, $id, $values); } )
+    // The server decides the finalize request, whatever the page posted: make sure the field is in the
+    // posted row so its formatter runs (it gives 1 only when the posted c_finalized is 1).
+    ->on( 'preEdit', function ( $editor, $id, &$values ) {
+        if ( isset($values['dh_course']) && is_array($values['dh_course']) && !isset($values['dh_course']['c_finalize_requested']) )
+            $values['dh_course']['c_finalize_requested'] = '0';
+    } )
+    // A page opened before c_finalize_mail existed does not post it. Say so in one clear form-level message
+    // instead of saving without the email choice.
+    ->validator( function ( $editor, $action, $data ) {
+        if ( $action !== 'create' && $action !== 'edit' )
+            return null;
+        $rows = ( isset($data['data']) && is_array($data['data']) ) ? $data['data'] : array();
+        foreach ( $rows as $row ) {
+            if ( isset($row['dh_course']['c_finalize_mail']) )
+                return null;
+        }
+        return t('This page is out of date. Please reload the page and try again.');
+    } )
     ->on( 'preRemove', function() { return false; })
     ->where( function ( $q ) {
 	$q
