@@ -799,7 +799,8 @@ function dh_backfill_restore_row($table, $key, $old)
 
 /* Undo one log row. Returns 'undone' or 'skipped' (nothing to do: the value changed since, the row is gone or
    there already, or a guard keeps the student); throws when the row cannot be undone. $ctx: column types of
-   dh_student and, for 'created' rows, the students that applicants or patrika rows still point to. */
+   dh_student and, for 'created' rows, the students that applicants or patrika rows still point to.
+   A 'restored' row (the 2020 restore) removes only the student row it made. */
 function dh_backfill_undo_row($l, &$ctx)
 {
 	$old = in_array($l['sl_action'], array('course-removed', 'copy-removed', 'student-removed', 'sci-removed', 'course-updated', 'sci-updated')) ? json_decode((string) $l['sl_old'], TRUE) : NULL;
@@ -839,6 +840,16 @@ function dh_backfill_undo_row($l, &$ctx)
 				$value = NULL;
 			// Only when nobody changed it since. (s_updated / s_updated_by are audit stamps and are not put back.)
 			return db_update('dh_student')->fields(array($l['sl_field'] => $value))->condition('s_id', $l['sl_student'])->condition($l['sl_field'], $l['sl_new'])->execute() ? 'undone' : 'skipped';
+		case 'restored':
+			// A student the 2020 restore brought back. Only the student row goes: its old lines and course-counts row were there
+			// before it (the batch's other log rows put back what moved). Kept when a referral or patrika row points to it, or when
+			// it has a course line that is not an old one (a finalize gave it a course since).
+			$s = (int) $l['sl_student'];
+			if (db_query('select 1 from dh_referral where r_student = :s limit 1', array(':s' => $s))->fetchField()
+				|| db_query('select 1 from dh_patrika where p_student = :s limit 1', array(':s' => $s))->fetchField()
+				|| db_query("select 1 from dh_student_course where sc_student = :s and ifnull(from_migration_script, 'No') <> 'Yes' limit 1", array(':s' => $s))->fetchField())
+				return 'skipped';
+			return db_delete('dh_student')->condition('s_id', $s)->condition('from_migration_script', 'Yes')->execute() ? 'undone' : 'skipped';
 		case 'created':
 			$s = (int) $l['sl_student'];
 			if (isset($ctx['pointed'][$s])
