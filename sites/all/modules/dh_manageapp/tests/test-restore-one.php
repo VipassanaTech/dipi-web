@@ -119,4 +119,45 @@ t_in_txn(function () use ($CTX) {
   t_old($n, t_old_course('2013-09-01'), 'ZQ 82', array('rs_f_name' => 'Zzqeight', 'rs_l_name' => 'Zzqolder', 'rs_email' => 'zzq.e8new@example.com'));
   t_eq(dh_restore_one($n, $CTX)['sid'], $cur, 'R8: matched through an older row');
 });
+
+// R9: a 1 January birth date (mostly a year-only date in the old data) is never a match by itself, with a current student or
+// with another old number; the restored student still keeps the date.
+t_in_txn(function () use ($CTX) {
+  $cur = t_make_student(array('s_f_name' => 'Zzqnine', 's_l_name' => 'Zzqjanone', 's_gender' => 'M', 's_dob' => '1975-01-01'));
+  $n1 = t_free_sid(); $n2 = t_free_sid();
+  t_old($n1, t_old_course('2010-04-01'), 'ZQ 91', array('rs_f_name' => 'Zzqnine', 'rs_l_name' => 'Zzqjanone', 'rs_dob' => '1975-01-01'));
+  t_old($n2, t_old_course('2011-04-01'), 'ZQ 92', array('rs_f_name' => 'Zzqnine', 'rs_l_name' => 'Zzqjanone', 'rs_dob' => '1975-01-01'));
+  $r1 = dh_restore_one($n1, $CTX);
+  $r2 = dh_restore_one($n2, $CTX);
+  t_eq(array($r1['result'], $r1['sid'], $r2['result'], $r2['sid']), array('restored', $n1, 'restored', $n2), 'R9: name + 1 January joins nobody');
+  t_eq(t_row('dh_student', 's_id', $n1)['s_dob'], '1975-01-01', 'R9: the restored student keeps the date');
+});
+
+// R10: any other birth date still matches by name + date of birth.
+t_in_txn(function () use ($CTX) {
+  $cur = t_make_student(array('s_f_name' => 'Zzqten', 's_l_name' => 'Zzqrealdob', 's_gender' => 'F', 's_dob' => '1975-06-14'));
+  $n = t_free_sid();
+  t_old($n, t_old_course('2010-05-01'), 'ZQ 101', array('rs_f_name' => 'Zzqten', 'rs_l_name' => 'Zzqrealdob', 'rs_gender' => 'F', 'rs_dob' => '1975-06-14'));
+  $r = dh_restore_one($n, $CTX);
+  t_eq(array($r['result'], $r['sid'], $r['how']), array('merged', $cur, 'name+dob'), 'R10: name + a full date still merges');
+});
+
+// R11: with a 1 January date, the same email or mobile still merges.
+t_in_txn(function () use ($CTX) {
+  $cur = t_make_student(array('s_f_name' => 'Zzqeleven', 's_l_name' => 'Zzqjanmail', 's_gender' => 'M', 's_dob' => '1980-01-01', 's_phone_mobile' => '9876500111'));
+  $n = t_free_sid();
+  t_old($n, t_old_course('2010-06-01'), 'ZQ 111', array('rs_f_name' => 'Zzqeleven', 'rs_l_name' => 'Zzqjanmail', 'rs_dob' => '1980-01-01', 'rs_phone_mobile' => '[91]9876500111'));
+  $r = dh_restore_one($n, $CTX);
+  t_eq(array($r['result'], $r['sid'], $r['how']), array('merged', $cur, 'name+phone_mobile'), 'R11: 1 January + the same mobile merges');
+});
+
+// R12: when the newest row has 1 January, an older row's full date is still tried.
+t_in_txn(function () use ($CTX) {
+  $cur = t_make_student(array('s_f_name' => 'Zzqtwelve', 's_l_name' => 'Zzqolddob', 's_gender' => 'M', 's_dob' => '1968-09-23'));
+  $n = t_free_sid();
+  t_old($n, t_old_course('2007-07-01'), 'ZQ 121', array('rs_f_name' => 'Zzqtwelve', 'rs_l_name' => 'Zzqolddob', 'rs_dob' => '1968-09-23'));
+  t_old($n, t_old_course('2014-07-01'), 'ZQ 122', array('rs_f_name' => 'Zzqtwelve', 'rs_l_name' => 'Zzqolddob', 'rs_dob' => '1968-01-01'));
+  $r = dh_restore_one($n, $CTX);
+  t_eq(array($r['result'], $r['sid'], $r['how']), array('merged', $cur, 'name+dob'), 'R12: an older row with a full date still matches');
+});
 t_done();

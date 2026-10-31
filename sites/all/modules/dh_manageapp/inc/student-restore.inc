@@ -154,13 +154,17 @@ function dh_restore_rows($old_sid)
 }
 
 /* The student DIPI already has for this person: DIPI's own matcher with the newest old row first, then each older row that
-   gives it something new (another name, email, mobile or date of birth). sid 0 = none. */
+   gives it something new (another name, email, mobile or date of birth). A 1 January birth date is left out of the match: in
+   the old data it is mostly a year-only date (59% of them, against 7% in DIPI), so name + 1 January would join different
+   people born in the same year. The student still keeps the date. sid 0 = none. */
 function dh_restore_find($rows)
 {
 	$tried = array();
 	foreach ($rows as $r)
 	{
 		$a = dh_restore_person($r);
+		if (substr($a['a_dob'], 5) === '01-01')
+			$a['a_dob'] = '';
 		$key = strtolower($a['a_f_name'].'|'.$a['a_l_name'].'|'.$a['a_email'].'|'.$a['a_phone_mobile'].'|'.$a['a_dob']);
 		if (isset($tried[$key]))
 			continue;
