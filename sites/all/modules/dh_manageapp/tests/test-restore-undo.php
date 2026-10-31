@@ -77,4 +77,20 @@ t_in_txn(function () {
   dh_backfill_undo('test-rs-undo3', TRUE);
   t_eq(t_n('select count(*) from dh_student where s_id = :s', array(':s' => $k)), 1, 'U3: kept when a referral points to it');
 });
+
+// U4: a merged value longer than its box is cut to the box before it is written and logged, so the undo can put the box back.
+t_in_txn(function () {
+  $cur = t_make_student(array('s_f_name' => 'Zzqundo', 's_l_name' => 'Zzqcut', 's_gender' => 'M', 's_email' => 'zzq.u4@example.com', 's_phone_home' => ''));
+  $m = t_free_sid();
+  $c = t_old_course('2010-04-01');
+  $long = '01234567890123456789ABCDEF';                                       // 26 characters; the box holds 20
+  t_old($m, $c, 'ZQ 8', array('rs_f_name' => 'Zzqundo', 'rs_l_name' => 'Zzqcut', 'rs_email' => 'zzq.u4@example.com', 'rs_phone_home' => $long));
+  t_run(array($m), 'test-rs-undo4');
+  t_eq(db_query('select s_phone_home from dh_student where s_id = :s', array(':s' => $cur))->fetchField(), substr($long, 0, 20), 'U4: the long value was cut to the box');
+  t_eq(db_query("select sl_new from dh_student_log where sl_batch = 'test-rs-undo4' and sl_student = :s and sl_field = 's_phone_home'", array(':s' => $cur))->fetchField(),
+    substr($long, 0, 20), 'U4: the log holds the value that was stored');
+  $u = dh_backfill_undo('test-rs-undo4', TRUE);
+  t_eq(array($u['_failed'], $u['_skipped']), array(0, 0), 'U4: nothing failed, nothing skipped');
+  t_eq(db_query('select s_phone_home from dh_student where s_id = :s', array(':s' => $cur))->fetchField(), '', 'U4: the box is empty again after the undo');
+});
 t_done();

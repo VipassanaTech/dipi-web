@@ -121,6 +121,24 @@ function dh_restore_person($r)
 		'a_old' => 1);
 }
 
+/* The person with every text value cut to its dh_student box. A merge must compare, log and store the same value: if the sync
+   cut it after logging, the undo would not find the logged value in the box and would skip it. Same a_* to s_* mapping as
+   dh_student_apply(); a cut writes a warning that names the old student number. */
+function dh_restore_fit_person($a, $old_sid)
+{
+	$row = array();
+	foreach (dh_student_fields() as $f)
+	{
+		$k = str_replace('s_', 'a_', $f);
+		if (array_key_exists($k, $a))
+			$row[$f] = $a[$k];
+	}
+	dh_finalize_fit('dh_student', $row, 'old student ' . $old_sid);
+	foreach ($row as $f => $v)
+		$a[str_replace('s_', 'a_', $f)] = $v;
+	return $a;
+}
+
 /* The old rows of one student number: each of its old lines joined to its old row (a line in both part_b and part_c has
    two), newest course first. */
 function dh_restore_rows($old_sid)
@@ -197,7 +215,7 @@ function dh_restore_one($old_sid, $ctx)
 	{
 		$sid = (int) $m['sid'];
 		// Newer data wins: the old data only fills the current student's empty boxes; no value that is there changes.
-		dh_student_apply($sid, dh_restore_person($newest), $m['strong'],
+		dh_student_apply($sid, dh_restore_fit_person(dh_restore_person($newest), $old_sid), $m['strong'],
 			array('course' => (int) $newest['sc_course'], 'applicant' => NULL, 'batch' => $ctx['batch'], 'uid' => $ctx['uid'], 'newer' => TRUE, 'own' => FALSE));
 		foreach ($lines as $l)
 		{
@@ -220,7 +238,7 @@ function dh_restore_one($old_sid, $ctx)
 	$now = date('Y-m-d H:i:s');
 	$row += array('s_id' => $old_sid, 's_created' => $now, 's_created_by' => $ctx['uid'], 's_updated' => $now, 's_updated_by' => $ctx['uid'],
 		's_first' => strtoupper(substr(trim((string) $oldest['rs_type']), 0, 1)) === 'N' ? 1 : 0, 'from_migration_script' => 'Yes');
-	dh_finalize_fit('dh_student', $row, NULL);
+	dh_finalize_fit('dh_student', $row, 'old student ' . $old_sid);
 	db_insert('dh_student')->fields($row)->execute();
 	dh_student_log(array('sl_student' => $old_sid, 'sl_action' => 'restored') + $log);
 	dh_restore_sci($old_sid, $old_sid, $log);
@@ -261,7 +279,7 @@ function dh_restore_tidy_lines($sid, $log)
 			$set['sc_seat_col'] = (int) $seat;
 		if (!$set)
 			continue;
-		dh_finalize_fit('dh_student_course', $set, NULL);
+		dh_finalize_fit('dh_student_course', $set, 'old student ' . $sid);
 		dh_student_log(array('sl_student' => $sid, 'sl_course' => $l['sc_course'], 'sl_action' => 'course-updated', 'sl_old' => json_encode($l), 'sl_new' => json_encode($set)) + $log);
 		db_update('dh_student_course')->fields($set)->condition('sc_id', $l['sc_id'])->execute();
 		$n['rooms'] += isset($set['sc_acco']) ? 1 : 0;
