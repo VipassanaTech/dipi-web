@@ -30,14 +30,19 @@ function dh_restore_source_create()
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 }
 
-/* An old free-text answer as a yes/no box: NULL when not answered, 0 for a "no" word (NO, NA, N/A, -, NIL, NONE, NOTHING, 0),
-   1 for anything else (the text itself is already on the old course line). */
+/* An old free-text answer as a yes/no box: NULL when not answered, 0 for a "no" word (NO, N, NA, N/A, NIL, NILL, NONE, NOTHING,
+   NOT APPLICABLE, 0, NULL, and the words people wrote for "no problem": GOOD, NORMAL, OK, FIT, NO PROBLEM, NO PROBLEMS),
+   1 for anything else, in any script (the text itself is already on the old course line). */
 function dh_restore_flag($v)
 {
 	if ($v === NULL || trim((string) $v) === '')
 		return NULL;
-	$t = trim(strtoupper(preg_replace('/[^A-Za-z0-9]+/', ' ', (string) $v)));
-	return in_array($t, array('', 'NO', 'N', 'NA', 'N A', 'NIL', 'NONE', 'NOTHING', 'NOT APPLICABLE', '0', 'NULL'), TRUE) ? 0 : 1;
+	$t = preg_replace('/[^\p{L}\p{N}]+/u', ' ', (string) $v);
+	if ($t === NULL)
+		return 1; // not valid UTF-8: the person did write something
+	$t = trim(mb_strtoupper($t, 'UTF-8'));
+	return in_array($t, array('', 'NO', 'N', 'NA', 'N A', 'NIL', 'NILL', 'NONE', 'NOTHING', 'NOT APPLICABLE', 'GOOD', 'NORMAL', 'OK', 'FIT',
+		'NO PROBLEM', 'NO PROBLEMS', '0', 'NULL'), TRUE) ? 0 : 1;
 }
 
 /* An old mobile number in DIPI's form: digits only; an Indian number as its 10 digits ('[91]9876543210', '919876543210' and

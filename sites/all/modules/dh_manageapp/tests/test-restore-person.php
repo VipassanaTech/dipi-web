@@ -12,7 +12,8 @@ function t_rs($over = array()) {
 }
 
 foreach (array(array(NULL, NULL), array('', NULL), array('  ', NULL), array('NO', 0), array(' na ', 0), array('-', 0), array('N/A', 0), array('nil', 0),
-  array('None', 0), array('BLOOD PRESSURE', 1), array('yes', 1)) as $c)
+  array('None', 0), array('BLOOD PRESSURE', 1), array('yes', 1), array('ब्लड प्रेशर', 1), array('GOOD', 0), array(' normal ', 0), array('OK', 0),
+  array('No Problem', 0), array('NILL', 0), array('0', 0), array('NOT APPLICABLE', 0)) as $c)
   t_eq(dh_restore_flag($c[0]), $c[1], 'flag: ' . var_export($c[0], TRUE));
 
 foreach (array(array('[91]9876500001', '9876500001'), array('9876500001', '9876500001'), array('[91] 98765-00001', '9876500001'),
