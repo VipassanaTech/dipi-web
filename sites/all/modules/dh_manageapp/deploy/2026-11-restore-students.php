@@ -7,7 +7,8 @@
 //   php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-restore-students.php --numbers=82481,90210  only these numbers
 //   php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-restore-students.php --limit=2000          only the first 2000 numbers (name order)
 //   php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-restore-students.php --undo=<batch id>     what the undo would reverse; add --apply to undo
-// A run that stops can be run again: numbers already restored or merged count as done. Holds the back-fill lock.
+// A run that stops can be run again with the same options: a number that was restored, or never deleted, counts as done; a merged number
+// drops out of the list (its old lines now belong to a current student). Holds the back-fill lock.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1'; $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['SCRIPT_NAME'] = '/index.php';
@@ -15,15 +16,17 @@ require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
 $o = array('apply' => in_array('--apply', $argv), 'numbers' => array(), 'limit' => 0);
+$numbers_given = FALSE;
 foreach (array_slice($argv, 1) as $a)
 {
   if ($a === '--apply') continue;
-  elseif (preg_match('/^--numbers=([\d,]+)$/', $a, $m)) $o['numbers'] = array_values(array_filter(array_map('intval', explode(',', $m[1]))));
+  elseif (preg_match('/^--numbers=([\d,]+)$/', $a, $m)) { $numbers_given = TRUE; $o['numbers'] = array_values(array_filter(array_map('intval', explode(',', $m[1])))); }
   elseif (preg_match('/^--limit=([1-9]\d*)$/', $a, $m)) $o['limit'] = (int) $m[1];
   elseif (preg_match('/^--undo=(restore-\d{8}-\d{6})$/', $a, $m)) $o['undo'] = $m[1];
   elseif (preg_match('/^--resume=(restore-\d{8}-\d{6})$/', $a, $m)) $o['resume'] = $m[1];
   else { echo "Unknown option: $a (a mistyped option could run everything, so nothing was done)\n"; exit(1); }
 }
+if ($numbers_given && !$o['numbers']) { echo "No valid numbers in --numbers (nothing was done)\n"; exit(1); }     // an empty list would mean every number
 if (isset($o['resume']) && !$o['apply']) { echo "--resume works only together with --apply (nothing was done)\n"; exit(1); }
 if (isset($o['resume']) && !empty($o['undo'])) { echo "--resume and --undo cannot be used together (nothing was done)\n"; exit(1); }
 if (!lock_acquire('dh_student_backfill', 3600)) { echo "A back-fill or restore is running.\n"; exit(1); }
