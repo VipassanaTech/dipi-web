@@ -269,3 +269,98 @@ function dh_restore_tidy_lines($sid, $log)
 	}
 	return $n;
 }
+
+/* Every old student number (82,481 to 281,166) that still has an old line, or only $only, with the name of its old rows,
+   in name order. A line with no old row still lists its number (no name), so it is counted as unclear, not skipped. */
+function dh_restore_numbers($only = array())
+{
+	$q = "select sc.sc_student sid, min(trim(r.rs_l_name)) l, min(trim(r.rs_f_name)) f from dh_student_course sc
+		left join dh_restore_source r on r.rs_course = sc.sc_course and r.rs_conf_no = sc.sc_conf_no
+		where sc.from_migration_script = 'Yes' and sc.sc_student between :a and :b".($only ? ' and sc.sc_student in (:only)' : '')."
+		group by sc.sc_student order by l, f, sid";
+	$args = array(':a' => DH_RESTORE_FIRST, ':b' => DH_RESTORE_LAST) + ($only ? array(':only' => $only) : array());
+	return db_query($q, $args)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/* Two numbers carry the same name as the database sees it (utf8mb4_general_ci: any case, trailing spaces ignored). */
+function dh_restore_same_name($a, $b)
+{
+	return (bool) db_query('select (convert(:l1 using utf8mb4) collate utf8mb4_general_ci) = convert(:l2 using utf8mb4)
+		and (convert(:f1 using utf8mb4) collate utf8mb4_general_ci) = convert(:f2 using utf8mb4)',
+		array(':l1' => (string) $a['l'], ':l2' => (string) $b['l'], ':f1' => (string) $a['f'], ':f2' => (string) $b['f']))->fetchField();
+}
+
+/* Chunks of about $size numbers that never split a name. The matcher only joins the same first and last name, so a dry run
+   that rolls back each chunk sees every match the real run makes. */
+function dh_restore_chunks($numbers, $size)
+{
+	$chunks = array();
+	$cur = array();
+	$last = NULL;
+	foreach ($numbers as $x)
+	{
+		if ($cur && count($cur) >= $size && !dh_restore_same_name($last, $x))
+		{
+			$chunks[] = $cur;
+			$cur = array();
+		}
+		$cur[] = (int) $x['sid'];
+		$last = $x;
+	}
+	if ($cur)
+		$chunks[] = $cur;
+	return $chunks;
+}
+
+/* Run the restore over the old numbers in name-grouped chunks. A dry run ($apply FALSE) rolls each chunk back; the real run
+   saves each chunk. A person that fails is rolled back alone (a savepoint) and counted, and the run goes on; its message goes
+   to the Drupal log (type StudentRestore) after the chunk. Returns the totals (see the plan, Task 7). */
+function dh_restore_run($apply, $opts = array())
+{
+	$opts += array('batch' => 'restore-dry-run', 'uid' => dh_system_uid(), 'chunk' => 500, 'numbers' => array(), 'limit' => 0, 'progress' => NULL);
+	$numbers = dh_restore_numbers($opts['numbers']);
+	if ($opts['limit'])
+		$numbers = array_slice($numbers, 0, $opts['limit']);
+	$t = array('numbers' => count($numbers), 'restored' => 0, 'merged' => 0, 'unclear' => 0, 'done' => 0, 'failed' => 0,
+		'rooms' => 0, 'seats' => 0, 'copies' => 0, 'how' => array(), 'unclear_ids' => array(), 'failed_ids' => array());
+	$ctx = array('batch' => $opts['batch'], 'uid' => $opts['uid']);
+	$log = array('sl_batch' => $opts['batch'], 'sl_user' => $opts['uid']);
+	foreach (dh_restore_chunks($numbers, $opts['chunk']) as $chunk)
+	{
+		$msgs = array();
+		$txn = db_transaction();
+		foreach ($chunk as $sid)
+		{
+			$one = db_transaction();                                   // a savepoint: a failing person is rolled back alone
+			try
+			{
+				$r = dh_restore_one($sid, $ctx);
+				$tidy = $r['sid'] ? dh_restore_tidy_lines($r['sid'], $log) : array();
+			}
+			catch (Throwable $e)
+			{
+				$one->rollback();
+				$t['failed']++;
+				$t['failed_ids'][] = $sid;
+				$msgs[$sid] = $e->getMessage();
+				continue;
+			}
+			unset($one);
+			$t[$r['result']]++;
+			foreach ($tidy as $k => $v)
+				$t[$k] += $v;
+			if ($r['result'] === 'unclear')
+				$t['unclear_ids'][] = $sid;
+			if ($r['result'] === 'merged')
+				$t['how'][$r['how']] = (isset($t['how'][$r['how']]) ? $t['how'][$r['how']] : 0) + 1;
+		}
+		if (!$apply)
+			$txn->rollback();
+		unset($txn);                                                       // the real run saves the chunk here
+		foreach ($msgs as $sid => $msg)
+			watchdog('StudentRestore', 'Number @s failed (@b): @m', array('@s' => $sid, '@b' => $opts['batch'], '@m' => $msg), WATCHDOG_ERROR);
+		if ($opts['progress'])
+			call_user_func($opts['progress'], $t);
+	}
+	return $t;
+}
