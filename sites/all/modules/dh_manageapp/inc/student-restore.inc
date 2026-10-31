@@ -226,3 +226,44 @@ function dh_restore_one($old_sid, $ctx)
 	dh_restore_sci($old_sid, $old_sid, $log);
 	return array('result' => 'restored', 'sid' => $old_sid, 'how' => '');
 }
+
+/* Tidy the old lines of one student: fill the room and the seat from the old row where the line has none, and remove the copy of
+   a line that is there twice (the same course and confirmation number: one old application imported twice; the first stays).
+   Safe to run again. Returns counts: rooms, seats, copies. */
+function dh_restore_tidy_lines($sid, $log)
+{
+	$n = array('rooms' => 0, 'seats' => 0, 'copies' => 0);
+	$seen = array();
+	$lines = db_query("select * from dh_student_course where sc_student = :s and from_migration_script = 'Yes' order by sc_id", array(':s' => $sid))->fetchAll(PDO::FETCH_ASSOC);
+	foreach ($lines as $l)
+	{
+		$key = $l['sc_course'].'|'.$l['sc_conf_no'];
+		if (isset($seen[$key]))
+		{
+			dh_student_log(array('sl_student' => $sid, 'sl_course' => $l['sc_course'], 'sl_action' => 'copy-removed', 'sl_old' => json_encode($l)) + $log);
+			db_delete('dh_student_course')->condition('sc_id', $l['sc_id'])->execute();
+			$n['copies']++;
+			continue;
+		}
+		$seen[$key] = TRUE;
+		$r = db_query('select rs_acco, rs_seat from dh_restore_source where rs_course = :c and rs_conf_no = :n order by rs_src, rs_id limit 1',
+			array(':c' => $l['sc_course'], ':n' => $l['sc_conf_no']))->fetchAssoc();
+		if (!$r)
+			continue;
+		$set = array();
+		$acco = trim((string) $r['rs_acco']);
+		if (in_array(trim((string) $l['sc_acco']), array('', '-'), TRUE) && $acco !== '')
+			$set['sc_acco'] = $acco;
+		$seat = trim((string) $r['rs_seat']);
+		if ($l['sc_seat_row'] === NULL && $l['sc_seat_col'] === NULL && ctype_digit($seat) && (int) $seat > 0)
+			$set['sc_seat_col'] = (int) $seat;
+		if (!$set)
+			continue;
+		dh_finalize_fit('dh_student_course', $set, NULL);
+		dh_student_log(array('sl_student' => $sid, 'sl_course' => $l['sc_course'], 'sl_action' => 'course-updated', 'sl_old' => json_encode($l), 'sl_new' => json_encode($set)) + $log);
+		db_update('dh_student_course')->fields($set)->condition('sc_id', $l['sc_id'])->execute();
+		$n['rooms'] += isset($set['sc_acco']) ? 1 : 0;
+		$n['seats'] += isset($set['sc_seat_col']) ? 1 : 0;
+	}
+	return $n;
+}
