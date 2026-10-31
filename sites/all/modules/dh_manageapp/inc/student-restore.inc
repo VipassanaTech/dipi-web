@@ -120,3 +120,109 @@ function dh_restore_person($r)
 		'a_other_technique' => dh_restore_flag($r['rs_other_technique']), 'a_teach_others' => dh_restore_flag($r['rs_teach_others']),
 		'a_old' => 1);
 }
+
+/* The old rows of one student number: each of its old lines joined to its old row (a line in both part_b and part_c has
+   two), newest course first. */
+function dh_restore_rows($old_sid)
+{
+	return db_query("select r.*, sc.sc_id, sc.sc_course, c.c_start from dh_student_course sc
+		join dh_restore_source r on r.rs_course = sc.sc_course and r.rs_conf_no = sc.sc_conf_no
+		join dh_course c on c.c_id = sc.sc_course
+		where sc.sc_student = :s and sc.from_migration_script = 'Yes'
+		order by c.c_start desc, sc.sc_course desc, r.rs_src, r.rs_id", array(':s' => $old_sid))->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/* The student DIPI already has for this person: DIPI's own matcher with the newest old row first, then each older row that
+   gives it something new (another name, email, mobile or date of birth). sid 0 = none. */
+function dh_restore_find($rows)
+{
+	$tried = array();
+	foreach ($rows as $r)
+	{
+		$a = dh_restore_person($r);
+		$key = strtolower($a['a_f_name'].'|'.$a['a_l_name'].'|'.$a['a_email'].'|'.$a['a_phone_mobile'].'|'.$a['a_dob']);
+		if (isset($tried[$key]))
+			continue;
+		$tried[$key] = TRUE;
+		$m = dh_student_find($a);
+		if ($m['sid'])
+			return $m;
+	}
+	return array('sid' => 0, 'how' => 'none', 'strong' => FALSE);
+}
+
+/* One course-counts row per student. A restored student ($to = $old_sid) keeps the newest (highest id) of its old rows. A merged
+   student ($to = the current student) keeps its own row; if it has none, the newest old row moves over. The rest are removed. */
+function dh_restore_sci($old_sid, $to, $log)
+{
+	$old = db_query('select * from dh_student_course_input where sci_student = :s order by sci_id desc', array(':s' => $old_sid))->fetchAll(PDO::FETCH_ASSOC);
+	if (!$old)
+		return;
+	if ($to == $old_sid)
+		array_shift($old);                                         // the newest stays where it is
+	elseif (!db_query('select 1 from dh_student_course_input where sci_student = :s limit 1', array(':s' => $to))->fetchField())
+	{
+		$keep = array_shift($old);
+		dh_student_log(array('sl_student' => $to, 'sl_action' => 'sci-updated', 'sl_old' => json_encode($keep), 'sl_new' => json_encode(array('sci_student' => $to))) + $log);
+		db_update('dh_student_course_input')->fields(array('sci_student' => $to))->condition('sci_id', $keep['sci_id'])->execute();
+	}
+	foreach ($old as $sci)
+	{
+		dh_student_log(array('sl_student' => $old_sid, 'sl_action' => 'sci-removed', 'sl_old' => json_encode($sci)) + $log);
+		db_delete('dh_student_course_input')->condition('sci_id', $sci['sci_id'])->execute();
+	}
+}
+
+/* Restore or merge one old student number. $ctx: batch, uid. Returns result ('restored', 'merged', 'unclear', or 'done': the
+   number exists, or has no old line left), sid (the student its old lines now belong to; 0 for unclear, and for done with no
+   line) and how (the matcher's way, for a merge). Every write is logged under the batch. */
+function dh_restore_one($old_sid, $ctx)
+{
+	$old_sid = (int) $old_sid;
+	if (db_query('select 1 from dh_student where s_id = :s', array(':s' => $old_sid))->fetchField())
+		return array('result' => 'done', 'sid' => $old_sid, 'how' => '');
+	$lines = db_query("select * from dh_student_course where sc_student = :s and from_migration_script = 'Yes' order by sc_id", array(':s' => $old_sid))->fetchAll(PDO::FETCH_ASSOC);
+	if (!$lines)
+		return array('result' => 'done', 'sid' => 0, 'how' => '');
+	$rows = dh_restore_rows($old_sid);
+	$found = array();
+	foreach ($rows as $r)
+		$found[$r['sc_id']] = TRUE;
+	if (count($found) < count($lines) || !dh_restore_same_person($rows))
+		return array('result' => 'unclear', 'sid' => 0, 'how' => '');     // a line with no old row, or rows of more than one person
+	$log = array('sl_batch' => $ctx['batch'], 'sl_user' => $ctx['uid']);
+	$newest = $rows[0];
+	$m = dh_restore_find($rows);
+	if ($m['sid'])
+	{
+		$sid = (int) $m['sid'];
+		// Newer data wins: the old data only fills the current student's empty boxes; no value that is there changes.
+		dh_student_apply($sid, dh_restore_person($newest), $m['strong'],
+			array('course' => (int) $newest['sc_course'], 'applicant' => NULL, 'batch' => $ctx['batch'], 'uid' => $ctx['uid'], 'newer' => TRUE, 'own' => FALSE));
+		foreach ($lines as $l)
+		{
+			dh_student_log(array('sl_student' => $sid, 'sl_course' => $l['sc_course'], 'sl_action' => 'course-updated', 'sl_old' => json_encode($l),
+				'sl_new' => json_encode(array('sc_student' => $sid))) + $log);
+			db_update('dh_student_course')->fields(array('sc_student' => $sid))->condition('sc_id', $l['sc_id'])->execute();
+		}
+		dh_restore_sci($old_sid, $sid, $log);
+		return array('result' => 'merged', 'sid' => $sid, 'how' => $m['how']);
+	}
+	$a = dh_restore_person($newest);
+	$row = array();
+	foreach (dh_student_fields() as $f)
+	{
+		$k = str_replace('s_', 'a_', $f);
+		if (array_key_exists($k, $a) && $a[$k] !== NULL && $a[$k] !== '')
+			$row[$f] = $a[$k];
+	}
+	$oldest = end($rows);
+	$now = date('Y-m-d H:i:s');
+	$row += array('s_id' => $old_sid, 's_created' => $now, 's_created_by' => $ctx['uid'], 's_updated' => $now, 's_updated_by' => $ctx['uid'],
+		's_first' => strtoupper(substr(trim((string) $oldest['rs_type']), 0, 1)) === 'N' ? 1 : 0, 'from_migration_script' => 'Yes');
+	dh_finalize_fit('dh_student', $row, NULL);
+	db_insert('dh_student')->fields($row)->execute();
+	dh_student_log(array('sl_student' => $old_sid, 'sl_action' => 'restored') + $log);
+	dh_restore_sci($old_sid, $old_sid, $log);
+	return array('result' => 'restored', 'sid' => $old_sid, 'how' => '');
+}
