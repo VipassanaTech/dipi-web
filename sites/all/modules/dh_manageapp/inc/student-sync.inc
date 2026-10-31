@@ -250,6 +250,7 @@ function dh_course_sync_summary_text($sum)
 	$parts = array($sum['added'].' added');
 	if ($sum['removed']) $parts[] = $sum['removed'].' removed';
 	if ($sum['copies']) $parts[] = $sum['copies'].($sum['copies'] == 1 ? ' copy' : ' copies').' removed';
+	if (!empty($sum['kept_old'])) $parts[] = $sum['kept_old'].' old '.($sum['kept_old'] == 1 ? 'record' : 'records').' kept';
 	if ($sum['students_removed']) $parts[] = $sum['students_removed'].' student '.($sum['students_removed'] == 1 ? 'record' : 'records').' removed';
 	$parts[] = $sum['emails'].' '.($sum['emails'] == 1 ? 'email' : 'emails').' sent';
 	if (!empty($sum['mail_failed'])) $parts[] = $sum['mail_failed'].' '.($sum['mail_failed'] == 1 ? 'email' : 'emails').' failed';
@@ -394,7 +395,7 @@ function dh_course_sync($course_id, $opts = array())
 	if (!in_array($opts['files'], array('none', 'copy', 's3copy', 'count'), TRUE))
 		throw new Exception("Unknown files mode: {$opts['files']}");      // before any write, not once per applicant
 	$wd = $opts['log_fn'];
-	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'removed_kept', 'emails', 'mail_failed', 'errors',
+	$sum = array_fill_keys(array('students', 'added', 'updated', 'removed', 'copies', 'students_removed', 'removed_kept', 'kept_old', 'emails', 'mail_failed', 'errors',
 		'files_copied', 'files_missing', 'files_failed', 'bytes', 'stats_failed'), 0);
 	$attended = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key = 'STATUS-ATTENDED'")->fetchField();
 	$mailed_at = NULL;                                              // mark_mailed: the date the course counts as emailed
@@ -563,6 +564,12 @@ function dh_course_sync($course_id, $opts = array())
 		foreach (db_query($q, $args)->fetchAll(PDO::FETCH_ASSOC) as $g)
 		{
 			$copy = isset($kept_students[$g['sc_student']]);
+			// An old line from the 2020 migration is this course's history and stays, unless its student keeps another line of this course (a copy).
+			if (!$copy && $g['from_migration_script'] === 'Yes')
+			{
+				$sum['kept_old']++;
+				continue;
+			}
 			dh_student_log(array('sl_student' => $g['sc_student'], 'sl_applicant' => $g['sc_applicant'], 'sl_action' => $copy ? 'copy-removed' : 'course-removed', 'sl_old' => json_encode($g)) + $log);
 			db_delete('dh_student_course')->condition('sc_id', $g['sc_id'])->execute();
 			if ($copy) { $sum['copies']++; continue; }
@@ -708,10 +715,12 @@ function dh_attended_mail_note($type, $id, $event)
    already carries the back-fill's own Change Log row ("Back-fill <batch id> (no emails): ..." written by the
    tool) from an applied run that was not undone is skipped too: a course whose students resolve to fewer
    records, or with an erroring applicant, would otherwise be picked again on every run. The tool names such
-   a course with --courses to run it again. */
+   a course with --courses to run it again. A course with no applications is never picked: it holds only old
+   history and there is nothing to sync. */
 function dh_backfill_courses($batch, $migrated = array(335, 343, 344))
 {
-	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC'";
+	$base = "from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_finalized = 1 and c.c_deleted = 0 and td.td_key <> '1-DayOSC'
+		and exists (select 1 from dh_applicant a0 where a0.a_course = c.c_id)";
 	$att = "(select count(*) from dh_applicant a where a.a_course = c.c_id and a.a_attended = 1 and a.a_type in ('Student', 'Sevak'))";
 	$has = 'exists (select 1 from dh_student_course sc where sc.sc_course = c.c_id)';
 	switch ((int) $batch)

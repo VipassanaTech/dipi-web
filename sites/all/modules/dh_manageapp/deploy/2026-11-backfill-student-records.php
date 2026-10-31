@@ -59,7 +59,7 @@ if (!empty($o['limit'])) $courses = array_slice($courses, 0, $o['limit']);
 if (!$courses) { echo "No courses. Use --batch=1..4 or --courses=id,id\n"; lock_release('dh_student_backfill'); exit(1); }
 $batch = 'bf-' . (!empty($o['batch']) ? 'b' . $o['batch'] : 'list') . '-' . date('Ymd-His');     // seconds, so two runs never share an id
 echo ($o['apply'] ? "APPLY, batch id $batch" : 'DRY RUN') . ': ' . count($courses) . " courses, email OFF, files $files\n";
-$keys = array('students', 'added', 'updated', 'removed', 'removed_kept', 'copies', 'students_removed', 'files_copied', 'files_missing', 'files_failed', 'bytes', 'errors');
+$keys = array('students', 'added', 'updated', 'removed', 'removed_kept', 'kept_old', 'copies', 'students_removed', 'files_copied', 'files_missing', 'files_failed', 'bytes', 'errors');
 $tot = array_fill_keys($keys, 0); $failed = array(); $busy = array(); $stop = ''; $t0 = microtime(TRUE);
 foreach ($courses as $i => $c)
 {
@@ -98,9 +98,9 @@ foreach ($courses as $i => $c)
     $s += array_fill_keys($keys, 0);
     foreach ($keys as $k) $tot[$k] += $s[$k];
     if ($s['errors']) $failed[] = $c;
-    printf("  %d/%d course %d (centre %d, %s): %d students, +%d, =%d, -%d (kept %d), copies -%d, students -%d, files %d (%.1f MB), missing %d, failed %d%s\n",
+    printf("  %d/%d course %d (centre %d, %s): %d students, +%d, =%d, -%d (kept %d), copies -%d, old kept %d, students -%d, files %d (%.1f MB), missing %d, failed %d%s\n",
       $i + 1, count($courses), $c, $info['c_center'], substr($info['c_start'], 0, 10), $s['students'], $s['added'], $s['updated'], $s['removed'], $s['removed_kept'],
-      $s['copies'], $s['students_removed'], $s['files_copied'], $s['bytes'] / 1048576, $s['files_missing'], $s['files_failed'], $s['errors'] ? ", ERRORS {$s['errors']}" : '');
+      $s['copies'], $s['kept_old'], $s['students_removed'], $s['files_copied'], $s['bytes'] / 1048576, $s['files_missing'], $s['files_failed'], $s['errors'] ? ", ERRORS {$s['errors']}" : '');
     if ($s['files_failed'] > 0) { $stop = "course $c had {$s['files_failed']} file failures (S3 settings or permissions?); fix the cause, then run again with --courses=$c"; break; }
   }
   finally
