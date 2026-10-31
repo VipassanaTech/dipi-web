@@ -228,8 +228,8 @@ function dh_restore_one($old_sid, $ctx)
 }
 
 /* Tidy the old lines of one student: fill the room and the seat from the old row where the line has none, and remove the copy of
-   a line that is there twice (the same course and confirmation number: one old application imported twice; the first stays).
-   Safe to run again. Returns counts: rooms, seats, copies. */
+   a line that is there twice (the same course and confirmation number: one old application imported twice; the first stays;
+   a line with no confirmation number is never a copy). Safe to run again. Returns counts: rooms, seats, copies. */
 function dh_restore_tidy_lines($sid, $log)
 {
 	$n = array('rooms' => 0, 'seats' => 0, 'copies' => 0);
@@ -238,21 +238,23 @@ function dh_restore_tidy_lines($sid, $log)
 	foreach ($lines as $l)
 	{
 		$key = $l['sc_course'].'|'.$l['sc_conf_no'];
-		if (isset($seen[$key]))
+		$numbered = trim((string) $l['sc_conf_no']) !== '';        // a line with no confirmation number is never a copy
+		if ($numbered && isset($seen[$key]))
 		{
 			dh_student_log(array('sl_student' => $sid, 'sl_course' => $l['sc_course'], 'sl_action' => 'copy-removed', 'sl_old' => json_encode($l)) + $log);
 			db_delete('dh_student_course')->condition('sc_id', $l['sc_id'])->execute();
 			$n['copies']++;
 			continue;
 		}
-		$seen[$key] = TRUE;
+		if ($numbered)
+			$seen[$key] = TRUE;
 		$r = db_query('select rs_acco, rs_seat from dh_restore_source where rs_course = :c and rs_conf_no = :n order by rs_src, rs_id limit 1',
 			array(':c' => $l['sc_course'], ':n' => $l['sc_conf_no']))->fetchAssoc();
 		if (!$r)
 			continue;
 		$set = array();
 		$acco = trim((string) $r['rs_acco']);
-		if (in_array(trim((string) $l['sc_acco']), array('', '-'), TRUE) && $acco !== '')
+		if (in_array(trim((string) $l['sc_acco']), array('', '-'), TRUE) && !in_array($acco, array('', '-'), TRUE))
 			$set['sc_acco'] = $acco;
 		$seat = trim((string) $r['rs_seat']);
 		if ($l['sc_seat_row'] === NULL && $l['sc_seat_col'] === NULL && ctype_digit($seat) && (int) $seat > 0)

@@ -31,7 +31,12 @@ t_in_txn(function () use ($LOG) {
   $other = t_line($sid, $c, 'ZQ 9', array(), array());                // same course, another application
   $normal = (int) db_insert('dh_student_course')->fields(array('sc_student' => $sid, 'sc_center' => t_n('select c_center from dh_course where c_id = :c', array(':c' => $c)),
     'sc_course' => $c, 'sc_conf_no' => 'ZQ 1'))->execute();          // not an old line
+  $dashsrc = t_line($sid, $c, 'ZQ 10', array(), array('rs_acco' => '-'));   // the old data says "no room"
+  $e1 = t_line($sid, $c, '');                                         // no confirmation number
+  $e2 = t_line($sid, $c, '');
   t_eq(dh_restore_tidy_lines($sid, $LOG), array('rooms' => 2, 'seats' => 1, 'copies' => 1), 'L1: two rooms, one seat, one copy');
+  t_eq(t_line_row($dashsrc)['sc_acco'], NULL, 'L7: a dash in the old data is not a room');
+  t_eq(array(t_there($e1), t_there($e2)), array(1, 1), 'L8: lines with no confirmation number are never copies');
   t_eq(array(t_line_row($room)['sc_acco'], t_line_row($dash)['sc_acco'], t_line_row($kept)['sc_acco']), array('Block-12', 'Block-13', 'X-1'),
     'L2: an empty room and a dash are filled; a room that is there is kept');
   t_eq(array(t_line_row($seat)['sc_seat_row'], t_line_row($seat)['sc_seat_col']), array(NULL, 17), 'L3: the seat number goes in the seat column, no row');
