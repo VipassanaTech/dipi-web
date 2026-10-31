@@ -7,6 +7,9 @@
 define('DH_RESTORE_FIRST', 82481);
 define('DH_RESTORE_LAST', 281166);
 
+/* The run cannot go on (the database rolled back a whole chunk). Its message has numbers only, so the tool may print it. */
+class DhRestoreStopped extends RuntimeException {}
+
 /* The temporary table of old rows: one row per old course line of part_b and part_c (a line in both has two rows).
    Safe to call twice. A CREATE TABLE commits any open transaction: never call it inside one. */
 function dh_restore_source_create()
@@ -357,7 +360,25 @@ function dh_restore_run($apply, $opts = array())
 			}
 			catch (Throwable $e)
 			{
-				$one->rollback();
+				try
+				{
+					$one->rollback();
+				}
+				catch (Throwable $e2)
+				{
+					/* The person's savepoint is gone: the database rolled back the whole chunk (a deadlock or a lost connection).
+					   Nothing of the chunk is saved. Roll the chunk's transaction back too, so it never tries to commit on the way out;
+					   that comes first, so the log row below is not rolled back with it. */
+					try { $txn->rollback(); } catch (Throwable $e3) { }
+					try
+					{
+						watchdog('StudentRestore', 'Number @s failed (@b): @m. Rollback failed: @r', array('@s' => $sid, '@b' => $opts['batch'],
+							'@m' => $e->getMessage(), '@r' => $e2->getMessage()), WATCHDOG_ERROR);
+					}
+					catch (Throwable $e3) { }                              // the log itself may be unreachable: the message below still stops the run
+					throw new DhRestoreStopped('The database rolled back chunk ' . $chunk[0] . '-' . end($chunk) . ' (deadlock or lost connection); '
+						. 'nothing of that chunk was saved. Chunks before it are saved. Run the same command again: done numbers are skipped.');
+				}
 				$t['failed']++;
 				$t['failed_ids'][] = $sid;
 				$msgs[$sid] = $e->getMessage();

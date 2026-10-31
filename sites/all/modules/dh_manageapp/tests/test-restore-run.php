@@ -23,6 +23,24 @@ function t_snap($ids) {
     'students' => db_query('select * from dh_student where s_id in (:s) order by s_id', array(':s' => $ids))->fetchAll(PDO::FETCH_ASSOC));
 }
 
+// A batch id that simulates a deadlock. The runner writes the batch id into every log row, which turns it into text. The second time
+// that happens (the second person of a chunk), this releases the person's savepoint on the server, as if the database had rolled the
+// whole chunk back, and throws. The runner's own rollback to that savepoint then fails with "SAVEPOINT ... does not exist".
+class T_Deadlock {
+  public $texts = 0;
+  function __toString() {
+    $this->texts++;
+    if ($this->texts == 2) {
+      $c = Database::getConnection();
+      $p = new ReflectionProperty($c, 'transactionLayers'); $p->setAccessible(TRUE);
+      $names = array_keys($p->getValue($c));
+      $c->query('RELEASE SAVEPOINT ' . end($names));
+      throw new Exception('simulated deadlock');
+    }
+    return 'test-rs-run3';
+  }
+}
+
 $x = array(array('sid' => 1, 'l' => 'Zzqa', 'f' => 'Zzqx'), array('sid' => 2, 'l' => 'Zzqa', 'f' => 'Zzqx'), array('sid' => 3, 'l' => 'ZZQA', 'f' => 'zzqx '),
   array('sid' => 4, 'l' => 'Zzqb', 'f' => 'Zzqx'));
 t_eq(dh_restore_chunks($x, 2), array(array(1, 2, 3), array(4)), 'T1: a chunk never splits a name (the database compares: any case, trailing space)');
@@ -55,5 +73,25 @@ t_in_txn(function () {
   t_eq(array($again['numbers'], $again['restored'], $again['merged'], $again['done'], $again['unclear'], $again['copies'], $again['rooms']),
     array(3, 0, 0, 2, 1, 0, 0), 'T3: run again: only done and unclear numbers, nothing changes');
   t_eq(dh_restore_run(FALSE, array('numbers' => $nums, 'limit' => 1))['numbers'], 1, 'T4: limit takes the first numbers only');
+});
+
+// T5: the database rolls back the whole chunk (a deadlock): the savepoint of the failing person is gone too. The run stops with a clear
+// message, nothing of the chunk is saved, and the person's own message goes to the Drupal log.
+t_in_txn(function () {
+  $a = t_free_sid(); $b = t_free_sid();
+  $c = t_old_course('2008-05-01');
+  t_old($a, $c, 'ZQ 20', array('rs_f_name' => 'Zzqrun', 'rs_l_name' => 'Zzqcrasha'));
+  t_old($b, $c, 'ZQ 21', array('rs_f_name' => 'Zzqrun', 'rs_l_name' => 'Zzqcrashb'));
+  $msg = '';
+  try { dh_restore_run(TRUE, array('numbers' => array($a, $b), 'chunk' => 5, 'batch' => new T_Deadlock())); }
+  catch (RuntimeException $e) { $msg = $e->getMessage(); }
+  t_eq($msg, "The database rolled back chunk $a-$b (deadlock or lost connection); nothing of that chunk was saved. Chunks before it are saved. "
+    . "Run the same command again: done numbers are skipped.", 'T5: the run stops with a clear message');
+  t_eq(t_n('select count(*) from dh_student where s_id in (:s)', array(':s' => array($a, $b))), 0, 'T5: the first person of the chunk was not saved either');
+  t_eq(t_n('select count(*) from dh_student_log where sl_student in (:s)', array(':s' => array($a, $b))), 0, 'T5: no log rows were saved');
+  t_eq(t_n("select count(*) from watchdog where type = 'StudentRestore' and variables like :v", array(':v' => '%simulated deadlock%')), 1,
+    'T5: the person\'s own message went to the Drupal log');
+  $again = dh_restore_run(TRUE, array('numbers' => array($a, $b), 'chunk' => 5, 'batch' => 'test-rs-run3'));
+  t_eq(array($again['restored'], $again['failed']), array(2, 0), 'T5: run again restores both');
 });
 t_done();
