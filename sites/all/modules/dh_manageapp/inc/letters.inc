@@ -193,6 +193,8 @@ function dh_letters_listing()
         ? "<p>These letters are not in use and will not be sent. They are not deleted - use Mark Active to bring one back.</p>"
         : "<p>These letters are not in use and will not be sent. They are not deleted.</p>";
     $out .= theme('table', array('header' => $header_d, 'rows' => $rows_d, 'attributes' => $attributes_d));
+    // Every letter and merge field change of this centre (letter managers only; inc/letter-log.inc).
+    $out .= dh_letter_log_section($centre_id);
 
 
 	//$out .= '<div id="replace-me"></div>';
@@ -308,6 +310,8 @@ function dh_letters_view($row)
 		$out .= '<h3>'.t('Attachment').'</h3><p>'
 		      . l(t('View Attachment'), file_create_url($row['l_attachment'])).'</p>';
 	}
+	// This letter's Change Log (letter managers only; inc/letter-log.inc).
+	$out .= dh_letter_log_section($centre_id, $row['l_id']);
 
 	return $out;
 }
@@ -482,6 +486,9 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		$action_sub = 'Add Letter';
 
 	$form['sub'] = array('#type' => 'submit', '#value' => $action_sub, '#weight' => 100);
+	// This letter's Change Log, below the save button (letter managers only; inc/letter-log.inc).
+	if ($action == 'edit' && !empty($edit_data['l_id']))
+		$form['change_log'] = array('#markup' => dh_letter_log_section(arg(1), $edit_data['l_id']), '#weight' => 110);
 
 	drupal_add_js('
 		(function ($) {
