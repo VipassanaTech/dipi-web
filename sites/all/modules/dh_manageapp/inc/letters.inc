@@ -692,7 +692,11 @@ function dh_letters_form_validate($form, &$form_state)
 	foreach (array('l_name', 'l_event', 'l_course_type') as $col)
 		if (isset($in[$col]))
 			$probe[$col] = $in[$col];
-	list(, $lc_error) = dh_letter_protect($centre_id, arg(2), arg(2) == 'edit' ? arg(3) : '', $probe);
+	list($lc_fields, $lc_error) = dh_letter_protect($centre_id, arg(2), arg(2) == 'edit' ? arg(3) : '', $probe);
+	// Locked LC values (stored ones for an LC letter) go back into the input, so the merge-field check, the attachment name and submit use them.
+	foreach (array('l_name', 'l_event', 'l_course_type') as $col)
+		if (isset($lc_fields[$col]))
+			$form_state['input'][$col] = $lc_fields[$col];
 	if ($lc_error !== '')
 		form_set_error(strpos($lc_error, '[ReviewLink]') !== FALSE ? 'l_body' : 'l_name', $lc_error);
 	_dh_letters_form_check_fields($form, $form_state, $centre_id);
