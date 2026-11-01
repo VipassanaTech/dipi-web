@@ -31,20 +31,33 @@ function dh_manage_letters()
 			$row = db_query("select * from dh_letter where l_id = :l and l_center = :c", array(':l' => $letter_id, ':c' => $centre_id))->fetchAssoc();
 			return dh_letters_preview($row);
 		case 'edit':
-		case 'copy':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
 			$row = db_query("select * from dh_letter where l_id = :l", array(':l' => $letter_id))->fetchAssoc();
 			return drupal_get_form('dh_letters_form', $row);
 			break;
+		case 'copy':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
+			$row = db_query("select * from dh_letter where l_id = :l", array(':l' => $letter_id))->fetchAssoc();
+			if (dh_letter_lc_role($row) !== NULL)
+			{
+				drupal_set_message(t('"@n" is a long-course letter. It cannot be copied.', array('@n' => $row['l_name'])), 'error');
+				drupal_goto("letters/$centre_id");
+			}
+			return drupal_get_form('dh_letters_form', $row);
+			break;
 		case 'delete':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			dh_letter_set_inactive($centre_id, $letter_id, TRUE, $user->uid);
-			drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
+			if (dh_letter_set_inactive($centre_id, $letter_id, TRUE, $user->uid))
+				drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
+			else
+				drupal_set_message(t('This is a long-course letter. It cannot be made inactive or active.'), 'error');
 			drupal_goto("letters/$centre_id");
 		case 'restore':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			dh_letter_set_inactive($centre_id, $letter_id, FALSE, $user->uid);
-			drupal_set_message("Letter marked as active.");
+			if (dh_letter_set_inactive($centre_id, $letter_id, FALSE, $user->uid))
+				drupal_set_message("Letter marked as active.");
+			else
+				drupal_set_message(t('This is a long-course letter. It cannot be made inactive or active.'), 'error');
 			drupal_goto("letters/$centre_id");
 		case 'delattach':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
@@ -65,10 +78,14 @@ function dh_letter_in_centre($letter_id, $centre_id)
 }
 
 /* Mark a letter of $centre_id inactive ($inactive TRUE) or active again, as $uid. FALSE when it is
-   not that centre's letter. The trigger dh_letter_au logs the change. */
+   not that centre's letter or is a long-course letter. The trigger dh_letter_au logs the change. */
 function dh_letter_set_inactive($centre_id, $letter_id, $inactive, $uid)
 {
 	if (!dh_letter_in_centre($letter_id, $centre_id))
+		return FALSE;
+	// The long-course letters are never made inactive or active from the screens (only an approved script changes them).
+	$row = db_query("select l_name, l_event from dh_letter where l_id = :l", array(':l' => $letter_id))->fetchAssoc();
+	if (dh_letter_lc_role($row) !== NULL)
 		return FALSE;
 	db_update('dh_letter')->fields(array('l_deleted' => $inactive ? 1 : 0, 'l_updated' => date('Y-m-d H:i:s'), 'l_updated_by' => $uid))
 		->condition('l_id', $letter_id)->condition('l_center', $centre_id)->execute();
@@ -88,10 +105,15 @@ function dh_letter_remove_attachment($centre_id, $letter_id, $uid)
 /**
  * Save the letter form as $uid: a new letter of $centre_id for 'add' and 'copy', else an edit of
  * letter $id, which must be a letter of $centre_id. Stamps who and when. Returns the letter id, or
- * FALSE when the edited letter is not that centre's.
+ * FALSE when the edited letter is not that centre's. Returns FALSE also when the long-course rules
+ * refuse the save (dh_letter_protect).
  */
 function dh_letter_save($centre_id, $action, $id, $fields, $uid)
 {
+	// Long-course letters: locked fields kept, reserved names/statuses refused, [ReviewLink] required (inc/letter-protect.inc).
+	list($fields, $error) = dh_letter_protect($centre_id, $action, $id, $fields);
+	if ($error !== '')
+		return FALSE;
 	$now = date('Y-m-d H:i:s');
 	$fields['l_updated'] = $now;
 	$fields['l_updated_by'] = $uid;
@@ -664,6 +686,15 @@ function _dh_letter_safe_basename($name, $fallback = 'file', $maxlen = 60)
 function dh_letters_form_validate($form, &$form_state)
 {
 	$centre_id = arg(1);
+	// Long-course letter rules (inc/letter-protect.inc): show the reason instead of saving.
+	$in = $form_state['input'];
+	$probe = array('l_body' => isset($in['l_body']) ? $in['l_body'] : '');
+	foreach (array('l_name', 'l_event', 'l_course_type') as $col)
+		if (isset($in[$col]))
+			$probe[$col] = $in[$col];
+	list(, $lc_error) = dh_letter_protect($centre_id, arg(2), arg(2) == 'edit' ? arg(3) : '', $probe);
+	if ($lc_error !== '')
+		form_set_error(strpos($lc_error, '[ReviewLink]') !== FALSE ? 'l_body' : 'l_name', $lc_error);
 	_dh_letters_form_check_fields($form, $form_state, $centre_id);
 
 	// Accept the common document + image types people actually attach. Modern
@@ -717,10 +748,10 @@ function dh_letters_form_submit($form, &$form_state)
 	if ( $action == 'edit' )
 		$id = arg(3);
 
-	$fields['l_name'] = $input['l_name'];
-	$fields['l_event'] = $input['l_event'];
+	$fields['l_name'] = isset($input['l_name']) ? $input['l_name'] : NULL;
+	$fields['l_event'] = isset($input['l_event']) ? $input['l_event'] : NULL;
 	//if ( $input['l_course_type'])
-	$fields['l_course_type'] = $input['l_course_type'];
+	$fields['l_course_type'] = isset($input['l_course_type']) ? $input['l_course_type'] : NULL;
 	$fields['l_subject'] = $input['l_subject'];
 	$fields['l_body'] = $input['l_body'];
 	$fields['l_sms'] = $input['l_sms'];
