@@ -2,7 +2,9 @@
 /* The 2020 migrated students: bring back the students the April 2020 import made (numbers 82,481 to 281,166) that were
    later deleted by hand, or merge them into the student DIPI already has, so the old course lines point to real people.
    Design and plan: private Claude Docs "Restoring the 2020 migrated students". The old data comes from dh_restore_source,
-   a temporary table filled from the prod-only database dipi_migration (deploy/2026-11-restore-source-fill.sql). */
+   a temporary table filled from the prod-only database dipi_migration (deploy/2026-11-restore-source-fill.sql).
+   One-time code: the module does NOT include this file. Only the restore tool (deploy/2026-11-restore-*.php) and the
+   test-restore-* tests load it, after the Drupal bootstrap. */
 
 define('DH_RESTORE_FIRST', 82481);
 define('DH_RESTORE_LAST', 281166);

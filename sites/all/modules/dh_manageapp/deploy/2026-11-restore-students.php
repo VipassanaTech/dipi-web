@@ -14,6 +14,7 @@ define('DRUPAL_ROOT', getcwd());
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1'; $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['SCRIPT_NAME'] = '/index.php';
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+require_once dirname(__DIR__) . '/inc/student-restore.inc';   // one-time code: the site itself does not load it
 
 $o = array('apply' => in_array('--apply', $argv), 'numbers' => array(), 'limit' => 0);
 $numbers_given = FALSE;

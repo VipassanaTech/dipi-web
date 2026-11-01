@@ -59,4 +59,7 @@ t_in_txn(function () {
   t_ok(!in_array($none, $b2), 'G4: batch 2 skips the course with no applications');
   t_ok(in_array($with, $b2), 'G4: batch 2 still lists the course with an application');
 });
+
+// G5: the restore is a one-time job: the site does not load its code on page requests (only its tool and tests do).
+t_ok(!function_exists('dh_restore_one') && !defined('DH_RESTORE_FIRST'), 'G5: the site does not load the restore code');
 t_done();

@@ -7,6 +7,7 @@ define('DRUPAL_ROOT', getcwd());
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1'; $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['SCRIPT_NAME'] = '/index.php';
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+require_once dirname(__DIR__) . '/inc/student-restore.inc';   // one-time code: the site itself does not load it
 if (in_array('--drop', $argv)) { db_query('DROP TABLE IF EXISTS dh_restore_source'); echo "dh_restore_source dropped\n"; exit(0); }
 dh_restore_source_create();
 echo 'dh_restore_source: ' . db_query('select count(*) from dh_restore_source')->fetchField() . " rows\n";

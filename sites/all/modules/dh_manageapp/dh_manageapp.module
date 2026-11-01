@@ -16,7 +16,6 @@ include_once(dirname(__FILE__)."/inc/zero-day.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/course-log.inc");
 include_once(dirname(__FILE__)."/inc/student-sync.inc");
-include_once(dirname(__FILE__)."/inc/student-restore.inc");
 include_once(dirname(__FILE__)."/inc/certificate.inc");
 include_once(dirname(__FILE__)."/inc/application.inc");
 include_once(dirname(__FILE__)."/inc/search.inc");

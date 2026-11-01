@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/lib.php';
+require_once dirname(__DIR__) . '/inc/student-restore.inc';
 echo "Restore: restore or merge one old student number\n";
 dh_restore_source_create();                        // outside any transaction: a CREATE TABLE commits
 function t_n($sql, $args = array()) { return (int) db_query($sql, $args)->fetchField(); }

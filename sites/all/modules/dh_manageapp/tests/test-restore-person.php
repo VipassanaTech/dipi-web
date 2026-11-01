@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/lib.php';
+require_once dirname(__DIR__) . '/inc/student-restore.inc';
 echo "Restore: building one person from old rows\n";
 // A made-up old row (only the keys dh_restore_person reads).
 function t_rs($over = array()) {
