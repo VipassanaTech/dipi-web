@@ -1047,15 +1047,30 @@ function dh_letter_fields_editor($db, $centre_id, $uid)
 	    )
     ->pkey('lf_id')
     ->on( 'preRemove', function() { return false; })
-    // An edit (also Remove, which sets lf_deleted) is saved by row id only, so every edited
-    // row must be a field of this centre.
+    // Allow only the actions this page uses. The Editor sends any action other than exactly
+    // upload/remove to its create-or-edit code and saves an edit by row id only, so an odd action
+    // value (Edit, editx, an array, an explicit read) would update another centre's field and the
+    // forced lf_center would move it here. A read is a request with no action at all.
+    // An edit (also Remove, which sets lf_deleted) must name only fields of this centre.
     ->validator( function ( $editor, $action, $data ) use ( $centre_id ) {
-        if ( $action != 'edit' )
+        if ( ! is_array( $data ) )
+            return 'Unknown action.';
+        if ( ! isset( $data['action'] ) )
             return '';
+        $action = $data['action'];
+        if ( ! is_string( $action ) )
+            return 'Unknown action.';
+        // create sets lf_center itself; remove is cancelled by preRemove (a field is deleted by an edit)
+        if ( $action === 'create' || $action === 'remove' )
+            return '';
+        if ( $action !== 'edit' )
+            return 'Unknown action.';
+        if ( empty( $data['data'] ) || ! is_array( $data['data'] ) )
+            return 'Nothing to save.';
         foreach ( array_keys( $data['data'] ) as $key ) {
             $row = $editor->db()->select( 'dh_letter_fields', 'lf_center',
                 array( 'lf_id' => str_replace( $editor->idPrefix(), '', $key ) ) )->fetch();
-            if ( ! $row || (string) $row['lf_center'] !== (string) $centre_id )
+            if ( ! $row || (int) $row['lf_center'] !== (int) $centre_id )
                 return 'This merge field does not belong to this centre.';
         }
         return '';
