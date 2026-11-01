@@ -127,7 +127,7 @@ try {
 	foreach ($triggers as $t)
 		echo "$t: ".(isset($got[$t]) ? 'installed, sql_mode '.$got[$t] : 'MISSING')."\n";
 	exit(count($got) == 5 ? 0 : 1);
-} catch (Exception $e) {
+} catch (Throwable $e) {
 	echo "FAILED: ".$e->getMessage()."\n";
 	exit(1);
 }
