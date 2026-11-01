@@ -29,10 +29,11 @@ function dh_letter_lc_roles()
 	);
 }
 
-/* A name as MySQL compares it (utf8mb4_general_ci): capitals and trailing spaces do not count. */
+/* Close to how MySQL compares names (utf8mb4_general_ci): capitals and trailing spaces do not count.
+ * dh_letter_protect() asks the database itself before a save. */
 function _dh_letter_lc_norm($s)
 {
-	return drupal_strtolower(rtrim((string) $s));
+	return drupal_strtolower(rtrim((string) $s, ' '));
 }
 
 /* The LC role of a letter (l_event, l_name), or NULL. A review status decides first, whatever the name. */
@@ -47,6 +48,35 @@ function dh_letter_lc_role($letter)
 		if ($r['event'] === NULL && $name === _dh_letter_lc_norm($r['name']))
 			return $key;
 	return NULL;
+}
+
+/* The LC role of a letter as the database compares it: one query, so MySQL decides accents and trailing
+ * spaces. The COLLATE is the dh_letter column collation (utf8mb4_general_ci). Every value is a placeholder. */
+function _dh_letter_lc_role_sql($letter)
+{
+	$args = array(
+		':e' => isset($letter['l_event']) ? (string) $letter['l_event'] : '',
+		':n' => isset($letter['l_name']) ? (string) $letter['l_name'] : '',
+	);
+	$whens = array();
+	$i = 0;
+	foreach (dh_letter_lc_roles() as $key => $r)
+		if ($r['event'] !== NULL)
+		{
+			$args[":v$i"] = $r['event'];
+			$args[":k$i"] = $key;
+			$whens[] = "when :e COLLATE utf8mb4_general_ci = :v$i then :k$i";
+			$i++;
+		}
+	foreach (dh_letter_lc_roles() as $key => $r)
+		if ($r['event'] === NULL)
+		{
+			$args[":v$i"] = $r['name'];
+			$args[":k$i"] = $key;
+			$whens[] = "when :n COLLATE utf8mb4_general_ci = :v$i then :k$i";
+			$i++;
+		}
+	return db_query("select case " . implode(' ', $whens) . " end", $args)->fetchField();
 }
 
 /* TRUE for the two review letters, which go to the ATs. */
@@ -73,7 +103,10 @@ function dh_letter_protect($centre_id, $action, $id, $fields)
 	else
 	{
 		$check = $fields + ($stored ? $stored : array());
-		if (($key = dh_letter_lc_role($check)) !== NULL)
+		$key = dh_letter_lc_role($check);
+		if ($key === NULL)
+			$key = _dh_letter_lc_role_sql($check);
+		if ($key !== NULL)
 			return array($fields, t('This name or status belongs to the long-course letter "@r", which DIPI uses in the long-course approval process. Please choose another name and status.', array('@r' => $roles[$key]['name'])));
 	}
 	if ($key !== NULL && dh_letter_lc_is_review($key))

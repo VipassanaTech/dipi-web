@@ -48,6 +48,18 @@ t_in_txn(function () {
   list(, $e) = dh_letter_protect(9900002, 'edit', $lc, array('l_name' => 'Zzqtest X', 'l_event' => 'Received', 'l_course_type' => 0, 'l_body' => 'x'));
   t_eq($e, '', 'S6 a letter of another centre is not looked up (the caller already refuses it)');
 
+  list(, $e) = dh_letter_protect(9900001, 'add', '', array('l_name' => 'Área AT Approved', 'l_event' => 'Custom', 'l_course_type' => 0, 'l_body' => 'x'));
+  t_ok($e !== '', 'S7 a new letter cannot take a reserved name that differs only by an accent (the database finds it)');
+  $ord3 = tp_letter(array('l_name' => 'Zzqtest Ordinary Three', 'l_event' => 'Received'));
+  list(, $e) = dh_letter_protect(9900001, 'edit', $ord3, array('l_event' => 'R-ATReview ', 'l_course_type' => 0, 'l_body' => '[ReviewLink]'));
+  t_ok($e !== '', 'S7 an ordinary letter cannot take the review status with a trailing space (the database finds it)');
+  $ord4 = tp_letter(array('l_name' => 'Zzqtest Ordinary Four', 'l_event' => 'Received', 'l_subject' => 'Old subject', 'l_body' => '<p>Old</p>'));
+  list($f, $e) = dh_letter_protect(9900001, 'edit', $ord4, array('l_name' => 'Zzqtest Ordinary Four Renamed', 'l_event' => 'Custom', 'l_course_type' => 0, 'l_subject' => 'New subject', 'l_body' => 'x'));
+  t_eq(array($e, $f['l_name'], $f['l_event'], $f['l_subject']), array('', 'Zzqtest Ordinary Four Renamed', 'Custom', 'New subject'), 'S8 an ordinary letter edited with a new ordinary name, status and subject saves as posted');
+  $rv2 = tp_letter(array('l_name' => 'Zzqtest Review Nine', 'l_event' => 'R-ATReview', 'l_course_type' => 0, 'l_body' => '<p>[ReviewLink]</p>'));
+  list($f, $e) = dh_letter_protect(9900001, 'edit', $rv2, array('l_name' => 'Zzqtest Renamed', 'l_event' => 'R-ATReview', 'l_course_type' => 10, 'l_body' => '<p>[ReviewLink]</p>'));
+  t_eq(array($e, $f['l_name'], $f['l_course_type']), array('', 'Zzqtest Review Nine', 0), 'S9 a stored review letter keeps its name and course type, whatever is posted');
+
   $a = tp_letter(array('l_name' => 'Zzqtest Same', 'l_deleted' => 1));
   $b = tp_letter(array('l_name' => 'Zzqtest Same'));
   $c = tp_letter(array('l_name' => 'Zzqtest Same'));
