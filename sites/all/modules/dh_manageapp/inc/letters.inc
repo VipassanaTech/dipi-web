@@ -11,6 +11,12 @@ define('DELIVERY_TYPE_BOTH', 3);
 
 function dh_manage_letters()
 {
+	global $user;
+	$centre_id = arg(1);
+	$letter_id = arg(3);
+	// letter_id_load only checks that the letter exists: a letter in the URL must also be this centre's.
+	if (in_array(arg(2), array('view', 'preview', 'edit', 'copy', 'delete', 'restore', 'delattach')) && !dh_letter_in_centre($letter_id, $centre_id))
+		return MENU_NOT_FOUND;
 	switch( arg(2) )
 	{
 		case 'add':
@@ -18,42 +24,88 @@ function dh_manage_letters()
 			return drupal_get_form('dh_letters_form');
 			break;
 		case 'view':
-			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
+			$row = db_query("select * from dh_letter where l_id = :l", array(':l' => $letter_id))->fetchAssoc();
 			return dh_letters_view($row);
 			break;
 		case 'preview':
-			$row = db_query("select * from dh_letter where l_id = :l and l_center = :c", array(':l' => arg(3), ':c' => arg(1)))->fetchAssoc();
+			$row = db_query("select * from dh_letter where l_id = :l and l_center = :c", array(':l' => $letter_id, ':c' => $centre_id))->fetchAssoc();
 			return dh_letters_preview($row);
 		case 'edit':
+		case 'copy':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			$row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
+			$row = db_query("select * from dh_letter where l_id = :l", array(':l' => $letter_id))->fetchAssoc();
 			return drupal_get_form('dh_letters_form', $row);
 			break;
-    case 'copy':
-      if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-      $row = db_query("select * from dh_letter where l_id='".arg(3)."'")->fetchAssoc();
-      return drupal_get_form('dh_letters_form', $row);
-      break;
 		case 'delete':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			db_update("dh_letter")->fields(array('l_deleted' => 1))->condition('l_id', arg(3))->execute();
+			dh_letter_set_inactive($centre_id, $letter_id, TRUE, $user->uid);
 			drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
-			drupal_goto("letters/".arg(1));
-        case 'restore':
-            if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-            db_update("dh_letter")->fields(array('l_deleted' => 0))->condition('l_id', arg(3))->execute();
-            drupal_set_message("Letter marked as active.");
-            drupal_goto("letters/".arg(1));
+			drupal_goto("letters/$centre_id");
+		case 'restore':
+			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
+			dh_letter_set_inactive($centre_id, $letter_id, FALSE, $user->uid);
+			drupal_set_message("Letter marked as active.");
+			drupal_goto("letters/$centre_id");
 		case 'delattach':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			db_update("dh_letter")->fields(array('l_attachment' => null))->condition('l_id', arg(3))->execute();
+			dh_letter_remove_attachment($centre_id, $letter_id, $user->uid);
 			drupal_set_message("Attachment deleted successfully");
-			drupal_goto("letters/".arg(1)."/edit/".arg(3));
+			drupal_goto("letters/$centre_id/edit/$letter_id");
 		default:
 			return dh_letters_listing();
 			break;
 	}
+}
 
+/* TRUE when $letter_id is a letter of $centre_id (active or inactive). letter_id_load only
+   checks that the letter exists, so every letters/%centre/<action>/%letter page checks this. */
+function dh_letter_in_centre($letter_id, $centre_id)
+{
+	return (bool) db_query("select 1 from dh_letter where l_id = :l and l_center = :c", array(':l' => $letter_id, ':c' => $centre_id))->fetchField();
+}
+
+/* Mark a letter of $centre_id inactive ($inactive TRUE) or active again, as $uid. FALSE when it is
+   not that centre's letter. The trigger dh_letter_au logs the change. */
+function dh_letter_set_inactive($centre_id, $letter_id, $inactive, $uid)
+{
+	if (!dh_letter_in_centre($letter_id, $centre_id))
+		return FALSE;
+	db_update('dh_letter')->fields(array('l_deleted' => $inactive ? 1 : 0, 'l_updated' => date('Y-m-d H:i:s'), 'l_updated_by' => $uid))
+		->condition('l_id', $letter_id)->condition('l_center', $centre_id)->execute();
+	return TRUE;
+}
+
+/* Remove the attachment of a letter of $centre_id, as $uid. FALSE when it is not that centre's letter. */
+function dh_letter_remove_attachment($centre_id, $letter_id, $uid)
+{
+	if (!dh_letter_in_centre($letter_id, $centre_id))
+		return FALSE;
+	db_update('dh_letter')->fields(array('l_attachment' => NULL, 'l_updated' => date('Y-m-d H:i:s'), 'l_updated_by' => $uid))
+		->condition('l_id', $letter_id)->condition('l_center', $centre_id)->execute();
+	return TRUE;
+}
+
+/**
+ * Save the letter form as $uid: a new letter of $centre_id for 'add' and 'copy', else an edit of
+ * letter $id, which must be a letter of $centre_id. Stamps who and when. Returns the letter id, or
+ * FALSE when the edited letter is not that centre's.
+ */
+function dh_letter_save($centre_id, $action, $id, $fields, $uid)
+{
+	$now = date('Y-m-d H:i:s');
+	$fields['l_updated'] = $now;
+	$fields['l_updated_by'] = $uid;
+	if ($action == 'add' || $action == 'copy')
+	{
+		$fields['l_created'] = $now;
+		$fields['l_created_by'] = $uid;
+		$fields['l_center'] = $centre_id;
+		return (int) db_insert('dh_letter')->fields($fields)->execute();
+	}
+	if (!dh_letter_in_centre($id, $centre_id))
+		return FALSE;
+	db_update('dh_letter')->fields($fields)->condition('l_id', $id)->condition('l_center', $centre_id)->execute();
+	return (int) $id;
 }
 
 function dh_letters_listing()
@@ -666,9 +718,6 @@ function dh_letters_form_submit($form, &$form_state)
 	$fields['l_body'] = $input['l_body'];
 	$fields['l_sms'] = $input['l_sms'];
 
-	$fields['l_updated'] = date('Y-m-d H:i:s'); 
-	$fields['l_updated_by'] = $user->uid;
-
 	$fname = '';
 	if ( isset($form_state['storage']) && isset($form_state['storage']['file']) )
 	{
@@ -690,15 +739,11 @@ function dh_letters_form_submit($form, &$form_state)
 	}
 
 
-	if ($action == 'add' || $action == 'copy')
+	if (dh_letter_save($centre_id, $action, $id, $fields, $user->uid) === FALSE)
 	{
-		$fields['l_created'] = date('Y-m-d H:i:s'); 
-		$fields['l_created_by'] = $user->uid;		
-		$fields['l_center'] = $centre_id;
-		db_insert('dh_letter')->fields($fields)->execute();
+		drupal_set_message(t('Letter not found.'), 'error');
+		drupal_goto("letters/$centre_id");
 	}
-	else
-		db_update('dh_letter')->fields($fields)->condition('l_id', $id )->execute();
 
 	if($action == "copy") $action = "copi";
 	drupal_set_message("Letter ${action}ed successfully ");
