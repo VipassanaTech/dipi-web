@@ -981,9 +981,18 @@ function dh_manage_letter_fields()
 function dh_manage_letter_fields_handler()
 {
 	global $user;
-	$centre_id = arg(2);
 	include_once "sites/all/libraries/editor/php/DataTables.php";
+	dh_letter_fields_editor($db, arg(2), $user->uid)->process( $_POST )->json();
+	exit;
+}
 
+/**
+ * The Editor behind the Manage Fields page of $centre_id, saving as $uid (lf_updated_by; the trigger
+ * dh_letter_fields_au logs the change). The Editor saves an edit by row id only, so the validator
+ * refuses a field that is not this centre's. Returns the Editor, not yet processed.
+ */
+function dh_letter_fields_editor($db, $centre_id, $uid)
+{
 	// A field is "deleted" by an edit that sets lf_deleted = 1: don't block that on the name/value rules.
 	$deleting = function ($data) {
 		return !empty($data['dh_letter_fields']['lf_deleted']);
@@ -1022,16 +1031,31 @@ function dh_manage_letter_fields_handler()
                 return $msgs ? implode(' ', $msgs) : true;
             } ),
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_deleted' ),	 
+	    // who saved it (create and edit); never sent to the browser
+	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_updated_by' )
+	    	->get( false )
+	    	->setValue( $uid ),
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_center' )
 	    	->setValue( $centre_id )
 	    )
     ->pkey('lf_id')
     ->on( 'preRemove', function() { return false; })
+    // An edit (also Remove, which sets lf_deleted) is saved by row id only, so every edited
+    // row must be a field of this centre.
+    ->validator( function ( $editor, $action, $data ) use ( $centre_id ) {
+        if ( $action != 'edit' )
+            return '';
+        foreach ( array_keys( $data['data'] ) as $key ) {
+            $row = $editor->db()->select( 'dh_letter_fields', 'lf_center',
+                array( 'lf_id' => str_replace( $editor->idPrefix(), '', $key ) ) )->fetch();
+            if ( ! $row || (string) $row['lf_center'] !== (string) $centre_id )
+                return 'This merge field does not belong to this centre.';
+        }
+        return '';
+    } )
     ->where( 'lf_deleted', 0)
-    ->where( 'lf_center', $centre_id)
-    ->process( $_POST )
-    ->json();
-    exit;
+    ->where( 'lf_center', $centre_id);
+	return $editor;
 }
 
 

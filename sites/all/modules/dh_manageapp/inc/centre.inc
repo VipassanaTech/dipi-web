@@ -1134,7 +1134,7 @@ function copy_letters_to_centre( $centre_id )
 	$q = "insert into dh_letter (l_center, l_event, l_course_type, l_name, l_subject, l_body, l_sms, l_created_by, l_updated_by, l_updated) select '$centre_id', l_event, l_course_type, l_name, l_subject, l_body, l_sms, '".$user->uid."', '".$user->uid."', '".date("Y-m-d H:i:s")."' from dh_letter where l_center = 0";
 	db_query($q);
 
-	$q = "insert into dh_letter_fields (lf_center, lf_name, lf_value ) select '$centre_id', lf_name, lf_value from dh_letter_fields where lf_center = 0";
+	$q = "insert into dh_letter_fields (lf_center, lf_name, lf_value, lf_updated_by) select '$centre_id', lf_name, lf_value, '".$user->uid."' from dh_letter_fields where lf_center = 0";
 	db_query($q);
 
 
