@@ -61,4 +61,30 @@ t_in_txn(function () {
   tv_as(tv_uid('view letters', 'manage letters'));
   t_eq(dh_letter_log_section(9900001), '', 'V11 someone who can only read letters does not see it');
 });
+
+// V12: stored text is escaped exactly once wherever it shows (letter name, subject, course type, file, merge field, user name).
+t_in_txn(function () {
+  tv_as(tv_uid('manage letters'));
+  $now = date('Y-m-d H:i:s');
+  db_insert('users')->fields(array('uid' => 777061, 'name' => 'Zzqtest <b>who</b>', 'pass' => '', 'status' => 1, 'created' => time(), 'changed' => time()))->execute();
+  $ct = (int) db_insert('dh_type_detail')->fields(array('td_type' => 'COURSE-TYPE', 'td_key' => 'Zzqtest', 'td_val1' => 'Zzqtest <i>ct</i>',
+    'td_val2' => 0, 'td_val3' => '', 'td_val4' => '', 'td_active' => 1))->execute();
+  $id = (int) db_insert('dh_letter')->fields(array('l_center' => 9900001, 'l_event' => 'Received', 'l_course_type' => 0, 'l_name' => 'Zzqtest <script>x</script>',
+    'l_subject' => 'Zzqtest <b>bold</b>', 'l_body' => '', 'l_sms' => '', 'l_deleted' => 0,
+    'l_created' => $now, 'l_created_by' => 777062, 'l_updated' => $now, 'l_updated_by' => 777062))->execute();
+  db_update('dh_letter')->fields(array('l_subject' => 'Zzqtest <i>new</i>', 'l_course_type' => $ct,
+    'l_attachment' => 'private://letters/Zzqtest <u>a.pdf', 'l_updated_by' => 777061))->condition('l_id', $id)->execute();
+  db_insert('dh_letter_fields')->fields(array('lf_center' => 9900001, 'lf_name' => 'Zzqtest <u>f</u>', 'lf_value' => 'v', 'lf_deleted' => 0, 'lf_updated_by' => 777061))->execute();
+
+  $html = dh_letter_log_section(9900001);
+  t_ok(strpos($html, '<script') === FALSE && strpos($html, '<b>') === FALSE && strpos($html, '<i>') === FALSE && strpos($html, '<u>') === FALSE,
+    'V12 no stored tag reaches the page as a tag');
+  t_ok(strpos($html, '&lt;script&gt;x&lt;/script&gt;') !== FALSE, 'V12 the letter name is escaped (link and created row)');
+  t_ok(strpos($html, '&lt;i&gt;new&lt;/i&gt;') !== FALSE, 'V12 the new subject is escaped');
+  t_ok(strpos($html, 'Merge field [Zzqtest &lt;u&gt;f&lt;/u&gt;]') !== FALSE, 'V12 the merge field label is escaped');
+  t_ok(strpos($html, 'Zzqtest &lt;b&gt;who&lt;/b&gt;') !== FALSE, 'V12 the user name in By is escaped');
+  t_ok(strpos($html, '&lt;i&gt;ct&lt;/i&gt;') !== FALSE, 'V12 the course type name is escaped');
+  t_ok(strpos($html, 'Zzqtest &lt;u&gt;a.pdf') !== FALSE, 'V12 the attachment file name is escaped');
+  t_ok(strpos($html, '&amp;lt;') === FALSE, 'V12 nothing is escaped twice');
+});
 t_done();
