@@ -86,5 +86,14 @@ t_in_txn(function () {
   t_ok(strpos($html, '&lt;i&gt;ct&lt;/i&gt;') !== FALSE, 'V12 the course type name is escaped');
   t_ok(strpos($html, 'Zzqtest &lt;u&gt;a.pdf') !== FALSE, 'V12 the attachment file name is escaped');
   t_ok(strpos($html, '&amp;lt;') === FALSE, 'V12 nothing is escaped twice');
+
+  // V12b: a letter that no longer belongs to the centre (removed with SQL) is plain text, not a link, and its name is still escaped.
+  db_delete('dh_letter')->condition('l_id', $id)->execute();
+  $html = dh_letter_log_section(9900001);
+  t_ok(strpos($html, 'Removed from the database') !== FALSE, 'V12b the removed letter shows as removed from the database');
+  t_ok(strpos($html, '&lt;script&gt;x&lt;/script&gt;') !== FALSE, 'V12b the removed letter name is escaped');
+  t_ok(strpos($html, "letters/9900001/view/$id") === FALSE, 'V12b the removed letter is not a link');
+  t_ok(strpos($html, '<script') === FALSE, 'V12b no raw script tag once the letter is removed');
+  t_ok(strpos($html, '&amp;lt;') === FALSE, 'V12b nothing is escaped twice once the letter is removed');
 });
 t_done();
