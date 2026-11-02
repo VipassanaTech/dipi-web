@@ -453,3 +453,17 @@ button.s-aid-btn { cursor: pointer; }
 }
 .s-aid-menu button:hover { background: #eef3f8; }
 .s-aid-menu button.sel { font-weight: bold; }
+
+/* Per-section "Swap / Move seats" and "Store Seat Changes" (js/seat-tools.js). */
+.dh-swap-toggle, .dh-sec-store{display:inline-block;margin:2px 4px 2px 0;padding:6px 12px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600}
+.dh-sec-store{background:#1565c0;color:#fff}
+.dh-sec-store[disabled]{opacity:.6;cursor:default}
+.dh-swap-toggle.dh-active{background:#f0a000;border-color:#c77f00;color:#fff}
+.dh-swap-status{margin-left:6px;font-size:13px;color:#7a4b00}
+.dh-swap-on ul.ui-sortable > li{cursor:pointer !important}
+.dh-swap-on .drag-img{display:none !important}
+li.dh-swap-sel{outline:3px solid #f0a000;outline-offset:-3px}
+/* Student menu button (backrest, move to the other grid): on hover, like the CW/CH "+". */
+button.s-special-btn{margin-left:3px;padding:0 4px;border:1px solid #bbb;border-radius:3px;background:#fff;color:#333;font-size:12px;line-height:14px;cursor:pointer;visibility:hidden}
+.ui-state-default:hover .s-special-btn, .s-special-btn:focus{visibility:visible}
+.bg-table-m .s-special-btn, .bg-table-f .s-special-btn{display:none}

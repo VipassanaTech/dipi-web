@@ -2142,11 +2142,14 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
 		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
 		<p>4- Adjust the columns of a grid: "+ Col" adds a column and re-flows the students to fill it; "&minus; Col" removes a column and re-flows; "+ Blank Col" inserts an empty column to drag students into. (Take effect after "Store Seat Changes".)</p>
-    <p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
+    <p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button (at the top of the page, or in the bar of each section).</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
 		<p>9- To mark a chowky or chair at a student\'s own seat: move the mouse over the student, click the small "+" next to the seat number and choose "CW - Chowky" or "CH - Chair". A small <span class="legend-aid">CW</span> or <span class="legend-aid">CH</span> mark shows next to the seat number. It is saved at once (no need to click "Store Seat Changes"), it moves with the student and it prints. To change or remove it, click the mark and choose again, or "None". This mark is different from the separate Chowky / Chair grid.</p>
+		<p>10- To swap two students, or to move a student into an empty seat: in the bar of the section, click "Swap / Move seats". Click a student, then click another seat in the same grid. If that seat has a student, the two swap. If it is empty, the student moves there. Nobody else moves. Then click "Store Seat Changes". Click "Swap / Move seats" again to go back to drag and drop.</p>
+		<p>11- Backrest: move the mouse over a student in the main grid, click the small "&#8942;" button and choose "Add backrest" or "Remove backrest". It is saved at once.</p>
+		<p>12- To move a student between the main grid and the Chowky / Chair grid: click the small "&#8942;" button and choose "Move to chowky grid" (Chowky or Chair) or "Move to main grid" (with or without backrest). It is saved at once and the page reloads, so first store your seat changes. The student goes to a new row at the top of the other grid. Then use "Swap / Move seats" to put them in the right seat.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
         <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
@@ -3291,11 +3294,14 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
 		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
 		<p>4- Adjust the columns of a grid: "+ Col" adds a column and re-flows the students to fill it; "&minus; Col" removes a column and re-flows; "+ Blank Col" inserts an empty column to drag students into. (Take effect after "Store Seat Changes".)</p>
-		<p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button.</p>
+		<p>5- Save Sitting arrangement changes by clicking "Store Seat Changes" button (at the top of the page, or in the bar of each section).</p>
 		<p>6- Print by clicking "Print Seating Plan" button or CTL-P.</p>
 		<p>7- Adjust print settings(Layout, Scale, Paper Size) as needed and print the seating plan.</p>
 		<p>8- On top of each plan there are green buttons. "Print this section" makes one A4 PDF of just that plan (Male, Female or a single group). If a plan is big and looks too small on one A4, use "on 2 sheets" or "on 4 sheets": it prints the same plan bigger, split over 2 or 4 A4 papers.</p>
 		<p>9- To mark a chowky or chair at a student\'s own seat: move the mouse over the student, click the small "+" next to the seat number and choose "CW - Chowky" or "CH - Chair". A small <span class="legend-aid">CW</span> or <span class="legend-aid">CH</span> mark shows next to the seat number. It is saved at once (no need to click "Store Seat Changes"), it moves with the student and it prints. To change or remove it, click the mark and choose again, or "None". This mark is different from the separate Chowky / Chair grid.</p>
+		<p>10- To swap two students, or to move a student into an empty seat: in the bar of the section, click "Swap / Move seats". Click a student, then click another seat in the same grid. If that seat has a student, the two swap. If it is empty, the student moves there. Nobody else moves. Then click "Store Seat Changes". Click "Swap / Move seats" again to go back to drag and drop.</p>
+		<p>11- Backrest: move the mouse over a student in the main grid, click the small "&#8942;" button and choose "Add backrest" or "Remove backrest". It is saved at once.</p>
+		<p>12- To move a student between the main grid and the Chowky / Chair grid: click the small "&#8942;" button and choose "Move to chowky grid" (Chowky or Chair) or "Move to main grid" (with or without backrest). It is saved at once and the page reloads, so first store your seat changes. The student goes to a new row at the top of the other grid. Then use "Swap / Move seats" to put them in the right seat.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
         <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
