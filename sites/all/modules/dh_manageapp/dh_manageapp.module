@@ -2622,7 +2622,8 @@ function update_status_external($app_id, $new_status)
 				{
 					$letter_map = array('Rejected-R-AT' => 'Recommending AT Rejected', 'Rejected-A-AT' => 'Area AT Rejected') ;
 					$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
-					$lid = db_query("select l_id from dh_letter where l_name='".$letter_map[$new_status]."' and l_center='$centre' limit 1")->fetchField();
+					// active letters only (inc/letter-protect.inc)
+					$lid = dh_letter_by_name($centre, $letter_map[$new_status]);
 					if ($lid)
 						dh_send_letter('applicant', $app_id, 'Custom', $lid );	
 					else
@@ -2645,7 +2646,8 @@ function update_status_external($app_id, $new_status)
 				if ($lc_admin_email)
 				{
 
-					$lid = db_query("select l_id from dh_letter where l_name='LC Admin Notification' and l_center='$centre' limit 1")->fetchField();
+					// active letters only (inc/letter-protect.inc)
+					$lid = dh_letter_by_name($centre, 'LC Admin Notification');
 					//watchdog('LC ADMIN', 'I got lid '.$lid);
 					if ($lid)
 						dh_send_letter('lc-admin', $app_id, 'Custom', $lid );					
@@ -2656,7 +2658,8 @@ function update_status_external($app_id, $new_status)
 			{
 				$letter_map = array('A-ATReview' => 'Recommending AT Approved', 'Received' => 'Area AT Approved') ;
 				$centre = db_query("select a_center from dh_applicant where a_id=$app_id")->fetchField();
-				$lid = db_query("select l_id from dh_letter where l_name='".$letter_map[$altered_status]."' and l_center='$centre' limit 1")->fetchField();
+				// active letters only (inc/letter-protect.inc)
+				$lid = dh_letter_by_name($centre, $letter_map[$altered_status]);
 				if ($lid)
 					dh_send_letter('applicant', $app_id, 'Custom', $lid );	
 				else

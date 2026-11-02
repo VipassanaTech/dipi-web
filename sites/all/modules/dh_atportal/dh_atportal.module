@@ -1174,7 +1174,8 @@ function dh_atportal_review_form_submit($form, &$form_state )
 
             dh_send_letter('a-teacher', $lc_id, $new_status);
 
-            $lid = db_query("select l_id from dh_letter where l_name='Recommending AT Approved' and l_center='$centre' limit 1")->fetchField();
+            // active letters only (inc/letter-protect.inc)
+            $lid = dh_letter_by_name($centre, 'Recommending AT Approved');
 
             if ($lid)
                 dh_send_letter('applicant', $lc_id, 'Custom', $lid);
