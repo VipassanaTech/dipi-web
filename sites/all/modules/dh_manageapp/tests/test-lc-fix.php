@@ -42,6 +42,35 @@ foreach ($srcs as $key => $sr)
 t_ok($okk, 'K9 every source row has l_id and l_center of its letter, and the keys apply uses');
 $cs = dh_lc_fix_centres();
 t_ok($cs && !in_array(0, $cs) && !in_array(302, $cs), 'K4 active centres leave out the template and the test centre');
+// K10: the centre list also takes a centre of any type that has a long course since 2024 (Mitra Upakram, Dragon Palace on prod)
+t_in_txn(function () {
+  $lc = (int) db_query("select td_id from dh_type_detail where td_type = 'COURSE-TYPE' and td_val3 = 'LC' order by td_id limit 1")->fetchField();
+  $nonlc = (int) db_query("select td_id from dh_type_detail where td_type = 'COURSE-TYPE' and td_val3 <> 'LC' order by td_id limit 1")->fetchField();
+  t_ok($lc > 0 && $nonlc > 0, 'K10 setup: an LC and a non-LC course type exist');
+  $base = db_query("select * from dh_center where c_id > 0 order by c_id limit 1")->fetchAssoc();
+  $mk = function ($id, $type) use ($base) {
+    db_insert('dh_center')->fields(array_merge($base, array('c_id' => $id, 'c_name' => "Zzqtest centre $id", 'c_type' => $type)))->execute();
+  };
+  $mk(9900007, 'noncenter');   // long course since 2024: in
+  $mk(9900008, 'noncenter');   // only a non-LC course since 2024: out
+  $mk(9900009, 'noncenter');   // long course, but before 2024: out
+  $mk(9900006, 'center');      // a real-type centre with only a non-LC course since 2024: still in (the old rule)
+  t_make_course(array('c_center' => 9900007, 'c_course_type' => $lc, 'c_start' => '2026-06-01', 'c_end' => '2026-07-01'));
+  t_make_course(array('c_center' => 9900008, 'c_course_type' => $nonlc, 'c_start' => '2026-06-01', 'c_end' => '2026-06-11'));
+  t_make_course(array('c_center' => 9900009, 'c_course_type' => $lc, 'c_start' => '2023-06-01', 'c_end' => '2023-07-01'));
+  t_make_course(array('c_center' => 9900006, 'c_course_type' => $nonlc, 'c_start' => '2026-06-01', 'c_end' => '2026-06-11'));
+  $cs = dh_lc_fix_centres();
+  t_ok(in_array(9900007, $cs, TRUE), 'K10 a non-centre with a long course since 2024 is in the list');
+  t_ok(!in_array(9900008, $cs, TRUE), 'K10 a non-centre with only a non-LC course since 2024 is not in the list');
+  t_ok(!in_array(9900009, $cs, TRUE), 'K10 a non-centre whose long course is before 2024 is not in the list');
+  t_ok(in_array(9900006, $cs, TRUE), 'K10 a centre with any course since 2024 is still in the list');
+  t_ok(!in_array(0, $cs, TRUE) && !in_array(302, $cs, TRUE), 'K10 the template and the test centre are still left out');
+  $sorted = $cs; sort($sorted, SORT_NUMERIC);
+  t_ok($cs === $sorted && $cs === array_values(array_unique($cs)) && count(array_filter($cs, 'is_int')) == count($cs), 'K10 the list is sorted, unique and all ints');
+  // the test centre with a long course stays out
+  db_update('dh_course')->fields(array('c_center' => 302, 'c_course_type' => $lc, 'c_start' => '2026-06-01'))->condition('c_center', 9900007)->execute();
+  t_ok(!in_array(302, dh_lc_fix_centres(), TRUE), 'K10 the test centre 302 with a long course is still not in the list');
+});
 $GLOBALS['conf']['dh_lc_review_link_a'] = '';
 t_eq(dh_lc_fix_plan(array(9900001)), array(array('do' => 'settings_missing')), 'K5 empty settings: the fix refuses');
 $GLOBALS['conf']['dh_lc_review_link_a'] = 'https://zzqtest.invalid/a/';

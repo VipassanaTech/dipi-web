@@ -14,11 +14,14 @@
 define('DH_LC_FIX_DUMMY_CENTRE', 302);   // the test centre (Dummy Centre): left out
 define('DH_LC_FIX_LINE', '<p>To review, please click on this link - [ReviewLink]</p>');
 
-/* Active centres: real centres (not the test centre) with any course since 2024. */
+/* Active centres: real centres with any course since 2024, plus any centre (including non-centres) with a long course
+   since 2024; never the test centre. A long course is one whose course type has td_val3 = 'LC'. */
 function dh_lc_fix_centres()
 {
-	return array_map('intval', db_query("select c.c_id from dh_center c where c.c_id > 0 and c.c_type = 'center' and c.c_id <> :d
-		and exists (select 1 from dh_course co where co.c_center = c.c_id and co.c_start >= '2024-01-01') order by c.c_id",
+	return array_map('intval', db_query("select c.c_id from dh_center c where c.c_id > 0 and c.c_id <> :d
+		and ((c.c_type = 'center' and exists (select 1 from dh_course co where co.c_center = c.c_id and co.c_start >= '2024-01-01'))
+		or exists (select 1 from dh_course lo join dh_type_detail td on td.td_id = lo.c_course_type
+			where lo.c_center = c.c_id and lo.c_start >= '2024-01-01' and td.td_val3 = 'LC')) order by c.c_id",
 		array(':d' => DH_LC_FIX_DUMMY_CENTRE))->fetchCol());
 }
 
