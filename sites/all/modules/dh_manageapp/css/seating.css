@@ -463,7 +463,8 @@ button.s-aid-btn { cursor: pointer; }
 .dh-swap-on ul.ui-sortable > li{cursor:pointer !important}
 .dh-swap-on .drag-img{display:none !important}
 li.dh-swap-sel{outline:3px solid #f0a000;outline-offset:-3px}
+@media print{li.dh-swap-sel{outline:none}}
 /* Student menu button (backrest, move to the other grid): on hover, like the CW/CH "+". */
-button.s-special-btn{margin-left:3px;padding:0 4px;border:1px solid #bbb;border-radius:3px;background:#fff;color:#333;font-size:12px;line-height:14px;cursor:pointer;visibility:hidden}
+button.s-special-btn{margin-left:3px;padding:0 4px;border:1px solid #bbb;border-radius:3px;background:#fff;color:#333;font-size:12px;line-height:14px;cursor:pointer;visibility:hidden;position:relative;z-index:2}
 .ui-state-default:hover .s-special-btn, .s-special-btn:focus{visibility:visible}
 .bg-table-m .s-special-btn, .bg-table-f .s-special-btn{display:none}
