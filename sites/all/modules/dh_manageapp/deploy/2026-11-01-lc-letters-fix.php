@@ -40,6 +40,29 @@ try
 		if (isset($a['l_id']))
 			$ids[] = (int) $a['l_id'];
 	$lnames = $ids ? db_query("select l_id, l_name from dh_letter where l_id in (:ids)", array(':ids' => $ids))->fetchAllKeyed() : array();
+	// A letter that gets its status corrected is read as a recommending review letter, as the plan does.
+	$fixed = array();
+	foreach ($plan as $a)
+		if ($a['do'] == 'status')
+			$fixed[] = (int) $a['l_id'];
+	// Where the text of every added letter comes from, so the owner can judge it before --apply.
+	$need = array();
+	foreach ($plan as $a)
+		if ($a['do'] == 'add')
+			$need[$a['key']] = TRUE;
+	if ($need)
+	{
+		$src = dh_lc_fix_sources();
+		foreach (array_keys($roles) as $key)
+		{
+			if (empty($need[$key]))
+				continue;
+			if (empty($src[$key]))
+				echo 'NO SOURCE for "'.$roles[$key]['name'].'" — apply would fail'."\n";
+			else
+				echo 'source for "'.$roles[$key]['name'].'": letter '.$src[$key]['l_id'].' at centre '.$src[$key]['l_center'].' ('.($src[$key]['l_center'] == 0 ? 'template' : 'most common text').")\n";
+		}
+	}
 	$by = array();
 	$tot = array();
 	foreach ($plan as $a)
@@ -52,7 +75,15 @@ try
 		elseif ($a['do'] == 'status')
 			$what = 'status R-ATReview on letter '.$a['l_id'].$ln;
 		else
+		{
 			$what = 'link '.$a['how'].' on letter '.$a['l_id'].$ln;
+			if ($a['how'] == 'replace-other')
+			{
+				// Which addresses are replaced: the hosts only (no path), for the owner to judge.
+				$l = db_query("select l_event, l_body from dh_letter where l_id = :l", array(':l' => $a['l_id']))->fetchObject();
+				$what .= ' hosts: '.implode(', ', dh_lc_fix_replaced_hosts($l->l_body, in_array((int) $a['l_id'], $fixed) ? 'R-ATReview' : $l->l_event));
+			}
+		}
 		$by[$a['centre']][] = $what;
 		$k = $a['do'].($a['do'] == 'link' ? '-'.$a['how'] : '');
 		$tot[$k] = (isset($tot[$k]) ? $tot[$k] : 0) + 1;
@@ -60,6 +91,9 @@ try
 	foreach ($by as $c => $list)
 		echo $c.' '.($c == 0 ? '(template)' : (isset($names[$c]) ? $names[$c] : '?')).': '.implode('; ', $list)."\n";
 	echo ($apply ? 'APPLY' : 'DRY RUN').': '.count($by).' centres, '.count($plan).' changes '.json_encode($tot)."\n";
+	// Every Change Log row of this run has a higher id than this.
+	$mark = (int) db_query("select max(ll_id) from dh_letter_log")->fetchField();
+	echo 'log mark: dh_letter_log max(ll_id) = '.$mark." (Change Log rows above this are this run)\n";
 	if (!$apply)
 		exit(0);
 	$txn = db_transaction();

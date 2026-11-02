@@ -29,7 +29,8 @@ function _dh_lc_fix_where($key)
 	return $roles[$key]['event'] !== NULL ? array('l_event = :v', $roles[$key]['event']) : array('l_name = :v', $roles[$key]['name']);
 }
 
-/* The text each LC role is copied from: the template's active letter, else the text most centres' active letters share. */
+/* The text each LC role is copied from: the template's active letter, else the text most centres' active letters share.
+   Each row also says which letter it is (l_id, l_center), for the dry run; NULL when a role has no source. */
 function dh_lc_fix_sources()
 {
 	$src = array();
@@ -39,7 +40,7 @@ function dh_lc_fix_sources()
 		$id = db_query("select l_id from dh_letter where l_center = 0 and l_deleted = 0 and $w order by l_id limit 1", array(':v' => $v))->fetchField();
 		if (!$id)
 			$id = db_query("select min(l_id) from dh_letter where l_center > 0 and l_deleted = 0 and $w group by md5(l_body) order by count(*) desc, min(l_id) limit 1", array(':v' => $v))->fetchField();
-		$src[$key] = $id ? db_query("select l_name, l_event, l_course_type, l_subject, l_body, l_sms from dh_letter where l_id = :l", array(':l' => $id))->fetchAssoc() : NULL;
+		$src[$key] = $id ? db_query("select l_id, l_center, l_name, l_event, l_course_type, l_subject, l_body, l_sms from dh_letter where l_id = :l", array(':l' => $id))->fetchAssoc() : NULL;
 	}
 	return $src;
 }
@@ -59,13 +60,36 @@ function _dh_lc_fix_add_line($body)
 	return substr($body, 0, $start).DH_LC_FIX_LINE.substr($body, $start);
 }
 
+/* The pattern of one typed review address: an http/https address that ends at the token. The address must end at the
+   token: it is not followed by more address characters. */
+function _dh_lc_fix_link_re($tok)
+{
+	return '~(?i:https?)://[^\s"\'<>]*?'.preg_quote($tok, '~').'(?![\w%&=?#/\~+-]|\.\w)~';
+}
+
+/* The distinct hosts (lower case, in order of first use) of the addresses dh_lc_fix_link_body replaces in $body. Host only:
+   no path, port, user name or password; anything but printable ASCII shows as ?. For the dry run, so the owner can judge. */
+function dh_lc_fix_replaced_hosts($body, $event)
+{
+	$hosts = array();
+	if (preg_match_all(_dh_lc_fix_link_re($event == 'A-ATReview' ? '[AAuth]' : '[RAuth]'), (string) $body, $m))
+		foreach ($m[0] as $url)
+		{
+			$h = parse_url($url, PHP_URL_HOST);
+			$h = is_string($h) && $h !== '' ? preg_replace('~[^\x21-\x7e]~', '?', strtolower($h)) : '?';
+			if (!in_array($h, $hosts))
+				$hosts[] = $h;
+		}
+	return $hosts;
+}
+
 /* A review letter's text with [ReviewLink]. Every http/https address that ends in the letter's own step token ([RAuth] for
    the recommending letter, [AAuth] for the area letter) is replaced, in the link and in the visible text, whatever its host
    or path, so no old or other-host copy stays beside the new link. The other step's token is left alone. Returns
    array($body, $how):
    '' already has [ReviewLink]; 'replace' every such address was exactly the typed link built from the settings;
    'replace-other' at least one was some other address; 'add' no such address, DH_LC_FIX_LINE added;
-   'add-stale' no such address, DH_LC_FIX_LINE added, but the token is still in the text (check by hand). */
+   'add-stale' no such address, DH_LC_FIX_LINE added, but [RAuth] or [AAuth] is still in the text (check by hand). */
 function dh_lc_fix_link_body($body, $event)
 {
 	$body = (string) $body;
@@ -75,15 +99,16 @@ function dh_lc_fix_link_body($body, $event)
 	$tok = $step == 'a' ? '[AAuth]' : '[RAuth]';
 	$typed = dh_letter_review_link($step, $tok);
 	$other = FALSE;
-	// The address must end at the token: not followed by more address characters.
-	$new = preg_replace_callback('~(?i:https?)://[^\s"\'<>]*?'.preg_quote($tok, '~').'(?![\w%&=?#/\~+-]|\.\w)~', function ($m) use ($typed, &$other) {
+	$new = preg_replace_callback(_dh_lc_fix_link_re($tok), function ($m) use ($typed, &$other) {
 		if ($m[0] !== $typed)
 			$other = TRUE;
 		return '[ReviewLink]';
 	}, $body, -1, $count);
 	if ($count)
 		return array($new, $other ? 'replace-other' : 'replace');
-	return array(_dh_lc_fix_add_line($body), strpos($body, $tok) !== FALSE ? 'add-stale' : 'add');
+	// Either step's token left in the text (also the other step's) needs a look by hand.
+	$stale = strpos($body, '[RAuth]') !== FALSE || strpos($body, '[AAuth]') !== FALSE;
+	return array(_dh_lc_fix_add_line($body), $stale ? 'add-stale' : 'add');
 }
 
 /**

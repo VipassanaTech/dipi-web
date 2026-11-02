@@ -13,10 +13,33 @@ t_eq(dh_lc_fix_link_body('<p>Hello</p>', 'A-ATReview'), array('<p>Hello</p>' . D
 t_eq(dh_lc_fix_link_body('<p>[ReviewLink]</p>', 'R-ATReview'), array('<p>[ReviewLink]</p>', ''), 'K3 already done: unchanged');
 t_eq(dh_lc_fix_link_body('<p><a href="http://zzqother.invalid/x/[RAuth]">http://zzqother.invalid/x/[RAuth]</a></p>', 'R-ATReview'), array('<p><a href="[ReviewLink]">[ReviewLink]</a></p>', 'replace-other'), 'K6 a typed link on another host is replaced too');
 t_eq(dh_lc_fix_link_body('<p>One https://zzqtest.invalid/r/[RAuth] two HTTP://zzqother.invalid/old/[RAuth].</p>', 'R-ATReview'), array('<p>One [ReviewLink] two [ReviewLink].</p>', 'replace-other'), 'K6 setting link and other link together: replace-other, both gone, the full stop stays');
-t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/a/[AAuth]</p>', 'R-ATReview'), array('<p>Open https://zzqtest.invalid/a/[AAuth]</p>' . DH_LC_FIX_LINE, 'add'), 'K6 a recommending letter leaves the area link alone and gets the line');
-t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/r/[RAuth]</p>', 'A-ATReview'), array('<p>Open https://zzqtest.invalid/r/[RAuth]</p>' . DH_LC_FIX_LINE, 'add'), 'K6 an area letter leaves the recommending link alone and gets the line');
+t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/a/[AAuth]</p>', 'R-ATReview'), array('<p>Open https://zzqtest.invalid/a/[AAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K6 a recommending letter leaves the area link alone and gets the line; the other token is still there, so add-stale');
+t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/r/[RAuth]</p>', 'A-ATReview'), array('<p>Open https://zzqtest.invalid/r/[RAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K6 an area letter leaves the recommending link alone and gets the line; the other token is still there, so add-stale');
+t_eq(dh_lc_fix_link_body('<p>Code: [AAuth]</p>', 'R-ATReview'), array('<p>Code: [AAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 a recommending letter with a bare [AAuth] is add-stale');
+t_eq(dh_lc_fix_link_body('<p>Code: [RAuth]</p>', 'A-ATReview'), array('<p>Code: [RAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 an area letter with a bare [RAuth] is add-stale');
 t_eq(dh_lc_fix_link_body('<p>Code: [RAuth]</p>', 'R-ATReview'), array('<p>Code: [RAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 a token without an address in front: line added, add-stale');
 t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/r/[RAuth]/more</p>', 'R-ATReview'), array('<p>Open https://zzqtest.invalid/r/[RAuth]/more</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 an address that goes on after the token is not cut: line added, add-stale');
+// K8: the hosts shown in the dry run for the addresses that are replaced (host only: no path, no port, no user)
+t_eq(dh_lc_fix_replaced_hosts('<p>One https://zzqtest.invalid/r/[RAuth] two HTTP://ZzqOther.invalid/old/[RAuth]. <a href="http://zzqother.invalid:8080/y/[RAuth]">http://zzqother.invalid:8080/y/[RAuth]</a></p>', 'R-ATReview'),
+	array('zzqtest.invalid', 'zzqother.invalid'), 'K8 the distinct hosts, lower case, in order, no path and no port');
+t_eq(dh_lc_fix_replaced_hosts('<p>Open https://zzqtest.invalid/a/[AAuth] and https://zzqthird.invalid/r/[RAuth]</p>', 'A-ATReview'), array('zzqtest.invalid'), 'K8 an area letter looks at [AAuth] addresses only');
+t_eq(dh_lc_fix_replaced_hosts('<p>Open https://user:secret@zzqother.invalid/x/[RAuth]</p>', 'R-ATReview'), array('zzqother.invalid'), 'K8 a user name and password in the address are not shown');
+t_eq(dh_lc_fix_replaced_hosts('<p>Code: [RAuth] and no address</p>', 'R-ATReview'), array(), 'K8 no address, no host');
+$ctl = dh_lc_fix_replaced_hosts("<p>https://zzq\x1bhost.invalid/x/[RAuth] and https://zzq\xc3\xa9.invalid/x/[RAuth]</p>", 'R-ATReview');
+t_ok(count($ctl) >= 1 && count(array_filter($ctl, function ($h) { return preg_match('~^[\x21-\x7e]+$~', $h); })) == count($ctl), 'K8 a control or non-ASCII character in a host is never printed as it is');
+// K9: each source row says which letter it is (l_id, l_center) for the dry run, and keeps the keys the apply step uses
+$srcs = dh_lc_fix_sources();
+t_eq(array_keys($srcs), array_keys(dh_letter_lc_roles()), 'K9 one source entry per LC role');
+$okk = TRUE;
+foreach ($srcs as $key => $sr)
+	if ($sr !== NULL)
+	{
+		$have = array_keys($sr);
+		foreach (array('l_id', 'l_center', 'l_name', 'l_event', 'l_course_type', 'l_subject', 'l_body', 'l_sms') as $k)
+			$okk = $okk && in_array($k, $have);
+		$okk = $okk && (int) $sr['l_id'] > 0 && db_query("select l_name from dh_letter where l_id = :l and l_center = :c", array(':l' => $sr['l_id'], ':c' => $sr['l_center']))->fetchField() === $sr['l_name'];
+	}
+t_ok($okk, 'K9 every source row has l_id and l_center of its letter, and the keys apply uses');
 $cs = dh_lc_fix_centres();
 t_ok($cs && !in_array(0, $cs) && !in_array(302, $cs), 'K4 active centres leave out the template and the test centre');
 $GLOBALS['conf']['dh_lc_review_link_a'] = '';
