@@ -48,3 +48,7 @@ table.dataTable tbody td.no-padding {
 .slider table tr { vertical-align: top; }
 
 
+
+/* Age groups line above the search results table (js/search-age-groups.js) */
+.dh-age-groups { clear: both; padding-top: 6px; margin-bottom: 8px; line-height: 1.9; }
+.dh-age-groups .dh-age-group { display: inline-block; margin-right: 4px; padding: 0 8px; border: 1px solid #d6d6d6; border-radius: 10px; background: #f7f7f7; font-size: 13px; white-space: nowrap; }

@@ -16,6 +16,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	/* Edit-own-review-comment handler (delegated; needs ckeditor + jquery-confirm). */
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/review-edit.js');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
+	/* Age groups line above the table; updated on every redraw (see drawCallback). */
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/search-age-groups.js');
 	if ( !($iPad || $iPhone || $iPod) )
 	{
 		//drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.min.js");
@@ -1295,6 +1297,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							}
 							n++;
 						});
+						// Age groups of the rows the search box and filters leave (never throws).
+						if (window.dhAgeGroups) { window.dhAgeGroups.update(api); }
 					},
                   	/*buttons: ["copy","csv","excel","pdf","print"], */ 
 					buttons:   [  
