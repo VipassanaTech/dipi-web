@@ -11,6 +11,12 @@ t_eq(dh_lc_fix_link_body('<a href="https://zzqtest.invalid/a/[AAuth]">https://zz
 t_eq(dh_lc_fix_link_body('<p>Hello</p><p>Thanks [Footer]</p>', 'R-ATReview'), array('<p>Hello</p>' . DH_LC_FIX_LINE . '<p>Thanks [Footer]</p>', 'add'), 'K2 no typed link: the line goes before the footer block');
 t_eq(dh_lc_fix_link_body('<p>Hello</p>', 'A-ATReview'), array('<p>Hello</p>' . DH_LC_FIX_LINE, 'add'), 'K2 no footer: the line goes at the end');
 t_eq(dh_lc_fix_link_body('<p>[ReviewLink]</p>', 'R-ATReview'), array('<p>[ReviewLink]</p>', ''), 'K3 already done: unchanged');
+t_eq(dh_lc_fix_link_body('<p><a href="http://zzqother.invalid/x/[RAuth]">http://zzqother.invalid/x/[RAuth]</a></p>', 'R-ATReview'), array('<p><a href="[ReviewLink]">[ReviewLink]</a></p>', 'replace-other'), 'K6 a typed link on another host is replaced too');
+t_eq(dh_lc_fix_link_body('<p>One https://zzqtest.invalid/r/[RAuth] two HTTP://zzqother.invalid/old/[RAuth].</p>', 'R-ATReview'), array('<p>One [ReviewLink] two [ReviewLink].</p>', 'replace-other'), 'K6 setting link and other link together: replace-other, both gone, the full stop stays');
+t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/a/[AAuth]</p>', 'R-ATReview'), array('<p>Open https://zzqtest.invalid/a/[AAuth]</p>' . DH_LC_FIX_LINE, 'add'), 'K6 a recommending letter leaves the area link alone and gets the line');
+t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/r/[RAuth]</p>', 'A-ATReview'), array('<p>Open https://zzqtest.invalid/r/[RAuth]</p>' . DH_LC_FIX_LINE, 'add'), 'K6 an area letter leaves the recommending link alone and gets the line');
+t_eq(dh_lc_fix_link_body('<p>Code: [RAuth]</p>', 'R-ATReview'), array('<p>Code: [RAuth]</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 a token without an address in front: line added, add-stale');
+t_eq(dh_lc_fix_link_body('<p>Open https://zzqtest.invalid/r/[RAuth]/more</p>', 'R-ATReview'), array('<p>Open https://zzqtest.invalid/r/[RAuth]/more</p>' . DH_LC_FIX_LINE, 'add-stale'), 'K7 an address that goes on after the token is not cut: line added, add-stale');
 $cs = dh_lc_fix_centres();
 t_ok($cs && !in_array(0, $cs) && !in_array(302, $cs), 'K4 active centres leave out the template and the test centre');
 $GLOBALS['conf']['dh_lc_review_link_a'] = '';
@@ -59,5 +65,51 @@ t_in_txn(function () {
   $logged = db_query("select count(distinct ll_record) from dh_letter_log where ll_area = 'letter' and ll_center in (9900001, 9900002, 9900003) and ll_user = 15")->fetchField();
   t_eq($logged, 7 + 1 + 1 + 1 + 3, 'F8 every changed letter is in the Change Log as System');
   t_eq(dh_lc_fix_plan(array(9900001, 9900002, 9900003)), array(), 'F9 a second run changes nothing');
+});
+
+$five = array('Recommending AT Approved', 'Recommending AT Rejected', 'Area AT Approved', 'Area AT Rejected', 'LC Admin Notification');
+$cnt = function ($plan, $c, $do, $key = NULL) {
+  return count(array_filter($plan, function ($a) use ($c, $do, $key) { return $a['centre'] == $c && $a['do'] == $do && ($key === NULL || (isset($a['key']) && $a['key'] == $key)); }));
+};
+
+t_in_txn(function () use ($five, $cnt) {
+  // 9900004: the only review letter is a "Recommending Review" with the area status (and a typed recommending link).
+  $wrong = tx_letter(9900004, 'Recommending Review', 'A-ATReview', '<p>Open https://zzqtest.invalid/r/[RAuth]</p>');
+  foreach ($five as $n)
+    tx_letter(9900004, $n, 'Custom', '<p>x</p>');
+  $plan = dh_lc_fix_plan(array(9900004));
+  t_eq(array($cnt($plan, 9900004, 'status'), $cnt($plan, 9900004, 'add', 'a_review'), $cnt($plan, 9900004, 'add'), $cnt($plan, 9900004, 'link'), $cnt($plan, 9900004, 'activate')), array(1, 1, 1, 1, 0), 'F10 only a wrong letter: 1 status, 1 add (the area letter), 1 link');
+  t_eq(dh_lc_fix_apply($plan, 15), array('status' => 1, 'activate' => 0, 'link' => 1, 'add' => 1), 'F10 applied counts');
+  $w = tx_row($wrong);
+  t_eq(array($w['l_event'], $w['l_body']), array('R-ATReview', '<p>Open [ReviewLink]</p>'), 'F10 the wrong letter is now the recommending review letter');
+  t_eq(db_query("select count(*) from dh_letter where l_center = 9900004 and l_deleted = 0 and l_event = 'A-ATReview' and l_body like '%[ReviewLink]%'")->fetchField(), 1, 'F10 one active area review letter was added, with [ReviewLink]');
+  t_eq(dh_lc_fix_plan(array(9900004)), array(), 'F10 a second run for that centre changes nothing');
+});
+
+t_in_txn(function () use ($five, $cnt) {
+  // 9900005: a real recommending review letter AND a "Recommending Review" that has the area status: nothing to correct.
+  tx_letter(9900005, 'Recommending Review', 'R-ATReview', '<p>Open https://zzqtest.invalid/r/[RAuth]</p>');
+  tx_letter(9900005, 'Recommending Review', 'A-ATReview', '<p>Open https://zzqtest.invalid/r/[RAuth]</p>');
+  foreach ($five as $n)
+    tx_letter(9900005, $n, 'Custom', '<p>x</p>');
+  $plan = dh_lc_fix_plan(array(9900005));
+  t_eq($cnt($plan, 9900005, 'status'), 0, 'F11 an active recommending review letter exists: no status change');
+  t_eq(array($cnt($plan, 9900005, 'add'), $cnt($plan, 9900005, 'activate')), array(0, 0), 'F11 nothing added or activated');
+  dh_lc_fix_apply($plan, 15);
+  t_eq(dh_lc_fix_plan(array(9900005)), array(), 'F11 a second run changes nothing');
+});
+
+t_in_txn(function () use ($five, $cnt) {
+  // 9900006: the "Recommending Review" with the area status is INACTIVE: not corrected, not made the area letter.
+  $off = tx_letter(9900006, 'Recommending Review', 'A-ATReview', '<p>Open https://zzqtest.invalid/r/[RAuth]</p>', 1);
+  foreach ($five as $n)
+    tx_letter(9900006, $n, 'Custom', '<p>x</p>');
+  $plan = dh_lc_fix_plan(array(9900006));
+  t_eq($cnt($plan, 9900006, 'status'), 0, 'F12 an inactive wrong letter: no status change');
+  t_eq(array($cnt($plan, 9900006, 'add', 'r_review'), $cnt($plan, 9900006, 'add', 'a_review'), $cnt($plan, 9900006, 'activate')), array(1, 1, 0), 'F12 the recommending and area letters are added; the inactive one is not activated');
+  dh_lc_fix_apply($plan, 15);
+  $o = tx_row($off);
+  t_eq(array($o['l_deleted'], $o['l_event']), array(1, 'A-ATReview'), 'F12 the inactive letter stays inactive with its status');
+  t_eq(dh_lc_fix_plan(array(9900006)), array(), 'F12 a second run changes nothing');
 });
 t_done();

@@ -59,24 +59,37 @@ function _dh_lc_fix_add_line($body)
 	return substr($body, 0, $start).DH_LC_FIX_LINE.substr($body, $start);
 }
 
-/* A review letter's text with [ReviewLink]: the typed link (setting + [RAuth]/[AAuth]) is replaced; text without it gets
-   DH_LC_FIX_LINE. Returns array($body, $how), $how 'replace', 'add' or '' (already has [ReviewLink]). */
+/* A review letter's text with [ReviewLink]. Every http/https address that ends in the letter's own step token ([RAuth] for
+   the recommending letter, [AAuth] for the area letter) is replaced, in the link and in the visible text, whatever its host
+   or path, so no old or other-host copy stays beside the new link. The other step's token is left alone. Returns
+   array($body, $how):
+   '' already has [ReviewLink]; 'replace' every such address was exactly the typed link built from the settings;
+   'replace-other' at least one was some other address; 'add' no such address, DH_LC_FIX_LINE added;
+   'add-stale' no such address, DH_LC_FIX_LINE added, but the token is still in the text (check by hand). */
 function dh_lc_fix_link_body($body, $event)
 {
 	$body = (string) $body;
 	if (strpos($body, '[ReviewLink]') !== FALSE)
 		return array($body, '');
 	$step = $event == 'A-ATReview' ? 'a' : 'r';
-	$typed = dh_letter_review_link($step, $step == 'a' ? '[AAuth]' : '[RAuth]');
-	if ($typed !== '' && strpos($body, $typed) !== FALSE)
-		return array(str_replace($typed, '[ReviewLink]', $body), 'replace');
-	return array(_dh_lc_fix_add_line($body), 'add');
+	$tok = $step == 'a' ? '[AAuth]' : '[RAuth]';
+	$typed = dh_letter_review_link($step, $tok);
+	$other = FALSE;
+	// The address must end at the token: not followed by more address characters.
+	$new = preg_replace_callback('~(?i:https?)://[^\s"\'<>]*?'.preg_quote($tok, '~').'(?![\w%&=?#/\~+-]|\.\w)~', function ($m) use ($typed, &$other) {
+		if ($m[0] !== $typed)
+			$other = TRUE;
+		return '[ReviewLink]';
+	}, $body, -1, $count);
+	if ($count)
+		return array($new, $other ? 'replace-other' : 'replace');
+	return array(_dh_lc_fix_add_line($body), strpos($body, $tok) !== FALSE ? 'add-stale' : 'add');
 }
 
 /**
  * What the fix would do for $centres (default: the template and every active centre), as a list of actions:
  * status (l_id), activate (key, l_id), add (key), link (l_id, how). array(array('do' => 'settings_missing')) when
- * a review-link setting is empty.
+ * a review-link setting is empty. The plan is idempotent: after it is applied, the same call returns no actions.
  */
 function dh_lc_fix_plan($centres = NULL)
 {
@@ -88,17 +101,35 @@ function dh_lc_fix_plan($centres = NULL)
 	foreach ($centres as $c)
 	{
 		$c = (int) $c;
-		// A recommending review letter that carries the area status (Mitra Upakram): correct its status.
-		$wrong = array_map('intval', db_query("select l_id from dh_letter where l_center = :c and l_event = 'A-ATReview' and l_name = 'Recommending Review' and l_body like :r",
+		// A recommending review letter that carries the area status (Mitra Upakram): correct its status. Only an ACTIVE one, and
+		// only when the centre has no active recommending review letter, so a second run finds nothing left to correct.
+		$wrong = array();
+		if (!db_query("select 1 from dh_letter where l_center = :c and l_deleted = 0 and l_event = 'R-ATReview' limit 1", array(':c' => $c))->fetchField())
+			$wrong = array_map('intval', db_query("select l_id from dh_letter where l_center = :c and l_deleted = 0 and l_event = 'A-ATReview' and l_name = 'Recommending Review' and l_body like :r",
+				array(':c' => $c, ':r' => '%[RAuth]%'))->fetchCol());
+		// An inactive letter of that shape is not made the area review letter either.
+		$lookalike = array_map('intval', db_query("select l_id from dh_letter where l_center = :c and l_deleted = 1 and l_event = 'A-ATReview' and l_name = 'Recommending Review' and l_body like :r",
 			array(':c' => $c, ':r' => '%[RAuth]%'))->fetchCol());
 		foreach ($wrong as $id)
 			$plan[] = array('do' => 'status', 'centre' => $c, 'l_id' => $id);
 		foreach (array_keys(dh_letter_lc_roles()) as $key)
 		{
 			list($w, $v) = _dh_lc_fix_where($key);
-			if (($key == 'r_review' && $wrong) || db_query("select 1 from dh_letter where l_center = :c and l_deleted = 0 and $w limit 1", array(':c' => $c, ':v' => $v))->fetchField())
+			$args = array(':c' => $c, ':v' => $v);
+			$skip = '';   // the status-fix letters are not area review letters
+			if ($key == 'a_review' && $wrong)
+			{
+				$skip = ' and l_id not in (:w)';
+				$args[':w'] = $wrong;
+			}
+			if (($key == 'r_review' && $wrong) || db_query("select 1 from dh_letter where l_center = :c and l_deleted = 0 and $w$skip limit 1", $args)->fetchField())
 				continue;
-			$off = (int) db_query("select max(l_id) from dh_letter where l_center = :c and l_deleted = 1 and $w", array(':c' => $c, ':v' => $v))->fetchField();
+			if ($key == 'a_review' && $lookalike)
+			{
+				$skip .= ' and l_id not in (:x)';
+				$args[':x'] = $lookalike;
+			}
+			$off = (int) db_query("select max(l_id) from dh_letter where l_center = :c and l_deleted = 1 and $w$skip", $args)->fetchField();
 			$plan[] = $off ? array('do' => 'activate', 'centre' => $c, 'key' => $key, 'l_id' => $off) : array('do' => 'add', 'centre' => $c, 'key' => $key);
 		}
 		// Every review letter (active or not, and the one corrected above) gets [ReviewLink].

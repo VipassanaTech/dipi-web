@@ -34,18 +34,25 @@ try
 	}
 	$roles = dh_letter_lc_roles();
 	$names = db_query("select c_id, c_name from dh_center")->fetchAllKeyed();
+	// The letters' current names, so a copy in another language can be told from the English one.
+	$ids = array();
+	foreach ($plan as $a)
+		if (isset($a['l_id']))
+			$ids[] = (int) $a['l_id'];
+	$lnames = $ids ? db_query("select l_id, l_name from dh_letter where l_id in (:ids)", array(':ids' => $ids))->fetchAllKeyed() : array();
 	$by = array();
 	$tot = array();
 	foreach ($plan as $a)
 	{
+		$ln = isset($a['l_id']) ? ' ("'.(isset($lnames[$a['l_id']]) ? $lnames[$a['l_id']] : '?').'")' : '';
 		if ($a['do'] == 'add')
 			$what = 'add "'.$roles[$a['key']]['name'].'"';
 		elseif ($a['do'] == 'activate')
-			$what = 'make letter '.$a['l_id'].' ("'.$roles[$a['key']]['name'].'") active';
+			$what = 'make letter '.$a['l_id'].$ln.' active';
 		elseif ($a['do'] == 'status')
-			$what = 'status R-ATReview on letter '.$a['l_id'];
+			$what = 'status R-ATReview on letter '.$a['l_id'].$ln;
 		else
-			$what = 'link '.$a['how'].' on letter '.$a['l_id'];
+			$what = 'link '.$a['how'].' on letter '.$a['l_id'].$ln;
 		$by[$a['centre']][] = $what;
 		$k = $a['do'].($a['do'] == 'link' ? '-'.$a['how'] : '');
 		$tot[$k] = (isset($tot[$k]) ? $tot[$k] : 0) + 1;
