@@ -59,3 +59,82 @@ function dh_seat_reseat_fields($app_id, $course_id, $gender, $now_chowky, $main,
 	}
 	return $fields;
 }
+
+/**
+ * Backrest / chowky / chair change for one student, from a seating plan.
+ * $set: 'none' | 'backrest' (main grid) or 'chowky' | 'chair' (chowky grid).
+ * $from_grid: 'main' | 'chowky', the grid the page shows the student in; if the
+ * server has the student in the other grid, someone changed them meanwhile.
+ * A change of grid also gives the student a new seat in both plans (the same
+ * step as the Zero-Day popup). Same lock as the Zero-Day save.
+ * Returns array('status' => 'OK'|'Failed', 'msg' => ..., 'reload' => bool).
+ */
+function dh_seat_special_apply($course, $app_id, $set, $from_grid, $uid)
+{
+	$out = array('status' => 'Failed', 'msg' => '', 'reload' => FALSE);
+	$sets = array(
+		'none'     => array('aa_chowky' => 0, 'aa_chair' => 0, 'aa_backrest' => 0),
+		'backrest' => array('aa_chowky' => 0, 'aa_chair' => 0, 'aa_backrest' => 1),
+		'chowky'   => array('aa_chowky' => 1, 'aa_chair' => 0, 'aa_backrest' => 0),
+		'chair'    => array('aa_chowky' => 0, 'aa_chair' => 1, 'aa_backrest' => 0),
+	);
+	if (!isset($sets[$set]) || !in_array($from_grid, array('main', 'chowky'), TRUE) || (int) $app_id <= 0)
+	{
+		$out['msg'] = 'Invalid value.';
+		return $out;
+	}
+	if (!dh_manageapp_lock_acquire('dh_app_update_attended', 10.0, 10))
+	{
+		$out['msg'] = 'Unable to get lock. Please try again.';
+		return $out;
+	}
+	try
+	{
+		$r = db_query("select a.a_id, a.a_course, a.a_gender, aa.aa_chowky, aa.aa_chair, aa.aa_group
+			from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
+			where a.a_id = :a and a.a_course in (:c) and a.a_attended = 1 and a.a_type = 'Student'",
+			array(':a' => (int) $app_id, ':c' => dh_seat_plan_courses($course)))->fetchAssoc();
+		if (!$r)
+			$out['msg'] = 'Student not found in this course.';
+		else
+		{
+			$was = ($r['aa_chowky'] || $r['aa_chair']) ? 'chowky' : 'main';
+			$now = ($set == 'chowky' || $set == 'chair') ? 'chowky' : 'main';
+			if ($was !== $from_grid)
+				$out['msg'] = 'This student was changed by someone else. Please reload the page.';
+			else
+			{
+				$fields = $sets[$set] + array('aa_updated_by' => (int) $uid, 'aa_updated' => date('Y-m-d H:i:s'));
+				if ($now !== $was)
+					$fields = array_merge($fields, dh_seat_reseat_fields($r['a_id'], $r['a_course'], $r['a_gender'], $now == 'chowky', TRUE, $r['aa_group']));
+				db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', (int) $r['a_id'])->execute();
+				$out = array('status' => 'OK', 'msg' => '', 'reload' => ($now !== $was));
+			}
+		}
+	}
+	finally
+	{
+		lock_release('dh_app_update_attended');
+	}
+	return $out;
+}
+
+/**
+ * Save handler for the student menu on the seating plans (route
+ * seat-special/%centre_id/%course_id, POST, JSON). The loaders have already
+ * checked the user's centre access; the token stops another site posting here.
+ */
+function dh_seat_special_update($centre, $course)
+{
+	global $user;
+	if (!isset($_POST['token']) || !drupal_valid_token($_POST['token'], 'seat-special'))
+		$out = array('status' => 'Failed', 'msg' => 'Session expired. Reload the page and try again.', 'reload' => FALSE);
+	else
+		$out = dh_seat_special_apply($course,
+			isset($_POST['a']) ? (int) $_POST['a'] : 0,
+			isset($_POST['set']) ? (string) $_POST['set'] : '',
+			isset($_POST['grid']) ? (string) $_POST['grid'] : '',
+			$user->uid);
+	drupal_json_output($out);
+	drupal_exit();
+}
