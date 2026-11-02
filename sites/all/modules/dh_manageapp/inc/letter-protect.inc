@@ -124,3 +124,11 @@ function dh_letter_by_name($centre_id, $name)
 	return (int) db_query("select l_id from dh_letter where l_center = :c and l_name = :n and l_deleted = 0 order by l_id limit 1",
 		array(':c' => $centre_id, ':n' => $name))->fetchField();
 }
+
+/* The [ReviewLink] for an AT: the start of the link from the admin settings ('r' recommending, 'a' area) plus the
+   AT's code. '' when the setting is empty, so a broken link is never sent. No address is written in code. */
+function dh_letter_review_link($step, $code)
+{
+	$base = trim((string) variable_get($step == 'a' ? 'dh_lc_review_link_a' : 'dh_lc_review_link_r', ''));
+	return $base === '' ? '' : $base.$code;
+}

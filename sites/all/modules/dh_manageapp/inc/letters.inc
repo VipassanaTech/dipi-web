@@ -393,7 +393,8 @@ function dh_letters_preview($row)
 		'a_dob' => date('Y-m-d', strtotime('-30 years')), 'a_conf_no' => 'SAMPLE', 'a_auth_code' => 'SAMPLE', 'a_login' => 'sample@example.com',
 		'a_lang_discourse' => 'English', 'a_city' => 'Sample City', 'a_country' => 'India', 'a_state' => 'Sample State',
 		'al_recommending' => 'Sample AT', 'al_area_at' => 'Sample AT');
-	$search = dh_letter_is_at_event($row['l_event']) ? array('[RAuth]' => 'SAMPLE', '[AAuth]' => 'SAMPLE') : array();
+	$search = dh_letter_is_at_event($row['l_event']) ? array('[RAuth]' => 'SAMPLE', '[AAuth]' => 'SAMPLE',
+		'[ReviewLink]' => dh_letter_review_link($row['l_event'] == 'A-ATReview' ? 'a' : 'r', 'SAMPLE')) : array();
 	$search = _dh_letter_values($sample, 0, t('(the comment typed when the status is changed)'), $search);
 	$search['[LetterDetailURL]'] = variable_get('applicant_url', '').'/l.php?a=SAMPLE';
 	list($subject, $body, $sms) = _dh_letter_merge($row, $search);
@@ -1052,7 +1053,7 @@ function dh_letter_fields_editor($db, $centre_id, $uid)
                 $name = trim($val);
                 if (!preg_match('#^[A-Za-z0-9][A-Za-z0-9 _./()\-]*$#', $name))
                     return 'Use only letters, numbers, spaces and - _ . / ( ) in the name. Do not type the square brackets: write Footer, not [Footer].';
-                if (in_array('['.$name.']', _dh_letter_builtin_fields()))
+                if (in_array('['.$name.']', array_merge(_dh_letter_builtin_fields(), array_keys(dh_letter_at_only_fields()))))
                     return 'DIPI already has a field ['.$name.']. Please choose another name.';
                 $dup = db_query("select count(*) from dh_letter_fields where lf_center = :c and lf_deleted = 0 and lf_name = :n and lf_id <> :id",
                     array(':c' => $centre_id, ':n' => $name, ':id' => (int) $host['id']))->fetchField();
@@ -1202,6 +1203,11 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		}
 		$search['[RAuth]'] = $auth_reco;
 		$search['[AAuth]'] = $auth_area;
+		// [ReviewLink]: the link start from the admin settings plus this AT's code (recommending or area).
+		if ($type == 'r-teacher')
+			$search['[ReviewLink]'] = dh_letter_review_link('r', $auth_reco);
+		elseif ($type == 'a-teacher')
+			$search['[ReviewLink]'] = dh_letter_review_link('a', $auth_area);
 	}
 	$search = _dh_letter_values($row, $id, $comment, isset($search) ? $search : array());
 
@@ -1219,6 +1225,13 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		watchdog('LETTER', $q);
 		logit($centre, 'Letter', $id, 'No letter Found!' );		
 		return array('result' => false, 'msg' => 'No Letter Found');
+	}
+	// Never email an AT a broken review link: no setting, no email.
+	if (in_array($type, array('r-teacher', 'a-teacher')) && strpos($letter['l_subject'].$letter['l_body'].$letter['l_sms'], '[ReviewLink]') !== FALSE
+		&& (!isset($search['[ReviewLink]']) || $search['[ReviewLink]'] === ''))
+	{
+		logit($centre, 'Letter', $id, 'Letter not sent: the review link setting is empty (DIPI admin settings)');
+		return array('result' => false, 'msg' => 'Review link setting is empty');
 	}
 	$search['[LetterDetailURL]']= variable_get('applicant_url', '')."/l.php?a=".simple_crypt($row['a_id']."-".$letter['l_id']); //http://applicant.vipassana.co
 
@@ -1338,7 +1351,7 @@ function _dh_letter_unfilled_all($subject, $body, $sms_body, $search, $centre)
 {
 	// only DIPI's own values count as "filled-in data"; brackets in a centre field's text are still checked
 	$values = array();
-	foreach (array_merge(_dh_letter_builtin_fields(), array('[RAuth]', '[AAuth]')) as $k)
+	foreach (array_merge(_dh_letter_builtin_fields(), array('[RAuth]', '[AAuth]', '[ReviewLink]')) as $k)
 		if (isset($search[$k]))
 			$values[] = $search[$k];
 	$values = implode("\n", $values);

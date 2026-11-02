@@ -64,10 +64,10 @@ function dh_letter_combined_values($centre, $event, $ctype, $inners)
 	return $out;
 }
 
-/** Fields that only AT review letters fill (dh_get_letter sets them for AT letters only). */
+/** Fields that only AT review letters fill (dh_get_letter sets them for AT letters only): [RAuth], [AAuth] and [ReviewLink]. */
 function dh_letter_at_only_fields()
 {
-	return array('[RAuth]' => 1, '[AAuth]' => 1);
+	return array('[RAuth]' => 1, '[AAuth]' => 1, '[ReviewLink]' => 1);
 }
 
 /** Letter statuses whose letters go to an AT, so [RAuth]/[AAuth] are filled. */
@@ -286,6 +286,17 @@ function dh_letter_check($centre, $letter)
 		foreach ($more as $g => $_)
 			if (!isset($done[$g]))
 				$queue[] = $g;
+	}
+	// A review letter must carry [ReviewLink], the AT's only way in; the old [RAuth]/[AAuth] still work but should go.
+	if (dh_letter_is_at_event($event) && isset($letter['l_body']))
+	{
+		if (strpos((string) $letter['l_body'], '[ReviewLink]') === FALSE)
+			$problems[] = array('level' => 'error', 'raw' => '[ReviewLink]', 'fix' => NULL, 'part' => 'body',
+				'msg' => t('This review letter has no [ReviewLink]. Add it: it is the only way the AT can open the application from the email.'));
+		foreach (array('[RAuth]', '[AAuth]') as $old)
+			if (strpos((string) $letter['l_body'], $old) !== FALSE)
+				$problems[] = array('level' => 'warning', 'raw' => $old, 'fix' => NULL, 'part' => 'body',
+					'msg' => t('@t still works, but please use [ReviewLink] instead.', array('@t' => $old)));
 	}
 	return $problems;
 }

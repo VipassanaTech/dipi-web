@@ -1356,6 +1356,12 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$group = 'Applicant Settings';
  	$form[$group] = array('#type' => 'fieldset','#title' => 'Applicant Settings' , '#collapsible' => true, '#collapsed' => false);
  	$form[$group]['applicant_url'] = array('#title' => 'Applicant URL', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#default_value' => variable_get('applicant_url', ''));
+ 	$form[$group]['dh_lc_review_link_r'] = array('#title' => 'Recommending AT review link', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#required' => TRUE,
+ 		'#default_value' => variable_get('dh_lc_review_link_r', ''),
+ 		'#description' => 'Start of the link that [ReviewLink] gives the recommending AT. DIPI adds the AT\'s code at the end.');
+ 	$form[$group]['dh_lc_review_link_a'] = array('#title' => 'Area AT review link', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#required' => TRUE,
+ 		'#default_value' => variable_get('dh_lc_review_link_a', ''),
+ 		'#description' => 'Start of the link that [ReviewLink] gives the area AT. DIPI adds the AT\'s code at the end.');
 
 
  	$group = 'Whatsapp Settings';

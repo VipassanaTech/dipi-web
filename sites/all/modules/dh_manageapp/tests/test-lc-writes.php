@@ -62,9 +62,7 @@ t_in_txn(function () {
   list($e, $in) = tw2_validate('edit', $rv, $okIn);
   // Without the status put back, the merge-field check would treat this as a non-AT letter and refuse [RAuth].
   t_ok(!isset($e['l_name']) && strpos(isset($e['l_body']) ? $e['l_body'] : '', '[RAuth]') === FALSE, 'V1 a review letter whose locked fields are not posted: [RAuth] is not refused');
-  $atOnly = dh_letter_at_only_fields();
-  if (isset($atOnly['[ReviewLink]']))  // from Task 3 on, [ReviewLink] is a known field, so the whole save has no error
-    t_eq($e, array(), 'V1 and the form has no error at all');
+  t_eq($e, array(), 'V1 and the form has no error at all');
   t_eq(array($in['l_name'], $in['l_event'], $in['l_course_type']), array('Zzqtest Review', 'R-ATReview', 0), 'V1 and the stored name, status and course type are put back into the input');
 
   list($e, ) = tw2_validate('edit', $rv, array('l_subject' => 's', 'l_body' => '<p>no link</p>', 'l_sms' => ''));
