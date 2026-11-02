@@ -2651,6 +2651,11 @@ function update_status_external($app_id, $new_status)
 					//watchdog('LC ADMIN', 'I got lid '.$lid);
 					if ($lid)
 						dh_send_letter('lc-admin', $app_id, 'Custom', $lid );					
+					else
+					{
+						$log = "No LC Admin Notification letter found!";
+						logit($centre,  'Letter', $app_id, $log );
+					}
 				}
 			}
 

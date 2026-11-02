@@ -13,4 +13,8 @@ foreach ($files as $label => $path) {
 }
 t_eq(substr_count(file_get_contents($files['dh_manageapp.module']), 'dh_letter_by_name('), 3, 'B2 dh_manageapp.module uses the helper 3 times');
 t_eq(substr_count(file_get_contents($files['dh_atportal.module']), 'dh_letter_by_name('), 1, 'B2 dh_atportal.module uses the helper once');
+// B3: when the centre has an LC admin email but no ACTIVE "LC Admin Notification" letter, the skip is logged like the other branches
+$mod = file_get_contents($files['dh_manageapp.module']);
+t_ok(strpos($mod, 'No LC Admin Notification letter found!') !== FALSE, 'B3 the module logs "No LC Admin Notification letter found!"');
+t_ok((bool) preg_match("/dh_letter_by_name\(\\\$centre, 'LC Admin Notification'\);.*?else\s*\{\s*\\\$log = \"No LC Admin Notification letter found!\";\s*logit\(\\\$centre,\s*'Letter',\s*\\\$app_id,\s*\\\$log\s*\);/s", $mod), 'B3 and it is the else branch of that lookup, with the same logit call as its siblings');
 t_done();
