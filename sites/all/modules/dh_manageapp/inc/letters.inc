@@ -1055,9 +1055,17 @@ function dh_manage_letter_fields_handler()
  */
 function dh_letter_fields_editor($db, $centre_id, $uid)
 {
-	// A field is "deleted" by an edit that sets lf_deleted = 1: don't block that on the name/value rules.
-	$deleting = function ($data) {
-		return !empty($data['dh_letter_fields']['lf_deleted']);
+	// lf_deleted is 1 only when the browser sent exactly 1 (spaces around it are ignored); anything else is 0.
+	// The same function decides what is checked and what is stored, so the two cannot differ ('00', ' 0', '0.0', an array).
+	$flag = function ($val) {
+		return (is_scalar($val) && trim((string) $val) === '1') ? 1 : 0;
+	};
+	// A field is "deleted" by an EDIT that sets lf_deleted = 1: don't block that on the name/value rules.
+	// A create never counts as deleting, so a new field always passes the name and value rules.
+	$deleting = function ($data, $host) use ($flag) {
+		if (!isset($host['action']) || $host['action'] !== 'edit')
+			return false;
+		return isset($data['dh_letter_fields']['lf_deleted']) && $flag($data['dh_letter_fields']['lf_deleted']) === 1;
 	};
 	$editor = \DataTables\Editor::inst( $db, 'dh_letter_fields', 'lf_id' ); 
 	 $editor->fields( \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_name' )
@@ -1067,7 +1075,7 @@ function dh_letter_fields_editor($db, $centre_id, $uid)
             ->setFormatter( function ($val) { return trim($val); } )
             // the name is used as [Name] in letters: no brackets, no clash with DIPI's or the centre's other fields
             ->validator( function ($val, $data, $field, $host) use ($centre_id, $deleting) {
-                if ($deleting($data))
+                if ($deleting($data, $host))
                     return true;
                 $name = trim($val);
                 if (!preg_match('#^[A-Za-z0-9][A-Za-z0-9 _./()\-]*$#', $name))
@@ -1084,7 +1092,7 @@ function dh_letter_fields_editor($db, $centre_id, $uid)
             ) )
             // the value may use other merge fields: same rules as a letter
             ->validator( function ($val, $data, $field, $host) use ($centre_id, $deleting) {
-                if ($deleting($data))
+                if ($deleting($data, $host))
                     return true;
                 $msgs = array();
                 foreach (dh_letter_check($centre_id, array('lf_value' => $val)) as $p)
@@ -1092,7 +1100,8 @@ function dh_letter_fields_editor($db, $centre_id, $uid)
                         $msgs[] = $p['msg'];
                 return $msgs ? implode(' ', $msgs) : true;
             } ),
-	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_deleted' ),	 
+	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_deleted' )
+	    	->setFormatter( function ($val) use ($flag) { return $flag($val); } ),
 	    // who saved it (create and edit); never sent to the browser
 	    \DataTables\Editor\Field::inst( 'dh_letter_fields.lf_updated_by' )
 	    	->get( false )
@@ -1344,8 +1353,14 @@ function _dh_letter_values($row, $id, $comment, $search = array())
 
 	$q = "select lf_name, lf_value from dh_letter_fields where lf_center=".$row['CentreID']." and lf_deleted=0";
 	$merge_fields = db_query($q)->fetchAllKeyed();
+	// DIPI's own values for the review-only fields always win: a centre field with the same name is ignored.
+	$at_only = dh_letter_at_only_fields();
 	foreach ($merge_fields as $key => $value) 
+	{
+		if (isset($at_only['['.$key.']']))
+			continue;
 		$search['['.$key.']'] = str_replace (array_keys($search), array_values($search), $value);
+	}
 	return $search;
 }
 

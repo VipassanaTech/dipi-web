@@ -44,6 +44,13 @@ t_in_txn(function () {
   t_ok(!empty($r['result']) && strpos($r['body'], 'https://zzqtest.invalid/r/RCODE9') !== FALSE, 'G1 the recommending AT gets the recommending link with its code');
   $a = dh_get_letter('a-teacher', $aid, 'A-ATReview');
   t_ok(!empty($a['result']) && strpos($a['body'], 'https://zzqtest.invalid/a/ACODE9') !== FALSE, 'G2 the area AT gets the area link with its code');
+  // G4: a centre field named ReviewLink (put in directly, as if it got past Manage Fields) never overrides DIPI's own value
+  $fid = db_insert('dh_letter_fields')->fields(array('lf_center' => $c['c_center'], 'lf_name' => 'ReviewLink',
+    'lf_value' => 'https://zzqother.invalid/x/[RAuth]', 'lf_deleted' => 0, 'lf_updated_by' => 777122))->execute();
+  $o = dh_get_letter('r-teacher', $aid, 'R-ATReview');
+  t_ok(!empty($o['result']) && strpos($o['body'], 'https://zzqtest.invalid/r/RCODE9') !== FALSE, 'G4 a centre field named ReviewLink does not override: the setting + the AT code is still used');
+  t_ok(!empty($o['body']) && strpos($o['body'], 'zzqother.invalid') === FALSE, 'G4 and the centre field text is not in the letter');
+  db_delete('dh_letter_fields')->condition('lf_id', $fid)->execute();
   $GLOBALS['conf']['dh_lc_review_link_r'] = '';
   $e = dh_get_letter('r-teacher', $aid, 'R-ATReview');
   t_ok(empty($e['result']), 'G3 an empty setting: the letter is not sent');
@@ -57,6 +64,43 @@ try {
   $res = dh_letter_fields_editor($db, 9900001, 777121)->transaction(false)->process(array('action' => 'create',
     'data' => array(0 => array('dh_letter_fields' => array('lf_name' => 'ReviewLink', 'lf_value' => 'x', 'lf_deleted' => 0)))))->data();
   t_ok(!empty($res['fieldErrors']), 'M1 a centre field cannot be named ReviewLink');
+
+  // M2: a crafted lf_deleted ('00', ' 0', '0.0', an array) must not count as "deleting" and skip the name rule
+  $reserved = 0;
+  foreach (array('00', ' 0', '0.0', '', array('x')) as $odd) {
+    foreach (array('ReviewLink', 'RAuth', 'AAuth') as $nm) {
+      $res = dh_letter_fields_editor($db, 9900001, 777121)->transaction(false)->process(array('action' => 'create',
+        'data' => array(0 => array('dh_letter_fields' => array('lf_name' => $nm, 'lf_value' => 'x', 'lf_deleted' => $odd)))))->data();
+      $names = array_column(isset($res['fieldErrors']) ? $res['fieldErrors'] : array(), 'name');
+      t_ok(in_array('dh_letter_fields.lf_name', $names), 'M2 create ' . $nm . ' with lf_deleted ' . json_encode($odd) . ' is refused on the name');
+    }
+  }
+  $left = $db->sql("select count(*) as n from dh_letter_fields where lf_center = 9900001 and lf_name in ('ReviewLink','RAuth','AAuth')")->fetch();
+  t_eq($left['n'], 0, 'M2 and no row is left');
+  // the same crafted values on an edit of an ordinary field of this centre
+  $okid = (int) $db->insert('dh_letter_fields', array('lf_center' => 9900001, 'lf_name' => 'Zzqtest Plain', 'lf_value' => 'v', 'lf_deleted' => 0, 'lf_updated_by' => 777121), 'lf_id')->insertId();
+  foreach (array('00', ' 0', '0.0') as $odd) {
+    $res = dh_letter_fields_editor($db, 9900001, 777121)->transaction(false)->process(array('action' => 'edit',
+      'data' => array("row_$okid" => array('dh_letter_fields' => array('lf_name' => 'ReviewLink', 'lf_value' => 'x', 'lf_deleted' => $odd)))))->data();
+    $names = array_column(isset($res['fieldErrors']) ? $res['fieldErrors'] : array(), 'name');
+    t_ok(in_array('dh_letter_fields.lf_name', $names), 'M2 edit to ReviewLink with lf_deleted ' . json_encode($odd) . ' is refused on the name');
+  }
+  $row = $db->sql("select lf_name, lf_deleted from dh_letter_fields where lf_id = $okid")->fetch();
+  t_eq(array($row['lf_name'], $row['lf_deleted']), array('Zzqtest Plain', 0), 'M2 and the edited field is unchanged');
+  // Remove (an edit with lf_deleted 1) still works, and is stored as 1
+  $res = dh_letter_fields_editor($db, 9900001, 777121)->transaction(false)->process(array('action' => 'edit',
+    'data' => array("row_$okid" => array('dh_letter_fields' => array('lf_name' => 'Zzqtest Plain', 'lf_value' => 'v', 'lf_deleted' => '1')))))->data();
+  $row = $db->sql("select lf_deleted from dh_letter_fields where lf_id = $okid")->fetch();
+  t_eq($row['lf_deleted'], 1, 'M2 Remove (lf_deleted 1 on an edit) still deletes');
+
+  // M3: an ordinary create still saves, and lf_deleted is stored as 0
+  foreach (array('0', ' 0', '00', 0) as $odd) {
+    $nm = 'Zzqtest Fine ' . md5(json_encode($odd));
+    $res = dh_letter_fields_editor($db, 9900001, 777121)->transaction(false)->process(array('action' => 'create',
+      'data' => array(0 => array('dh_letter_fields' => array('lf_name' => $nm, 'lf_value' => 'ok', 'lf_deleted' => $odd)))))->data();
+    $row = $db->sql("select lf_deleted from dh_letter_fields where lf_center = 9900001 and lf_name = " . $db->quote($nm))->fetch();
+    t_ok(empty($res['fieldErrors']) && $row && (string) $row['lf_deleted'] === '0', 'M3 an ordinary create with lf_deleted ' . json_encode($odd) . ' saves, stored as 0');
+  }
 } catch (Throwable $e) { t_ok(FALSE, 'unexpected error: ' . $e->getMessage()); }
 $db->rollback();
 t_done();
