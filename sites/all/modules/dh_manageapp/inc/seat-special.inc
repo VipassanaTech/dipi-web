@@ -154,3 +154,34 @@ function dh_seat_moved_fields($app_id, $course_id, $gender, $prev, $now_chowky, 
 	return dh_seat_reseat_fields($app_id, $course_id, $gender, $now_chowky, $grid_changed,
 		($grid_changed || $group_changed) ? $new_group : NULL);
 }
+
+/**
+ * The two buttons for each section's green bar on the seating plans:
+ * "Swap / Move seats" (js/seat-tools.js) and "Store Seat Changes" (the plan's
+ * own save, the same as the button at the top of the page).
+ */
+function dh_seat_section_tools_html()
+{
+	return ' <button type="button" class="dh-swap-toggle" title="Click a student, then a seat: the two swap, or the student moves into an empty seat">&#8644; Swap / Move seats</button>'
+		.' <button type="button" class="store-seat-changes dh-sec-store">Store Seat Changes</button>'
+		.' <span class="dh-swap-status"></span>';
+}
+
+/**
+ * Script tags for js/seat-tools.js and its settings (save URL and token for the
+ * student menu). The plans print their own HTML, not the Drupal page, so the
+ * caller appends this; '' after the first call.
+ */
+function dh_seat_tools_js($centre, $course)
+{
+	$added = &drupal_static(__FUNCTION__);
+	if ($added)
+		return '';
+	$added = TRUE;
+	$path = drupal_get_path('module', 'dh_manageapp').'/js/seat-tools.js';
+	return '<script>window.dhSeatToolsCfg = '.drupal_json_encode(array(
+			'url' => url('seat-special/'.(int) $centre.'/'.(int) $course),
+			'token' => drupal_get_token('seat-special'),
+		)).';</script>'
+		.'<script src="'.$GLOBALS['base_url'].'/'.$path.'?v='.(file_exists($path) ? filemtime($path) : 0).'"></script>';
+}

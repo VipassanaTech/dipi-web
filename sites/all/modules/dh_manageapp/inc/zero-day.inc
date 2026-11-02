@@ -2009,11 +2009,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 
     original_array = [];
 
-  $(".store-seat-changes").click( function(){
-    var $btn = $(this);
-    var update_array = [];
-    var current_path = window.location.pathname;
-    var update_path = current_path.replace("seating", "seating-update");
+  /* Seat of every student card now: [app id, row, col, section id, section label]. */
+  function dhMainSeatPos() {
+    var arr = [];
     $(".ui-sortable li .s-app-id").each(function(){
       var closest_ul = $(this).closest("ul");
       var application_id = $(this).attr("data-s-app-id");
@@ -2028,20 +2026,34 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
         if(student_column == -1)
           student_column = col_per_row - 1 ;
         var $sec = $(this).closest("[data-section]");
-        update_array.push([application_id, student_row, student_column, $sec.attr("data-section") || "", $sec.attr("data-section-label") || ""]);
+        arr.push([application_id, student_row, student_column, $sec.attr("data-section") || "", $sec.attr("data-section-label") || ""]);
       }
     });
+    return arr;
+  }
 
+  /* Students whose seat changed since the page loaded (not stored yet). */
+  function dhMainChanged() {
     var originalMap = {};
     original_array.forEach(function(row){ originalMap[row[0]] = row; });
-
     var changed = [];
-    update_array.forEach(function(row){
+    dhMainSeatPos().forEach(function(row){
       var id = row[0];
       if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row.slice(0,3))) {
         changed.push(row);
       }
     });
+    return changed;
+  }
+
+  /* The seat tools script asks this before a grid move reloads the page. */
+  window.dhSeatPendingCount = function(){ return dhMainChanged().length; };
+
+  $(".store-seat-changes").click( function(){
+    var $btn = $(this);
+    var current_path = window.location.pathname;
+    var update_path = current_path.replace("seating", "seating-update");
+    var changed = dhMainChanged();
 
     if (!changed.length) { alert("No seat changes to save."); return; }
 
@@ -2057,7 +2069,9 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
       var toSave = [];
       changed.forEach(function(row){ if (checkedIds[row[3] || "?"]) toSave.push([row[0], row[1], row[2]]); });
       if (!toSave.length) return;   // no section kept -> save nothing
-      $btn.off("click").html("Processing... updated seating plan will be loaded soon.");
+      // Every Store button (top and per section) goes off, so a save cannot be sent twice.
+      $(".store-seat-changes").off("click").prop("disabled", true);
+      $btn.html("Processing... updated seating plan will be loaded soon.");
       $.getJSON( update_path, { u: JSON.stringify(toSave) } )
         .done(function( json ) {
           if (json.status == "OK") {
@@ -2101,25 +2115,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     $(".sortable-f").disableSelection();
 
 
-    $(".ui-sortable li .s-app-id").each(function(){
-      closest_ul = $(this).closest("ul");
-      student_name = $(this).siblings(".s-name ").html();
-      application_id = $(this).attr("data-s-app-id");
-      col_per_row = $(this).attr("data-cols");
-      if(application_id)
-      {
-        no_of_li = closest_ul.children("li").length;
-        current_li = $(this).closest("li").index()+1;
-        current_position = no_of_li - current_li + 1;
-        student_row = Math.ceil(current_position / col_per_row) - 1;
-        student_column = (current_position % col_per_row) - 1;
-        if(student_column == -1)
-          student_column = col_per_row - 1 ;
-
-        original_array.push([application_id, student_row, student_column]);
-      }
-    });
-    // console.log(original_array);
+    original_array = dhMainSeatPos().map(function(r){ return r.slice(0,3); });
 
   } );
   </script>
@@ -2214,8 +2210,11 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$male_chowky_pos = dh_chowky_position(isset($ini[$male_section]['ChowkyPosition']) ? $ini[$male_section]['ChowkyPosition'] : '', $male_dir);
 
 	// Read-only surface (AT view): never persist seat labels or enable drag.
+	// Editing tools (CW/CH mark, student menu, section buttons) only on the live
+	// editable page: never in the AT view, a PDF or returned HTML.
+	$edit_tools = (!$read_only && $pdf == '' && !$return_html);
 	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only,
-		'seat_aid_edit' => (!$read_only && $pdf == '' && !$return_html));
+		'seat_aid_edit' => $edit_tools, 'special_edit' => $edit_tools);
 	// A side scope (AT view) shows only that side's section.
 	if (dh_view_gender_on('M'))
 	{
@@ -2226,7 +2225,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+		. ($edit_tools ? dh_seat_section_tools_html() : '')
 		. '</div>';
+	if ($edit_tools)
+		$out .= dh_seat_tools_js($centre, $course[0]);
 	if ($mopts['seat_aid_edit'])
 		$out .= dh_seat_aid_js($centre, $course[0]);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
@@ -2257,7 +2259,10 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+		. ($edit_tools ? dh_seat_section_tools_html() : '')
 		. '</div>';
+	if ($edit_tools)
+		$out .= dh_seat_tools_js($centre, $course[0]);
 	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts, 'F', 'Female');
 	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts, 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
@@ -2630,6 +2635,16 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 				elseif ($aid !== '')
 					$aid_html = '<span class="s-aid">'.$aid.'</span>';
 
+				// Student menu (backrest, move to the other grid) for js/seat-tools.js.
+				// Only on an editable plan page: never in print, PDFs or the AT view.
+				$sp_attr = $sp_html = '';
+				if (!empty($opts['special_edit']))
+				{
+					$sp = $r['aa_chowky'] ? 'chowky' : ($r['aa_chair'] ? 'chair' : ($r['aa_backrest'] ? 'backrest' : 'none'));
+					$sp_attr = ' data-special="'.$sp.'"';
+					$sp_html = '<button type="button" class="s-special-btn no-print" title="Backrest / move to the other grid">&#8942;</button>';
+				}
+
 				$t = $r['a_old'] ? '(O)' : '';
 				$teacher = '';
 				$br = ($r['aa_backrest'] || $r['aa_chowky']) ? 's-backrest-yes' : '';
@@ -2640,8 +2655,8 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 					$long_courses  = 'L:'.($r['ac_20d'] + $r['ac_30d'] + $r['ac_45d'] + $r['ac_60d'] + $r['ac_tsc'] + $r['ac_spl']);
 					if ($r['ac_teacher']) $teacher = 's-teacher';
 				}
-				$out .= '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"></div>'.
-					'<div class="s-seat-no">'.str_replace($s_no_html.'</div>', $s_no_html.$aid_html.'</div>', $seat_no).'</div>'.
+				$out .= '<div class="s-app-id" data-s-app-id="'.$r['a_id'].'" data-cols="'.$cushion_cols.'"'.$sp_attr.'></div>'.
+					'<div class="s-seat-no">'.str_replace($s_no_html.'</div>', $s_no_html.$aid_html.$sp_html.'</div>', $seat_no).'</div>'.
 					'<div class="s-acco">'.$r['aa_section'].'-'.$r['aa_acco'].($r['aa_cell'] ? dh_room_cell_sep().$r['aa_cell'] : '').'</div>'.
 					'<div class="s-cell"></div>'.
 					'<div class="s-name '.$teacher.'">'.$r['Full Name'].'</div>'.
@@ -3219,22 +3234,28 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		// plan is often worked on by several people (one per section) at once.
 		var group_original = dhGroupSeatPos();
 
-		$(".store-seat-changes").click(function(){
-			var btn = $(this);
-			var current_path = window.location.pathname;
-			var update_path = current_path.replace("group-seating", "group-seating-update");
-			var update_array = dhGroupSeatPos();
-
+		// Students whose seat changed since the page loaded (not stored yet).
+		function dhGroupChanged(){
 			var originalMap = {};
 			group_original.forEach(function(row){ originalMap[row[0]] = row.slice(0,3); });
-
 			var changed = [];
-			update_array.forEach(function(row){
+			dhGroupSeatPos().forEach(function(row){
 				var id = row[0];
 				if (!originalMap[id] || JSON.stringify(originalMap[id]) !== JSON.stringify(row.slice(0,3))) {
 					changed.push(row);
 				}
 			});
+			return changed;
+		}
+
+		// The seat tools script asks this before a grid move reloads the page.
+		window.dhSeatPendingCount = function(){ return dhGroupChanged().length; };
+
+		$(".store-seat-changes").click(function(){
+			var btn = $(this);
+			var current_path = window.location.pathname;
+			var update_path = current_path.replace("group-seating", "group-seating-update");
+			var changed = dhGroupChanged();
 
 			if (!changed.length) { alert("No seat changes to save."); return; }
 
@@ -3249,7 +3270,9 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				var toSave = [];
 				changed.forEach(function(row){ if (checkedIds[row[3] || "?"]) toSave.push([row[0], row[1], row[2]]); });
 				if (!toSave.length) return;   // no section kept -> save nothing
-				btn.off("click").text("Processing... the seating plan will reload shortly.");
+				// Every Store button (top and per section) goes off, so a save cannot be sent twice.
+				$(".store-seat-changes").off("click").prop("disabled", true);
+				btn.text("Processing... the seating plan will reload shortly.");
 				$.getJSON(update_path, { u: JSON.stringify(toSave) })
 					.done(function(json){
 						if (json.status == "OK") { window.location = current_path; }
@@ -3292,6 +3315,8 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 	if (count($group_labels) == 0)
 		$out .= '<div class="group-empty">No attending students found for this course.</div>';
 
+	// Editing tools (CW/CH mark, student menu, section buttons): live page only.
+	$edit_tools = ($pdf == '' && !$return_html);
 	$first = true;
 	foreach ($group_labels as $g)
 	{
@@ -3316,6 +3341,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 				. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
+				. ($edit_tools ? dh_seat_section_tools_html() : '')
 				. '</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
@@ -3337,9 +3363,11 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			// Cache the computed group seat label into aa_group_seat (same server-side
 			// label logic as the main plan writes to aa_seat), so reports can show it.
 			$gopts = array('write_seat' => true, 'write_col' => 'aa_group_seat',
-				'seat_aid_edit' => ($pdf == '' && !$return_html));
+				'seat_aid_edit' => $edit_tools, 'special_edit' => $edit_tools);
 			if ($gopts['seat_aid_edit'])
 				$out .= dh_seat_aid_js($centre, $course[0]);
+			if ($edit_tools)
+				$out .= dh_seat_tools_js($centre, $course[0]);
 			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts, $sec_id, $sec_lbl);
 			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts, $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
