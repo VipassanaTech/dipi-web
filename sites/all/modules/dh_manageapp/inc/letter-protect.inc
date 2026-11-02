@@ -51,7 +51,8 @@ function dh_letter_lc_role($letter)
 }
 
 /* The LC role of a letter as the database compares it: one query, so MySQL decides accents and trailing
- * spaces. The COLLATE is the dh_letter column collation (utf8mb4_general_ci). Every value is a placeholder. */
+ * spaces. The COLLATE is the dh_letter column collation (utf8mb4_general_ci); CONVERT first makes it work on a
+ * connection that is not utf8mb4 too. Every value is a placeholder. */
 function _dh_letter_lc_role_sql($letter)
 {
 	$args = array(
@@ -65,7 +66,7 @@ function _dh_letter_lc_role_sql($letter)
 		{
 			$args[":v$i"] = $r['event'];
 			$args[":k$i"] = $key;
-			$whens[] = "when :e COLLATE utf8mb4_general_ci = :v$i then :k$i";
+			$whens[] = "when CONVERT(:e USING utf8mb4) COLLATE utf8mb4_general_ci = :v$i then :k$i";
 			$i++;
 		}
 	foreach (dh_letter_lc_roles() as $key => $r)
@@ -73,7 +74,7 @@ function _dh_letter_lc_role_sql($letter)
 		{
 			$args[":v$i"] = $r['name'];
 			$args[":k$i"] = $key;
-			$whens[] = "when :n COLLATE utf8mb4_general_ci = :v$i then :k$i";
+			$whens[] = "when CONVERT(:n USING utf8mb4) COLLATE utf8mb4_general_ci = :v$i then :k$i";
 			$i++;
 		}
 	return db_query("select case " . implode(' ', $whens) . " end", $args)->fetchField();

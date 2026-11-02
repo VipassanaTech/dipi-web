@@ -66,5 +66,19 @@ t_in_txn(function () {
   t_eq(dh_letter_by_name(9900001, 'Zzqtest Same'), $b, 'N1 by name: the lowest-id ACTIVE letter');
   t_eq(dh_letter_by_name(9900001, 'Zzqtest None'), 0, 'N1 no letter gives 0');
   t_eq(dh_letter_by_name(9900002, 'Zzqtest Same'), 0, 'N1 only that centre');
+
+  // S10: the reserved-name check also works when the connection is not utf8mb4 (a utf8mb3 connection)
+  db_query("SET NAMES utf8");
+  try {
+    t_ok(in_array(db_query("select @@character_set_connection")->fetchField(), array('utf8', 'utf8mb3')), 'S10 the test connection really is utf8mb3');
+    list(, $e) = dh_letter_protect(9900001, 'add', '', array('l_name' => 'Área AT Approved', 'l_event' => 'Custom', 'l_course_type' => 0, 'l_body' => 'x'));
+    t_ok($e !== '', 'S10 on a utf8mb3 connection a reserved name that differs only by an accent is still refused');
+    list(, $e) = dh_letter_protect(9900001, 'add', '', array('l_name' => 'Zzqtest Fine Name', 'l_event' => 'R-ATReview ', 'l_course_type' => 0, 'l_body' => '[ReviewLink]'));
+    t_ok($e !== '', 'S10 and the review status with a trailing space is still refused');
+    list(, $e) = dh_letter_protect(9900001, 'add', '', array('l_name' => 'Zzqtest Fine Name', 'l_event' => 'Custom', 'l_course_type' => 0, 'l_body' => 'x'));
+    t_eq($e, '', 'S10 and an ordinary letter still saves');
+  } finally {
+    db_query("SET NAMES utf8mb4");
+  }
 });
 t_done();
