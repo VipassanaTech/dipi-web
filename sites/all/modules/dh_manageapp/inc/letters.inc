@@ -148,9 +148,9 @@ function dh_letters_listing()
 
 		$lc = dh_letter_lc_role(array('l_name' => $r['LetterName'], 'l_event' => $r['l_event']));
 		$rs[] = check_plain($r['LetterName']).($lc !== NULL ? ' '.dh_letter_lc_badge() : '');
-		$rs[] = $r['Status'];
-		$rs[] = $r['Course Type']?$r['Course Type']:"All";
-		$rs[] = $r['Subject'];
+		$rs[] = check_plain($r['Status']);
+		$rs[] = $r['Course Type']?check_plain($r['Course Type']):"All";
+		$rs[] = check_plain($r['Subject']);
 		// merge-field check (inc/letter-check.inc): mistakes students would see, and missing combined fields
 		$c = dh_letter_check_counts(dh_letter_check($centre_id, $r));
 		$bad = $c['error'] + $c['fixed'] + $c['field'];
@@ -200,11 +200,11 @@ function dh_letters_listing()
 
         $lc_d = dh_letter_lc_role(array('l_name' => $r_d['LetterName'], 'l_event' => $r_d['Status']));
         $rs_d[] = check_plain($r_d['LetterName']).($lc_d !== NULL ? ' '.dh_letter_lc_badge() : '');
-        $rs_d[] = $r_d['Status'];
+        $rs_d[] = check_plain($r_d['Status']);
         /* was $r['Course Type'] - the active loop's variable, so every row here
            showed the last active letter's course type instead of its own */
-        $rs_d[] = $r_d['Course Type']?$r_d['Course Type']:"All";
-        $rs_d[] = $r_d['Subject'];
+        $rs_d[] = $r_d['Course Type']?check_plain($r_d['Course Type']):"All";
+        $rs_d[] = check_plain($r_d['Subject']);
         $rs_d[] = l("View", "letters/$centre_id/view/".$r_d['l_id'] );
         if ($can_manage)
             $rs_d[] = $lc_d !== NULL ? '' : l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));

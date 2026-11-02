@@ -33,6 +33,19 @@ t_in_txn(function () {
   t_ok(strpos($html, "letters/9900001/copy/$ord") !== FALSE && strpos($html, "letters/9900001/delete/$ord") !== FALSE, 'L3 an ordinary letter keeps Copy and Mark Inactive');
   t_ok(strpos($html, 'Zzqtest &lt;b&gt;Ordinary&lt;/b&gt;') !== FALSE, 'L3 letter names are shown as text');
 
+  // L4: the Subject, Status and Course Type cells are shown as text, for active and inactive letters
+  $tdid = (int) db_insert('dh_type_detail')->fields(array('td_type' => 'zzqtest', 'td_key' => 'Zzqtest <b>Kind</b>', 'td_val1' => 'Zzqtest <b>Kind</b>',
+    'td_val2' => 0, 'td_val3' => '', 'td_val4' => '', 'td_active' => 1))->execute();
+  tg_letter(array('l_name' => 'Zzqtest Subj Active', 'l_subject' => 'Zzqtest <i>Subj</i>', 'l_event' => 'Zzqtest <s>Ev</s>', 'l_course_type' => $tdid));
+  tg_letter(array('l_name' => 'Zzqtest Subj Inactive', 'l_subject' => 'Zzqtest <u>Gone</u>', 'l_event' => 'Zzqtest <em>Old</em>', 'l_course_type' => $tdid, 'l_deleted' => 1));
+  $_GET['q'] = 'letters/9900001';
+  $html = dh_letters_listing();
+  t_ok(strpos($html, 'Zzqtest &lt;i&gt;Subj&lt;/i&gt;') !== FALSE && strpos($html, 'Zzqtest <i>Subj</i>') === FALSE, 'L4 an active letter Subject is shown as text');
+  t_ok(strpos($html, 'Zzqtest &lt;s&gt;Ev&lt;/s&gt;') !== FALSE && strpos($html, 'Zzqtest <s>Ev</s>') === FALSE, 'L4 an active letter Status is shown as text');
+  t_ok(strpos($html, 'Zzqtest &lt;u&gt;Gone&lt;/u&gt;') !== FALSE && strpos($html, 'Zzqtest <u>Gone</u>') === FALSE, 'L4 an inactive letter Subject is shown as text');
+  t_ok(strpos($html, 'Zzqtest &lt;em&gt;Old&lt;/em&gt;') !== FALSE && strpos($html, 'Zzqtest <em>Old</em>') === FALSE, 'L4 an inactive letter Status is shown as text');
+  t_ok(substr_count($html, 'Zzqtest &lt;b&gt;Kind&lt;/b&gt;') >= 2 && strpos($html, 'Zzqtest <b>Kind</b>') === FALSE, 'L4 the Course Type is shown as text, active and inactive');
+
   $_GET['q'] = "letters/9900001/edit/$lc";
   $f = drupal_get_form('dh_letters_form', tg_row($lc)); $html = drupal_render($f);
   t_ok(strpos($html, 'lc-letter-notice') !== FALSE, 'E1 the LC edit page has the purpose box');
