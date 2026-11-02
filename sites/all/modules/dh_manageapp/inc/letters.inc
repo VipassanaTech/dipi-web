@@ -146,7 +146,8 @@ function dh_letters_listing()
 	{
 		unset($rs);
 
-		$rs[] = $r['LetterName'];
+		$lc = dh_letter_lc_role(array('l_name' => $r['LetterName'], 'l_event' => $r['l_event']));
+		$rs[] = check_plain($r['LetterName']).($lc !== NULL ? ' '.dh_letter_lc_badge() : '');
 		$rs[] = $r['Status'];
 		$rs[] = $r['Course Type']?$r['Course Type']:"All";
 		$rs[] = $r['Subject'];
@@ -163,8 +164,8 @@ function dh_letters_listing()
 		if ($can_manage)
 		{
 			$rs[] = l("Edit", "letters/$centre_id/edit/".$r['l_id'] );
-			$rs[] = l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
-			$rs[] = l("Mark Inactive", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
+			$rs[] = $lc !== NULL ? '' : l("Copy", "letters/$centre_id/copy/".$r['l_id'] );
+			$rs[] = $lc !== NULL ? '' : l("Mark Inactive", "letters/$centre_id/delete/".$r['l_id'], array("attributes" => array("class" => array("delete-letter") ,"txt" => $r['LetterName'])));
 		}
 		$rows[] = array_values($rs);
 	}
@@ -176,6 +177,7 @@ function dh_letters_listing()
 	else
 		$out = '<h2>'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	$out .= "<h2>Active Letters</h2>";
+	$out .= dh_letter_lc_notice_list();
 	if ($n_err || $n_warn)
 	{
 		$out .= '<div class="lc-summary">';
@@ -196,7 +198,8 @@ function dh_letters_listing()
     {
         unset($rs_d);
 
-        $rs_d[] = $r_d['LetterName'];
+        $lc_d = dh_letter_lc_role(array('l_name' => $r_d['LetterName'], 'l_event' => $r_d['Status']));
+        $rs_d[] = check_plain($r_d['LetterName']).($lc_d !== NULL ? ' '.dh_letter_lc_badge() : '');
         $rs_d[] = $r_d['Status'];
         /* was $r['Course Type'] - the active loop's variable, so every row here
            showed the last active letter's course type instead of its own */
@@ -204,7 +207,7 @@ function dh_letters_listing()
         $rs_d[] = $r_d['Subject'];
         $rs_d[] = l("View", "letters/$centre_id/view/".$r_d['l_id'] );
         if ($can_manage)
-            $rs_d[] = l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
+            $rs_d[] = $lc_d !== NULL ? '' : l("Mark Active", "letters/$centre_id/restore/".$r_d['l_id'], array("attributes" => array("class" => array("restore-letter") ,"txt" => $r_d['LetterName'])));
         $rows_d[] = array_values($rs_d);
     }
     $header_d = $can_manage ? array('Letter Name', 'Status', 'Course Type', 'Subject', 'Action', 'Action')
@@ -280,6 +283,8 @@ function dh_letters_view($row)
 		$out .= '<p><em>Read-only view. '.l("Edit this letter", "letters/$centre_id/edit/".$row['l_id']).' to make changes.</em></p>';
 	else
 		$out .= '<p><em>'.t('You are viewing this letter. You do not have permission to change it.').'</em></p>';
+	if (($lc_key = dh_letter_lc_role($row)) !== NULL)
+		$out .= dh_letter_lc_notice_letter($lc_key, FALSE);
 
 	/* metadata */
 	$out .= '<table class="letter-view"><tbody>';
@@ -436,11 +441,15 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		$add = 1;
 
 	$action = arg(2);
+	// Long-course letter being edited? (inc/letter-protect.inc)
+	$lc_key = (!$add && $action == 'edit') ? dh_letter_lc_role($edit_data) : NULL;
 
 	// Merge fields as click-to-insert buttons, so nobody has to type (and mistype) them.
 	$chips = array('dipi' => '', 'centre' => '');
 	foreach (dh_letter_known_fields(arg(1)) as $tok => $src)
 		$chips[$src] .= '<a href="#" class="merge-field-link lf-chip">'.check_plain($tok).'</a> ';
+	if ($lc_key !== NULL && dh_letter_lc_is_review($lc_key))
+		$chips['dipi'] .= '<a href="#" class="merge-field-link lf-chip">[ReviewLink]</a> ';
 	$merge_block = '<p class="lf-help">'.t('Click a field to put it where your cursor is, in the Subject, Letter Body or SMS Text. Square brackets [ ] are only for merge fields: for ordinary text use round brackets ( ).').'</p>'
 		.'<input type="text" id="lf-filter" class="form-text" placeholder="'.t('Find a field').'" autocomplete="off">'
 		.'<div class="lf-group"><div class="lf-title">'.t('DIPI fields').'</div>'.$chips['dipi'].'</div>'
@@ -493,6 +502,16 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		'#default_value' => $add?'':$edit_data['l_body'], '#required' => 1,  );
 	$form['l_sms'] = array('#title' => 'SMS Text', '#type' => 'textarea', '#mutliple' => 1 , '#rows' => '3', '#cols' => 125, '#weight' => 5, 
 		'#default_value' => $add?'':$edit_data['l_sms'], '#required' => 0,  );
+	// Long-course letter: DIPI finds it by name, status and course type, so those are read-only; the server keeps them anyway (dh_letter_save).
+	if ($lc_key !== NULL)
+	{
+		foreach (array('l_name', 'l_event', 'l_course_type') as $col)
+		{
+			$form[$col]['#disabled'] = TRUE;
+			$form[$col]['#description'] = t('Locked: DIPI finds this letter by this.');
+		}
+		$form['lc_notice'] = array('#markup' => dh_letter_lc_notice_letter($lc_key, TRUE), '#weight' => 0.5);
+	}
 
 	$attach_link = '';
 	if (!$add)

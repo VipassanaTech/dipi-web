@@ -478,3 +478,7 @@ fieldset#edit-advanced {
 .lc-preview-form { margin: 8px 0 12px; }
 .lc-preview-form select { max-width: 100%; }
 mark.lc-unfilled { background: #f8d7da; color: #a94442; padding: 0 2px; }
+
+/* Long-course letters (inc/letter-protect.inc) */
+.lc-letter-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px; background: #fff3cd; color: #7a5a00; font-size: 12px; font-weight: bold; white-space: nowrap; }
+.lc-letter-notice { background: #fff8e1; border: 1px solid #f0d58c; border-radius: 4px; padding: 8px 12px; margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }

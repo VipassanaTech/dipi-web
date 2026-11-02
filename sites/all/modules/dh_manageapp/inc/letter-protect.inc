@@ -132,3 +132,29 @@ function dh_letter_review_link($step, $code)
 	$base = trim((string) variable_get($step == 'a' ? 'dh_lc_review_link_a' : 'dh_lc_review_link_r', ''));
 	return $base === '' ? '' : $base.$code;
 }
+
+/* The "LC review letter" label next to an LC letter's name. */
+function dh_letter_lc_badge()
+{
+	return '<span class="lc-letter-badge">'.t('LC review letter').'</span>';
+}
+
+/* The box above the Letters list. */
+function dh_letter_lc_notice_list()
+{
+	return '<div class="lc-letter-notice">'.t('The letters marked LC review letter are used by the long-course approval process. DIPI sends them automatically to the ATs, the student and the LC admin. You can change their subject and text, but not their name, status, course type or whether they are active.').'</div>';
+}
+
+/* The box at the top of an LC letter's edit page ($editing TRUE) or view page. */
+function dh_letter_lc_notice_letter($key, $editing)
+{
+	$roles = dh_letter_lc_roles();
+	$out = '<div class="lc-letter-notice"><strong>'.t('Long-course letter').'</strong> '.dh_letter_lc_badge().'<br>'.check_plain(t($roles[$key]['purpose']));
+	if ($editing)
+	{
+		$out .= '<br>'.t('Change the subject and text carefully: ATs, students and the LC admin rely on this letter. Its name, status and course type are locked because DIPI finds the letter by them.');
+		if (dh_letter_lc_is_review($key))
+			$out .= '<br>'.t('Keep [ReviewLink] in the text: it is the only way the AT can open the application from the email.');
+	}
+	return $out.'</div>';
+}
