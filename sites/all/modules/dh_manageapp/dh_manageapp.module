@@ -15,6 +15,7 @@ include_once(dirname(__FILE__)."/inc/letter-check.inc");
 include_once(dirname(__FILE__)."/inc/letter-log.inc");
 include_once(dirname(__FILE__)."/inc/letter-protect.inc");
 include_once(dirname(__FILE__)."/inc/zero-day.inc");
+include_once(dirname(__FILE__)."/inc/seat-special.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/course-log.inc");
 include_once(dirname(__FILE__)."/inc/student-sync.inc");
@@ -2811,31 +2812,20 @@ function dh_app_update_attended()
 		$prev = db_query("select aa_chowky, aa_chair, aa_group from dh_applicant_attended where aa_applicant=$app_id")->fetchAssoc();
 		$was_chowky = ($prev['aa_chowky'] || $prev['aa_chair']) ? 1 : 0;
 		$now_chowky = ($fields['aa_chowky'] || $fields['aa_chair']) ? 1 : 0;
-		$chowky_chair = $now_chowky ? " and (aa_chowky=1 or aa_chair=1) " : " and aa_chowky=0 and aa_chair=0 ";
-		if ($was_chowky != $now_chowky)
-		{
-			$max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' and a_type='Student' $chowky_chair")->fetchField();
-			$fields['aa_seat_row'] = $max_row + 1;
-			$fields['aa_seat_col'] = 0;
-		}
-		/* Same idea for the group-wise plan: if the student moved to a different
-		   group, or between that group's seats/chowky sub-grids, their stored
-		   group-seat position belongs to the old grid. Reset to the top of the
-		   first column of the new group grid. */
-		if ($was_chowky != $now_chowky || $prev['aa_group'] != $fields['aa_group'])
-		{
-			$max_grp_row = db_query("select max(aa_group_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' and a_type='Student' and aa_group=:g $chowky_chair", array(':g' => $fields['aa_group']))->fetchField();
-			$fields['aa_group_seat_row'] = $max_grp_row + 1;
-			$fields['aa_group_seat_col'] = 0;
-		}
+		$grid_changed = ($was_chowky != $now_chowky);
+		/* Same idea for the group-wise plan: a new group, or the other sub-grid of
+		   the group, gives a new seat at the top of that group grid. */
+		$group_changed = ($prev['aa_group'] != $fields['aa_group']);
+		$fields = array_merge($fields, dh_seat_reseat_fields($app_id, $course_id, $gender, $now_chowky, $grid_changed,
+			($grid_changed || $group_changed) ? $fields['aa_group'] : NULL));
 		db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', $app_id)->execute();
 	}
 	else
 	{
-    $chowky_chair = ($fields['aa_chowky'] || $fields['aa_chair'])?" and (aa_chowky=1 or aa_chair=1) ":" and aa_chowky=0 and aa_chair=0 ";
-    $max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='$gender' and a_type='Student' $chowky_chair")->fetchField();
-    $fields['aa_seat_row'] = $max_row + 1;
-    $fields['aa_seat_col'] = 0;
+		// First seat of a new top row of the student's grid (seating plan only; the
+		// group-wise plan seats new students itself when it loads).
+		$fields = array_merge($fields, dh_seat_reseat_fields($app_id, $course_id, $gender,
+			($fields['aa_chowky'] || $fields['aa_chair']), TRUE, NULL));
 		$system_statuses = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
 		_update_status( $app_id, $system_statuses['STATUS-CONFIRMED'] );
 		
