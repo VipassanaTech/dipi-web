@@ -2817,14 +2817,8 @@ function dh_app_update_attended()
 		   the operator can drag them into place. A change that keeps them in the
 		   same grid leaves their manually-arranged position untouched. */
 		$prev = db_query("select aa_chowky, aa_chair, aa_group from dh_applicant_attended where aa_applicant=$app_id")->fetchAssoc();
-		$was_chowky = ($prev['aa_chowky'] || $prev['aa_chair']) ? 1 : 0;
 		$now_chowky = ($fields['aa_chowky'] || $fields['aa_chair']) ? 1 : 0;
-		$grid_changed = ($was_chowky != $now_chowky);
-		/* Same idea for the group-wise plan: a new group, or the other sub-grid of
-		   the group, gives a new seat at the top of that group grid. */
-		$group_changed = ($prev['aa_group'] != $fields['aa_group']);
-		$fields = array_merge($fields, dh_seat_reseat_fields($app_id, $course_id, $gender, $now_chowky, $grid_changed,
-			($grid_changed || $group_changed) ? $fields['aa_group'] : NULL));
+		$fields = array_merge($fields, dh_seat_moved_fields($app_id, $course_id, $gender, $prev, $now_chowky, $fields['aa_group']));
 		db_update('dh_applicant_attended')->fields($fields)->condition('aa_applicant', $app_id)->execute();
 	}
 	else

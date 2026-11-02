@@ -138,3 +138,19 @@ function dh_seat_special_update($centre, $course)
 	drupal_json_output($out);
 	drupal_exit();
 }
+
+/**
+ * New seat fields for a stored student whose special seating or group is being
+ * saved, shared by the Zero-Day popup and the application edit form. A move to
+ * the other grid (main <-> chowky/chair) gives a new seat in both plans; a new
+ * group alone gives a new seat in the group-wise plan; otherwise nothing.
+ * $prev: the stored row (aa_chowky, aa_chair, aa_group).
+ */
+function dh_seat_moved_fields($app_id, $course_id, $gender, $prev, $now_chowky, $new_group)
+{
+	$was_chowky = ($prev['aa_chowky'] || $prev['aa_chair']) ? TRUE : FALSE;
+	$grid_changed = ($was_chowky != (bool) $now_chowky);
+	$group_changed = ($prev['aa_group'] != $new_group);
+	return dh_seat_reseat_fields($app_id, $course_id, $gender, $now_chowky, $grid_changed,
+		($grid_changed || $group_changed) ? $new_group : NULL);
+}

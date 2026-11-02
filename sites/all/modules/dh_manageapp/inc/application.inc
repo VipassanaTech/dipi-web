@@ -1383,15 +1383,23 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 			$app_aa['aa_backrest'] = 1;
 
 		if ($app_attended_id > 0)
-		{				
+		{
+			/* A change that moves the student to the other grid (main <-> chowky /
+			   chair), or to another group, gives a new seat at the top of the new
+			   grid, as the Zero-Day popup does. Keeping the old seat could put the
+			   student on a seat another student uses, which hides one of them. */
+			$prev = db_query("select aa_chowky, aa_chair, aa_group from dh_applicant_attended where aa_id = :id", array(':id' => $app_attended_id))->fetchAssoc();
+			$new_group = isset($app_aa['aa_group']) ? $app_aa['aa_group'] : $prev['aa_group'];
+			$app_aa = array_merge($app_aa, dh_seat_moved_fields($app_id, $course_id, $app['a_gender'], $prev,
+				($app_aa['aa_chowky'] || $app_aa['aa_chair']), $new_group));
 			db_update('dh_applicant_attended')->fields($app_aa)->condition('aa_id', $app_attended_id)->execute();
 		}
 		else
 		{
-      $chowky_chair = ($app_aa['aa_chowky'] || $app_aa['aa_chair'])?" and (aa_chowky=1 or aa_chair=1) ":" and aa_chowky=0 and aa_chair=0 ";
-      $max_row = db_query("select max(aa_seat_row) from dh_applicant_attended aa left join dh_applicant a on aa.aa_applicant=a.a_id where a_course='$course_id' and a_gender='{$app['a_gender']}'  and a_type='Student' $chowky_chair")->fetchField();
-      $app_aa['aa_seat_row'] = $max_row + 1;
-      $app_aa['aa_seat_col'] = 0;
+			// First seat of a new top row of the student's grid (seating plan only;
+			// the group-wise plan seats new students itself when it loads).
+			$app_aa = array_merge($app_aa, dh_seat_reseat_fields($app_id, $course_id, $app['a_gender'],
+				($app_aa['aa_chowky'] || $app_aa['aa_chair']), TRUE, NULL));
 
 			$app_aa['aa_applicant'] = $app_id;
 			$app_aa['aa_created_by'] = $user->uid;
