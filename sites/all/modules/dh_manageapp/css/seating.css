@@ -468,3 +468,10 @@ li.dh-swap-sel{outline:3px solid #f0a000;outline-offset:-3px}
 button.s-special-btn{margin-left:3px;padding:0 4px;border:1px solid #bbb;border-radius:3px;background:#fff;color:#333;font-size:12px;line-height:14px;cursor:pointer;visibility:hidden;position:relative;z-index:2}
 .ui-state-default:hover .s-special-btn, .s-special-btn:focus{visibility:visible}
 .bg-table-m .s-special-btn, .bg-table-f .s-special-btn{display:none}
+
+/* Regenerate this section (section tool bar) and the note after a regenerate. */
+.dh-sec-regen{display:inline-block;margin:2px 4px 2px 0;padding:6px 12px;border:1px solid #c62828;background:#fff;color:#c62828 !important;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none}
+.dh-sec-regen:hover{background:#c62828;color:#fff !important;text-decoration:none}
+.dh-regen-done{display:inline-block;margin-left:6px;color:#2e7d32;font-weight:700}
+.dh-regen-failed{display:inline-block;margin-left:6px;color:#c62828;font-weight:700}
+@media print{.dh-sec-regen,.dh-regen-done,.dh-regen-failed{display:none !important}}

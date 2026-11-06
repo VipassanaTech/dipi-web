@@ -129,7 +129,10 @@ function dh_course_dashboard()
 		{
 			// Regenerate re-packs everything from the configuration and discards the
 			// current manually-arranged plan, so warn before it runs.
-			$regen_msg = 'Regenerate will re-pack all seats and DESTROY the current saved '.($key == 'Group-wise Seating' ? 'group-wise seating plan' : 'seating plan').'. Continue?';
+			$regen_msg = ($key == 'Group-wise Seating')
+				? 'Regenerate will re-pack ALL groups and DESTROY the current saved group-wise seating plan.'
+				: 'Regenerate will re-pack ALL sections (Male and Female) and DESTROY the current saved seating plan.';
+			$regen_msg .= ' To redo only one section, open the plan and use that section\'s Regenerate this section link. Continue?';
 			$regen_attr = array('onclick' => 'return confirm("'.$regen_msg.'");') + $attr;
 			$out .= '<h2><li>'.l($key, $val, array("attributes" => $attr)).' ('.l('Regenerate', $val, array("query" => array("r" => 1), "attributes" => $regen_attr)).') </li></h2>';
 		}

@@ -68,8 +68,13 @@ function dh_manage_day_zero()
 				$course = array(arg(2), $other_course);
 			else
 				$course = arg(2);
+			// Regenerate (?r=1): the whole plan or one section (?sec=), then the
+			// plain address, so a browser refresh cannot regenerate again.
 			if (isset($_REQUEST['r']))
-				dh_auto_allocate_seats(arg(1), $course);
+			{
+				list($to, $to_opts) = dh_seat_regen_run(arg(1), arg(2), $course, 'main', $_GET);
+				drupal_goto($to, $to_opts);
+			}
 			return dh_generate_seating_plan(arg(1), $course);
 		break;
 		case 'group-seating':
@@ -79,9 +84,16 @@ function dh_manage_day_zero()
 				$course = array(arg(2), $other_course);
 			else
 				$course = arg(2);
-			// Fill in positions for any unseated students (full re-pack when ?r=1),
-			// then render. Uses group columns; the main hall plan is untouched.
-			dh_auto_allocate_group_seats(arg(1), $course, isset($_REQUEST['r']));
+			// Regenerate (?r=1): the whole plan or one section (?sec=), then the
+			// plain address, so a browser refresh cannot regenerate again.
+			if (isset($_REQUEST['r']))
+			{
+				list($to, $to_opts) = dh_seat_regen_run(arg(1), arg(2), $course, 'group', $_GET);
+				drupal_goto($to, $to_opts);
+			}
+			// Fill in positions for any unseated students, then render. Uses group
+			// columns; the main hall plan is untouched.
+			dh_auto_allocate_group_seats(arg(1), $course, FALSE);
 			return dh_generate_group_seating_plan(arg(1), $course);
 		break;
 		case 'group-seating-update':
@@ -909,7 +921,7 @@ function dh_manageapp_attended( $centre, $course_id )
 	$attributes = array('id' => 'table-attending');
 
 	$nt = array("attributes" => array("target" => "_blank"));   // printable pages open in a new tab
-	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id, $nt).' | '.l("Manager List", "manager-list/".$centre."/".$course_id, $nt).' | '.l("Seating Plan", "seating/".$centre."/".$course_id, $nt).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1), "attributes" => array("target" => "_blank", "onclick" => 'return confirm("Regenerate will re-pack all seats and DESTROY the current saved seating plan. Continue?");'))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id, $nt).'  ) </h3>';
+	$out = '<br /><br /><h3>Attending Applicants  ( '.l("Assign Teacher", "assign-teacher/".$centre."/".$course_id).' | '.l("Teacher List", "teacher-list/".$centre."/".$course_id, $nt).' | '.l("Manager List", "manager-list/".$centre."/".$course_id, $nt).' | '.l("Seating Plan", "seating/".$centre."/".$course_id, $nt).' ('.l("Re-Gen", "seating/".$centre."/".$course_id, array("query" => array("r" => 1), "attributes" => array("target" => "_blank", "onclick" => 'return confirm("Regenerate will re-pack ALL sections (Male and Female) and DESTROY the current saved seating plan. To redo only one section, open the plan and use that section\'s Regenerate this section link. Continue?");'))).')  | '.l("Group-wise Seating", "group-seating/".$centre."/".$course_id, $nt).'  ) </h3>';
 	if (!isset($totals['new']['M']['Student'])) $totals['new']['M']['Student'] = 0;
   if (!isset($totals['new']['M']['Sevak'])) $totals['new']['M']['Sevak'] = 0;
   if (!isset($totals['new']['F']['Student'])) $totals['new']['F']['Student'] = 0;
@@ -2137,7 +2149,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/seating.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/seating.css").'");</style></head><body>';
 	$out .= '<div class="helptext no-print">
 		<h2>Editing Seating Plan:</h2>
-		<p>Male and Female each on their own page, laid out from the hall dimensions in the centre\'s Seating Configuration (the [RIGHT] / [LEFT] section keys). "Regenerate" re-packs all seats from the configuration.</p>
+		<p>Male and Female each on their own page, laid out from the hall dimensions in the centre\'s Seating Configuration (the [RIGHT] / [LEFT] section keys). "Regenerate" (on the course page) re-packs all seats from the configuration; "Regenerate this section" (in each section) re-packs only that section.</p>
 		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
 		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
@@ -2164,7 +2176,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
-    <button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
+    <button type="button" class="no-print store-seat-changes">Store Seat Changes</button>'.dh_seat_regen_notice('all');
 	if ( is_array($course) )
 	{
 		$course_name = '';
@@ -2222,13 +2234,13 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	if (dh_view_gender_on('M'))
 	{
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the male page
-	$out .= '<div class="seat-section" data-section="M" data-section-label="Male">';
+	$out .= '<div class="seat-section" id="'.dh_seat_sec_anchor('M').'" data-section="M" data-section-label="Male">';
 	$out .= dh_seat_plan_header('Seating Plan - MALE<br>'.$course_name);
 	$out .= '<div class="dh-print-bar no-print">'
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html() : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'M', 'Male').dh_seat_regen_notice('M') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
@@ -2256,13 +2268,13 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	if (dh_view_gender_on('F'))
 	{
 	$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before the female page
-	$out .= '<div class="seat-section" data-section="F" data-section-label="Female">';
+	$out .= '<div class="seat-section" id="'.dh_seat_sec_anchor('F').'" data-section="F" data-section-label="Female">';
 	$out .= dh_seat_plan_header('Seating Plan - FEMALE<br>'.$course_name);
 	$out .= '<div class="dh-print-bar no-print">'
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html() : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'F', 'Female').dh_seat_regen_notice('F') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
@@ -2373,7 +2385,9 @@ function dh_empty_seat_set($section, $key, $cols, $direction)
 }
 
 
-function dh_auto_allocate_seats($centre, $course)
+// $only_gender 'M' / 'F': re-pack only that gender's section (its main and chowky
+// grids); '' re-packs both.
+function dh_auto_allocate_seats($centre, $course, $only_gender = '')
 {
 	if (!is_array($course))
 		$course = array($course);
@@ -2446,18 +2460,24 @@ function dh_auto_allocate_seats($centre, $course)
 	// Empty-seat sets per side/type, using the same direction the plan renders with
 	// (natural side, overridden by SeatDirection) so a gap lands on the clicked cell.
 	$place = 'RIGHT';
+	if ($only_gender === '' || strtoupper($ini[$place]['gender']) == $only_gender)
+	{
 	$sdir = dh_seat_direction(isset($ini[$place]['SeatDirection']) ? $ini[$place]['SeatDirection'] : '', LEFT_TO_RIGHT);
 	$dis_s = dh_empty_seat_set($ini[$place], 'EmptySeats',  $seat_alloc['SeatsPerRow'][$place],       $sdir);
 	$dis_c = dh_empty_seat_set($ini[$place], 'EmptyChowky', $seat_alloc['SeatsPerRowChowky'][$place], $sdir);
 	$seats['seats'] = dh_allocate_seats($data[$ini[$place]['gender']], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place], $dis_s );
 	$seats['chowky'] = dh_allocate_seats($chowky[$ini[$place]['gender']], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place], $dis_c );
+	}
 
 	$place = 'LEFT';
+	if ($only_gender === '' || strtoupper($ini[$place]['gender']) == $only_gender)
+	{
 	$sdir = dh_seat_direction(isset($ini[$place]['SeatDirection']) ? $ini[$place]['SeatDirection'] : '', RIGHT_TO_LEFT);
 	$dis_s = dh_empty_seat_set($ini[$place], 'EmptySeats',  $seat_alloc['SeatsPerRow'][$place],       $sdir);
 	$dis_c = dh_empty_seat_set($ini[$place], 'EmptyChowky', $seat_alloc['SeatsPerRowChowky'][$place], $sdir);
 	$seats['seats'] = dh_allocate_seats($data[$ini[$place]['gender']], $seat_alloc['SeatsPerRow'][$place], $special_rows['seats'][$place], $dis_s );
 	$seats['chowky'] = dh_allocate_seats($chowky[$ini[$place]['gender']], $seat_alloc['SeatsPerRowChowky'][$place], $special_rows['chowky'][$place], $dis_c );
+	}
 
 	return $seats;
 } 
@@ -3289,7 +3309,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 	$out .= '</head><body>';
 	$out .= '<div class="helptext no-print">
 		<h2>Editing Group-wise Seating Plan:</h2>
-		<p>One page per group, laid out using each group\'s own dimensions from the centre\'s Seating Configuration (GROUP&lt;n&gt;- keys; falls back to the hall dimensions). "Regenerate" re-packs all groups from the configuration.</p>
+		<p>One page per group, laid out using each group\'s own dimensions from the centre\'s Seating Configuration (GROUP&lt;n&gt;- keys; falls back to the hall dimensions). "Regenerate" (on the course page) re-packs all groups from the configuration; "Regenerate this section" (in each section) re-packs only that section.</p>
 		<p>1- Check basic Hall Settings in <a href="/wiki-centre-settings">Center Settings</a>.</p>
 		<p>2- Rearrange the plan by dragging and dropping student seats in grid.</p>
 		<p>3- Create empty rows for a grid by clicking "+ Blank Row" button if needed.</p>
@@ -3316,7 +3336,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		</div>
 		<a class="no-print" href="'.$base_url.'/course/'.$centre.'/'.(is_array($course)?$course[0]:$course).'" style="margin-right:10px">&#8592; Back to Course page</a>
 		<button class="no-print" onclick="window.print()">Print Seating Plan</button>
-		<button type="button" class="no-print store-seat-changes">Store Seat Changes</button>';
+		<button type="button" class="no-print store-seat-changes">Store Seat Changes</button>'.dh_seat_regen_notice('all');
 
 	if (count($group_labels) == 0)
 		$out .= '<div class="group-empty">No attending students found for this course.</div>';
@@ -3339,7 +3359,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			$first = false;
 			$sec_id  = 'g'.trim($g).'_'.$gender;
 			$sec_lbl = 'Group '.trim($g).' - '.ucfirst(strtolower($label));
-			$out .= '<div class="seat-section '.$page_class.'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'">';
+			$out .= '<div class="seat-section '.$page_class.'" id="'.dh_seat_sec_anchor($sec_id).'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'">';
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
 			$out .= dh_seat_plan_header('GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
@@ -3347,7 +3367,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 				. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-				. ($edit_tools ? dh_seat_section_tools_html() : '')
+				. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('group', $centre, (is_array($course)?$course[0]:$course), $sec_id, $sec_lbl).dh_seat_regen_notice($sec_id) : '')
 				. '</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);

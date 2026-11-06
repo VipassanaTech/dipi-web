@@ -185,3 +185,128 @@ function dh_seat_tools_js($centre, $course)
 		)).';</script>'
 		.'<script src="'.$GLOBALS['base_url'].'/'.$path.'?v='.(file_exists($path) ? filemtime($path) : 0).'"></script>';
 }
+
+/**
+ * A plan section id as the plans print it: main plan 'M' / 'F'; group plan
+ * 'g<group>_<M|F>' ('gUnassigned_M' for students with no group).
+ * Returns array(gender, group or NULL, label), or FALSE for anything else.
+ */
+function dh_seat_regen_parse($plan, $sec)
+{
+	$names = array('M' => 'Male', 'F' => 'Female');
+	$sec = (string) $sec;
+	if ($plan == 'main')
+		return isset($names[$sec]) ? array($sec, NULL, $names[$sec]) : FALSE;
+	if ($plan == 'group' && preg_match('/^g(.+)_([MF])$/', $sec, $m) && trim($m[1]) !== '')
+		return array($m[2], $m[1], 'Group '.$m[1].' - '.$names[$m[2]]);
+	return FALSE;
+}
+
+/** The page anchor of a section (the id on its .seat-section div). */
+function dh_seat_sec_anchor($sec)
+{
+	return 'dh-sec-'.preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $sec);
+}
+
+/**
+ * Re-pack one section of a plan from the configuration: its main grid and its
+ * chowky grid, in the same order as the full Regenerate. Every other section
+ * keeps its seats, and the other plan is not touched.
+ * $course: the course id, or the ids of the courses sharing the plan.
+ * Returns the section label, or FALSE for an unknown section.
+ */
+function dh_seat_regen_section($centre, $course, $plan, $sec)
+{
+	$p = dh_seat_regen_parse($plan, $sec);
+	if ($p === FALSE)
+		return FALSE;
+	list($gender, $group, $label) = $p;
+	if (!is_array($course))
+		$course = array($course);
+	if ($plan == 'main')
+	{
+		dh_auto_allocate_seats($centre, $course, $gender);
+		return $label;
+	}
+	// Group plan: clear this section's group seats, then fill in the students
+	// without one - the same step the page runs on every view.
+	$args = array(':c' => $course, ':gen' => $gender);
+	if ($group === 'Unassigned')
+		$in_group = "trim(ifnull(aa.aa_group, '')) = ''";
+	else
+	{
+		$in_group = 'trim(aa.aa_group) = :g';
+		$args[':g'] = $group;
+	}
+	db_query("update dh_applicant_attended aa join dh_applicant a on a.a_id = aa.aa_applicant
+		set aa.aa_group_seat_row = NULL, aa.aa_group_seat_col = NULL
+		where a.a_course in (:c) and a.a_attended = 1 and a.a_type = 'Student' and upper(a.a_gender) = :gen and $in_group", $args);
+	dh_auto_allocate_group_seats($centre, $course, FALSE);
+	return $label;
+}
+
+/**
+ * A plan page opened with ?r=1: regenerate the whole plan, or one section
+ * (?sec=..., only with the section link's token). Returns where to go next,
+ * array(path, options): the plain plan address, so a browser refresh does not
+ * regenerate again, with a note for the page ('done' / 'failed').
+ * $plan: 'main' or 'group'. $get: the request's query values.
+ */
+function dh_seat_regen_run($centre, $course_id, $course, $plan, $get)
+{
+	$path = ($plan == 'group' ? 'group-seating/' : 'seating/').(int) $centre.'/'.(int) $course_id;
+	$sec = isset($get['sec']) ? (string) $get['sec'] : '';
+	if ($sec === '')
+	{
+		if ($plan == 'group')
+			dh_auto_allocate_group_seats($centre, $course, TRUE);
+		else
+			dh_auto_allocate_seats($centre, $course);
+		return array($path, array('query' => array('done' => 'all')));
+	}
+	$ok = isset($get['token']) && drupal_valid_token((string) $get['token'], 'seat-regen')
+		&& dh_seat_regen_section($centre, $course, $plan, $sec) !== FALSE;
+	return array($path, array('query' => array(($ok ? 'done' : 'failed') => $sec), 'fragment' => dh_seat_sec_anchor($sec)));
+}
+
+/**
+ * "Regenerate this section" link for a section's tool bar. It asks first, and
+ * warns about seat changes not yet stored.
+ */
+function dh_seat_regen_link($plan, $centre, $course_id, $sec, $label)
+{
+	$path = ($plan == 'group' ? 'group-seating/' : 'seating/').(int) $centre.'/'.(int) $course_id;
+	$msg = 'Regenerate will re-pack all seats of '.$label.' and DESTROY its current saved seats. Other sections are not changed.';
+	$js = 'var n = window.dhSeatPendingCount ? window.dhSeatPendingCount() : 0;'
+		.' return confirm('.drupal_json_encode($msg)
+		.' + (n > 0 ? "\n\nYou have " + n + (n == 1 ? " unsaved seat change" : " unsaved seat changes") + " on this page; they will be lost." : "")'
+		.' + "\n\nContinue?");';
+	return ' '.l('&#8635; Regenerate this section', $path, array('html' => TRUE,
+		'query' => array('r' => 1, 'sec' => $sec, 'token' => drupal_get_token('seat-regen')),
+		'attributes' => array('class' => array('dh-sec-regen'), 'title' => 'Re-pack only this section from the Seating Configuration', 'onclick' => $js)));
+}
+
+/**
+ * The note after a regenerate, for one section ($sec) or the whole plan ('all'):
+ * '' unless this page was opened by that regenerate. The first note also drops
+ * the note from the address bar.
+ */
+function dh_seat_regen_notice($sec)
+{
+	$sec = (string) $sec;
+	if (isset($_GET['done']) && (string) $_GET['done'] === $sec)
+		$note = ($sec === 'all') ? '&#10003; All sections regenerated.' : '&#10003; Regenerated';
+	elseif (isset($_GET['failed']) && (string) $_GET['failed'] === $sec && $sec !== 'all')
+		$note = 'This section was not regenerated (the link was old). Please use its Regenerate link again.';
+	else
+		return '';
+	$class = isset($_GET['done']) ? 'dh-regen-done' : 'dh-regen-failed';
+	$out = ' <span class="'.$class.' no-print">'.$note.'</span>';
+	$once = &drupal_static(__FUNCTION__);
+	if (!$once)
+	{
+		$once = TRUE;
+		$out .= '<script>if (window.history && history.replaceState) history.replaceState(null, "", location.pathname + location.hash);</script>';
+	}
+	return $out;
+}
