@@ -185,13 +185,26 @@ function dh_autofill_fields($a_id, $form)
 	$f['a_phone_mobile'] = dh_autofill_e164($a['a_mob_country'], $a['a_phone_mobile']);
 
 	// ID: the first one set, Aadhaar > Passport > PAN > Voter ID; the full number (owner decision, 6 Nov).
-	foreach (array('a_aadhar' => 'Aadhar', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_voter_id' => 'Voter ID') as $col => $type)
+	// The VI forms offer only Passport and Voter ID, so they get the first of those that is set.
+	$id_types = array('a_aadhar' => 'Aadhar', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_voter_id' => 'Voter ID');
+	$usual = '';
+	foreach ($id_types as $col => $type)
+		if (trim((string) $a[$col]) !== '')
+		{
+			$usual = $type;
+			break;
+		}
+	if (in_array($form, array('vi_application_form', 'vi_one_day_application_form'), TRUE))
+		$id_types = array('a_passport' => 'Passport', 'a_voter_id' => 'Voter ID');
+	foreach ($id_types as $col => $type)
 		if (trim((string) $a[$col]) !== '')
 		{
 			$f['photo_id_type'] = $type;
 			$f['photo_id_val'] = trim($a[$col]);
 			break;
 		}
+	// The stored issuer and issue date belong to the usual ID; keep them only with that ID.
+	$id_issue_ok = isset($f['photo_id_type']) && $f['photo_id_type'] === $usual;
 
 	// DIPI stores a city id; the form wants the name. Country and state go as codes and names.
 	if ((int) $a['a_city'] > 0)
@@ -211,6 +224,8 @@ function dh_autofill_fields($a_id, $form)
 	foreach (array('ae_nationality', 'ae_id_issued_by', 'ae_seva_details') as $k)
 		$f[$k] = isset($ae[$k]) ? $ae[$k] : '';
 	$f['ae_id_issued'] = isset($ae['ae_id_issued']) ? dh_autofill_date($ae['ae_id_issued']) : '';
+	if (!$id_issue_ok)
+		unset($f['ae_id_issued_by'], $f['ae_id_issued']);
 	if ($group == 'child')
 		foreach (array('ae_father', 'ae_mother', 'ae_parent_course', 'ae_ch_course', 'ae_ch_course_detail', 'ae_ch_practice', 'ae_ch_practice_detail') as $k)
 			$f[$k] = isset($ae[$k]) ? $ae[$k] : '';

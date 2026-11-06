@@ -85,9 +85,28 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	$keys = array_keys($f); sort($keys); $want = array_merge($common, $child); sort($want);
 	t_eq($keys, $want, 'children form: plus the family and children-course fields');
 
-	db_update('dh_applicant')->fields(array('a_aadhar' => '', 'a_passport' => ' ', 'a_pancard' => 'ABCDE1234F'))->condition('a_id', $a)->execute();
+	// VI forms offer only Passport and Voter ID: the best of those, and no issuer/date that belonged to another ID.
+	foreach (array('vi_application_form', 'vi_one_day_application_form') as $vi)
+	{
+		$f = dh_autofill_fields($a, $vi);
+		t_eq(array($f['photo_id_type'], $f['photo_id_val']), array('Passport', 'Z1234567'), "$vi: Passport, not Aadhaar");
+		t_ok(!isset($f['ae_id_issued_by']) && !isset($f['ae_id_issued']), "$vi: no issuer or date of the Aadhaar");
+	}
+	db_update('dh_applicant')->fields(array('a_aadhar' => ''))->condition('a_id', $a)->execute();
+	$f = dh_autofill_fields($a, 'vi_application_form');
+	t_eq(array($f['photo_id_type'], $f['ae_id_issued_by'], $f['ae_id_issued']), array('Passport', 'zzq-ae_id_issued_by', '2001-02-03'),
+		'VI form: Passport is also the usual first choice, so its issuer and date stay');
+
+	db_update('dh_applicant')->fields(array('a_aadhar' => '', 'a_passport' => ' ', 'a_pancard' => 'ABCDE1234F', 'a_voter_id' => 'ZZQ1234567'))->condition('a_id', $a)->execute();
 	$f = dh_autofill_fields($a, 'application_form');
 	t_eq(array($f['photo_id_type'], $f['photo_id_val']), array('Pancard', 'ABCDE1234F'), 'ID: next one set');
+	$f = dh_autofill_fields($a, 'vi_application_form');
+	t_eq(array($f['photo_id_type'], $f['photo_id_val']), array('Voter ID', 'ZZQ1234567'), 'VI form: Voter ID when there is no passport');
+	t_ok(!isset($f['ae_id_issued_by']) && !isset($f['ae_id_issued']), 'VI form: no issuer or date of the PAN');
+	db_update('dh_applicant')->fields(array('a_voter_id' => ''))->condition('a_id', $a)->execute();
+	$f = dh_autofill_fields($a, 'vi_one_day_application_form');
+	t_ok(!isset($f['photo_id_type']) && !isset($f['photo_id_val']) && !isset($f['ae_id_issued_by']) && !isset($f['ae_id_issued']),
+		'VI form, only a PAN: no ID fields at all');
 	t_eq(dh_autofill_fields(-1, 'application_form'), array(), 'unknown application: nothing');
 	t_eq(dh_autofill_fields($a, 'no_such_form'), array(), 'unknown form: nothing');
 
