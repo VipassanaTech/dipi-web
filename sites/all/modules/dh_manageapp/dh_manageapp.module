@@ -16,6 +16,7 @@ include_once(dirname(__FILE__)."/inc/letter-log.inc");
 include_once(dirname(__FILE__)."/inc/letter-protect.inc");
 include_once(dirname(__FILE__)."/inc/zero-day.inc");
 include_once(dirname(__FILE__)."/inc/seat-special.inc");
+include_once(dirname(__FILE__)."/inc/autofill.inc");
 include_once(dirname(__FILE__)."/inc/course.inc");
 include_once(dirname(__FILE__)."/inc/course-log.inc");
 include_once(dirname(__FILE__)."/inc/student-sync.inc");
