@@ -74,6 +74,7 @@ try
 	t_eq(af_post('autofill/email/start', '{not json', $KEY)['code'], 400, 'not JSON: 400');
 	t_eq(af_post('autofill/email/start', array('email' => $EMAIL, 'form' => 'no_such_form'), $KEY)['code'], 400, 'unknown form: 400');
 	t_eq(af_post('autofill/email/verify', array('otp_id' => 'x'), $KEY)['code'], 400, 'missing code: 400');
+	t_eq(af_post('autofill/email/start', array('email' => $EMAIL, 'form' => 'application_form'), $KEY)['code'], 400, 'start without client_ip: 400');
 
 	$r = af_post('autofill/email/start', $start, $KEY);
 	t_eq($r['code'], 200, 'start: 200');

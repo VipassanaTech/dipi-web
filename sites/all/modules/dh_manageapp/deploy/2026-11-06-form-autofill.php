@@ -1,9 +1,10 @@
 <?php
 // Form autofill API (inc/autofill.inc): tables, indexes and settings. Command line only, from the Drupal root:
 //   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php                  tables + settings (switch stays off)
-//   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --indexes        a_email + a_created indexes on dh_applicant (online)
+//   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --indexes        the a_email index on dh_applicant (online; gives up after 10 s of lock wait)
+//   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --cleanup        delete codes/tokens older than 24 h and log rows older than 180 days
 //   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --new-key FILE   a new API key: its hash into DIPI, the key into FILE (0600)
-//   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --rollback       drop the tables, the settings and the indexes
+//   php sites/all/modules/dh_manageapp/deploy/2026-11-06-form-autofill.php --rollback       drop the tables, the settings and the index named a_email
 // Running it again changes nothing that is already there.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
@@ -57,10 +58,15 @@ $tables = array(
 		KEY afl_result (afl_result, afl_tstamp)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 );
-$indexes = array('a_email', 'a_created');
-$settings = array('autofill_enabled', 'autofill_api_key_hash', 'autofill_allowed_ips', 'autofill_test_email', 'autofill_hash_secret', 'autofill_mail_off');
+$settings = array('autofill_enabled', 'autofill_api_key_hash', 'autofill_allowed_ips', 'autofill_test_email', 'autofill_hash_secret', 'autofill_mail_off', 'autofill_global_hourly_cap');
 
-function af_index_exists($name)
+// An index whose FIRST column is a_email, under any name, counts as already there.
+function af_email_index_exists()
+{
+	return (bool) db_query("select count(*) from information_schema.statistics where table_schema = database() and table_name = 'dh_applicant' and column_name = 'a_email' and seq_in_index = 1")->fetchField();
+}
+// An index with exactly this name on dh_applicant.
+function af_index_named($name)
 {
 	return (bool) db_query("select count(*) from information_schema.statistics where table_schema = database() and table_name = 'dh_applicant' and index_name = :n", array(':n' => $name))->fetchField();
 }
@@ -92,17 +98,33 @@ try
 	}
 	elseif ($mode === '--indexes')
 	{
-		foreach ($indexes as $name)
+		if (af_email_index_exists())
+			echo "index a_email: already there\n";
+		else
 		{
-			if (af_index_exists($name))
+			// Never wait long for the table: a long query or a backup holding it must not stall DIPI behind this ALTER.
+			try
 			{
-				echo "index $name: already there\n";
-				continue;
+				db_query("SET SESSION lock_wait_timeout = 10");
+				$t = microtime(TRUE);
+				db_query("ALTER TABLE dh_applicant ADD INDEX a_email (a_email), ALGORITHM=INPLACE, LOCK=NONE");
+				printf("index a_email: added in %.1f s\n", microtime(TRUE) - $t);
 			}
-			$t = microtime(TRUE);
-			db_query("ALTER TABLE dh_applicant ADD INDEX $name ($name), ALGORITHM=INPLACE, LOCK=NONE");
-			printf("index %s: added in %.1f s\n", $name, microtime(TRUE) - $t);
+			catch (Throwable $e)
+			{
+				echo 'FAILED: ' . $e->getMessage() . "\n";
+				echo "DIPI was not changed. Retry when no long query or backup is running.\n";
+				exit(1);
+			}
 		}
+	}
+	elseif ($mode === '--cleanup')
+	{
+		// The same rules as dh_autofill_cleanup() in inc/autofill.inc.
+		$n1 = db_delete('dh_autofill_code')->condition('afc_created', time() - 86400, '<')->execute();
+		$n2 = db_delete('dh_autofill_token')->condition('aft_created', time() - 86400, '<')->execute();
+		$n3 = db_delete('dh_autofill_log')->condition('afl_tstamp', time() - 180 * 86400, '<')->execute();
+		echo "dh_autofill_code: $n1 rows deleted\ndh_autofill_token: $n2 rows deleted\ndh_autofill_log: $n3 rows deleted\n";
 	}
 	elseif ($mode === '--new-key')
 	{
@@ -135,12 +157,21 @@ try
 		foreach ($settings as $v)
 			variable_del($v);
 		echo "autofill settings: removed\n";
-		foreach ($indexes as $name)
-			if (af_index_exists($name))
+		if (af_index_named('a_email'))
+		{
+			try
 			{
-				db_query("ALTER TABLE dh_applicant DROP INDEX $name, ALGORITHM=INPLACE, LOCK=NONE");
-				echo "index $name: dropped\n";
+				db_query("SET SESSION lock_wait_timeout = 10");
+				db_query("ALTER TABLE dh_applicant DROP INDEX a_email, ALGORITHM=INPLACE, LOCK=NONE");
+				echo "index a_email: dropped\n";
 			}
+			catch (Throwable $e)
+			{
+				echo 'FAILED: ' . $e->getMessage() . "\n";
+				echo "The index was not dropped; DIPI was not changed. Retry when no long query or backup is running.\n";
+				exit(1);
+			}
+		}
 	}
 	else
 	{

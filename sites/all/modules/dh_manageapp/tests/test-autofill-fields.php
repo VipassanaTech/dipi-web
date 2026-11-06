@@ -36,12 +36,12 @@ $common = array('a_gender', 'a_old', 'a_f_name', 'a_m_name', 'a_l_name', 'a_addr
 	'a_education', 'a_occupation', 'a_department', 'a_designation', 'a_dob', 'a_phone_mobile', 'photo_id_type', 'photo_id_val',
 	'a_city', 'country', 'ae_nationality', 'ae_id_issued_by', 'ae_seva_details', 'ae_id_issued',
 	'ac_teen', 'ac_10d', 'ac_stp', 'ac_spl', 'ac_20d', 'ac_30d', 'ac_45d', 'ac_60d', 'ac_tsc', 'ac_service', 'ac_practice_details',
-	'ac_first_location', 'ac_first_teacher', 'ac_last_location', 'ac_last_teacher',
 	'ac_first_location_str', 'ac_first_teacher_str', 'ac_last_location_str', 'ac_last_teacher_str', 'date_first_course');
 $child = array('ae_father', 'ae_mother', 'ae_parent_course', 'ae_ch_course', 'ae_ch_course_detail', 'ae_ch_practice', 'ae_ch_practice_detail');
 $lc = array('al_recent_sat_type', 'al_last_lc_type', 'al_last_lc_date', 'al_last_lc_location', 'al_last_lc_teacher');
 $never = array('a_email', 'a_extra', 'a_type', 'a_course', 'a_center', 'a_purpose', 'a_status', 'a_aadhar', 'a_passport',
-	'ae_desc_physical', 'ae_desc_mental', 'ae_desc_medication', 'ae_teen_std', 'al_at_year', 'al_intoxicants', 'photo', 'tsc_duration', 'a_dob_s');
+	'ae_desc_physical', 'ae_desc_mental', 'ae_desc_medication', 'ae_teen_std', 'al_at_year', 'al_intoxicants', 'photo', 'tsc_duration', 'a_dob_s',
+	'ac_first_location', 'ac_first_teacher', 'ac_last_location', 'ac_last_teacher');
 
 t_in_txn(function () use ($common, $child, $lc, $never) {
 	$c = t_make_course(array('c_center' => 5, 'c_course_type' => af_type('10-Day')));
@@ -89,5 +89,14 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	$f = dh_autofill_fields($a, 'application_form');
 	t_eq(array($f['photo_id_type'], $f['photo_id_val']), array('Pancard', 'ABCDE1234F'), 'ID: next one set');
 	t_eq(dh_autofill_fields(-1, 'application_form'), array(), 'unknown application: nothing');
+	t_eq(dh_autofill_fields($a, 'no_such_form'), array(), 'unknown form: nothing');
+
+	// City fallback: no dh_city name, so the typed city is used.
+	db_update('dh_applicant')->fields(array('a_city' => 0, 'a_city_str' => ' Zzqtown '))->condition('a_id', $a)->execute();
+	t_eq(dh_autofill_fields($a, 'application_form')['a_city'], 'Zzqtown', 'city: a_city 0 falls back to a_city_str');
+	db_update('dh_applicant')->fields(array('a_city' => 99999999, 'a_city_str' => 'Zzqtown'))->condition('a_id', $a)->execute();
+	t_eq(dh_autofill_fields($a, 'application_form')['a_city'], 'Zzqtown', 'city: no matching dh_city row falls back too');
+	db_update('dh_applicant')->fields(array('a_city' => 0, 'a_city_str' => ''))->condition('a_id', $a)->execute();
+	t_ok(!array_key_exists('a_city', dh_autofill_fields($a, 'application_form')), 'city: nothing at all is left out');
 });
 t_done();

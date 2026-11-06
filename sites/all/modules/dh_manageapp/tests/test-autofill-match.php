@@ -94,6 +94,12 @@ t_in_txn(function () {
 
 	t_eq(af_result('zzq-af-none@example.invalid', 'adult'), 'none', 'unknown email: none');
 	t_eq(dh_autofill_applications(''), array(), 'empty email: nothing');
+
+	// The collation ignores accents; only the exact spelling is found.
+	$acc = af_app($ten, 'zzq-andr'."\xC3\xA9".'@example.invalid', 'Neha', 'Bansal', 'F', '2025-01-01 10:00:00');
+	t_eq(dh_autofill_applications('zzq-andre@example.invalid'), array(), 'accented email: the unaccented spelling is not found');
+	$found = dh_autofill_applications('zzq-andr'."\xC3\xA9".'@example.invalid');
+	t_eq(array(count($found), (int) $found[0]['a_id'], array_key_exists('a_email', $found[0])), array(1, $acc, FALSE), 'accented email: the exact spelling is found (no a_email in the row)');
 });
 if ($old_test_email === NULL)
 	variable_del('autofill_test_email');

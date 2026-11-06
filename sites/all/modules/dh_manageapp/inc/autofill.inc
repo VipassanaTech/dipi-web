@@ -59,15 +59,24 @@ function dh_autofill_applications($email)
 	if ($email === '')
 		return array();
 	$test = trim((string) variable_get('autofill_test_email', ''));
-	$rows = db_query("select a.a_id, a.a_f_name, a.a_l_name, a.a_gender, a.a_created, a.a_center, td.td_key
+	$rows = db_query("select a.a_id, a.a_email, a.a_f_name, a.a_l_name, a.a_gender, a.a_created, a.a_center, td.td_key
 		from dh_applicant a
 		left join dh_course c on c.c_id = a.a_course
 		left join dh_type_detail td on td.td_id = c.c_course_type
 		where a.a_email = :e and ifnull(a.a_status, '') not in ('Duplicate', 'Errors')", array(':e' => $email))->fetchAll(PDO::FETCH_ASSOC);
 	$out = array();
+	$want = dh_autofill_email_norm($email);
 	foreach ($rows as $r)
+	{
+		// The collation ignores accents ('andre' = 'andré'); only the exact spelling counts.
+		if (dh_autofill_email_norm($r['a_email']) !== $want)
+			continue;
 		if ((int) $r['a_center'] != 302 || ($test !== '' && strcasecmp($test, $email) == 0))
+		{
+			unset($r['a_email']);
 			$out[] = $r;
+		}
+	}
 	return $out;
 }
 
@@ -153,6 +162,8 @@ function dh_autofill_date($v)
 function dh_autofill_fields($a_id, $form)
 {
 	$forms = dh_autofill_forms();
+	if (!is_string($form) || !array_key_exists($form, $forms))
+		return array();
 	$group = $forms[$form];
 	$a = db_query("select * from dh_applicant where a_id = :id", array(':id' => $a_id))->fetchAssoc();
 	if (!$a)
@@ -185,6 +196,8 @@ function dh_autofill_fields($a_id, $form)
 	// DIPI stores a city id; the form wants the name. Country and state go as codes and names.
 	if ((int) $a['a_city'] > 0)
 		$f['a_city'] = db_query("select c_name from dh_city where c_id = :id", array(':id' => $a['a_city']))->fetchField();
+	if (empty($f['a_city']) && trim((string) $a['a_city_str']) !== '')
+		$f['a_city'] = trim($a['a_city_str']);
 	if (trim((string) $a['a_country']) !== '')
 	{
 		$cn = db_query("select c_name from dh_country where c_code = :c", array(':c' => $a['a_country']))->fetchField();
@@ -203,7 +216,7 @@ function dh_autofill_fields($a_id, $form)
 			$f[$k] = isset($ae[$k]) ? $ae[$k] : '';
 
 	foreach (array('ac_teen', 'ac_10d', 'ac_stp', 'ac_spl', 'ac_20d', 'ac_30d', 'ac_45d', 'ac_60d', 'ac_tsc', 'ac_service',
-		'ac_practice_details', 'ac_first_location', 'ac_first_teacher', 'ac_last_location', 'ac_last_teacher',
+		'ac_practice_details',
 		'ac_first_location_str', 'ac_first_teacher_str', 'ac_last_location_str', 'ac_last_teacher_str') as $k)
 		$f[$k] = isset($ac[$k]) ? $ac[$k] : '';
 	if ($ac)
@@ -263,7 +276,8 @@ function dh_autofill_cleanup()
  */
 function dh_autofill_send_code($email, $code)
 {
-	if (variable_get('autofill_mail_off', 0))
+	// autofill_mail_off is for local tests only: ignored on a vri server (the same check tests/lib.php uses).
+	if (variable_get('autofill_mail_off', 0) && stripos((string) db_query('select @@hostname')->fetchField(), 'vri') === FALSE)
 		return TRUE;
 	$from = 'Vipassana Applications <donotreply@vridhamma.org>';
 	$to = variable_get('mode_test', '0') ? variable_get('mode_test_emails', '') : $email;
@@ -308,7 +322,8 @@ function dh_autofill_email_start($in, $mail_fn = 'dh_autofill_send_code')
 	dh_autofill_cleanup();
 	$eh = dh_autofill_hmac($email);
 
-	$valid = (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
+	// a_email is varchar(100): a longer one is treated as invalid (nothing stored or sent).
+	$valid = (bool) filter_var($email, FILTER_VALIDATE_EMAIL) && mb_strlen($email, 'UTF-8') <= 100;
 	$otp_id = bin2hex(random_bytes(16));
 	$code = sprintf('%06d', random_int(0, 999999));
 
@@ -343,6 +358,14 @@ function dh_autofill_email_start($in, $mail_fn = 'dh_autofill_send_code')
 					array(':ip' => $ip, ':t' => $now - 3600))->fetchCol();
 				if (count($ipt) >= 60)
 					$wait = max($wait, $ipt[59] + 3600 - $now);
+			}
+			// Global cap on code emails per hour, whoever asks.
+			$cap = (int) variable_get('autofill_global_hourly_cap', 1000);
+			$all = (int) db_query("select count(*) from dh_autofill_code where afc_created > :t", array(':t' => $now - 3600))->fetchField();
+			if ($all >= $cap)
+			{
+				$wait = 300;
+				watchdog('autofill', 'Global hourly code cap reached', array(), WATCHDOG_WARNING);
 			}
 			if ($wait <= 0)
 				db_insert('dh_autofill_code')->fields(array(
@@ -406,6 +429,8 @@ function dh_autofill_email_verify($in)
 	{
 		$tries = (int) db_query("select afc_tries from dh_autofill_code where afc_otp_id = :id", array(':id' => $otp_id))->fetchField();
 		$status = ($tries >= 5) ? 'too_many_attempts' : 'wrong_code';
+		if ($tries >= 5)
+			db_update('dh_autofill_code')->fields(array('afc_email' => ''))->condition('afc_otp_id', $otp_id)->execute();
 		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], $status, $row['afc_client_ip']);
 		return array('status' => $status);
 	}
@@ -463,6 +488,11 @@ function dh_autofill_fetch($in)
 		dh_autofill_log('fetch', $t ? $t['aft_email_hash'] : '', $form, 'invalid_token', $t ? $t['aft_client_ip'] : '');
 		return array('status' => 'invalid_token');
 	}
+	if (!db_query("select count(*) from dh_applicant where a_id = :id", array(':id' => $t['aft_source_app']))->fetchField())
+	{
+		dh_autofill_log('fetch', $t['aft_email_hash'], $form, 'invalid_token', $t['aft_client_ip']);
+		return array('status' => 'invalid_token');
+	}
 	$out = array('source' => dh_autofill_source_info($t['aft_source_app']), 'fields' => dh_autofill_fields($t['aft_source_app'], $form));
 	dh_autofill_log('fetch', $t['aft_email_hash'], $form, 'fetched', $t['aft_client_ip']);
 	return $out;
@@ -501,7 +531,7 @@ function dh_autofill_endpoint($step)
 	if (!dh_autofill_caller_ok())
 		dh_autofill_reply(403, array('status' => 'forbidden'));
 	$in = json_decode(file_get_contents('php://input'), TRUE);
-	$need = array('email_start' => array('email', 'form'), 'email_verify' => array('otp_id', 'code'), 'fetch' => array('token', 'form'));
+	$need = array('email_start' => array('email', 'form', 'client_ip'), 'email_verify' => array('otp_id', 'code'), 'fetch' => array('token', 'form'));
 	$bad = !is_array($in) || !isset($need[$step]);
 	if (!$bad)
 		foreach ($need[$step] as $k)

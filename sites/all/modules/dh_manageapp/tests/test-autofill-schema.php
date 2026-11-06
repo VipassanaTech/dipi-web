@@ -14,8 +14,7 @@ $cols = db_query("select column_name from information_schema.columns where table
 t_eq($cols, array('aft_hash', 'aft_email_hash', 'aft_form', 'aft_result', 'aft_source_app', 'aft_client_ip', 'aft_created', 'aft_expires', 'aft_used'), 'token table columns');
 $cols = db_query("select column_name from information_schema.columns where table_schema = database() and table_name = 'dh_autofill_log' order by ordinal_position")->fetchCol();
 t_eq($cols, array('afl_id', 'afl_tstamp', 'afl_endpoint', 'afl_email_hash', 'afl_form', 'afl_result', 'afl_client_ip', 'afl_request_id'), 'log table columns');
-foreach (array('a_email', 'a_created') as $i)
-	t_ok((bool) db_query("select count(*) from information_schema.statistics where table_schema = database() and table_name = 'dh_applicant' and index_name = :n and column_name = :n", array(':n' => $i))->fetchField(), "index $i on dh_applicant");
+t_ok((bool) db_query("select count(*) from information_schema.statistics where table_schema = database() and table_name = 'dh_applicant' and column_name = 'a_email' and seq_in_index = 1")->fetchField(), 'an index starting with a_email on dh_applicant');
 t_ok(preg_match('/^[0-9a-f]{64}$/', variable_get('autofill_hash_secret', '')) === 1, 'hash secret set');
 t_eq((string) variable_get('autofill_enabled', 'unset'), '0', 'switch is off by default');
 t_done();
