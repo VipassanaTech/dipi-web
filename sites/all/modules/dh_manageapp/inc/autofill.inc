@@ -221,3 +221,218 @@ function dh_autofill_fields($a_id, $form)
 			unset($f[$k]);
 	return $f;
 }
+
+/** HMAC with this site's own secret (set by the installer), for emails and codes at rest. */
+function dh_autofill_hmac($v)
+{
+	$secret = (string) variable_get('autofill_hash_secret', '');
+	if (strlen($secret) < 32)
+		throw new Exception('autofill_hash_secret is not set');
+	return hash_hmac('sha256', (string) $v, $secret);
+}
+
+/** An email as compared and hashed: trimmed and lowercased. */
+function dh_autofill_email_norm($e)
+{
+	return mb_strtolower(trim((string) $e), 'UTF-8');
+}
+
+/** One audit row. Never a code, token, email, name or field value. */
+function dh_autofill_log($endpoint, $email_hash, $form, $result, $ip, $request_id = '')
+{
+	db_insert('dh_autofill_log')->fields(array(
+		'afl_tstamp' => REQUEST_TIME, 'afl_endpoint' => $endpoint, 'afl_email_hash' => (string) $email_hash,
+		'afl_form' => substr((string) $form, 0, 64), 'afl_result' => $result,
+		'afl_client_ip' => substr((string) $ip, 0, 45), 'afl_request_id' => substr((string) $request_id, 0, 64),
+	))->execute();
+}
+
+/** Codes and tokens go after 24 hours, the audit log after 180 days. */
+function dh_autofill_cleanup()
+{
+	db_delete('dh_autofill_code')->condition('afc_created', REQUEST_TIME - 86400, '<')->execute();
+	db_delete('dh_autofill_token')->condition('aft_created', REQUEST_TIME - 86400, '<')->execute();
+	db_delete('dh_autofill_log')->condition('afl_tstamp', REQUEST_TIME - 180 * 86400, '<')->execute();
+}
+
+/**
+ * Email the code through Mailgun, waiting at most 3 seconds. TRUE when Mailgun accepted it.
+ * In test mode (mode_test) DIPI sends to the test address instead, as it does for letters.
+ * autofill_mail_off (local tests only, never on prod) skips sending. The email carries no
+ * application id, so the bounce webhook (Email Error tag) leaves it alone.
+ */
+function dh_autofill_send_code($email, $code)
+{
+	if (variable_get('autofill_mail_off', 0))
+		return TRUE;
+	$from = 'Vipassana Applications <donotreply@vridhamma.org>';
+	$to = variable_get('mode_test', '0') ? variable_get('mode_test_emails', '') : $email;
+	try
+	{
+		$conf = new \Mailgun\HttpClientConfigurator();
+		$conf->setApiKey(variable_get('mailgun_key', ''));
+		$conf->setHttpClient(new \Http\Client\Curl\Client(NULL, NULL, array(CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2)));
+		$mg = \Mailgun\Mailgun::configure($conf);
+		$mg->messages()->send(get_mailgun_domain($from), array(
+			'from' => $from,
+			'to' => $to,
+			'subject' => 'Your code for the Vipassana application',
+			'text' => 'Your code to fill your Vipassana application is '.$code.'. It expires in 10 minutes. If you did not ask for this, ignore this email.',
+			'o:tag' => 'autofill-code',
+			'o:tracking' => 'no',
+		));
+		return TRUE;
+	}
+	catch (Throwable $e)
+	{
+		watchdog('autofill', 'Code email failed: @c', array('@c' => get_class($e)), WATCHDOG_WARNING);
+		return FALSE;
+	}
+}
+
+/**
+ * email/start: store a code and email it. The same answer for every email, known or not, and
+ * no application lookup here, so neither the answer nor its timing tells whether DIPI knows the
+ * email. Over a limit: array('status' => 'limited', 'retry_after' => seconds), and no email.
+ * $mail_fn($email, $code) sends the code (tests pass their own).
+ */
+function dh_autofill_email_start($in, $mail_fn = 'dh_autofill_send_code')
+{
+	$email = dh_autofill_email_norm(isset($in['email']) ? $in['email'] : '');
+	$form = (string) $in['form'];
+	$ip = isset($in['client_ip']) ? substr((string) $in['client_ip'], 0, 45) : '';
+	$req = isset($in['request_id']) ? (string) $in['request_id'] : '';
+	$now = REQUEST_TIME;
+	dh_autofill_cleanup();
+	$eh = dh_autofill_hmac($email);
+
+	// Limits: per email 1 a minute, 3 an hour, 10 a day; per client IP 60 an hour.
+	$wait = 0;
+	$times = db_query("select afc_created from dh_autofill_code where afc_email_hash = :h and afc_created > :t order by afc_created desc",
+		array(':h' => $eh, ':t' => $now - 86400))->fetchCol();
+	if ($times && $now - $times[0] < 60)
+		$wait = max($wait, 60 - ($now - $times[0]));
+	$hour = array();
+	foreach ($times as $t)
+		if ($t > $now - 3600)
+			$hour[] = $t;
+	if (count($hour) >= 3)
+		$wait = max($wait, $hour[2] + 3600 - $now);
+	if (count($times) >= 10)
+		$wait = max($wait, $times[9] + 86400 - $now);
+	if ($ip !== '')
+	{
+		$ipt = db_query("select afc_created from dh_autofill_code where afc_client_ip = :ip and afc_created > :t order by afc_created desc",
+			array(':ip' => $ip, ':t' => $now - 3600))->fetchCol();
+		if (count($ipt) >= 60)
+			$wait = max($wait, $ipt[59] + 3600 - $now);
+	}
+	if ($wait > 0)
+	{
+		dh_autofill_log('email_start', $eh, $form, 'limited', $ip, $req);
+		return array('status' => 'limited', 'retry_after' => (int) $wait);
+	}
+
+	$otp_id = bin2hex(random_bytes(16));
+	if (filter_var($email, FILTER_VALIDATE_EMAIL))
+	{
+		$code = sprintf('%06d', random_int(0, 999999));
+		db_insert('dh_autofill_code')->fields(array(
+			'afc_otp_id' => $otp_id, 'afc_email' => $email, 'afc_email_hash' => $eh,
+			'afc_code_hash' => dh_autofill_hmac($otp_id.'|'.$code), 'afc_form' => $form, 'afc_client_ip' => $ip,
+			'afc_tries' => 0, 'afc_created' => $now, 'afc_expires' => $now + 600,
+		))->execute();
+		$sent = call_user_func($mail_fn, $email, $code);
+		dh_autofill_log('email_start', $eh, $form, $sent ? 'sent' : 'mail_failed', $ip, $req);
+	}
+	else
+		dh_autofill_log('email_start', $eh, $form, 'bad_email', $ip, $req);
+	return array('otp_id' => $otp_id, 'expires_in' => 600, 'resend_after' => 60);
+}
+
+/**
+ * email/verify: check the code (5 wrong tries at most), then group the email's applications
+ * into people for the form the code was asked for, and issue a 15-minute token.
+ */
+function dh_autofill_email_verify($in)
+{
+	$otp_id = (string) $in['otp_id'];
+	$code = trim((string) $in['code']);
+	$now = REQUEST_TIME;
+	$row = db_query("select * from dh_autofill_code where afc_otp_id = :id", array(':id' => $otp_id))->fetchAssoc();
+	if (!$row || $row['afc_used'] || $row['afc_expires'] < $now)
+	{
+		dh_autofill_log('email_verify', $row ? $row['afc_email_hash'] : '', $row ? $row['afc_form'] : '', 'expired', $row ? $row['afc_client_ip'] : '');
+		return array('status' => 'expired');
+	}
+	if ($row['afc_tries'] >= 5)
+	{
+		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], 'too_many_attempts', $row['afc_client_ip']);
+		return array('status' => 'too_many_attempts');
+	}
+	if (!preg_match('/^\d{6}$/', $code) || !hash_equals($row['afc_code_hash'], dh_autofill_hmac($otp_id.'|'.$code)))
+	{
+		db_query("update dh_autofill_code set afc_tries = afc_tries + 1 where afc_otp_id = :id", array(':id' => $otp_id));
+		$status = ($row['afc_tries'] + 1 >= 5) ? 'too_many_attempts' : 'wrong_code';
+		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], $status, $row['afc_client_ip']);
+		return array('status' => $status);
+	}
+	// The code is used once: only the call that marks it gets a token.
+	$n = db_update('dh_autofill_code')->fields(array('afc_used' => $now, 'afc_email' => ''))
+		->condition('afc_otp_id', $otp_id)->isNull('afc_used')->execute();
+	if ($n != 1)
+		return array('status' => 'expired');
+	$forms = dh_autofill_forms();
+	$m = dh_autofill_match(dh_autofill_applications($row['afc_email']), $forms[$row['afc_form']]);
+	$token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+	db_insert('dh_autofill_token')->fields(array(
+		'aft_hash' => hash('sha256', $token), 'aft_email_hash' => $row['afc_email_hash'], 'aft_form' => $row['afc_form'],
+		'aft_result' => $m['result'], 'aft_source_app' => ($m['result'] == 'single') ? $m['source']['a_id'] : NULL,
+		'aft_client_ip' => $row['afc_client_ip'], 'aft_created' => $now, 'aft_expires' => $now + 900,
+	))->execute();
+	$out = array('status' => 'verified', 'token' => $token, 'result' => $m['result']);
+	if ($m['result'] == 'single')
+		$out['person'] = array(
+			'masked_name' => dh_autofill_mask_name($m['source']['a_f_name'], $m['source']['a_l_name']),
+			'last_applied_month' => substr($m['source']['a_created'], 0, 7),
+		);
+	dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], $m['result'], $row['afc_client_ip']);
+	return $out;
+}
+
+/** The source block of fetch: application id, created, centre name and course type name. */
+function dh_autofill_source_info($a_id)
+{
+	$r = db_query("select a.a_id, a.a_created, ce.c_name centre_name, td.td_val1 course_type
+		from dh_applicant a
+		left join dh_center ce on ce.c_id = a.a_center
+		left join dh_course c on c.c_id = a.a_course
+		left join dh_type_detail td on td.td_id = c.c_course_type
+		where a.a_id = :id", array(':id' => $a_id))->fetchAssoc();
+	return array('application_id' => (int) $r['a_id'], 'created' => $r['a_created'],
+		'centre_name' => (string) $r['centre_name'], 'course_type' => (string) $r['course_type']);
+}
+
+/**
+ * fetch: the listed fields of the token's source application. Only a 'single' token for the
+ * same form, and only once; anything else answers invalid_token.
+ */
+function dh_autofill_fetch($in)
+{
+	$hash = hash('sha256', (string) $in['token']);
+	$form = (string) $in['form'];
+	$t = db_query("select * from dh_autofill_token where aft_hash = :h", array(':h' => $hash))->fetchAssoc();
+	$ok = $t && !$t['aft_used'] && $t['aft_expires'] >= REQUEST_TIME && $t['aft_result'] == 'single'
+		&& $t['aft_form'] === $form && $t['aft_source_app'];
+	if ($ok)
+		$ok = db_update('dh_autofill_token')->fields(array('aft_used' => REQUEST_TIME))
+			->condition('aft_hash', $hash)->isNull('aft_used')->execute() == 1;
+	if (!$ok)
+	{
+		dh_autofill_log('fetch', $t ? $t['aft_email_hash'] : '', $form, 'invalid_token', $t ? $t['aft_client_ip'] : '');
+		return array('status' => 'invalid_token');
+	}
+	$out = array('source' => dh_autofill_source_info($t['aft_source_app']), 'fields' => dh_autofill_fields($t['aft_source_app'], $form));
+	dh_autofill_log('fetch', $t['aft_email_hash'], $form, 'fetched', $t['aft_client_ip']);
+	return $out;
+}
