@@ -117,8 +117,10 @@ t_in_txn(function () use ($aa0) {
   $html = dh_generate_seating_plan(5, $c, '', FALSE, TRUE);
   t_ok(strpos($html, 'id="dh-sec-M"') !== FALSE, 'main plan section anchor');
   t_ok(strpos($html, 'dh-sec-regen') === FALSE, 'main plan PDF HTML has no section regenerate link');
+  t_ok(strpos($html, '13- To make only one section again') !== FALSE, 'main plan help has the section regenerate step');
   $html = dh_generate_group_seating_plan(5, $c, '', TRUE);
   t_ok(strpos($html, 'id="dh-sec-g1_M"') !== FALSE, 'group plan section anchor');
   t_ok(strpos($html, 'dh-sec-regen') === FALSE, 'group plan PDF HTML has no section regenerate link');
+  t_ok(strpos($html, '13- To make only one section again') !== FALSE, 'group plan help has the section regenerate step');
 });
 t_done();
