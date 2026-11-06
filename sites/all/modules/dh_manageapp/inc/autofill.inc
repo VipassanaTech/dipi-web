@@ -300,48 +300,69 @@ function dh_autofill_email_start($in, $mail_fn = 'dh_autofill_send_code')
 {
 	$email = dh_autofill_email_norm(isset($in['email']) ? $in['email'] : '');
 	$form = (string) $in['form'];
+	if (!array_key_exists($form, dh_autofill_forms()))
+		throw new InvalidArgumentException('unknown form');
 	$ip = isset($in['client_ip']) ? substr((string) $in['client_ip'], 0, 45) : '';
 	$req = isset($in['request_id']) ? (string) $in['request_id'] : '';
 	$now = REQUEST_TIME;
 	dh_autofill_cleanup();
 	$eh = dh_autofill_hmac($email);
 
-	// Limits: per email 1 a minute, 3 an hour, 10 a day; per client IP 60 an hour.
+	$valid = (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
+	$otp_id = bin2hex(random_bytes(16));
+	$code = sprintf('%06d', random_int(0, 999999));
+
+	// Limits and the code row go in one lock, so a parallel burst cannot pass the limits.
+	// The Mailgun call stays outside it.
 	$wait = 0;
-	$times = db_query("select afc_created from dh_autofill_code where afc_email_hash = :h and afc_created > :t order by afc_created desc",
-		array(':h' => $eh, ':t' => $now - 86400))->fetchCol();
-	if ($times && $now - $times[0] < 60)
-		$wait = max($wait, 60 - ($now - $times[0]));
-	$hour = array();
-	foreach ($times as $t)
-		if ($t > $now - 3600)
-			$hour[] = $t;
-	if (count($hour) >= 3)
-		$wait = max($wait, $hour[2] + 3600 - $now);
-	if (count($times) >= 10)
-		$wait = max($wait, $times[9] + 86400 - $now);
-	if ($ip !== '')
+	if ($valid)
 	{
-		$ipt = db_query("select afc_created from dh_autofill_code where afc_client_ip = :ip and afc_created > :t order by afc_created desc",
-			array(':ip' => $ip, ':t' => $now - 3600))->fetchCol();
-		if (count($ipt) >= 60)
-			$wait = max($wait, $ipt[59] + 3600 - $now);
+		if (!dh_manageapp_lock_acquire('dh_autofill_start', 5.0, 1))
+		{
+			dh_autofill_log('email_start', $eh, $form, 'limited', $ip, $req);
+			return array('status' => 'limited', 'retry_after' => 5);
+		}
+		try
+		{
+			// Limits: per email 1 a minute, 3 an hour, 10 a day; per client IP 60 an hour.
+			$times = db_query("select afc_created from dh_autofill_code where afc_email_hash = :h and afc_created > :t order by afc_created desc",
+				array(':h' => $eh, ':t' => $now - 86400))->fetchCol();
+			if ($times && $now - $times[0] < 60)
+				$wait = max($wait, 60 - ($now - $times[0]));
+			$hour = array();
+			foreach ($times as $t)
+				if ($t > $now - 3600)
+					$hour[] = $t;
+			if (count($hour) >= 3)
+				$wait = max($wait, $hour[2] + 3600 - $now);
+			if (count($times) >= 10)
+				$wait = max($wait, $times[9] + 86400 - $now);
+			if ($ip !== '')
+			{
+				$ipt = db_query("select afc_created from dh_autofill_code where afc_client_ip = :ip and afc_created > :t order by afc_created desc",
+					array(':ip' => $ip, ':t' => $now - 3600))->fetchCol();
+				if (count($ipt) >= 60)
+					$wait = max($wait, $ipt[59] + 3600 - $now);
+			}
+			if ($wait <= 0)
+				db_insert('dh_autofill_code')->fields(array(
+					'afc_otp_id' => $otp_id, 'afc_email' => $email, 'afc_email_hash' => $eh,
+					'afc_code_hash' => dh_autofill_hmac($otp_id.'|'.$code), 'afc_form' => $form, 'afc_client_ip' => $ip,
+					'afc_tries' => 0, 'afc_created' => $now, 'afc_expires' => $now + 600,
+				))->execute();
+		}
+		finally
+		{
+			lock_release('dh_autofill_start');
+		}
 	}
 	if ($wait > 0)
 	{
 		dh_autofill_log('email_start', $eh, $form, 'limited', $ip, $req);
 		return array('status' => 'limited', 'retry_after' => (int) $wait);
 	}
-
-	$otp_id = bin2hex(random_bytes(16));
-	if (filter_var($email, FILTER_VALIDATE_EMAIL))
+	if ($valid)
 	{
-		$code = sprintf('%06d', random_int(0, 999999));
-		db_insert('dh_autofill_code')->fields(array(
-			'afc_otp_id' => $otp_id, 'afc_email' => $email, 'afc_email_hash' => $eh,
-			'afc_code_hash' => dh_autofill_hmac($otp_id.'|'.$code), 'afc_form' => $form, 'afc_client_ip' => $ip,
-			'afc_tries' => 0, 'afc_created' => $now, 'afc_expires' => $now + 600,
-		))->execute();
 		$sent = call_user_func($mail_fn, $email, $code);
 		dh_autofill_log('email_start', $eh, $form, $sent ? 'sent' : 'mail_failed', $ip, $req);
 	}
@@ -365,15 +386,26 @@ function dh_autofill_email_verify($in)
 		dh_autofill_log('email_verify', $row ? $row['afc_email_hash'] : '', $row ? $row['afc_form'] : '', 'expired', $row ? $row['afc_client_ip'] : '');
 		return array('status' => 'expired');
 	}
-	if ($row['afc_tries'] >= 5)
+	$forms = dh_autofill_forms();
+	if (!array_key_exists($row['afc_form'], $forms))
 	{
-		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], 'too_many_attempts', $row['afc_client_ip']);
-		return array('status' => 'too_many_attempts');
+		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], 'expired', $row['afc_client_ip']);
+		return array('status' => 'expired');
+	}
+	// The atomic try counter is the gate: every check, right or wrong, takes one of the 5 tries first.
+	$took = db_update('dh_autofill_code')->expression('afc_tries', 'afc_tries + 1')
+		->condition('afc_otp_id', $otp_id)->condition('afc_tries', 5, '<')->isNull('afc_used')->execute();
+	if ($took != 1)
+	{
+		$used = db_query("select afc_used from dh_autofill_code where afc_otp_id = :id", array(':id' => $otp_id))->fetchField();
+		$status = $used ? 'expired' : 'too_many_attempts';
+		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], $status, $row['afc_client_ip']);
+		return array('status' => $status);
 	}
 	if (!preg_match('/^\d{6}$/', $code) || !hash_equals($row['afc_code_hash'], dh_autofill_hmac($otp_id.'|'.$code)))
 	{
-		db_query("update dh_autofill_code set afc_tries = afc_tries + 1 where afc_otp_id = :id", array(':id' => $otp_id));
-		$status = ($row['afc_tries'] + 1 >= 5) ? 'too_many_attempts' : 'wrong_code';
+		$tries = (int) db_query("select afc_tries from dh_autofill_code where afc_otp_id = :id", array(':id' => $otp_id))->fetchField();
+		$status = ($tries >= 5) ? 'too_many_attempts' : 'wrong_code';
 		dh_autofill_log('email_verify', $row['afc_email_hash'], $row['afc_form'], $status, $row['afc_client_ip']);
 		return array('status' => $status);
 	}
@@ -382,7 +414,6 @@ function dh_autofill_email_verify($in)
 		->condition('afc_otp_id', $otp_id)->isNull('afc_used')->execute();
 	if ($n != 1)
 		return array('status' => 'expired');
-	$forms = dh_autofill_forms();
 	$m = dh_autofill_match(dh_autofill_applications($row['afc_email']), $forms[$row['afc_form']]);
 	$token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 	db_insert('dh_autofill_token')->fields(array(

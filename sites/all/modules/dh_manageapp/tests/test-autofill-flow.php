@@ -139,6 +139,30 @@ t_in_txn(function () use ($shape) {
 	t_eq($leak, 0, 'no code in the log');
 	t_ok(db_query("select count(*) from dh_autofill_log where afl_endpoint = 'email_verify' and afl_result = 'single'")->fetchField() > 0, 'verify results logged');
 
+	// Unknown form: start throws and stores/sends nothing; verify answers expired and burns nothing.
+	$n = count($GLOBALS['af_sent']);
+	$threw = FALSE;
+	try { dh_autofill_email_start(array('email' => 'zzq-uf@example.invalid', 'form' => 'no_such_form', 'client_ip' => '198.51.100.20'), 'af_mail'); }
+	catch (InvalidArgumentException $e) { $threw = TRUE; }
+	t_ok($threw, 'unknown form: start throws');
+	t_eq(count($GLOBALS['af_sent']), $n, 'unknown form: nothing sent');
+	t_eq((int) db_query("select count(*) from dh_autofill_code where afc_email_hash = :h", array(':h' => dh_autofill_hmac('zzq-uf@example.invalid')))->fetchField(), 0, 'unknown form: no code row');
+	db_insert('dh_autofill_code')->fields(array('afc_otp_id' => str_repeat('d', 32), 'afc_email' => 'zzq-uf@example.invalid', 'afc_email_hash' => dh_autofill_hmac('zzq-uf@example.invalid'),
+		'afc_code_hash' => dh_autofill_hmac(str_repeat('d', 32).'|123456'), 'afc_form' => 'no_such_form', 'afc_created' => REQUEST_TIME, 'afc_expires' => REQUEST_TIME + 600))->execute();
+	t_eq(dh_autofill_email_verify(array('otp_id' => str_repeat('d', 32), 'code' => '123456')), array('status' => 'expired'), 'stored unknown form: expired');
+	$row = af_code_row(str_repeat('d', 32));
+	t_ok($row['afc_tries'] == 0 && $row['afc_used'] === NULL, 'stored unknown form: no try taken, not used');
+
+	// The try counter is the gate, even for the right code.
+	db_insert('dh_autofill_code')->fields(array('afc_otp_id' => str_repeat('e', 32), 'afc_email' => 'zzq-uf@example.invalid', 'afc_email_hash' => dh_autofill_hmac('zzq-uf@example.invalid'),
+		'afc_code_hash' => dh_autofill_hmac(str_repeat('e', 32).'|123456'), 'afc_form' => 'application_form', 'afc_tries' => 5, 'afc_created' => REQUEST_TIME, 'afc_expires' => REQUEST_TIME + 600))->execute();
+	t_eq(dh_autofill_email_verify(array('otp_id' => str_repeat('e', 32), 'code' => '123456')), array('status' => 'too_many_attempts'), '5 tries taken: the right code is refused');
+	t_ok(af_code_row(str_repeat('e', 32))['afc_used'] === NULL, 'and the code stays unused');
+
+	// The start lock is released (not testable under contention in one request).
+	af_start('zzq-lock@example.invalid', '198.51.100.30');
+	t_ok(lock_may_be_available('dh_autofill_start'), 'start lock released');
+
 	// Clean-up: codes and tokens after 24 hours, the log after 180 days.
 	db_insert('dh_autofill_code')->fields(array('afc_otp_id' => str_repeat('b', 32), 'afc_email_hash' => str_repeat('0', 64),
 		'afc_code_hash' => str_repeat('0', 64), 'afc_form' => 'application_form', 'afc_created' => REQUEST_TIME - 90000, 'afc_expires' => 0))->execute();
