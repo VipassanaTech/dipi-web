@@ -634,6 +634,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	// Form autofill API for schedule.vridhamma.org (inc/autofill.inc): server-to-server JSON with
+	// its own API key and IP check, so the route itself is open.
+	foreach (array('autofill/email/start' => 'email_start', 'autofill/email/verify' => 'email_verify', 'autofill/fetch' => 'fetch') as $path => $step)
+		$items[$path] = array('page callback' => 'dh_autofill_endpoint', 'page arguments' => array($step),
+			'access callback' => TRUE, 'type' => MENU_CALLBACK);
+
 	$items['seating-section-pdf/%centre_id/%course_id'] = array( 'title' => t('Seating Section PDF'),
 	       'page callback' => 'dh_seating_section_pdf',
 	       'access arguments' => array('access zero day'),

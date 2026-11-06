@@ -467,3 +467,64 @@ function dh_autofill_fetch($in)
 	dh_autofill_log('fetch', $t['aft_email_hash'], $form, 'fetched', $t['aft_client_ip']);
 	return $out;
 }
+
+/** Answer a call: JSON with the HTTP status, never cached. Ends the request. */
+function dh_autofill_reply($status, $data)
+{
+	$texts = array(200 => 'OK', 400 => 'Bad Request', 403 => 'Forbidden', 405 => 'Method Not Allowed',
+		500 => 'Internal Server Error', 503 => 'Service Unavailable');
+	drupal_add_http_header('Status', $status.' '.$texts[$status]);
+	drupal_add_http_header('Cache-Control', 'no-store');
+	drupal_json_output($data);
+	drupal_exit();
+}
+
+/** The caller must send the API key and come from an allowed address (both kept in Drupal variables). */
+function dh_autofill_caller_ok()
+{
+	$want = (string) variable_get('autofill_api_key_hash', '');
+	$key = isset($_SERVER['HTTP_X_API_KEY']) ? (string) $_SERVER['HTTP_X_API_KEY'] : '';
+	if ($want === '' || $key === '' || !hash_equals($want, hash('sha256', $key)))
+		return FALSE;
+	$ips = array_filter(array_map('trim', explode(',', (string) variable_get('autofill_allowed_ips', ''))));
+	return in_array(ip_address(), $ips, TRUE);
+}
+
+/** Page callback of autofill/email/start, autofill/email/verify and autofill/fetch. */
+function dh_autofill_endpoint($step)
+{
+	drupal_page_is_cacheable(FALSE);
+	if (!variable_get('autofill_enabled', 0))
+		dh_autofill_reply(503, array('status' => 'disabled'));
+	if ($_SERVER['REQUEST_METHOD'] !== 'POST')
+		dh_autofill_reply(405, array('status' => 'method_not_allowed'));
+	if (!dh_autofill_caller_ok())
+		dh_autofill_reply(403, array('status' => 'forbidden'));
+	$in = json_decode(file_get_contents('php://input'), TRUE);
+	$need = array('email_start' => array('email', 'form'), 'email_verify' => array('otp_id', 'code'), 'fetch' => array('token', 'form'));
+	$bad = !is_array($in) || !isset($need[$step]);
+	if (!$bad)
+		foreach ($need[$step] as $k)
+			if (!isset($in[$k]) || !is_scalar($in[$k]))
+				$bad = TRUE;
+	$forms = dh_autofill_forms();
+	if (!$bad && isset($in['form']) && !isset($forms[$in['form']]))
+		$bad = TRUE;
+	if ($bad)
+		dh_autofill_reply(400, array('status' => 'bad_request'));
+	try
+	{
+		if ($step == 'email_start')
+			$out = dh_autofill_email_start($in);
+		elseif ($step == 'email_verify')
+			$out = dh_autofill_email_verify($in);
+		else
+			$out = dh_autofill_fetch($in);
+	}
+	catch (Throwable $e)
+	{
+		watchdog('autofill', 'Autofill @s failed: @c', array('@s' => $step, '@c' => get_class($e)), WATCHDOG_ERROR);
+		dh_autofill_reply(500, array('status' => 'error'));
+	}
+	dh_autofill_reply(200, $out);
+}
