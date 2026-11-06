@@ -145,3 +145,79 @@ function dh_autofill_date($v)
 		return '';
 	return dh_autofill_ymd($m[1], $m[2], $m[3]);
 }
+
+/**
+ * The fields fetch returns for one application and target form. Only keys on these lists ever
+ * leave DIPI; a column not listed here is never returned. Empty values are left out.
+ */
+function dh_autofill_fields($a_id, $form)
+{
+	$forms = dh_autofill_forms();
+	$group = $forms[$form];
+	$a = db_query("select * from dh_applicant where a_id = :id", array(':id' => $a_id))->fetchAssoc();
+	if (!$a)
+		return array();
+	$ae = db_query("select * from dh_applicant_extra where ae_applicant = :id", array(':id' => $a_id))->fetchAssoc();
+	$ac = db_query("select * from dh_applicant_course where ac_applicant = :id", array(':id' => $a_id))->fetchAssoc();
+	$al = db_query("select * from dh_applicant_lc where al_applicant = :id", array(':id' => $a_id))->fetchAssoc();
+	$ae = $ae ? $ae : array();
+	$ac = $ac ? $ac : array();
+	$al = $al ? $al : array();
+
+	$f = array();
+	foreach (array('a_gender', 'a_old', 'a_f_name', 'a_m_name', 'a_l_name', 'a_address', 'a_zip',
+		'a_phone_home', 'a_phone_office', 'a_emergency_name', 'a_emergency_num', 'a_emergency_relation',
+		'a_lang_1_level', 'a_lang_2_level', 'a_lang_discourse',
+		'a_education', 'a_occupation', 'a_company', 'a_department', 'a_designation') as $k)
+		$f[$k] = $a[$k];
+	$f['a_dob'] = dh_autofill_date($a['a_dob']);
+	$f['a_phone_mobile'] = dh_autofill_e164($a['a_mob_country'], $a['a_phone_mobile']);
+
+	// ID: the first one set, Aadhaar > Passport > PAN > Voter ID; the full number (owner decision, 6 Nov).
+	foreach (array('a_aadhar' => 'Aadhar', 'a_passport' => 'Passport', 'a_pancard' => 'Pancard', 'a_voter_id' => 'Voter ID') as $col => $type)
+		if (trim((string) $a[$col]) !== '')
+		{
+			$f['photo_id_type'] = $type;
+			$f['photo_id_val'] = trim($a[$col]);
+			break;
+		}
+
+	// DIPI stores a city id; the form wants the name. Country and state go as codes and names.
+	if ((int) $a['a_city'] > 0)
+		$f['a_city'] = db_query("select c_name from dh_city where c_id = :id", array(':id' => $a['a_city']))->fetchField();
+	if (trim((string) $a['a_country']) !== '')
+	{
+		$cn = db_query("select c_name from dh_country where c_code = :c", array(':c' => $a['a_country']))->fetchField();
+		$sn = (trim((string) $a['a_state']) === '') ? '' : db_query("select s_name from dh_state where s_code = :s and s_country = :c",
+			array(':s' => $a['a_state'], ':c' => $a['a_country']))->fetchField();
+		if ($cn)
+			$f['country'] = array('country_code' => $a['a_country'], 'country_name' => $cn,
+				'state_code' => $sn ? $a['a_state'] : '', 'state_name' => $sn ? $sn : '');
+	}
+
+	foreach (array('ae_nationality', 'ae_id_issued_by', 'ae_seva_details') as $k)
+		$f[$k] = isset($ae[$k]) ? $ae[$k] : '';
+	$f['ae_id_issued'] = isset($ae['ae_id_issued']) ? dh_autofill_date($ae['ae_id_issued']) : '';
+	if ($group == 'child')
+		foreach (array('ae_father', 'ae_mother', 'ae_parent_course', 'ae_ch_course', 'ae_ch_course_detail', 'ae_ch_practice', 'ae_ch_practice_detail') as $k)
+			$f[$k] = isset($ae[$k]) ? $ae[$k] : '';
+
+	foreach (array('ac_teen', 'ac_10d', 'ac_stp', 'ac_spl', 'ac_20d', 'ac_30d', 'ac_45d', 'ac_60d', 'ac_tsc', 'ac_service',
+		'ac_practice_details', 'ac_first_location', 'ac_first_teacher', 'ac_last_location', 'ac_last_teacher',
+		'ac_first_location_str', 'ac_first_teacher_str', 'ac_last_location_str', 'ac_last_teacher_str') as $k)
+		$f[$k] = isset($ac[$k]) ? $ac[$k] : '';
+	if ($ac)
+	{
+		$f['date_first_course'] = dh_autofill_ymd($ac['ac_first_year'], $ac['ac_first_month'], $ac['ac_first_day']);
+		$f['date_last_course'] = dh_autofill_ymd($ac['ac_last_year'], $ac['ac_last_month'], $ac['ac_last_day']);
+	}
+
+	if ($form == 'long_course_application_form')
+		foreach (array('al_recent_sat_type', 'al_last_lc_type', 'al_last_lc_date', 'al_last_lc_location', 'al_last_lc_teacher') as $k)
+			$f[$k] = isset($al[$k]) ? $al[$k] : '';
+
+	foreach ($f as $k => $v)
+		if ($v === NULL || $v === FALSE || (is_string($v) && trim($v) === ''))
+			unset($f[$k]);
+	return $f;
+}
