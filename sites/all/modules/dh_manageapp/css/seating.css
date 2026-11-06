@@ -58,14 +58,17 @@ ul {
 }
 
 /* Drag-and-drop: seat-sized "drop here" target (jQuery UI sortable placeholder).
-   forcePlaceholderSize sets its width/height inline to the dragged card's size;
-   border-box keeps the dashed border inside that footprint so the grid never
-   reflows. It floats the same side as the cards so it sits in the seat slot. */
+   It must be EXACTLY a card's outer size: a card is 140 + 2 border = 142px wide and
+   76 + 5 padding + 2 border = 83px tall. (jQuery UI does not resize it, because this
+   class gives it a height.) If it is smaller, the next card slips into the gap beside
+   it and every later card drops a row while dragging. border-box keeps the dashed
+   border inside that footprint. It floats the same side as the cards so it sits in
+   the seat slot. tests/test-seat-placeholder-size.php keeps the two sizes in step. */
 .dh-seat-ph {
 	list-style: none;
 	box-sizing: border-box;
-	width: 140px;
-	height: 76px;
+	width: 142px;
+	height: 83px;
 	border: 2px dashed #2f77c4;
 	background: #eaf3fb;
 	visibility: visible !important;
