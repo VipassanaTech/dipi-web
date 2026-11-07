@@ -139,6 +139,12 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	db_update('dh_applicant')->fields(array('a_city' => 0, 'a_city_str' => ''))->condition('a_id', $a)->execute();
 	t_ok(!array_key_exists('a_city', dh_autofill_fields($a, 'application_form')), 'city: nothing at all is left out');
 });
+// Phones: a + after brackets is still international; text, extensions or two numbers are left out.
+t_eq(dh_autofill_phone(1, '(+91) 98765 43212'), '+919876543212', '(+91) is international');
+t_eq(dh_autofill_phone(44, '020 7946 0958 ext 12'), '', 'number with an extension: left out');
+t_eq(dh_autofill_phone(91, '9876543212 / 9876543213'), '', 'two numbers in one field: left out');
+t_eq(dh_autofill_phone(91, '98765-43212'), '+919876543212', 'dashes are fine');
+
 // The code email: the code leads the subject, so mail apps never group two codes; no personal data.
 $m = dh_autofill_code_email('012345');
 t_eq($m['subject'], '012345 is your code for your Vipassana application', 'code first in the subject');

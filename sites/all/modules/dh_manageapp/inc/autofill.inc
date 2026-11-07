@@ -138,20 +138,23 @@ function dh_autofill_e164($cc, $num)
 
 /**
  * Another stored phone (home, office, emergency) as E.164, or '' when it is not a valid number.
- * A number that starts with + or 00 is read as international. Any other number is read as a
+ * A number that starts with + (after any brackets or spaces) or 00 is read as international. Any other number is read as a
  * number of the country of the applicant's mobile ($cc), so '022 2345 6789' with 91 is
  * +912223456789. No country code anywhere gives ''.
  */
 function dh_autofill_phone($cc, $num)
 {
 	$num = trim((string) $num);
+	// Text, an extension or two numbers in one field: left out, so digits are never glued together.
+	if (preg_match('/[\p{L}\/,;]/u', $num))
+		return '';
 	$n = preg_replace('/\D/', '', $num);
 	if ($n === '')
 		return '';
 	$util = \libphonenumber\PhoneNumberUtil::getInstance();
 	try
 	{
-		if (substr($num, 0, 1) === '+' || substr($n, 0, 2) === '00')
+		if (preg_match('/^\W*\+/', $num) || substr($n, 0, 2) === '00')
 			$p = $util->parse('+'.preg_replace('/^00/', '', $n), NULL);
 		else
 		{
