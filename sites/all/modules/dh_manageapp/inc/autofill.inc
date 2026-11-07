@@ -136,6 +136,39 @@ function dh_autofill_e164($cc, $num)
 	}
 }
 
+/**
+ * Another stored phone (home, office, emergency) as E.164, or '' when it is not a valid number.
+ * A number that starts with + or 00 is read as international. Any other number is read as a
+ * number of the country of the applicant's mobile ($cc), so '022 2345 6789' with 91 is
+ * +912223456789. No country code anywhere gives ''.
+ */
+function dh_autofill_phone($cc, $num)
+{
+	$num = trim((string) $num);
+	$n = preg_replace('/\D/', '', $num);
+	if ($n === '')
+		return '';
+	$util = \libphonenumber\PhoneNumberUtil::getInstance();
+	try
+	{
+		if (substr($num, 0, 1) === '+' || substr($n, 0, 2) === '00')
+			$p = $util->parse('+'.preg_replace('/^00/', '', $n), NULL);
+		else
+		{
+			$c = (int) preg_replace('/\D/', '', (string) $cc);
+			$region = $c ? $util->getRegionCodeForCountryCode($c) : 'ZZ';
+			if ($region === 'ZZ')
+				return '';
+			$p = $util->parse($n, $region);
+		}
+		return $util->isValidNumber($p) ? $util->format($p, \libphonenumber\PhoneNumberFormat::E164) : '';
+	}
+	catch (\libphonenumber\NumberParseException $e)
+	{
+		return '';
+	}
+}
+
 /** 'YYYY-MM-DD' for a real date from its parts (year 1900 or later), else ''. */
 function dh_autofill_ymd($y, $m, $d)
 {
@@ -176,13 +209,18 @@ function dh_autofill_fields($a_id, $form)
 	$al = $al ? $al : array();
 
 	$f = array();
-	foreach (array('a_gender', 'a_old', 'a_f_name', 'a_m_name', 'a_l_name', 'a_address', 'a_zip',
-		'a_phone_home', 'a_phone_office', 'a_emergency_name', 'a_emergency_num', 'a_emergency_relation',
-		'a_lang_1_level', 'a_lang_2_level', 'a_lang_discourse',
+	foreach (array('a_old', 'a_f_name', 'a_m_name', 'a_l_name', 'a_address', 'a_zip',
+		'a_emergency_name', 'a_emergency_relation', 'a_lang_1_level', 'a_lang_2_level', 'a_lang_discourse',
 		'a_education', 'a_occupation', 'a_company', 'a_department', 'a_designation') as $k)
 		$f[$k] = $a[$k];
 	$f['a_dob'] = dh_autofill_date($a['a_dob']);
 	$f['a_phone_mobile'] = dh_autofill_e164($a['a_mob_country'], $a['a_phone_mobile']);
+	// The other phones have no country code of their own; the mobile's is used. Only valid numbers.
+	foreach (array('a_phone_home', 'a_phone_office', 'a_emergency_num') as $k)
+		$f[$k] = dh_autofill_phone($a['a_mob_country'], $a[$k]);
+	// DIPI stores M / F; the forms want Male / Female. Anything else is left out.
+	$g = strtoupper(trim((string) $a['a_gender']));
+	$f['a_gender'] = ($g === 'M' || $g === 'MALE') ? 'Male' : (($g === 'F' || $g === 'FEMALE') ? 'Female' : '');
 
 	// ID: the first one set, Aadhaar > Passport > PAN > Voter ID; the full number (owner decision, 6 Nov).
 	// The VI forms offer only Passport and Voter ID, so they get the first of those that is set.
@@ -244,9 +282,14 @@ function dh_autofill_fields($a_id, $form)
 		foreach (array('al_recent_sat_type', 'al_last_lc_type', 'al_last_lc_date', 'al_last_lc_location', 'al_last_lc_teacher') as $k)
 			$f[$k] = isset($al[$k]) ? $al[$k] : '';
 
+	// Stored values often carry stray spaces ('Student '): trim them; empty values are left out.
 	foreach ($f as $k => $v)
-		if ($v === NULL || $v === FALSE || (is_string($v) && trim($v) === ''))
+	{
+		if (is_string($v))
+			$f[$k] = $v = trim($v);
+		if ($v === NULL || $v === FALSE || $v === '')
 			unset($f[$k]);
+	}
 	return $f;
 }
 
@@ -283,6 +326,15 @@ function dh_autofill_cleanup()
 	db_delete('dh_autofill_log')->condition('afl_tstamp', REQUEST_TIME - 180 * 86400, '<')->execute();
 }
 
+/** The code email. The code leads the subject, so mail apps show it at once and never group two codes. */
+function dh_autofill_code_email($code)
+{
+	return array(
+		'subject' => $code.' is your code for your Vipassana application',
+		'text' => 'Your code to fill your Vipassana application is '.$code.'. It expires in 10 minutes. If you did not ask for this, ignore this email.',
+	);
+}
+
 /**
  * Email the code through Mailgun, waiting at most 3 seconds. TRUE when Mailgun accepted it.
  * In test mode (mode_test) DIPI sends to the test address instead, as it does for letters.
@@ -302,11 +354,12 @@ function dh_autofill_send_code($email, $code)
 		$conf->setApiKey(variable_get('mailgun_key', ''));
 		$conf->setHttpClient(new \Http\Client\Curl\Client(NULL, NULL, array(CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2)));
 		$mg = \Mailgun\Mailgun::configure($conf);
+		$m = dh_autofill_code_email($code);
 		$mg->messages()->send(get_mailgun_domain($from), array(
 			'from' => $from,
 			'to' => $to,
-			'subject' => 'Your code for the Vipassana application',
-			'text' => 'Your code to fill your Vipassana application is '.$code.'. It expires in 10 minutes. If you did not ask for this, ignore this email.',
+			'subject' => $m['subject'],
+			'text' => $m['text'],
 			'o:tag' => 'autofill-code',
 			'o:tracking' => 'no',
 		));

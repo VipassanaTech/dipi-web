@@ -55,6 +55,8 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 		'a_dob' => '1985-03-04', 'a_email' => 'zzq-af-fields@example.invalid', 'a_mob_country' => 91, 'a_phone_mobile' => '9876543210',
 		'a_aadhar' => '123412341234', 'a_passport' => 'Z1234567', 'a_city' => $city->c_id, 'a_country' => $city->c_country,
 		'a_state' => $city->c_state, 'a_company' => '', 'a_status' => 'Confirmed',
+		'a_phone_home' => '022 2345 6789', 'a_phone_office' => '+91 98765 43211', 'a_emergency_num' => '9876543212',
+		'a_occupation' => ' Student ',
 	)))->condition('a_id', $a)->execute();
 	db_insert('dh_applicant_extra')->fields(array_merge(af_values('dh_applicant_extra', array()), array('ae_applicant' => $a)))->execute();
 	db_insert('dh_applicant_course')->fields(array_merge(af_values('dh_applicant_course', array()), array('ac_applicant' => $a,
@@ -67,6 +69,10 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	t_eq(array($f['a_old'], $f['a_dob'], $f['a_f_name'], $f['a_m_name']), array('1', '1985-03-04', 'Zzqfirst', 'Zzqmid'), 'names, DOB, old student');
 	t_eq(array($f['photo_id_type'], $f['photo_id_val']), array('Aadhar', '123412341234'), 'ID: Aadhaar first, full number');
 	t_eq($f['a_phone_mobile'], '+919876543210', 'mobile as E.164');
+	t_eq(array($f['a_phone_home'], $f['a_phone_office'], $f['a_emergency_num']), array('+912223456789', '+919876543211', '+919876543212'),
+		'other phones as E.164, using the mobile country code when they have none');
+	t_eq($f['a_gender'], 'Female', 'gender as the form option (Female/Male)');
+	t_eq($f['a_occupation'], 'Student', 'values trimmed');
 	t_eq($f['a_city'], $city->c_name, 'city name, not its id');
 	t_eq($f['country'], array('country_code' => $city->c_country, 'country_name' => $city->country_name,
 		'state_code' => $city->c_state, 'state_name' => $city->state_name), 'country and state names');
@@ -114,6 +120,17 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	t_eq(dh_autofill_fields(-1, 'application_form'), array(), 'unknown application: nothing');
 	t_eq(dh_autofill_fields($a, 'no_such_form'), array(), 'unknown form: nothing');
 
+	// Phones that are not real numbers are left out; no country code anywhere means no other phones.
+	db_update('dh_applicant')->fields(array('a_phone_home' => 'abc', 'a_emergency_num' => '12', 'a_phone_office' => '0044 20 7946 0958', 'a_gender' => 'X'))->condition('a_id', $a)->execute();
+	$f = dh_autofill_fields($a, 'application_form');
+	t_ok(!isset($f['a_phone_home']) && !isset($f['a_emergency_num']), 'not a real number: left out');
+	t_eq($f['a_phone_office'], '+442079460958', '00 prefix read as an international number');
+	t_ok(!isset($f['a_gender']), 'unknown gender code: left out');
+	db_update('dh_applicant')->fields(array('a_mob_country' => 0, 'a_phone_office' => '9876543211', 'a_gender' => 'm'))->condition('a_id', $a)->execute();
+	$f = dh_autofill_fields($a, 'application_form');
+	t_ok(!isset($f['a_phone_office']) && !isset($f['a_phone_mobile']), 'no country code anywhere: no phones');
+	t_eq($f['a_gender'], 'Male', 'lowercase m is Male');
+
 	// City fallback: no dh_city name, so the typed city is used.
 	db_update('dh_applicant')->fields(array('a_city' => 0, 'a_city_str' => ' Zzqtown '))->condition('a_id', $a)->execute();
 	t_eq(dh_autofill_fields($a, 'application_form')['a_city'], 'Zzqtown', 'city: a_city 0 falls back to a_city_str');
@@ -122,4 +139,8 @@ t_in_txn(function () use ($common, $child, $lc, $never) {
 	db_update('dh_applicant')->fields(array('a_city' => 0, 'a_city_str' => ''))->condition('a_id', $a)->execute();
 	t_ok(!array_key_exists('a_city', dh_autofill_fields($a, 'application_form')), 'city: nothing at all is left out');
 });
+// The code email: the code leads the subject, so mail apps never group two codes; no personal data.
+$m = dh_autofill_code_email('012345');
+t_eq($m['subject'], '012345 is your code for your Vipassana application', 'code first in the subject');
+t_ok(strpos($m['text'], '012345') !== FALSE && strpos($m['text'], '10 minutes') !== FALSE, 'body has the code and the expiry');
 t_done();
