@@ -15,7 +15,7 @@
 			</tr>
 			<tr class="align-left">
 				<td><label>Email | Contact</label></td>
-				<td colspan="2"><?php echo $data['a_email']." | ".$data['a_phone_mobile'];?></td>
+				<td colspan="2"><?php echo $data['a_email']." | ".dh_format_mobile($data['a_mob_country'], $data['a_phone_mobile']);?></td>
 			</tr>
 			<tr class="align-left">
 				<td><label>Location</label></td>

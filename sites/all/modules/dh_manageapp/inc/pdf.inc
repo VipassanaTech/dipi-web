@@ -626,7 +626,7 @@ function map_application_fields($row)
 
 	$fields['First Name'] = $row['a_f_name']; 	$fields['Last Name'] = $row['a_l_name'];	$fields['Middle Name'] = $row['a_m_name'];
 	$fields['Address'] = $row['a_address'].', '.$row['City'].', '.$row['s_name'].', '.$row['country']; 	$fields['pincode'] = $row['a_zip'];
-	$fields['home'] = $row['a_phone_home']; 	$fields['work'] = $row['a_phone_office'];	$fields['mobile'] = $row['a_phone_mobile']; 
+	$fields['home'] = $row['a_phone_home']; 	$fields['work'] = $row['a_phone_office'];	$fields['mobile'] = dh_format_mobile($row['a_mob_country'], $row['a_phone_mobile']); 
 	$fields['email'] = $row['a_email'];
 
 	// One photo ID only: the first filled of Aadhaar, Passport, National ID, PAN gets
@@ -924,7 +924,7 @@ function map_application_fields_lc($row)
 
 	$fields['Home'] = $row['a_phone_home']; 	
 	$fields['Office'] = $row['a_phone_office'];	
-	$fields['Mobile'] = $row['a_phone_mobile']; 
+	$fields['Mobile'] = dh_format_mobile($row['a_mob_country'], $row['a_phone_mobile']); 
 	$fields['Email'] = $row['a_email'];
 
 	$fields['Education'] = $row['a_education'];

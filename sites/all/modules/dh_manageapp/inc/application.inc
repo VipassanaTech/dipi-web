@@ -1,5 +1,42 @@
 <?php
 
+/**
+ * A mobile as staff see it, with its country code: '+91 98765 43210' (each country in its own
+ * style, e.g. '+977 984-1234567'). A number that is not valid, or holds text or two numbers, is
+ * shown as stored after '+code'. No country code: the number as stored. Plain text; escape it
+ * where it goes into HTML.
+ */
+function dh_format_mobile($cc, $num)
+{
+	$num = trim((string) $num);
+	if ($num === '')
+		return '';
+	$c = ltrim(preg_replace('/\D/', '', (string) $cc), '0');
+	$own_code = preg_match('/^\W*\+/', $num) || preg_match('/^00[1-9]/', preg_replace('/\D/', '', $num));
+	if (!preg_match('/[\p{L}\/,;]/u', $num) && ($own_code || $c !== ''))
+	{
+		$util = \libphonenumber\PhoneNumberUtil::getInstance();
+		try
+		{
+			$n = preg_replace('/\D/', '', $num);
+			if ($own_code)
+				$p = $util->parse('+'.preg_replace('/^00/', '', $n), NULL);
+			else
+			{
+				$region = $util->getRegionCodeForCountryCode((int) $c);
+				$p = ($region !== 'ZZ') ? $util->parse($n, $region) : NULL;
+			}
+			if ($p && $util->isValidNumber($p))
+				return $util->format($p, \libphonenumber\PhoneNumberFormat::INTERNATIONAL);
+		}
+		catch (\libphonenumber\NumberParseException $e)
+		{
+		}
+	}
+	if ($own_code || $c === '')
+		return $num;
+	return '+'.$c.' '.$num;
+}
 
 function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 {

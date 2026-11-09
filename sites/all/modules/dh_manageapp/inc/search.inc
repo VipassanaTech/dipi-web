@@ -133,6 +133,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			a_phone_home,
 			a_phone_office,
 			a_phone_mobile,
+			a_mob_country,
 			a_passport,
 			a_voter_id,
 			a_pancard,
@@ -239,6 +240,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			s_phone_home as 'a_phone_home',
 			s_phone_office as 'a_phone_office',
 			s_phone_mobile as 'a_phone_mobile',
+			'' as 'a_mob_country',
 			s_education as 'a_education',
 			s_occupation as 'a_occupation',
 			s_occupation_past as 'a_occupation_past',
@@ -369,9 +371,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
     $rs['dob'] = $r['a_dob'];
 		$rs['age'] = $r['Age'];
 		$rs['address'] = $r['a_address'];//." - ".$r['a_zip'];			
-		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$r['a_phone_mobile']." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
+		$mobile = dh_format_mobile($r['a_mob_country'], $r['a_phone_mobile']);
+		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['a_phone_home']." <label>M:&nbsp;</label>".$mobile." <label>O:&nbsp;</label>".$r['a_phone_office']." <label>Email:&nbsp;</label>".$r['a_email'];
 		$rs['contact_home'] = $r['a_phone_home'];
-		$rs['contact_mobile'] = $r['a_phone_mobile'];
+		$rs['contact_mobile'] = $mobile;
+		$rs['contact_mobile_raw'] = trim((string) $r['a_phone_mobile']);
 		$rs['contact_office'] = $r['a_phone_office'];
 		$rs['contact_email'] = $r['a_email'];
 		$rs['occupation'] = $r['a_occupation'];
@@ -1197,7 +1201,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			            },				        
 			            { data: "name", "title" : "Applicant Name" },
 			            { data: "eocd", "title" : "Edu/Occ/Comp/Desig" },
-			            { data: "contact_mobile", "title" : "Mobile" },
+			            /* Shown as +91 98765 43210; the table search also finds the number as stored (9876543210). */
+			            { data: "contact_mobile", "title" : "Mobile", render: function(data, type, row) { return type === "filter" ? data + " " + row.contact_mobile_raw : data; } },
 			            { data: "contact_email", "title" : "Email" },
 			            { data: "status", "title" : "Status" },
 			            { data: "o_n", "title" : "Type" },
@@ -2568,7 +2573,7 @@ function dh_application_view($app_id, $at_uid = 0)
 	$q = "select
 		a_id, a_conf_no as ConfNo, concat(a_f_name,' ',a_m_name,' ',a_l_name) as fullname,
 		a_gender, a_status, a_dob, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age, a_old, a_monk, a_alist, a_photo,
-		a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile,
+		a_address, a_zip, a_email, a_phone_home, a_phone_office, a_phone_mobile, a_mob_country,
 		a_passport, a_voter_id, a_pancard, a_aadhar,
 		a_education, a_occupation, a_occupation_past, a_company, a_designation, a_department,
 		a_purpose, a_learn_about_vip,
@@ -2701,7 +2706,7 @@ function dh_application_view($app_id, $at_uid = 0)
 	$out .= $sec('Contact', '<div class="av-grid">'.
 		$fld('Address', $r['a_address']).$fld('City / State / Country', trim($city.', '.$r['StateName'].', '.$r['Country'], ', ')).
 		$fld('Pin', $r['a_zip']).$fld('Email', $r['a_email']).
-		$fld('Mobile', $r['a_phone_mobile']).$fld('Home Phone', $r['a_phone_home']).
+		$fld('Mobile', dh_format_mobile($r['a_mob_country'], $r['a_phone_mobile'])).$fld('Home Phone', $r['a_phone_home']).
 		$fld('Office Phone', $r['a_phone_office']).'</div>');
 
 	$out .= $sec('Identification', '<div class="av-grid">'.

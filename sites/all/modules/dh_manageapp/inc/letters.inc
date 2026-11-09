@@ -394,7 +394,7 @@ function dh_letters_preview($row)
 		from dh_course cr join dh_center ce on cr.c_center=ce.c_id left join dh_country cco on ce.c_country=cco.c_code left join dh_state cs on (ce.c_country=cs.s_country and ce.c_state=cs.s_code) left join dh_city cci on ce.c_city=cci.c_id left join dh_type_detail td on cr.c_course_type=td.td_id
 		where cr.c_id = :id", array(':id' => $course_id))->fetchAssoc();
 	$sample += array('a_id' => 0, 'a_type' => $type, 'a_f_name' => 'Sample', 'a_m_name' => '', 'a_l_name' => ($type == 'Sevak' ? 'Server' : 'Student'),
-		'a_address' => 'Sample address', 'a_zip' => '000000', 'a_phone_mobile' => '9000000000', 'a_email' => 'sample@example.com', 'a_gender' => 'F',
+		'a_address' => 'Sample address', 'a_zip' => '000000', 'a_mob_country' => '91', 'a_phone_mobile' => '9000000000', 'a_email' => 'sample@example.com', 'a_gender' => 'F',
 		'a_dob' => date('Y-m-d', strtotime('-30 years')), 'a_conf_no' => 'SAMPLE', 'a_auth_code' => 'SAMPLE', 'a_login' => 'sample@example.com',
 		'a_lang_discourse' => 'English', 'a_city' => 'Sample City', 'a_country' => 'India', 'a_state' => 'Sample State',
 		'al_recommending' => 'Sample AT', 'al_area_at' => 'Sample AT');
@@ -1300,7 +1300,7 @@ function _dh_letter_values($row, $id, $comment, $search = array())
 	$search['[FirstName]'] 		= $row['a_f_name'];
 	$search['[MiddleName]'] 	= $row['a_m_name'];
 	$search['[LastName]'] 		= $row['a_l_name'];
-	$search['[RegisteredMobile]'] = $row['a_phone_mobile'];
+	$search['[RegisteredMobile]'] = dh_format_mobile(isset($row['a_mob_country']) ? $row['a_mob_country'] : '', $row['a_phone_mobile']);
 	$search['[Applicantadd]'] 	= $row['a_address'];
 	$search['[ApplicantCity]'] 	= $row['a_city'];
 	$search['[ApplicantCountry]']= $row['a_country'];
