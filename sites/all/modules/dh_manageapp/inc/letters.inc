@@ -1452,7 +1452,7 @@ function _dh_letter_embed_inline_images($html)
 }
 
 /**
- * The file on disk for a stored letter attachment, or '' when it is not there. Uploads are stored as
+ * The file on disk for a stored letter attachment, or '' when it is not there or is empty (a failed upload). Uploads are stored as
  * private:///letters/… but Drupal writes private://letters/… when it renames a clashing upload (_0, _1 …);
  * drupal_realpath() reads both. (A plain text swap of 'private://' lost the '/' for the second form.)
  */
@@ -1462,11 +1462,17 @@ function dh_letter_attachment_path($uri)
 	if ($uri === '')
 		return '';
 	$path = (strpos($uri, '://') !== FALSE) ? drupal_realpath($uri) : $uri;
-	return ($path && is_file($path) && is_readable($path)) ? $path : '';
+	return dh_letter_file_usable($path) ? $path : '';
+}
+
+/** A file that can be attached: there, readable and not empty (Mailgun would send an empty one as it is). */
+function dh_letter_file_usable($path)
+{
+	return $path && is_file($path) && is_readable($path) && filesize($path) > 0;
 }
 
 /**
- * Mailgun attachment options for these files. A file that is not there is left out and its name added to
+ * Mailgun attachment options for these files. A file that is not there (or is empty) is left out and its name added to
  * $missing: Mailgun would otherwise send it as an empty attachment.
  */
 function dh_letter_mail_attachments(array $paths, array &$missing)
@@ -1474,7 +1480,7 @@ function dh_letter_mail_attachments(array $paths, array &$missing)
 	$out = array();
 	foreach ($paths as $p)
 	{
-		if ($p && is_file($p) && is_readable($p))
+		if (dh_letter_file_usable($p))
 			$out[] = array('filePath' => $p, 'filename' => drupal_basename($p));
 		else
 			$missing[] = $p ? drupal_basename($p) : 'application PDF';

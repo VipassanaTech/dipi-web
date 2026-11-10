@@ -12,11 +12,13 @@ $real_dir = drupal_realpath($dir);
 $body = str_repeat('%PDF-zzq ', 137);
 file_put_contents($real_dir.'/Waiver_RAK.pdf', $body);
 file_put_contents($real_dir.'/Waiver_RAK_0.pdf', $body);
+file_put_contents($real_dir.'/Empty_0.pdf', '');   // an upload that failed: the file is there but has nothing in it
 $want = $real_dir.'/Waiver_RAK_0.pdf';
 // Remove the made-up files even when a check crashes.
 $cleanup = function () use ($real_dir, $parent, $made_parent) {
 	@unlink($real_dir.'/Waiver_RAK.pdf');
 	@unlink($real_dir.'/Waiver_RAK_0.pdf');
+	@unlink($real_dir.'/Empty_0.pdf');
 	@rmdir($real_dir);
 	if ($made_parent)
 		@rmdir($parent);
@@ -29,6 +31,7 @@ t_eq(dh_letter_attachment_path('private://letters/zzqtest-attach/Waiver_RAK_0.pd
 t_eq(dh_letter_attachment_path('private://letters/zzqtest-attach/Nope.pdf'), '', 'A3 a missing file gives nothing');
 t_eq(dh_letter_attachment_path(''), '', 'A4 no attachment gives nothing');
 t_eq(dh_letter_attachment_path(NULL), '', 'A5 NULL gives nothing');
+t_eq(dh_letter_attachment_path('private://letters/zzqtest-attach/Empty_0.pdf'), '', 'A6 an empty (0-byte) file counts as missing');
 
 // M: turning files into Mailgun attachments
 $missing = array();
@@ -38,6 +41,9 @@ t_eq($missing, array('Nope.pdf', 'application PDF'), 'M2 the missing ones are re
 $missing = array();
 t_eq(dh_letter_mail_attachments(array(), $missing), array(), 'M3 no files, no attachments');
 t_eq($missing, array(), 'M4 and nothing missing');
+$missing = array();
+t_eq(dh_letter_mail_attachments(array($real_dir.'/Empty_0.pdf'), $missing), array(), 'M5 an empty file is not attached');
+t_eq($missing, array('Empty_0.pdf'), 'M6 and is reported missing');
 
 // G: dh_get_letter() with a made-up letter
 t_in_txn(function () use ($want) {
@@ -56,6 +62,8 @@ t_in_txn(function () use ($want) {
 	$r = dh_get_letter('applicant', $aid, 'ReConfirmation', $mk('private://letters/zzqtest-attach/Gone_1.pdf'));
 	t_eq($r['attachment'], '', 'G3 a file that is not there gives no attachment');
 	t_eq($r['attachment_missing'], 'Gone_1.pdf', 'G4 and its name is reported as missing');
+	$r = dh_get_letter('applicant', $aid, 'ReConfirmation', $mk('private://letters/zzqtest-attach/Empty_0.pdf'));
+	t_eq(array($r['attachment'], $r['attachment_missing']), array('', 'Empty_0.pdf'), 'G6 a letter whose file is empty: nothing attached, reported missing');
 	$r = dh_get_letter('applicant', $aid, 'ReConfirmation', $mk(NULL));
 	t_eq(array($r['attachment'], $r['attachment_missing']), array('', ''), 'G5 a letter without an attachment: nothing attached, nothing missing');
 });
