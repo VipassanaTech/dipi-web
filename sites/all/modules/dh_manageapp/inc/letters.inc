@@ -1269,13 +1269,13 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	list($subject, $body, $sms_body) = _dh_letter_merge($letter, $search);
 	$unfilled = _dh_letter_unfilled_all($subject, $body, $sms_body, $search, $centre);
 
-	$attachment = $letter['l_attachment'];
-	if ( $attachment <> '')
-		$attachment = str_replace('private://',drupal_realpath('private://'), $attachment );
+	// The file on disk; '' (and its name in attachment_missing) when it cannot be found.
+	$attachment = dh_letter_attachment_path($letter['l_attachment']);
+	$attachment_missing = (trim((string) $letter['l_attachment']) !== '' && $attachment === '') ? drupal_basename($letter['l_attachment']) : '';
 
 	if ($row['c_sms'])
 		$delivery_type = DELIVERY_TYPE_BOTH;
-	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 
+	$out = array('result' => true, 'row' => $row, 'attachment' => $attachment, 'attachment_missing' => $attachment_missing,
 		'subject' => $subject, 'body' => $body, 'sms_body' => $sms_body, 
 		'delivery_type' => $delivery_type, 'letter_name' => $letter_name,
 		'letter_id' => $letter_id, 'conf_no' => $row['a_conf_no'], 'unfilled' => $unfilled );
@@ -1451,6 +1451,37 @@ function _dh_letter_embed_inline_images($html)
 	return array('html' => $new, 'inline' => $inline);
 }
 
+/**
+ * The file on disk for a stored letter attachment, or '' when it is not there. Uploads are stored as
+ * private:///letters/… but Drupal writes private://letters/… when it renames a clashing upload (_0, _1 …);
+ * drupal_realpath() reads both. (A plain text swap of 'private://' lost the '/' for the second form.)
+ */
+function dh_letter_attachment_path($uri)
+{
+	$uri = trim((string) $uri);
+	if ($uri === '')
+		return '';
+	$path = (strpos($uri, '://') !== FALSE) ? drupal_realpath($uri) : $uri;
+	return ($path && is_file($path) && is_readable($path)) ? $path : '';
+}
+
+/**
+ * Mailgun attachment options for these files. A file that is not there is left out and its name added to
+ * $missing: Mailgun would otherwise send it as an empty attachment.
+ */
+function dh_letter_mail_attachments(array $paths, array &$missing)
+{
+	$out = array();
+	foreach ($paths as $p)
+	{
+		if ($p && is_file($p) && is_readable($p))
+			$out[] = array('filePath' => $p, 'filename' => drupal_basename($p));
+		else
+			$missing[] = $p ? drupal_basename($p) : 'application PDF';
+	}
+	return $out;
+}
+
 function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $force_delivery_type = 0, $footer = '')
 {
   $ret_val = array();
@@ -1476,6 +1507,7 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 	$attachment = array();
 	if ( $ret['attachment'] <> '')
 		$attachment[] = $ret['attachment'];
+	$attach_missing = (isset($ret['attachment_missing']) && $ret['attachment_missing'] !== '') ? array($ret['attachment_missing']) : array();
 	if ($force_delivery_type)
 		$delivery_type = $force_delivery_type;
 	else
@@ -1552,11 +1584,10 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 
 //		  'cc'      => 'vinay@vinay.in',
 
-		if ( count($attachment) > 0)
-		{
-			foreach( $attachment as $a )
-				$options['attachment'][] = array('filePath' => $a);
-		}
+		// Only files that are really there; a missing one is sent without and logged below.
+		$attach_opts = dh_letter_mail_attachments($attachment, $attach_missing);
+		if ($attach_opts)
+			$options['attachment'] = $attach_opts;
 
 		// Inline (CID) images referenced as cid: in the body above.
 		if ( !empty($embedded['inline']) )
@@ -1576,6 +1607,12 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
 		// fields DIPI could not fill (a wrong or missing merge field in the letter) show in the activity
 		if ($unfilled)
 			$log .= " - unfilled: ".implode(' ', $unfilled);
+		if ($attach_missing)
+		{
+			$log .= " - attachment missing, sent without it: ".implode(', ', $attach_missing);
+			watchdog('LETTER', 'Attachment missing, letter @l sent without it at centre @c: @f',
+				array('@l' => $letter_id, '@c' => $centre, '@f' => implode(', ', $attach_missing)), WATCHDOG_WARNING);
+		}
 		logit($centre,  'Letter', $id, $log );
 
 		// Email accepted for this application -> clear any "Email Error" flag from
