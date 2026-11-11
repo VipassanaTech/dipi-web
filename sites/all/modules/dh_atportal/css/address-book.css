@@ -1,0 +1,178 @@
+/* AT-Book (at-portal/address-book): the filters sit in one folded panel above the AT list,
+   compact when opened. Everything is scoped to this form. */
+
+#dh-atportal-address-book-form .ab-filters {
+  margin: 6px 0 12px;
+}
+#dh-atportal-address-book-form .ab-filters > legend {
+  font-size: 16px;
+  font-weight: bold;
+}
+#dh-atportal-address-book-form .ab-filters > legend a:before {
+  content: "\25B8\00a0";            /* ▸ while closed */
+}
+#dh-atportal-address-book-form .ab-filters > legend a:not(.collapsed):before {
+  content: "\25BE\00a0";            /* ▾ while open */
+}
+#dh-atportal-address-book-form .ab-on {
+  color: #b35900;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+/* Two equal columns for every row: AT-Code alone on the first line (left column), then
+   First + Last Name, Email + City, Country + State; one column on phones */
+#dh-atportal-address-book-form .ab-fields,
+#dh-atportal-address-book-form .ab-places {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+  margin: 0;
+}
+#dh-atportal-address-book-form .ab-fields .form-item-t-f-name {
+  grid-column: 1;                   /* starts the next line, so AT-Code stays alone on its line */
+}
+/* Bootstrap clearfix pseudo elements would become empty grid cells */
+#dh-atportal-address-book-form .ab-fields::before,
+#dh-atportal-address-book-form .ab-fields::after,
+#dh-atportal-address-book-form .ab-places::before,
+#dh-atportal-address-book-form .ab-places::after {
+  content: none;
+}
+#dh-atportal-address-book-form .ab-fields > *,
+#dh-atportal-address-book-form .ab-places > * {
+  min-width: 0;
+  margin-bottom: 10px;
+}
+#dh-atportal-address-book-form .ab-fields label,
+#dh-atportal-address-book-form .ab-places label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 3px;
+}
+#dh-atportal-address-book-form .ab-fields input.form-text {
+  width: 100%;
+  max-width: none;
+  height: 34px;
+}
+#dh-atportal-address-book-form .ab-places .select2-container {
+  width: 100% !important;
+}
+
+/* The three checkbox groups in one light box: the group name in a fixed column on the left,
+   its options as small chips beside it (a wrapped line stays under the options, not the name) */
+#dh-atportal-address-book-form .ab-cb-group {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 8px 12px 8px 132px;
+  background: #f6f8fa;
+  border: 1px solid #e3e8ee;
+  border-top: 0;
+  min-height: 46px;
+}
+#dh-atportal-address-book-form .ab-cb-group.ab-cb-first {
+  border-top: 1px solid #e3e8ee;
+  border-radius: 6px 6px 0 0;
+  margin-top: 4px;
+}
+#dh-atportal-address-book-form .ab-cb-group.ab-cb-last {
+  border-radius: 0 0 6px 6px;
+}
+#dh-atportal-address-book-form .ab-cb-label {
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 112px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+#dh-atportal-address-book-form .ab-cb-group .form-item,
+#dh-atportal-address-book-form .ab-cb-group .checkbox {
+  margin: 0;
+}
+#dh-atportal-address-book-form .ab-cb-group .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 10px 3px 8px;
+  font-size: 13px;
+  font-weight: normal;
+  line-height: 1.4;
+  color: #333;
+  background: #fff;
+  border: 1px solid #ccd5df;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#dh-atportal-address-book-form .ab-cb-group .checkbox label:hover {
+  border-color: #8fb0d6;
+}
+#dh-atportal-address-book-form .ab-cb-group .checkbox label:has(input:checked) {
+  background: #e3effc;
+  border-color: #5b8fc9;
+  color: #1d4f8a;
+}
+/* Bootstrap puts the box position:absolute over the text; keep it in line instead */
+#dh-atportal-address-book-form .ab-cb-group .checkbox input[type="checkbox"] {
+  position: static;
+  margin: 0 3px 0 0;
+  width: 14px;
+  height: 14px;
+}
+
+#dh-atportal-address-book-form .ab-filters .form-submit {
+  margin-top: 12px;
+}
+
+/* What the list is filtered by, just above the list */
+#dh-atportal-address-book-form .ab-summary {
+  background: #fff7e6;
+  border: 1px solid #f0d9a8;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0 0 10px;
+}
+
+/* The list's own instant search */
+#dh-atportal-address-book-form .dataTables_filter label {
+  font-weight: 600;
+}
+#dh-atportal-address-book-form .dataTables_filter input {
+  width: 240px;
+  max-width: 60vw;
+  height: 32px;
+  padding: 4px 8px;
+  font-weight: normal;
+  border: 1px solid #ccd5df;
+  border-radius: 4px;
+  outline: none;
+}
+#dh-atportal-address-book-form .dataTables_filter input:focus {
+  border-color: #5b8fc9;
+  box-shadow: 0 0 0 2px rgba(91, 143, 201, 0.2);
+}
+
+@media (max-width: 820px) {
+  #dh-atportal-address-book-form .ab-fields,
+  #dh-atportal-address-book-form .ab-places {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* on phones the group name goes above its chips */
+  #dh-atportal-address-book-form .ab-cb-group {
+    padding-left: 12px;
+  }
+  #dh-atportal-address-book-form .ab-cb-label {
+    position: static;
+    width: 100%;
+  }
+}

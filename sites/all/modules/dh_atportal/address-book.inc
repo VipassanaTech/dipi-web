@@ -66,6 +66,7 @@ function dh_atportal_address_book_form($form, &$form_state)
     drupal_add_js( drupal_get_path('module', 'dh_manageapp'). "/js/jquery-confirm.min.js");
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
     drupal_add_css(drupal_get_path('module', 'dh_atportal').'/css/bio.css');   // the photo in an opened row
+    drupal_add_css(drupal_get_path('module', 'dh_atportal').'/css/address-book.css');   // the folded, compact filters
 
     drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
     drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
@@ -91,23 +92,35 @@ function dh_atportal_address_book_form($form, &$form_state)
 
     $acat_info = db_query("select tr_teacher, GROUP_CONCAT(tac_name)  from dh_teacher_role left join dh_teacher_area_cluster on tr_identifier=tac_id where tr_deleted=0 and tr_role='ACAT' group by tr_teacher")->fetchAllKeyed();
 
-    $form['t_code'] = array('#title' => 'AT-Code', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
+    // All filters sit in one folded panel, closed when the page opens, so the AT list is on the first
+    // screen. #tree stays off, so every field keeps its own name and the search works as before.
+    $form['filters'] = array('#type' => 'fieldset', '#title' => t('Search / Filters'), '#collapsible' => TRUE, '#collapsed' => TRUE,
+        '#weight' => 0.5, '#attributes' => array('class' => array('ab-filters')));
+    $form['filters']['fields'] = array('#type' => 'container', '#attributes' => array('class' => array('ab-fields')), '#weight' => 1);
+    $form['filters']['places'] = array('#type' => 'container', '#attributes' => array('class' => array('ab-places')), '#weight' => 2);
+    foreach (array('types' => 'Teacher type', 'statuses' => 'Status', 'genders' => 'Gender') as $k => $label)
+        $form['filters'][$k] = array('#type' => 'container',
+            '#attributes' => array('class' => array('ab-cb-group', $k == 'types' ? 'ab-cb-first' : ($k == 'genders' ? 'ab-cb-last' : ''))),
+            '#weight' => 3 + count(element_children($form['filters'])),
+            'label' => array('#markup' => '<span class="ab-cb-label">'.$label.'</span>', '#weight' => -1));
+
+    $form['filters']['fields']['t_code'] = array('#title' => 'AT-Code', '#type' => 'textfield', '#size' => '30', '#weight' => 1,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
-    $form['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2,
+    $form['filters']['fields']['t_f_name'] = array('#title' => 'First Name', '#type' => 'textfield', '#size' => '30', '#weight' => 2,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
 
-    $form['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 4,
+    $form['filters']['fields']['t_l_name'] = array('#title' => 'Last Name', '#type' => 'textfield', '#size' => '30', '#weight' => 4,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
-    $form['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '30', '#weight' => 5,
+    $form['filters']['fields']['t_email'] = array('#title' => 'Email', '#type' => 'textfield', '#size' => '30', '#weight' => 5,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
-    $form['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '30', '#weight' => 5.1,
+    $form['filters']['fields']['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '30', '#weight' => 5.1,
         '#default_value' => '', '#required' => 0, '#maxlength' => 50  );
 
-    $form['t_country'] = array(
+    $form['filters']['places']['t_country'] = array(
         '#title' => 'Country',
         '#type' => 'select',
         '#options' => $country_codes,
@@ -118,7 +131,7 @@ function dh_atportal_address_book_form($form, &$form_state)
         ),
     );
 
-    $form['s_id'] = array(
+    $form['filters']['places']['s_id'] = array(
         '#title' => 'State',
         '#type' => 'select',
         '#options' => $state_codes,
@@ -130,112 +143,108 @@ function dh_atportal_address_book_form($form, &$form_state)
     );
 
     // AT: an Active teacher who is not SAT, Full-T or Bhante Teacher (see the filter below)
-    $form['t_at'] = array(
+    $form['filters']['types']['t_at'] = array(
         '#title' => '&nbsp;Assistant Teacher (AT)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 9
     );
 
-    $form['t_sat'] = array(
+    $form['filters']['types']['t_sat'] = array(
         '#title' => '&nbsp;Senior Assistant Teacher (SAT)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 10
     );
 
-    $form['t_full_t'] = array(
+    $form['filters']['types']['t_full_t'] = array(
         '#title' => '&nbsp;Full Teacher (T)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 12
     );
 
-    $form['t_bhante'] = array(
+    $form['filters']['types']['t_bhante'] = array(
         '#title' => '&nbsp;Bhante Teacher (BT)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 14
     );
 
-    $form['t_cat'] = array(
+    $form['filters']['types']['t_cat'] = array(
         '#title' => '&nbsp;Coordinating Area Teacher (CAT)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 16
     );
 
-    $form['t_ct'] = array(
+    $form['filters']['types']['t_ct'] = array(
         '#title' => '&nbsp;Center Teacher (CT)',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18
     );
 
-    $form['t_status_active'] = array(
+    $form['filters']['statuses']['t_status_active'] = array(
         '#title' => '&nbsp;Active',
         '#type' => 'checkbox',
         '#default_value' => '0',
-        '#prefix' => '<br>',
         '#weight' => 18.1
     );
 
-    $form['t_status_inactive'] = array(
+    $form['filters']['statuses']['t_status_inactive'] = array(
         '#title' => '&nbsp;Inactive',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.2
     );
 
-    $form['t_status_deceased'] = array(
+    $form['filters']['statuses']['t_status_deceased'] = array(
         '#title' => '&nbsp;Deceased',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.3
     );
 
-    $form['t_status_steppeddown'] = array(
+    $form['filters']['statuses']['t_status_steppeddown'] = array(
         '#title' => '&nbsp;SteppedDown',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.31
     );
 
-    $form['t_status_redacted'] = array(
+    $form['filters']['statuses']['t_status_redacted'] = array(
         '#title' => '&nbsp;Redacted',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.32
     );
 
-    $form['t_status_training'] = array(
+    $form['filters']['statuses']['t_status_training'] = array(
         '#title' => '&nbsp;Training',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.4
     );
 
-    $form['t_gender_m'] = array(
+    $form['filters']['genders']['t_gender_m'] = array(
         '#title' => '&nbsp;Male',
         '#type' => 'checkbox',
         '#default_value' => '0',
-        '#prefix' => '<br>',
         '#weight' => 18.5
     );
 
-    $form['t_gender_f'] = array(
+    $form['filters']['genders']['t_gender_f'] = array(
         '#title' => '&nbsp;Female',
         '#type' => 'checkbox',
         '#default_value' => '0',
         '#weight' => 18.6
     );
 
-    $form['sub'] = array(
+    $form['filters']['sub'] = array(
         '#type' => 'submit',
         '#value' => 'Search',
         '#weight' => 25,
-        '#prefix' => '<br>',
-        '#suffix' => '<br><br><br>',
     );
 
 $search_filters = "";
@@ -342,7 +351,28 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
     if (!empty($or_gender))
         $search_filters .= " AND (" . implode(" OR ", $or_gender) . ") ";
 
-
+    // What the list is filtered by, in words (from the typed values, escaped for the page)
+    $in = $form_state['user_input'];
+    $shown = array();
+    foreach (array('t_code' => 'Code', 't_f_name' => 'First name', 't_l_name' => 'Last name', 't_email' => 'Email', 't_city' => 'City') as $k => $label)
+        if (isset($in[$k]) && is_string($in[$k]) && trim($in[$k]) !== '')
+            $shown[] = $label.' "'.check_plain(trim($in[$k])).'"';
+    foreach (array('t_country' => $country_codes, 's_id' => $state_codes) as $k => $names)
+        if (!empty($in[$k]) && is_array($in[$k]))
+            foreach ($in[$k] as $v)
+                $shown[] = check_plain(isset($names[$v]) ? $names[$v] : $v);
+    $boxes = array('t_at' => 'AT', 't_sat' => 'SAT', 't_full_t' => 'Full T', 't_bhante' => 'Bhante T', 't_cat' => 'CAT', 't_ct' => 'CT',
+        't_status_active' => 'Active', 't_status_inactive' => 'Inactive', 't_status_deceased' => 'Deceased', 't_status_steppeddown' => 'SteppedDown',
+        't_status_redacted' => 'Redacted', 't_status_training' => 'Training', 't_gender_m' => 'Male', 't_gender_f' => 'Female');
+    foreach ($boxes as $k => $label)
+        if (!empty($in[$k]))
+            $shown[] = $label;
+    if ($shown)
+    {
+        $form['filters']['#title'] = t('Search / Filters').' <span class="ab-on">('.count($shown).' on)</span>';
+        $form['filters_summary'] = array('#weight' => 100, '#markup' => '<div class="ab-summary"><b>Showing only:</b> '.implode(', ', $shown)
+            .' &nbsp;&middot;&nbsp; '.l(t('Clear filters'), 'at-portal/address-book').'</div>');
+    }
 }
 
     if (!user_access('add assistant teacher') || $search_filters)
@@ -573,6 +603,7 @@ if (isset($form_state['user_input']) && $form_state['user_input'])
 			{
 				var table = $(tid).DataTable({
                     "bDestroy": true,
+                    language: { search: "Quick search:", searchPlaceholder: "name, code, country" },
 					data: dataset,
                     columns: [
                         {
