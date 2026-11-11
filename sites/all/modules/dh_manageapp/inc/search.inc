@@ -314,6 +314,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 		$rs['gender'] = (strtoupper($r['a_gender'])=='M')?'Male':'Female';
 		$rs['o_n'] = $r['a_old']?"Old":"New";
 		$rs['o_n'] .= '<br>'.$rs['gender'];
+		// For the Excel export
+		$rs['old_new'] = $r['a_old'] ? 'Old' : 'New';
+		$rs['sit_serve'] = (strtolower($r['a_type']) == 'sevak') ? 'Server' : 'Student';
 		$rs['courseid'] = $r['a_course'];
 
 		$course_type = db_query("SELECT c_course_type, td_key, td_val3 FROM dh_course left join dh_type_detail on c_course_type=td_id where c_id=:c_id", array('c_id'=>$r['a_course']))->fetchAssoc();
@@ -1001,7 +1004,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			        exportOptions: {
 			            format: {
 			            	header: function( data, column, node ) {
-			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction", "Other Info", "Friend Family", "ID Issued Date", "ID Issued By", "DOB", "Nationality", "Status", "CreatedDate"];
+			            		var h = ["Name", "Gender", "Age", "Courses", "PhoneMobile", "PhoneHome", "PhoneOffice", "Email", "Education", "Occupation", "Company", "Designation/Dept", "Address", "Pin", "City", "State","Country", "Accommodation","ID Type", "ID No", "Conf No", "Physical Health", "Mental Health", "Medication", "Pregnancy Details", "Other Meditation Techniques", "Emergency Name", "Emergency Relation", "Emergency Contact No", "Language", "Addiction", "Other Info", "Friend Family", "ID Issued Date", "ID Issued By", "DOB", "Nationality", "Status", "CreatedDate", "Old/New", "Student/Server"];
 			            		return h[column];
 			            	},
 			                body: function ( data, row, column, node ) {
@@ -1164,6 +1167,14 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                         {
                           return tmp[ row ].app_created;
                         }
+                        else if ( column == 39 )
+                        {
+                          return tmp[ row ].old_new;
+                        }
+                        else if ( column == 40 )
+                        {
+                          return tmp[ row ].sit_serve;
+                        }
 
 			                	
 		
@@ -1181,7 +1192,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					data: dataset,
 					"columnDefs": [
 					            {
-					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,38],
+					                "targets": [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
 					                "visible": false,
 					                "searchable": false
 					            },
@@ -1262,6 +1273,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
 				        { data: null, "title": "" },
+                { data: null, "title": "" },
+                { data: null, "title": "" },
                 { data: null, "title": "" },
                 { data: null, "title": "" },
                 { data: null, "title": "" },
