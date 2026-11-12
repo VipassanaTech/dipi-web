@@ -780,6 +780,14 @@ function dh_manageapp_menu()
 	       'access arguments' => array('delete center referral list'),
 	       'type' => MENU_CALLBACK);
 
+    // A deleted centre referral back on the list (Active or Inactive, by its end date).
+    $items['center-referral/%centre_id/%deleted_ref_id/undelete'] = array('title' => t('Center Referral List'),
+	       'page callback' => 'referral_undelete_page',
+	       'page arguments' => array(1, 2),
+	       'load arguments' => array(1),
+	       'access arguments' => array('delete center referral list'),
+	       'type' => MENU_CALLBACK);
+
     $items['daily-activity/%centre_id'] = array('title' => t('Daily Activity'),
            'page arguments' => array('dh_daily_activity_form'),
            'page callback' => 'drupal_get_form',
@@ -1266,6 +1274,11 @@ function ref_id_load( $id )
 	if (!$ref_id)
 		return false;
 
+	// A centre referral page opens only that centre's own referrals: saving under another
+	// centre's address would move the referral to that centre.
+	if (arg(0) == 'center-referral' && (!arg(1) || db_query("select r_center from dh_referral where r_id = :r", array(':r' => $id))->fetchField() != arg(1)))
+		return false;
+
 	if (user_access("access all centres"))
 		return $id;
 	
@@ -1290,6 +1303,17 @@ function ref_id_load( $id )
 	}
 
 	return false;
+}
+
+// A DELETED referral of this centre (centre referrals only). The centre itself is
+// checked by centre_id_load, which runs first on the same path.
+function deleted_ref_id_load($id, $centre)
+{
+	if (!ctype_digit((string) $id) || !ctype_digit((string) $centre) || !$centre)
+		return false;
+	$ok = db_query("select r_id from dh_referral where r_id = :r and r_center = :c and r_deleted = 1",
+		array(':r' => $id, ':c' => $centre))->fetchField();
+	return $ok ? (int) $id : false;
 }
 
 

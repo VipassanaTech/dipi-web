@@ -899,7 +899,13 @@ function dh_referral_form_submit($form, &$form_state)
 	drupal_set_message(t("Details updated successfully"), 'status');
 
 	if (arg(0) == 'center-referral')
-		drupal_goto ('center-referral/'.arg(1));
+	{
+		// An end date that has passed puts the referral under Inactive: open that tab.
+		$passed = $ref_id && db_query("select r_end < curdate() from dh_referral where r_id = :r", array(':r' => $ref_id))->fetchField();
+		if ($passed)
+			drupal_set_message(t('The End Date has passed, so this referral is under the Inactive tab. Set a later End Date to make it active.'), 'warning');
+		drupal_goto ('center-referral/'.arg(1), $passed ? array('query' => array('show' => 'inactive')) : array());
+	}
   elseif (arg(0) == 'at-portal')
     drupal_goto (!empty($form_state['values']['at_return']) ? $form_state['values']['at_return'] : 'at-portal');
 	else
@@ -1022,6 +1028,27 @@ function dh_referral_results()
 
  	$out .= '</h2>';
 
+	// Optional deep-link: /referral/{c}?ref=N (or /center-referral/{c}?ref=N) shows
+	// just that one referral - used by the "Referral-List" flag in search results.
+	$ref_filter = (isset($_REQUEST['ref']) && ctype_digit((string) $_REQUEST['ref'])) ? (int) $_REQUEST['ref'] : 0;
+	$ref_clause = $ref_filter ? " and r_id=$ref_filter" : "";
+
+	// A centre's list has three tabs: Active, Inactive (end date passed) and Deleted.
+	// The global referral list has no tabs and is unchanged.
+	$tab = '';
+	if ($center_id)
+	{
+		$tab = (isset($_GET['show']) && in_array($_GET['show'], array('inactive', 'deleted'), TRUE)) ? $_GET['show'] : 'active';
+		if ($ref_filter)
+		{
+			$state = db_query("select r_deleted, r_end >= curdate() as ok from dh_referral where r_id = :r and r_center = :c",
+				array(':r' => $ref_filter, ':c' => $center_id))->fetchAssoc();
+			if ($state)
+				$tab = dh_referral_tab_of($state['r_deleted'], $state['ok']);
+		}
+		$out .= dh_centre_referral_tab_bar($center_id, $tab);
+	}
+
 
 	$iPod    = stripos($_SERVER['HTTP_USER_AGENT'],"iPod");
 	$iPhone  = stripos($_SERVER['HTTP_USER_AGENT'],"iPhone");
@@ -1040,13 +1067,9 @@ function dh_referral_results()
 	
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/tables.css' );
 
-	// Optional deep-link: /referral/{c}?ref=N (or /center-referral/{c}?ref=N) shows
-	// just that one referral - used by the "Referral-List" flag in search results.
-	$ref_filter = (isset($_REQUEST['ref']) && ctype_digit((string) $_REQUEST['ref'])) ? (int) $_REQUEST['ref'] : 0;
-	$ref_clause = $ref_filter ? " and r_id=$ref_filter" : "";
+	$tab_where = dh_referral_tab_where($center_id, $tab);
 
-
-	$q = "select r_special, r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted,
+	$q = "select r_special, r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted, r_updated, r_updated_by,
 		r_course_center, r_course_type, r_course_start,
     concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
     from dh_student a
@@ -1058,7 +1081,7 @@ function dh_referral_results()
     left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code)
     left join dh_city ci on (s_city=ci.c_id)
     where  (a.s_id=r_student) and
-    (r_deleted = 0) and
+    {$tab_where} and
     r_center={$center_id} {$ref_clause}
     group by a.s_id
     order by r.r_created";
@@ -1070,18 +1093,30 @@ function dh_referral_results()
 	{
 		drupal_set_message($q);
 	}
+	$deleted_log = array();
+	if ($tab == 'deleted')
+	{
+		$res_log = db_query("select l.rl_referral, l.rl_tstamp, u.name from dh_referral_log l left join users u on u.uid = l.rl_user
+			where l.rl_event = 'Deleted' and l.rl_referral in (select r_id from dh_referral where r_center = :c and r_deleted = 1)
+			order by l.rl_id", array(':c' => $center_id));
+		foreach ($res_log as $l)
+			$deleted_log[$l->rl_referral] = array('when' => $l->rl_tstamp, 'who' => $l->name);    // the last one wins
+	}
+
 	$result = db_query($q);
 	$rows = array();
 	while( $r = $result->fetchAssoc() )
 	{
 		unset($rs);
-		
+
 		$rs['sid'] = $r['s_id'];
 		$rs['ref_id'] = $r['r_id'];
 
 
 		if (user_access('manage referral list') && !$center_id)
 		  $rs['name'] = _ma_make_link($r['Full Name'],'referral/'.arg(1).'/edit/'.$rs['ref_id']);
+		elseif ($tab == 'deleted')
+		  $rs['name'] = check_plain($r['Full Name']);      // a deleted referral is undeleted first, then edited
 		elseif (user_access('manage center referral list') && $center_id)
 		  $rs['name'] = _ma_make_link($r['Full Name'],'center-referral/'.arg(1).'/edit/'.$rs['ref_id']);
 		else
@@ -1097,10 +1132,25 @@ function dh_referral_results()
 
 		if (user_access('delete referral list') && !$center_id)
 			$rs['del'] = l("Delete", "referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))).' <label for="'.$rs['ref_id'].'">r-only</label> <input type="checkbox" class="referral-readonly" id="'.$rs['ref_id'].'" value="'.$rs['ref_id'].'" '.$readonly.'>' ;
+		elseif (user_access('delete center referral list') && $tab == 'deleted')
+			$rs['del'] = l("Undelete", "center-referral/".arg(1)."/".$rs['ref_id']."/undelete",
+				array("query" => array("token" => drupal_get_token('referral-undelete-'.$rs['ref_id'])), "attributes" => array("class" => array("ref-undel"))));
 		elseif (user_access('delete center referral list') && $center_id)
-			$rs['del'] = l("Delete", "center-referral/".arg(1)."/".$rs['ref_id']."/delete", array("attributes" => array("class" => array("ref-del")))) ;
+			$rs['del'] = l("Delete", "center-referral/".arg(1)."/".$rs['ref_id']."/delete",
+				array("query" => ($tab == 'inactive' ? array("show" => "inactive") : array()), "attributes" => array("class" => array("ref-del")))) ;
 		else
-			$rs['del'] = "No access"; 
+			$rs['del'] = "No access";
+
+		if ($tab == 'deleted')
+		{
+			// When and by whom: the last "Deleted" line of the activity log, else the last update.
+			$d = isset($deleted_log[$r['r_id']]) ? $deleted_log[$r['r_id']] : array('when' => $r['r_updated'],
+				'who' => db_query("select name from users where uid = :u", array(':u' => (int) $r['r_updated_by']))->fetchField());
+			$rs['deleted_on'] = $d['when'] ? date('d M Y', strtotime($d['when'])) : '';
+			$rs['deleted_by'] = check_plain((string) $d['who']);
+			if (dh_referral_twins($r['r_id']))
+				$rs['name'] .= '<br><span class="ref-twin">'.t('This person has another referral here').'</span>';
+		}
 
     if($center_id)
     {
@@ -1389,9 +1439,12 @@ function dh_referral_results()
 			   			{ data: "contact", "title" : "Email" },
 				        { data: "ref_by", "title" : "Referred By" },
 				        { data: "ref_start", "title" : "Start Date" },
-				        { data: "ref_end", "title" : "End Date" },
-				        { data: "del", "title" : "Delete" },
-		            ],   	
+				        { data: "ref_end", "title" : "End Date" },'.($tab == 'deleted' ? '
+				        { data: "deleted_on", "title" : "Deleted On" },
+				        { data: "deleted_by", "title" : "Deleted By" },
+				        { data: "del", "title" : "Undelete" },' : '
+				        { data: "del", "title" : "Delete" },').'
+		            ],
 				});
 
 			    // Add event listener for opening and closing details
@@ -1419,6 +1472,10 @@ function dh_referral_results()
 	                
 				$("#table-applicants tbody").on("click", ".ref-del", function() {
 					return confirm("Are you sure you want to delete record?");
+				});
+
+				$("#table-applicants tbody").on("click", ".ref-undel", function() {
+					return confirm("Undelete this referral? It goes back under Active, or under Inactive if its end date has passed.");
 				});
 
         $("#table-applicants tbody").on("change", ".referral-readonly", function() {
@@ -1572,12 +1629,15 @@ function referral_delete( $id )
     db_query("update dh_applicant set a_referral=0 where a_referral=$id");
     add_referral_activity($id, "Deleted", "Referral Deleted");
     drupal_set_message("Referral deleted successfully.");
+    if (arg(0) == 'center-referral')
+      drupal_set_message(t('It is now under the Deleted tab, where it can be undeleted.'));
   }
 
 
-	
+
 	if (arg(0) == 'center-referral')
-		drupal_goto ('center-referral/'.arg(1));
+		// back to the tab the Delete was clicked on
+		drupal_goto ('center-referral/'.arg(1), (isset($_GET['show']) && $_GET['show'] === 'inactive') ? array('query' => array('show' => 'inactive')) : array());
 	else
 		drupal_goto ('referral/'.arg(1));
 }
@@ -1659,4 +1719,136 @@ function add_referral_activity($ref_id, $ref_event, $ref_msg)
   $f['rl_msg'] = $ref_msg;
   $f['rl_user'] = $uid;
   db_insert('dh_referral_log')->fields($f)->execute();
+}
+
+
+/* ---- Centre referral list: Active / Inactive / Deleted tabs, and Undelete ---- */
+
+// The tabs of a centre's referral list. Active = not deleted, end date today or later
+// (the search list shows a referral until its end date); Inactive = not deleted, end
+// date passed; Deleted = deleted, whatever its end date.
+function dh_centre_referral_tabs()
+{
+	return array('active' => t('Active'), 'inactive' => t('Inactive (end date passed)'), 'deleted' => t('Deleted'));
+}
+
+// Which tab a referral belongs on, from r_deleted and (r_end >= today).
+function dh_referral_tab_of($deleted, $end_ok)
+{
+	if ($deleted)
+		return 'deleted';
+	return $end_ok ? 'active' : 'inactive';
+}
+
+// The list query's condition for a tab. The global referral list ($center_id 0) keeps
+// its old condition: every referral that is not deleted.
+function dh_referral_tab_where($center_id, $tab)
+{
+	if (!$center_id)
+		return "(r_deleted = 0)";
+	if ($tab == 'deleted')
+		return "(r_deleted = 1)";
+	if ($tab == 'inactive')
+		return "(r_deleted = 0) and (r_end < curdate())";
+	return "(r_deleted = 0) and (r_end >= curdate())";
+}
+
+// How many each tab shows, counted the way the list counts (one row per person record).
+function dh_centre_referral_counts($centre)
+{
+	$n = array();
+	foreach (array_keys(dh_centre_referral_tabs()) as $tab)
+		$n[$tab] = (int) db_query("select count(distinct r.r_student) from dh_referral r join dh_student s on s.s_id = r.r_student
+			where ".dh_referral_tab_where($centre, $tab)." and r.r_center = :c", array(':c' => $centre))->fetchField();
+	return $n;
+}
+
+// The tab links above a centre's list, with a line saying what the open tab holds.
+function dh_centre_referral_tab_bar($centre, $tab)
+{
+	$n = dh_centre_referral_counts($centre);
+	$out = '<ul class="nav nav-tabs ref-tabs" style="margin:6px 0 10px">';
+	foreach (dh_centre_referral_tabs() as $k => $label)
+		$out .= '<li'.($k == $tab ? ' class="active"' : '').'>'.l($label.' ('.$n[$k].')', 'center-referral/'.$centre,
+			$k == 'active' ? array() : array('query' => array('show' => $k))).'</li>';
+	$out .= '</ul>';
+	$help = array(
+		'active' => t('Referrals whose End Date is today or later. Applicants are shown as referred while the end date has not passed.'),
+		'inactive' => t('Referrals whose End Date has passed. To make one active again, open it and set a later End Date.'),
+		'deleted' => t('Deleted referrals. Undelete puts one back under Active, or under Inactive if its end date has passed.'),
+	);
+	return $out.'<p class="ref-tab-help">'.$help[$tab].'</p>';
+}
+
+// Other referrals of the same centre that are not deleted and are for the same person
+// (the shared matching rule: any real ID, or first + last name with the email or mobile).
+// Returns rows of r_id, name, r_end, active (1 = end date today or later).
+function dh_referral_twins($ref_id)
+{
+	$ref = db_query("select r_center, s_f_name, s_l_name, s_email, s_phone_mobile, s_pancard, s_aadhar, s_voter_id, s_passport
+		from dh_referral r join dh_student s on s.s_id = r.r_student where r_id = :r", array(':r' => $ref_id))->fetchAssoc();
+	if (!$ref || !$ref['r_center'])
+		return array();
+	$m = dh_referral_match_sql(dh_referral_who($ref, 's_'), 's.s_');
+	if (!$m)
+		return array();
+	list($cond, $args) = $m;
+	$args[':me'] = $ref_id;
+	$args[':c'] = $ref['r_center'];
+	return db_query("select r.r_id, concat(s.s_f_name, ' ', s.s_l_name) as name, r.r_end, (r.r_end >= curdate()) as active
+		from dh_referral r join dh_student s on s.s_id = r.r_student
+		where r.r_center = :c and r.r_deleted = 0 and r.r_id <> :me and $cond order by r.r_id", $args)->fetchAll();
+}
+
+// Undelete a deleted centre referral. It goes back under Active or Inactive by its end
+// date, the activity log says so, and applications in courses that have not started are
+// matched to it again (as on any save). Returns array('tab', 'end', 'twins') or FALSE
+// when it is not a deleted centre referral.
+function dh_referral_undelete($ref_id)
+{
+	global $user;
+	$r = db_query("select r_center, r_end, r_end >= curdate() as ok from dh_referral where r_id = :r and r_deleted = 1 and r_center <> 0",
+		array(':r' => $ref_id))->fetchAssoc();
+	if (!$r)
+		return FALSE;
+	$n = db_update('dh_referral')->fields(array('r_deleted' => 0, 'r_updated' => date('Y-m-d H:i:s'), 'r_updated_by' => $user->uid))
+		->condition('r_id', $ref_id)->condition('r_deleted', 1)->execute();
+	if (!$n)
+		return FALSE;
+	$tab = dh_referral_tab_of(0, $r['ok']);
+	add_referral_activity($ref_id, 'Undeleted', $tab == 'active'
+		? 'Referral undeleted: Active (end date '.$r['r_end'].')'
+		: 'Referral undeleted: Inactive (end date '.$r['r_end'].' has passed)');
+	update_referral_flag($ref_id);
+	return array('tab' => $tab, 'end' => $r['r_end'], 'twins' => dh_referral_twins($ref_id));
+}
+
+// center-referral/{centre}/{id}/undelete (the Undelete button on the Deleted tab).
+function referral_undelete_page($centre, $ref_id)
+{
+	$back = 'center-referral/'.$centre;
+	if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], 'referral-undelete-'.$ref_id))
+	{
+		drupal_set_message(t('The Undelete link has expired. Please click Undelete again.'), 'error');
+		drupal_goto($back, array('query' => array('show' => 'deleted')));
+	}
+	$res = dh_referral_undelete($ref_id);
+	if (!$res)
+	{
+		drupal_set_message(t('This referral could not be undeleted. It may have been undeleted already.'), 'error');
+		drupal_goto($back, array('query' => array('show' => 'deleted')));
+	}
+	if ($res['tab'] == 'active')
+		drupal_set_message(t('Referral undeleted. It is now under the Active tab.'));
+	else
+		drupal_set_message(t('Referral undeleted. It is under the Inactive tab because its End Date (@d) has passed. To make it active, open it and set a later End Date.',
+			array('@d' => date('d M Y', strtotime($res['end'])))));
+	if ($res['twins'])
+	{
+		$links = array();
+		foreach ($res['twins'] as $t)
+			$links[] = l($t->name, $back.'/edit/'.$t->r_id).' ('.($t->active ? t('Active') : t('Inactive')).', '.t('ends @d', array('@d' => date('d M Y', strtotime($t->r_end)))).')';
+		drupal_set_message(t('Note: this person already had another referral at this centre: !list. There are now two.', array('!list' => implode(', ', $links))), 'warning');
+	}
+	drupal_goto($back, $res['tab'] == 'inactive' ? array('query' => array('show' => 'inactive')) : array());
 }
