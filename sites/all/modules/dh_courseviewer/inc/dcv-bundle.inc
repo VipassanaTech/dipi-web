@@ -342,7 +342,7 @@ function dcv_student_referral($referral_id, $course_type_key, $applicant_type) {
                    from dh_referral r left join dh_teacher t on r.r_teacher=t.t_id where r_id=:id",
     array(':id' => (int) $referral_id))->fetchAssoc();
   if (!$ref) { return NULL; }
-  if (!empty($ref['r_end']) && date_create() > date_create($ref['r_end'])) { return NULL; }
+  if (!dh_referral_end_ok($ref['r_end'])) { return NULL; }
   $level = array('10-Day'=>1,'10-DayExecutive'=>1,'Satipatthana'=>2,'10-DaySpecial'=>3,'TSC'=>4,
                  '20-DayOSC'=>5,'30-DayOSC'=>6,'45-DayOSC'=>7,'60-DayOSC'=>8);
   $cl = isset($level[$course_type_key]) ? $level[$course_type_key] : 0;

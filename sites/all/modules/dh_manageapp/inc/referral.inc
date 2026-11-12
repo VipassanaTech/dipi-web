@@ -1740,6 +1740,18 @@ function dh_referral_tab_of($deleted, $end_ok)
 	return $end_ok ? 'active' : 'inactive';
 }
 
+// Is a referral still valid on its End Date? Valid through the whole end date: end date today or
+// later (no end date counts as valid). The same rule as the Active tab (r_end >= curdate()), so the
+// search page, the AT Portal and the Dipi App show a referral exactly while the list calls it Active.
+// "Today" is the database date, not PHP's: PHP follows each user's own time zone.
+function dh_referral_end_ok($r_end)
+{
+	$today = &drupal_static(__FUNCTION__);
+	if (!isset($today))
+		$today = db_query("select curdate()")->fetchField();
+	return (string) $r_end === '' || (string) $r_end >= $today;
+}
+
 // The list query's condition for a tab. The global referral list ($center_id 0) keeps
 // its old condition: every referral that is not deleted.
 function dh_referral_tab_where($center_id, $tab)

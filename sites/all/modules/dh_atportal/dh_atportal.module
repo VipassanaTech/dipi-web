@@ -821,7 +821,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
         $r_ref = db_query($q)->fetchAssoc();
 
-        if( date_create() <= date_create($r_ref['r_end']) && !($r_ref['r_center']))
+        if( dh_referral_end_ok($r_ref['r_end']) && !($r_ref['r_center']))
         {
             $r['referral'] = 1;
             $r['ref_listed_by'] = "";

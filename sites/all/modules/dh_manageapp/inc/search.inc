@@ -483,7 +483,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 			// "Referral-List" flag: shown only while the referral is still valid
 			// (today <= r_end), independent of course-level match. Links to the
 			// matching referral list (center or AT), pre-filtered to this referral.
-			if (empty($r_ref['r_end']) || date_create() <= date_create($r_ref['r_end']))
+			if (dh_referral_end_ok($r_ref['r_end']))
 			{
 				$ref_path = $r_ref['r_center'] ? 'center-referral/'.$r_ref['r_center'] : 'referral/'.$centre;
 				$rs['eocd'] .= '<div class="red">'.l('Referral-List', $ref_path, array('query' => array('ref' => $r['a_referral']), 'attributes' => array('target' => '_blank', 'style' => 'color:inherit'))).'</div>';
@@ -527,7 +527,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
       elseif( $r_ref["r_listed_lc_seva"] && strtolower($rs['type']) == "sevak" &&  $course_level[$course_type['td_key']] >= 3)
         $show_referral = 1;
 
-      if( date_create() <= date_create($r_ref['r_end']) && $show_referral)
+      if( dh_referral_end_ok($r_ref['r_end']) && $show_referral)
       {
         $rs['ref_reason'] = $r_ref['r_reason'];
         $rs['ref_start'] = $r_ref['r_start'];
