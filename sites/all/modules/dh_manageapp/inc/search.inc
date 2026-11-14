@@ -900,6 +900,27 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
  */
 	//$out .= '<div id="replace-me"></div>';
 	$js = '
+		/* Message for a failed button request (Update, Delete, Send LC Review Email, Transfer).
+		   Status 0 = no reply at all (network, or blocked in the browser). Never use a single quote in this JS. */
+		function dhAjaxFailMsg( what, jqxhr, textStatus ) {
+			var status = ( jqxhr && jqxhr.status ) ? jqxhr.status : 0;
+			var reason;
+			if ( !status ) {
+				if ( navigator.onLine === false )
+					reason = "Your computer is not connected to the internet.";
+				else
+					reason = "Could not reach DIPI (no reply from the server).";
+			}
+			else if ( status == 403 || status == 404 )
+				reason = "DIPI refused the request (" + status + "). You may have been logged out.";
+			else if ( textStatus == "parsererror" )
+				reason = "DIPI sent back an unexpected reply.";
+			else
+				reason = "DIPI gave an error (" + status + ( jqxhr.statusText ? " " + jqxhr.statusText : "" ) + ").";
+			return what + " could not be confirmed.\n\n" + reason +
+				"\n\nPlease reload the page and check before you try again, so nothing is done twice.";
+		}
+
 		function format ( d ) {
 			var pregnant = "", photo = "", referral = "", left_reason = "";
             var long_course = "";
@@ -1476,10 +1497,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					  	$(tr1).loading("stop");
 					  })
 					  .fail(function( jqxhr, textStatus, error ) {
-					    var err = textStatus + ", " + error;
-					    alert("Error updating "+err);
-					    $(this).loading("stop");
-					});			
+					    alert(dhAjaxFailMsg("The status update", jqxhr, textStatus));
+					    $(tr1).loading("stop");
+					});
 
 				});
 
@@ -1506,10 +1526,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						  	//row.remove();
 						  })
 						  .fail(function( jqxhr, textStatus, error ) {
-						    var err = textStatus + ", " + error;
-						    alert("Error updating "+err);
+						    alert(dhAjaxFailMsg("The delete", jqxhr, textStatus));
 						    $(tr).loading("stop");
-						});			
+						});
 					}
 
 				}
@@ -1528,8 +1547,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
                                 alert(json.msg);
                           })
                           .fail(function( jqxhr, textStatus, error ) {
-                            var err = textStatus + ", " + error;
-                            alert("Error updating "+err);
+                            alert(dhAjaxFailMsg("Sending the LC review email", jqxhr, textStatus));
                             $(tr).loading("stop");
                         });
                         $(tr).loading("stop");
@@ -1741,10 +1759,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 										  	//row.remove();
 										  })
 										  .fail(function( jqxhr, textStatus, error ) {
-										    var err = textStatus + ", " + error;
-										    alert("Error updating "+err);
+										    alert(dhAjaxFailMsg("The transfer", jqxhr, textStatus));
 										    $(tr).loading("stop");
-										});			
+										});
 					                }
 					                else
 					                {
