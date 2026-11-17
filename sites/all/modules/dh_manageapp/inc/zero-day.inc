@@ -1810,8 +1810,11 @@ function dh_seating_section_pdf()
 	} else {
 		// -------- N A4 sheets: fill an overlapping tile-grid canvas, then tile --------
 		// Pick the grid + tile orientation that scales the plan largest; the canvas is
-		// (cols*tile - overlaps) so adjacent A4 windows share an 8mm strip.
-		$A4w = 595.28; $A4h = 841.89; $ov = 22.68;    // A4 pt; 8mm overlap
+		// (cols*tile - overlaps) so adjacent A4 windows share a 20mm strip. The join
+		// (fold line + blue diamonds) is in the MIDDLE of that strip, 10mm in from the
+		// joining edge of both sheets, so a printer that leaves up to ~9mm blank at the
+		// paper edge still prints the join marks and loses no part of the plan.
+		$A4w = 595.28; $A4h = 841.89; $ov = 56.69;    // A4 pt; 20mm overlap
 		$grids = ($sheets == 4) ? array(array(2, 2)) : array(array(2, 1), array(1, 2));   // 4 sheets = a simple 2x2
 		$mrg = 60;   // ~21mm reserved outer band for the layout map + join line/marks (off the plan)
 		$best = null;
@@ -1838,14 +1841,19 @@ function dh_seating_section_pdf()
 		$cols = $best['cols']; $rows = $best['rows']; $tw = $best['tw']; $th = $best['th'];
 		$N = $cols * $rows;
 		$labels = '';
+		// Keep the sheet label and the blue diamonds this far from the OUTER paper edge
+		// (10mm): printers leave up to ~6mm blank there, so marks nearer the edge get cut.
+		$safe = 28.35;
 
 		// Per sheet: a big number + a small layout map (all sheets numbered in the
 		// order to place them; THIS sheet filled green) so the operator sees at a
-		// glance which sheet it is and where it goes.
+		// glance which sheet it is and where it goes. Map and text sit SIDE BY SIDE
+		// (not stacked) so the label is short enough to sit $safe in from the edge
+		// and still stay off the plan.
 		for ($r = 0; $r < $rows; $r++) {
 			for ($c = 0; $c < $cols; $c++) {
 				$ord = $r * $cols + $c + 1;
-				$map = '<table style="border-collapse:collapse;margin:2pt auto 0">';
+				$map = '<table style="border-collapse:collapse;margin:0">';
 				for ($rr = 0; $rr < $rows; $rr++) {
 					$map .= '<tr>';
 					for ($cc = 0; $cc < $cols; $cc++) {
@@ -1857,12 +1865,16 @@ function dh_seating_section_pdf()
 					$map .= '</tr>';
 				}
 				$map .= '</table>';
-				$box = '<div style="text-align:center;font:bold 13pt Arial,sans-serif;color:#000">Sheet ' . $ord . ' of ' . $N
-					. '<div style="font:bold 8pt Arial;color:#2e7d32;margin-top:2pt">place in number order &#8595;</div>' . $map
-					. '<div style="font:7pt Arial;color:#1a4fd0;margin-top:2pt">line up the blue &#9670; &middot; dotted = trim/fold edge</div></div>';
-				$bw = max(90, $cols * 26 + 20);
+				$box = '<div style="text-align:center;white-space:nowrap">'
+					. '<div style="display:inline-block;vertical-align:middle;margin-right:6pt">' . $map . '</div>'
+					. '<div style="display:inline-block;vertical-align:middle;text-align:left">'
+					. '<div style="font:bold 13pt Arial,sans-serif;color:#000">Sheet ' . $ord . ' of ' . $N . '</div>'
+					. '<div style="font:bold 8pt Arial;color:#2e7d32;margin-top:1pt">place in number order</div>'
+					. '<div style="font:7pt Arial;color:#1a4fd0;margin-top:1pt">line up the blue &#9670; &middot; dotted = trim/fold edge</div>'
+					. '</div></div>';
+				$bw = 240;
 				$style = 'position:absolute;width:' . $bw . 'pt;left:' . round($c * ($tw - $ov) + $tw / 2 - $bw / 2, 1) . 'pt;';
-				$style .= ($r == 0) ? 'top:4pt;' : 'bottom:4pt;';
+				$style .= ($r == 0) ? 'top:' . $safe . 'pt;' : 'bottom:' . $safe . 'pt;';
 				$labels .= '<div style="' . $style . '">' . $box . '</div>';
 			}
 		}
@@ -1872,32 +1884,37 @@ function dh_seating_section_pdf()
 		// slide the sheets until the identical marks sit on top of each other, then
 		// tape. Red, in the outer band, off the plan.
 		// Diamond registration + trim/fold guide, at each seam:
-		//  - a filled BLUE diamond centred on the seam (the later sheet's leading edge):
-		//    the earlier sheet prints the whole diamond, the later sheet only its half,
-		//    so laying the later sheet on top completes ONE clean diamond when aligned,
-		//    and shows a broken/doubled diamond when it is off. In the top & bottom
-		//    (or left & right) bands, so tilt shows too. Half-diagonal < overlap.
-		//  - a dotted grey line ~4mm inside each sheet's leading (top/left, on-top) edge
-		//    as a trim/fold guide for the printer's blank border. Drawn per-tile in
-		//    dh_tile_pdf_to_a4() so the covered/underneath edge is left unmarked.
+		//  - a filled BLUE diamond centred on the seam (the middle of the shared strip,
+		//    where the later sheet is folded): the later sheet is folded on the seam and
+		//    laid on top, so the earlier sheet's half of the diamond meets the later
+		//    sheet's half - ONE clean diamond when aligned, a broken/doubled one when
+		//    off. In the top & bottom (or left & right) bands, so tilt shows too.
+		//    Half-diagonal (~6.7mm with border) < half the overlap (10mm). Its outer tip
+		//    is $safe (10mm) in from the outer paper edge so the printer does not cut it.
+		//  - a dotted grey fold line on the same seam, on the later (on-top) sheet only.
+		//    Drawn per-tile in dh_tile_pdf_to_a4() so the covered/underneath sheet is
+		//    left unmarked.
 		$Wc = $best['Wc']; $Hc = $best['Hc'];
-		$ds = 30;                                     // filled diamond ~21pt half-diagonal (< 8mm overlap)
+		$ds = 24;                                     // filled diamond; with its 1.5pt border ~19pt half-diagonal (< 10mm = half the overlap)
 		$dg = 'position:absolute;width:' . $ds . 'pt;height:' . $ds . 'pt;background:#1a4fd0;border:1.5pt solid #0a2f80;'
 			. 'transform:rotate(45deg);-webkit-transform:rotate(45deg);';
-		$off = round(24 - $ds / 2, 1);
+		// Box edge offset from the outer edge so the diamond's outer TIP is $safe in:
+		// centre = $safe + half-diagonal of the bordered box; box edge = centre - half its side.
+		$dbox = $ds + 3;                              // side incl. the 1.5pt border on both sides
+		$off = round($safe + $dbox * 0.7071 - $dbox / 2, 1);
 		// Only the blue diamonds are drawn on the shared canvas. The dotted trim/fold
 		// line is drawn per-tile in dh_tile_pdf_to_a4() - on each sheet's OWN leading
 		// (top/left, on-top) edge only - so the redundant line on the underneath edge
 		// of the neighbour is simply not drawn, without moving the ones that are kept.
 		for ($c = 1; $c < $cols; $c++) {              // vertical seams (sheets side by side)
-			$split = $c * ($tw - $ov);
-			$dx = round($split - $ds / 2, 1);
+			$split = $c * ($tw - $ov) + $ov / 2;      // middle of the shared strip
+			$dx = round($split - $dbox / 2, 1);       // centre the bordered box on the seam
 			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;top:' . $off . 'pt;"></div>';
 			$labels .= '<div style="' . $dg . 'left:' . $dx . 'pt;bottom:' . $off . 'pt;"></div>';
 		}
 		for ($r = 1; $r < $rows; $r++) {              // horizontal seams (sheets stacked)
-			$split = $r * ($th - $ov);
-			$dy = round($split - $ds / 2, 1);
+			$split = $r * ($th - $ov) + $ov / 2;      // middle of the shared strip
+			$dy = round($split - $dbox / 2, 1);
 			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;left:' . $off . 'pt;"></div>';
 			$labels .= '<div style="' . $dg . 'top:' . $dy . 'pt;right:' . $off . 'pt;"></div>';
 		}
@@ -2165,7 +2182,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		<p>13- To make only one section again (for example only Female, or only Group 1 - Male): click the red "Regenerate this section" button in the bar of that section. Only that section is made again from the Seating Configuration, in seniority order; the other sections stay as they are. First store your other seat changes. To make the whole plan again, use "Regenerate" on the course page.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
-        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
+        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the strip outside the line folds behind the page. That strip is printed again on the other page, so nothing is lost.</p>
 
         <p><strong>Step 2:</strong> Join the pages using clear tape on both the front and back. Align the printed diamond marks carefully while joining the pages.</p>
 
@@ -3326,7 +3343,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		<p>13- To make only one section again (for example only Female, or only Group 1 - Male): click the red "Regenerate this section" button in the bar of that section. Only that section is made again from the Seating Configuration, in seniority order; the other sections stay as they are. First store your other seat changes. To make the whole plan again, use "Regenerate" on the course page.</p>
         <h3>Joining the 2-Page or 4-Page Seating Plan</h3>
 
-        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the extra white space folds behind the page.</p>
+        <p><strong>Step 1:</strong> If a dotted line is present, fold the printed page along the dotted line so that the strip outside the line folds behind the page. That strip is printed again on the other page, so nothing is lost.</p>
 
         <p><strong>Step 2:</strong> Join the pages using clear tape on both the front and back. Align the printed diamond marks carefully while joining the pages.</p>
 

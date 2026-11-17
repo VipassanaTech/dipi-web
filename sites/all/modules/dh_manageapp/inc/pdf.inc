@@ -121,7 +121,7 @@ function create_pdf_from_html_size($html, $outfile, $w_mm, $h_mm)
 function dh_tile_pdf_to_a4($big_pdf, $out_pdf, $cols, $rows, $tw_pt, $th_pt, $ov_pt, $canvas_h_pt)
 {
 	$tiles = array();
-	$edge = 8.5;   // dotted line ~3mm inside the sheet's leading edge
+	$edge = $ov_pt / 2;   // dotted fold line on the seam: the middle of the shared strip (10mm in)
 	for ($r = 0; $r < $rows; $r++) {
 		for ($c = 0; $c < $cols; $c++) {
 			$ox = -($c * ($tw_pt - $ov_pt));
