@@ -484,3 +484,12 @@ mark.lc-unfilled { background: #f8d7da; color: #a94442; padding: 0 2px; }
 .lc-letter-notice { background: #fff8e1; border: 1px solid #f0d58c; border-radius: 4px; padding: 8px 12px; margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }
 /* The letter form is container-inline and core makes its divs inline, so keep the notice a box. */
 .container-inline div.lc-letter-notice { display: block; }
+/* Letter check box on the Letters page and the held-save message (inc/letter-coverage.inc) */
+details.lcov { margin: 10px 0 18px; border: 1px solid #d8e3ee; border-radius: 6px; background: #fff; }
+details.lcov > summary { cursor: pointer; padding: 8px 12px; font-weight: bold; }
+details.lcov > summary.lcov-bad { color: #b71c1c; }
+details.lcov > summary.lcov-good { color: #2e7d32; }
+details.lcov .lcov-help { margin: 0 12px 8px; color: #555; }
+details.lcov .lcov-scroll { overflow-x: auto; margin: 0 12px 12px; }
+table.lcov-table td.lcov-none { color: #c62828; font-weight: bold; }
+.lcov-warn ul.lcov-gaps { margin: 4px 0 6px 20px; }

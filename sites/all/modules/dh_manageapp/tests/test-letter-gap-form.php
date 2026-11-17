@@ -110,4 +110,27 @@ t_in_txn(function () {
   $r = dh_letter_set_inactive_checked($c, $lcr, TRUE, 777049, FALSE);
   t_ok(!$r['done'] && $r['held'] === NULL, 'G5 a long-course letter: refused as before');
 });
+// H1-H4: the Letter check box on the Letters page
+t_eq(dh_letter_check_box(0), '', 'H1 no box for the template centre 0');
+t_in_txn(function () {
+  $c = 9900001;
+  foreach (array(6, 10) as $t) t_make_course(array('c_center' => $c, 'c_course_type' => $t));
+  drupal_static_reset('dh_letter_course_types_to_cover_runs');
+  drupal_static_reset('dh_letter_cover_statuses');
+  $all = tf_letter($c, array('l_name' => 'Zzq <b>all</b>'));
+  tf_letter($c, array('l_name' => 'Zzq cancel', 'l_event' => 'Cancelled', 'l_course_type' => 6));
+  tf_letter($c, array('l_name' => 'Zzq review', 'l_event' => 'Review'));
+  $h = dh_letter_check_box($c);
+  t_ok(strpos($h, '<details class="lcov">') === 0, 'H2 a folded box');
+  t_ok(strpos($h, 'statuses have course types with no letter') !== FALSE, 'H2 summary counts the statuses with a gap');
+  t_ok(strpos($h, 'letters/' . $c . '/view/' . $all) !== FALSE, 'H2 a letter name links to its page');
+  t_ok(strpos($h, 'Zzq <b>all</b>') === FALSE && strpos($h, 'Zzq &lt;b&gt;all&lt;/b&gt;') !== FALSE, 'H2 names are escaped');
+  t_ok(strpos($h, 'lcov-none') !== FALSE, 'H2 No letter cells are marked');
+  t_ok(strrpos($h, '>Review<') > strrpos($h, '>Duplicate<'), 'H3 the Review row is last');
+  $review_row = substr($h, strrpos($h, '>Review<'));
+  t_ok(strpos(substr($review_row, 0, strpos($review_row, '</tr>')), 'lcov-none') === FALSE, 'H3 the Review row has no red');
+  $_GET['q'] = "letters/$c";
+  t_ok(strpos(dh_manage_letters(), '<details class="lcov">') !== FALSE, 'H4 the Letters page shows the box');
+});
+
 t_done();

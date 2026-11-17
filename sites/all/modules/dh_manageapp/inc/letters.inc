@@ -202,6 +202,8 @@ function dh_letters_listing()
 		$out = '<h2>'.l("Add Letter", "letters/$centre_id/add").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Manage Fields", "letter-fields/$centre_id").' &nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
 	else
 		$out = '<h2>'.l("Back to Dashboard", "centre/".$centre_id).'</h2>';
+	// Which letter DIPI sends for each status and course type (inc/letter-coverage.inc).
+	$out .= dh_letter_check_box($centre_id);
 	$out .= "<h2>Active Letters</h2>";
 	$out .= dh_letter_lc_notice_list();
 	if ($n_err || $n_warn)

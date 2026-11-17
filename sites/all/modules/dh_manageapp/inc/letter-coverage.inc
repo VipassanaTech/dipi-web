@@ -216,3 +216,56 @@ function dh_letter_gap_record($centre, $letter_id, $action, $w)
 	watchdog('letter_gap', 'Done anyway at centre @c, letter @l (@a): @w',
 		array('@c' => (int) $centre, '@l' => (int) $letter_id, '@a' => $action, '@w' => dh_letter_warnings_text($w)), WATCHDOG_NOTICE);
 }
+
+/**
+ * The "Letter check" box on the Letters page: every checked status against every course type
+ * the centre runs, with the letter DIPI sends or "No letter". Folded by default; the summary
+ * line gives the result. Review is the last row and is never red. '' for the template centre 0
+ * and for a centre with no course types.
+ */
+function dh_letter_check_box($centre)
+{
+	$centre = (int) $centre;
+	if ($centre <= 0)
+		return '';
+	$types = dh_letter_course_types_to_cover($centre, '', 0);
+	if (!$types)
+		return '';
+	$rows = array();
+	$last = array();
+	$n_bad = 0;
+	foreach (dh_letter_coverage($centre) as $status => $bytype)
+	{
+		$review = dh_letter_cover_is_review($status);
+		$row = array(array('data' => check_plain($status), 'header' => TRUE));
+		$bad = FALSE;
+		foreach ($types as $tid => $tname)
+		{
+			$l = $bytype[$tid];
+			if ($l !== NULL)
+				$row[] = l($l['l_name'], "letters/$centre/view/".$l['l_id']);
+			elseif ($review)
+				$row[] = '&ndash;';
+			else
+			{
+				$row[] = array('data' => t('No letter'), 'class' => array('lcov-none'));
+				$bad = TRUE;
+			}
+		}
+		if ($bad)
+			$n_bad++;
+		if ($review)
+			$last[] = $row;
+		else
+			$rows[] = $row;
+	}
+	$header = array(t('Status'));
+	foreach ($types as $tname)
+		$header[] = check_plain($tname);
+	$summary = $n_bad
+		? format_plural($n_bad, 'Letter check: 1 status has course types with no letter', 'Letter check: @count statuses have course types with no letter')
+		: t('Letter check: every status has a letter');
+	return '<details class="lcov"><summary class="'.($n_bad ? 'lcov-bad' : 'lcov-good').'">'.$summary.'</summary>'
+		.'<p class="lcov-help">'.t('The letter DIPI sends for each status and each course type you run. "No letter" means the applicant gets no letter for that status. Review is an internal status, so it needs no letter.').'</p>'
+		.'<div class="lcov-scroll">'.theme('table', array('header' => $header, 'rows' => array_merge($rows, $last), 'attributes' => array('class' => array('lcov-table')))).'</div></details>';
+}
