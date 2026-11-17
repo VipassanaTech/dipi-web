@@ -73,4 +73,41 @@ t_in_txn(function () {
   list($err) = tf_post("letters/$c/edit/$ten", $bad, $r10);
   t_ok(!empty($err) && !isset($err['l_gap_ok']), 'F7 the merge-field check still holds a bad field, as before');
 });
+// G1-G5: Make inactive / Make active through the checked function (the router only adds messages and drupal_goto).
+t_in_txn(function () {
+  $c = 9900001;
+  foreach (array(6, 10) as $t) t_make_course(array('c_center' => $c, 'c_course_type' => $t));
+  drupal_static_reset('dh_letter_course_types_to_cover_runs');
+  $all = tf_letter($c, array('l_name' => 'Zzq all'));
+  $ten = tf_letter($c, array('l_name' => 'Zzq ten', 'l_course_type' => 6));
+  $wd = function () { return (int) db_query("select count(*) from watchdog where type = 'letter_gap'")->fetchField(); };
+
+  $r = dh_letter_set_inactive_checked($c, $all, TRUE, 777041, FALSE);
+  t_ok(!$r['done'] && !empty($r['held']['gaps']['Confirmed']), 'G1 making the All letter inactive is held (20 Day would get no letter)');
+  t_eq(tf_row($all)['l_deleted'], 0, 'G1 not changed');
+
+  $n = $wd();
+  $r = dh_letter_set_inactive_checked($c, $all, TRUE, 777042, TRUE);
+  t_ok($r['done'] && $r['held'] === NULL, 'G2 anyway: done');
+  t_eq(array(tf_row($all)['l_deleted'], tf_row($all)['l_updated_by']), array(1, 777042), 'G2 inactive, by who did it');
+  t_eq($wd(), $n + 1, 'G2 one letter_gap record');
+
+  $r = dh_letter_set_inactive_checked($c, $ten, TRUE, 777043, FALSE);
+  t_ok(!$r['done'] && !empty($r['held']['gaps']), 'G3 now the 10 Day letter is the last one for 10 Day: held');
+  $r = dh_letter_set_inactive_checked($c, $all, FALSE, 777044, FALSE);
+  t_ok($r['done'] && $r['held'] === NULL, 'G3 making the All letter active again: no warning, done at once');
+  $r = dh_letter_set_inactive_checked($c, $ten, TRUE, 777045, FALSE);
+  t_ok($r['done'], 'G3 with the All letter back, the 10 Day letter can be made inactive at once');
+
+  $rv = tf_letter($c, array('l_name' => 'Zzq review', 'l_event' => 'Review', 'l_deleted' => 1));
+  $r = dh_letter_set_inactive_checked($c, $rv, FALSE, 777046, FALSE);
+  t_ok(!$r['done'] && !empty($r['held']['review']), 'G4 making a Review letter active is held');
+  t_ok(dh_letter_set_inactive_checked($c, $rv, FALSE, 777047, TRUE)['done'], 'G4 anyway: done');
+
+  $r = dh_letter_set_inactive_checked(9900002, $all, TRUE, 777048, TRUE);
+  t_ok(!$r['done'] && $r['held'] === NULL, "G5 another centre's letter: refused as before");
+  $lcr = tf_letter($c, array('l_name' => 'Recommending Review', 'l_event' => 'R-ATReview'));
+  $r = dh_letter_set_inactive_checked($c, $lcr, TRUE, 777049, FALSE);
+  t_ok(!$r['done'] && $r['held'] === NULL, 'G5 a long-course letter: refused as before');
+});
 t_done();

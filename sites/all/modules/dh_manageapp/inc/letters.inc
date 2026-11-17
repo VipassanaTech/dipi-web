@@ -47,14 +47,22 @@ function dh_manage_letters()
 			break;
 		case 'delete':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			if (dh_letter_set_inactive($centre_id, $letter_id, TRUE, $user->uid))
+			$res = dh_letter_set_inactive_checked($centre_id, $letter_id, TRUE, $user->uid, !empty($_GET['anyway']));
+			if ($res['held'])
+				drupal_set_message(dh_letter_warnings_html($res['held'], 'inactive')
+					.l(t('Make inactive anyway'), "letters/$centre_id/delete/$letter_id", array('query' => array('anyway' => 1))), 'error');
+			elseif ($res['done'])
 				drupal_set_message("Letter marked as inactive. It can be made active again from the Inactive Letters list below.");
 			else
 				drupal_set_message(t('This is a long-course letter. It cannot be made inactive or active.'), 'error');
 			drupal_goto("letters/$centre_id");
 		case 'restore':
 			if ( ! dh_letters_access('manage') ) { drupal_access_denied(); return; }
-			if (dh_letter_set_inactive($centre_id, $letter_id, FALSE, $user->uid))
+			$res = dh_letter_set_inactive_checked($centre_id, $letter_id, FALSE, $user->uid, !empty($_GET['anyway']));
+			if ($res['held'])
+				drupal_set_message(dh_letter_warnings_html($res['held'], 'active')
+					.l(t('Make active anyway'), "letters/$centre_id/restore/$letter_id", array('query' => array('anyway' => 1))), 'error');
+			elseif ($res['done'])
 				drupal_set_message("Letter marked as active.");
 			else
 				drupal_set_message(t('This is a long-course letter. It cannot be made inactive or active.'), 'error');
@@ -90,6 +98,24 @@ function dh_letter_set_inactive($centre_id, $letter_id, $inactive, $uid)
 	db_update('dh_letter')->fields(array('l_deleted' => $inactive ? 1 : 0, 'l_updated' => date('Y-m-d H:i:s'), 'l_updated_by' => $uid))
 		->condition('l_id', $letter_id)->condition('l_center', $centre_id)->execute();
 	return TRUE;
+}
+
+/**
+ * Make a letter of $centre_id inactive ($inactive TRUE) or active, as $uid, unless that leaves a
+ * status with no letter or makes a Review letter active (inc/letter-coverage.inc) and $anyway is
+ * FALSE. Returns array('done' => bool, 'held' => the warnings or NULL): held = not changed
+ * because of a warning; done FALSE and held NULL = refused as before (another centre's letter or a
+ * long-course letter). Going ahead anyway writes one letter_gap watchdog record.
+ */
+function dh_letter_set_inactive_checked($centre_id, $letter_id, $inactive, $uid, $anyway)
+{
+	$w = dh_letter_change_warnings($centre_id, $inactive ? 'inactive' : 'active', $letter_id);
+	if (dh_letter_has_warnings($w) && !$anyway)
+		return array('done' => FALSE, 'held' => $w);
+	$done = dh_letter_set_inactive($centre_id, $letter_id, $inactive, $uid);
+	if ($done && dh_letter_has_warnings($w))
+		dh_letter_gap_record($centre_id, $letter_id, $inactive ? 'inactive' : 'active', $w);
+	return array('done' => $done, 'held' => NULL);
 }
 
 /* Remove the attachment of a letter of $centre_id, as $uid. FALSE when it is not that centre's letter. */
