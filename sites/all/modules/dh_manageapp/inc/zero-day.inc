@@ -1083,6 +1083,17 @@ function dh_view_gender_on($g)
 	return $scope === NULL || in_array($g, $scope);
 }
 
+/* Teacher List link that keeps the sort order (?seating=1) and the "Print only" part (?part=). */
+function dh_teacher_list_url($base, $seating, $part)
+{
+	$q = array();
+	if ($seating)
+		$q[] = 'seating=1';
+	if ($part !== '')
+		$q[] = 'part='.$part;
+	return $base.($q ? '?'.implode('&amp;', $q) : '');
+}
+
 function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
 	global $base_url;
@@ -1091,9 +1102,17 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	// no meditation cells (cs_has_cells explicitly 0). Operators can toggle it back.
 	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
 	$hide_cell = (!$is_pdf && $hcv !== false && $hcv !== null && (int)$hcv === 0);
-	$dl_name = dh_course_file_basename($centre, $course, 'teacher-list');
-	$out = '<title>'.$dl_name.'</title>';
-	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/teacher-list-v2.css").'");</style>';
+
+	// Screen only: "Print only" choice (?part=). M / F = one side; M1, F2 ... = one AT group
+	// of that side (its Old and New sections). Anything else = the whole list, as before.
+	$part = $part_g = $part_grp = '';
+	if (!$is_pdf && isset($_REQUEST['part']) && is_string($_REQUEST['part'])
+		&& preg_match('/^([MF])([0-9]{1,2})?$/', strtoupper(trim($_REQUEST['part'])), $pm))
+	{
+		$part = $pm[0];
+		$part_g = $pm[1];
+		$part_grp = isset($pm[2]) ? $pm[2] : '';
+	}
 
 	$q = "select ct_type, ct_group, t_code, CONCAT(t_f_name, ' ',t_l_name) as 't_name', t_gender from dh_course_teacher ct left join dh_teacher t on ct_teacher=t_id where ct_course='$course' and ct_status='Confirmed'";
 	$t_hand = db_query($q);
@@ -1147,11 +1166,49 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 	$toggle = array('cell' => 'Cell', 'dining' => 'Dining', 'langs' => 'Languages', 'comments' => 'Comments');
 	$ncol = count($cols);
 
+	$gender = array_values(array_filter(array('M', 'F'), 'dh_view_gender_on'));
+
+	// AT groups per shown side (numbered groups only), for the "Print only" row and the PDF name.
+	$sides = array();
+	foreach ($gender as $g)
+	{
+		if (!isset($data[$g]))
+			continue;
+		$grps = array();
+		foreach ($data[$g] as $t => $by_group)
+			foreach ($by_group as $grp => $rows)
+				if (!empty($rows) && ctype_digit((string)$grp))
+					$grps[(int)$grp] = TRUE;
+		ksort($grps);
+		$sides[$g] = array_keys($grps);
+	}
+
+	// PDF name (Chrome's "Save as PDF" uses the <title>). The whole list keeps the common
+	// course-report name. A "Print only" part gets a short name: side (M/F), group, its AT,
+	// start date (2-digit year) and course type without the word "Course", e.g. T-List-M-g1_Ram-Kumar_10-Apr-26_10-Day.
+	// A whole side carries the AT's name only when the side has one AT group.
+	if ($part === '')
+		$dl_name = dh_course_file_basename($centre, $course, 'teacher-list');
+	else
+	{
+		$name_grp = $part_grp;
+		if ($name_grp === '' && isset($sides[$part_g]) && count($sides[$part_g]) == 1)
+			$name_grp = (string)$sides[$part_g][0];
+		$at_nm = ($name_grp !== '' && isset($teacher[$part_g][$name_grp])) ? dh_day0_case(trim($teacher[$part_g][$name_grp]['t_name'])) : '';
+		$cr = db_query("select DATE_FORMAT(co.c_start, '%d-%b-%y') as start_day, td.td_val1 from dh_course co
+			left join dh_type_detail td on co.c_course_type=td.td_id where co.c_id=:cid", array(':cid' => $course))->fetchAssoc();
+		$bits = array('T-List-'.$part_g.($part_grp !== '' ? '-g'.$part_grp : ''), $at_nm, $cr['start_day'],
+			preg_replace('/\s*\bcourse\s*$/i', '', (string)$cr['td_val1']));
+		$dl_name = implode('_', array_values(array_filter(array_map('application_filename_part', $bits), 'strlen')));
+	}
+	$out = '<title>'.$dl_name.'</title>';
+	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/teacher-list-v2.css?v='.filemtime(drupal_get_path("module","dh_manageapp")."/css/teacher-list-v2.css").'");</style>';
+
 	$title = '<div class="header-teacher"><div class="title">Teacher List</div>'.
 		'<div class="title-head">'.check_plain($course_name).'</div></div>';
 	$out .= $title;
 
-	// Screen-only toolbar: seniority/seating sort toggle + column hide/show.
+	// Screen-only toolbar: seniority/seating sort toggle + column hide/show + "Print only".
 	if (!$is_pdf)
 	{
 		$base = $base_url."/teacher-list/$centre/$course";
@@ -1159,20 +1216,49 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 		$out .= '<span class="grp"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a> &middot; '
 			.'<a href="#" onclick="window.print();return false;">Print</a></span>';
 		$out .= '<span class="grp"><b>Order:</b> '
-			.'<a class="'.($seating?'':'active').'" href="'.$base.'">Seniority</a> &middot; '
-			.'<a class="'.($seating?'active':'').'" href="'.$base.'?seating=1">Seating plan</a></span>';
+			.'<a class="'.($seating?'':'active').'" href="'.dh_teacher_list_url($base, 0, $part).'">Seniority</a> &middot; '
+			.'<a class="'.($seating?'active':'').'" href="'.dh_teacher_list_url($base, 1, $part).'">Seating plan</a></span>';
 		$out .= '<span class="grp"><b>Columns:</b>';
 		foreach ($toggle as $key => $lbl)
 			$out .= ' <button type="button" class="col-toggle" data-toggle-col="'.$key.'">'.check_plain($lbl).'</button>';
-		$out .= '</span></div>';
+		$out .= '</span>';
+
+		// "Print only" choices: each side that has students (when there are two), and each
+		// AT group of a side that has 2+ groups - so one teacher's list prints without
+		// picking page numbers. Hidden when there is nothing to choose.
+		$opts = array();
+		if (count($sides) > 1)
+			foreach ($sides as $g => $grps)
+				$opts[$g] = ($g == 'M') ? 'Male' : 'Female';
+		foreach ($sides as $g => $grps)
+		{
+			if (count($grps) < 2)
+				continue;
+			foreach ($grps as $grp)
+			{
+				$tn = isset($teacher[$g][$grp]) ? trim($teacher[$g][$grp]['t_name']) : '';
+				$opts[$g.$grp] = (($g == 'M') ? 'Male' : 'Female').' Group '.$grp
+					.' ('.($tn !== '' ? dh_day0_case($tn) : 'unassigned').')';
+			}
+		}
+		if ($opts || $part !== '')
+		{
+			$out .= '<span class="grp tl-parts"><b>Print only:</b> '
+				.'<a class="'.($part === '' ? 'active' : '').'" href="'.dh_teacher_list_url($base, $seating, '').'">All</a>';
+			foreach ($opts as $key => $lbl)
+				$out .= ' <a class="'.($part === (string)$key ? 'active' : '').'" href="'.dh_teacher_list_url($base, $seating, $key).'">'.check_plain($lbl).'</a>';
+			$out .= '</span>';
+		}
+		$out .= '</div>';
 	}
 
-	$gender = array_values(array_filter(array('M', 'F'), 'dh_view_gender_on'));
 	$type = array('old', 'new');
 	$first_block = true;
 
 	foreach($gender as $g)
 	{
+		if ($part_g !== '' && $g !== $part_g)
+			continue;
 		foreach ($type as $t)
 		{
 			if (!isset($data[$g][$t]))
@@ -1181,6 +1267,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 			foreach ($data[$g][$t] as $group => $group_data)
 			{
 				if (empty($group_data))
+					continue;
+				if ($part_grp !== '' && (string)$group !== $part_grp)
 					continue;
 				$total = count($group_data);
 
@@ -1284,6 +1372,9 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 			}
 		}
 	}
+	// A "Print only" link for a part that no longer has students (e.g. an old bookmark).
+	if ($part !== '' && $first_block)
+		$out .= '<p class="tl-empty no-print">No students in this part. <a href="'.dh_teacher_list_url($base, $seating, '').'">Show all</a></p>';
 
 	if ($is_pdf)
 	{
