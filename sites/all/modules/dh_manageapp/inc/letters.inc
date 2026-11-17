@@ -527,6 +527,11 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 	else
 		$action_sub = 'Add Letter';
 
+	// Letter warnings: when the posted change leaves a status with no letter, or maps the letter
+	// to Review, validation holds the save until this is ticked (inc/letter-coverage.inc).
+	if (!empty($form_state['input']['l_event']) && dh_letter_has_warnings(_dh_letters_form_warnings($form_state['input'])))
+		$form['l_gap_ok'] = array('#type' => 'checkbox', '#title' => t('Save anyway'), '#weight' => 99,
+			'#description' => t('Tick this only if the change above is what you want.'));
 	$form['sub'] = array('#type' => 'submit', '#value' => $action_sub, '#weight' => 100);
 	// This letter's Change Log, below the save button (letter managers only; inc/letter-log.inc).
 	if ($action == 'edit' && !empty($edit_data['l_id']))
@@ -703,6 +708,17 @@ function _dh_letter_safe_basename($name, $fallback = 'file', $maxlen = 60)
 	return $base === '' ? $fallback : $base;
 }
 
+/* Letter warnings (inc/letter-coverage.inc) for the posted letter form and the URL's action (add, copy or edit). */
+function _dh_letters_form_warnings($input)
+{
+	$action = arg(2);
+	$fields = array();
+	foreach (array('l_event', 'l_course_type', 'l_name', 'l_subject') as $k)
+		if (isset($input[$k]))
+			$fields[$k] = $input[$k];
+	return dh_letter_change_warnings(arg(1), $action, $action == 'edit' ? arg(3) : '', $fields);
+}
+
 function dh_letters_form_validate($form, &$form_state)
 {
 	$centre_id = arg(1);
@@ -720,6 +736,15 @@ function dh_letters_form_validate($form, &$form_state)
 	if ($lc_error !== '')
 		form_set_error(strpos($lc_error, '[ReviewLink]') !== FALSE ? 'l_body' : 'l_name', $lc_error);
 	_dh_letters_form_check_fields($form, $form_state, $centre_id);
+	// Letter warnings (inc/letter-coverage.inc): held unless "Save anyway" is ticked.
+	$gap_w = _dh_letters_form_warnings($form_state['input']);
+	if (dh_letter_has_warnings($gap_w))
+	{
+		if (empty($form_state['input']['l_gap_ok']))
+			form_set_error('l_gap_ok', dh_letter_warnings_html($gap_w, 'save'));
+		else
+			$form_state['dh_letter_anyway'] = $gap_w;
+	}
 
 	// Accept the common document + image types people actually attach. Modern
 	// formats (jpeg, png, xlsx, doc) were missing before, which caused most of
@@ -801,11 +826,14 @@ function dh_letters_form_submit($form, &$form_state)
 	}
 
 
-	if (dh_letter_save($centre_id, $action, $id, $fields, $user->uid) === FALSE)
+	$saved_id = dh_letter_save($centre_id, $action, $id, $fields, $user->uid);
+	if ($saved_id === FALSE)
 	{
 		drupal_set_message(t('Letter not found.'), 'error');
 		drupal_goto("letters/$centre_id");
 	}
+	if (!empty($form_state['dh_letter_anyway']))
+		dh_letter_gap_record($centre_id, $saved_id, $action, $form_state['dh_letter_anyway']);
 
 	if($action == "copy") $action = "copi";
 	drupal_set_message("Letter ${action}ed successfully ");
