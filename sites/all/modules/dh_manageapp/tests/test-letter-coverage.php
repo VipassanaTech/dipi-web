@@ -5,7 +5,7 @@ require __DIR__ . '/lib.php';
 
 // The send code's own query (dh_get_letter, letter not picked by hand): l_id, or NULL for "No letter Found!".
 function tc_send_pick($c, $e, $t) {
-  $r = db_query("select l_id, l_name, l_subject, l_attachment, l_event, l_sms from dh_letter l where l_center='" . (int) $c . "' and l_event='" . addslashes($e) . "' and l_course_type in ('" . (int) $t . "', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1")->fetchAssoc();
+  $r = db_query("select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='" . (int) $c . "' and l_event='" . addslashes($e) . "' and l_course_type in ('" . (int) $t . "', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1")->fetchAssoc();
   return ($r && !($r['l_subject'] == '')) ? (int) $r['l_id'] : NULL;
 }
 function tc_letter($centre, $over = array()) {
