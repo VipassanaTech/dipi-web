@@ -1223,17 +1223,15 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 			$out .= ' <button type="button" class="col-toggle" data-toggle-col="'.$key.'">'.check_plain($lbl).'</button>';
 		$out .= '</span>';
 
-		// "Print only" choices: each side that has students (when there are two), and each
-		// AT group of a side that has 2+ groups - so one teacher's list prints without
-		// picking page numbers. Hidden when there is nothing to choose.
+		// "Print only" choices: each side that has students (when there are two), and every
+		// AT group with its teacher's name (even a side's only group, so every course looks
+		// the same) - one teacher's list prints without picking page numbers.
 		$opts = array();
 		if (count($sides) > 1)
 			foreach ($sides as $g => $grps)
 				$opts[$g] = ($g == 'M') ? 'Male' : 'Female';
 		foreach ($sides as $g => $grps)
 		{
-			if (count($grps) < 2)
-				continue;
 			foreach ($grps as $grp)
 			{
 				$tn = isset($teacher[$g][$grp]) ? trim($teacher[$g][$grp]['t_name']) : '';
