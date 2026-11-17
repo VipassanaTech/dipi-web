@@ -18,6 +18,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/location-common.js');
 	/* Age groups line above the table; updated on every redraw (see drawCallback). */
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/search-age-groups.js');
+	/* Red note under the status when the chosen status has no letter (see the .status-select handler). */
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/search-letter-note.js');
 	if ( !($iPad || $iPhone || $iPod) )
 	{
 		//drupal_add_js( libraries_get_path("editor").  "/DataTables/Buttons-1.5.1/js/buttons.html5.min.js");
@@ -64,13 +66,17 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	$statuses[$system_statues['STATUS-CUSTOM']] = $system_statues['STATUS-CUSTOM'];
 
 	$letters = array();
-	$q = "select l_id, l_event, l_name, l_course_type from dh_letter where l_center=$centre and l_deleted=0 order by l_event, l_name";
+	$q = "select l_id, l_event, l_name, l_course_type, l_subject from dh_letter where l_center=$centre and l_deleted=0 order by l_event, l_name";
 	$letter_res = db_query($q);
 	while( $l = $letter_res->fetchAssoc())
 	{
 		// 'type' = the letter's course type (0 = all types); the status-change popup
 		// offers only letters for the row's course type or for all types.
-		$letters[$l['l_event']][] = array('id' => $l['l_id'], 'status' => $l['l_name'], 'type' => (int) $l['l_course_type']);
+		$item = array('id' => $l['l_id'], 'status' => $l['l_name'], 'type' => (int) $l['l_course_type']);
+		// An empty subject = no letter at send time (dh_get_letter): the "no letter" note needs to know.
+		if ($l['l_subject'] == '')
+			$item['nosubj'] = 1;
+		$letters[$l['l_event']][] = $item;
 	}
 	$letters_json = json_encode($letters);
 
@@ -1017,6 +1023,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
 				var lettersCentre = '.(int) $centre.';
+				var courseTypeNames = '.json_encode(db_query("select td_id, td_val1 from dh_type_detail where td_type = 'COURSE-TYPE'")->fetchAllKeyed(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).';
 				var courses = '.$courses_json.';
 				var centres = '.$centres_json.';
 
@@ -1388,6 +1395,16 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	                $(".sub-letter-"+row.data().aid).text("");
 	                $(".sub-letter-"+row.data().aid).attr("subletter", "");
 	                $(".sub-letter-"+row.data().aid).attr("subcomment", "");
+					// No letter for this status and course type: say so under the status (js/search-letter-note.js).
+					// Not for rows of another centre, rows transferred after the page loaded, or long-course review rows.
+					var rd = row.data();
+					if (window.dhLetterNote && rd.centreid == lettersCentre && !rd.transferred
+						&& ["R-ATReview", "A-ATReview", "R-ATTransfer"].indexOf(rd.app_status) < 0)
+					{
+						var lnote = window.dhLetterNote.note(letters, tmp, rd.coursetype, courseTypeNames[rd.coursetype]);
+						if (lnote)
+							$(".sub-letter-"+rd.aid).append($("<span class=\"letter-none\" style=\"color:#c62828;font-weight:bold\"></span>").text(lnote));
+					}
 					if ( (letters[tmp] === null) || (typeof letters[tmp] !== "object") )
 						return;
 					// Offer only letters for this row course type or for all types (0), the same
