@@ -110,3 +110,109 @@ function dh_letter_coverage($centre, $override = NULL)
 	}
 	return $out;
 }
+
+/**
+ * What to warn about before a letter change at $centre.
+ * $action: 'add', 'copy', 'edit', 'inactive' or 'active'. $id: the letter for edit, inactive
+ * and active (not used for add and copy). $fields: the new form values for add, copy and edit
+ * (any of l_event, l_course_type, l_name, l_subject).
+ * Returns array('gaps' => array(status => array(type id => type name)), 'review' => bool):
+ * gaps = status + course types that have a letter now and would have none after the change;
+ * review = after the change the letter is active with status Review.
+ * Never held: the template centre 0, another centre's letter, a locked long-course letter.
+ */
+function dh_letter_change_warnings($centre, $action, $id, $fields = array())
+{
+	$none = array('gaps' => array(), 'review' => FALSE);
+	$centre = (int) $centre;
+	if ($centre <= 0)
+		return $none;
+	if (in_array($action, array('edit', 'inactive', 'active'), TRUE))
+	{
+		$new = db_query("select l_id, l_event, l_course_type, l_name, l_subject, l_deleted from dh_letter where l_id = :l and l_center = :c",
+			array(':l' => (int) $id, ':c' => $centre))->fetchAssoc();
+		if (!$new || dh_letter_lc_role($new) !== NULL)
+			return $none;
+	}
+	elseif (in_array($action, array('add', 'copy'), TRUE))
+		$new = array('l_id' => 0, 'l_event' => '', 'l_course_type' => 0, 'l_name' => '', 'l_subject' => '', 'l_deleted' => 0);
+	else
+		return $none;
+
+	if ($action == 'inactive')
+		$new['l_deleted'] = 1;
+	elseif ($action == 'active')
+		$new['l_deleted'] = 0;
+	else
+		foreach (array('l_event', 'l_course_type', 'l_name', 'l_subject') as $k)
+			if (isset($fields[$k]))
+				$new[$k] = $fields[$k];
+	if (dh_letter_lc_role($new) !== NULL)
+		return $none;
+
+	$out = $none;
+	$out['review'] = empty($new['l_deleted']) && dh_letter_cover_is_review($new['l_event']);
+	$types = dh_letter_course_types_to_cover($centre, '', 0);
+	$before = dh_letter_coverage($centre);
+	$after = dh_letter_coverage($centre, $new);
+	foreach ($before as $status => $bytype)
+	{
+		if (dh_letter_cover_is_review($status))
+			continue;
+		foreach ($bytype as $tid => $l)
+			if ($l !== NULL && $after[$status][$tid] === NULL)
+				$out['gaps'][$status][$tid] = $types[$tid];
+	}
+	return $out;
+}
+
+/* TRUE when a change has something to warn about. */
+function dh_letter_has_warnings($w)
+{
+	return !empty($w['gaps']) || !empty($w['review']);
+}
+
+/**
+ * The red message for a held change (HTML; status and course type names escaped).
+ * $how: 'save' (letter form), 'inactive' or 'active' (Letters list links).
+ */
+function dh_letter_warnings_html($w, $how = 'save')
+{
+	$parts = array();
+	if (!empty($w['gaps']))
+	{
+		$lines = '';
+		foreach ($w['gaps'] as $status => $types)
+			$lines .= '<li><strong>'.check_plain($status).'</strong> &ndash; '.check_plain(implode(', ', $types)).'</li>';
+		$lead = ($how == 'inactive') ? t('If this letter is made inactive, these will get <strong>no letter</strong>:')
+			: t('After this change these will get <strong>no letter</strong>:');
+		$parts[] = '<p>'.$lead.'</p><ul class="lcov-gaps">'.$lines.'</ul><p>'.t('To keep them covered, undo this change or make another letter for them.').'</p>';
+	}
+	if (!empty($w['review']))
+		$parts[] = '<p>'.t('Review is an internal status. This letter will be emailed to every applicant moved to Review.').'</p>';
+	if ($how == 'inactive')
+		$parts[] = '<p>'.t('Click <strong>Make inactive anyway</strong> to do it.').'</p>';
+	elseif ($how == 'active')
+		$parts[] = '<p>'.t('Click <strong>Make active anyway</strong> to do it.').'</p>';
+	else
+		$parts[] = '<p>'.t('To keep this change, tick <strong>Save anyway</strong> below and save again. If you chose an attachment, choose it again.').'</p>';
+	return '<div class="lcov-warn">'.implode('', $parts).'</div>';
+}
+
+/* The warnings in one plain line, for the watchdog record. */
+function dh_letter_warnings_text($w)
+{
+	$bits = array();
+	foreach ($w['gaps'] as $status => $types)
+		$bits[] = $status.': '.implode(', ', $types);
+	if (!empty($w['review']))
+		$bits[] = 'letter for Review';
+	return implode('; ', $bits);
+}
+
+/* One watchdog row when someone goes ahead anyway (watchdog records who and when). */
+function dh_letter_gap_record($centre, $letter_id, $action, $w)
+{
+	watchdog('letter_gap', 'Done anyway at centre @c, letter @l (@a): @w',
+		array('@c' => (int) $centre, '@l' => (int) $letter_id, '@a' => $action, '@w' => dh_letter_warnings_text($w)), WATCHDOG_NOTICE);
+}

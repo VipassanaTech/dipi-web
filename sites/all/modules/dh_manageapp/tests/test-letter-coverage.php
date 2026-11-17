@@ -75,4 +75,54 @@ t_in_txn(function () {
   $new = array('l_id' => 0, 'l_event' => 'WaitList', 'l_course_type' => 0, 'l_name' => 'Zzq new', 'l_subject' => 's', 'l_deleted' => 0);
   t_eq(dh_letter_coverage($c, $new)['WaitList'][6]['l_id'], 0, 'C4 a new letter can cover a status');
 });
+// C5-C10: warnings for a letter change (Thali replay and the other cases)
+t_in_txn(function () {
+  $c = 9900001;
+  tc_types($c, array(6, 8, 10, 12, 13));
+  $names = db_query("select td_id, td_val1 from dh_type_detail where td_type = 'COURSE-TYPE' and td_id in (8, 10, 12, 13)")->fetchAllKeyed();
+  $lc = tc_letter($c, array('l_name' => 'Zzq LC n SPL'));                       // Confirmed, All types
+  $ten = tc_letter($c, array('l_name' => 'Zzq 10 Day', 'l_course_type' => 6));   // Confirmed, 10 Day
+  $form = array('l_event' => 'Confirmed', 'l_course_type' => 45, 'l_name' => 'Zzq LC n SPL', 'l_subject' => 'Zzq subject');
+
+  $w = dh_letter_change_warnings($c, 'edit', $lc, $form);
+  t_eq($w['gaps'], array('Confirmed' => $names), 'C5 Thali replay: All -> Other leaves 10 Day Special, 20, 30, 45 Day with no letter');
+  t_ok($w['review'] === FALSE && dh_letter_has_warnings($w), 'C5 a warning, not a Review one');
+  t_eq(dh_letter_change_warnings($c, 'edit', $lc, array('l_course_type' => 0) + $form)['gaps'], array(), 'C5 back to All: no gap');
+  t_eq(dh_letter_change_warnings($c, 'edit', $ten, array('l_name' => 'Zzq 10 renamed', 'l_course_type' => 6) + $form)['gaps'], array(), 'C5 a rename leaves no gap');
+  t_ok(!isset(dh_letter_change_warnings($c, 'edit', $lc, $form)['gaps']['Cancelled']), 'C5 an old gap (no Cancelled letter at all) is not reported');
+
+  t_eq(dh_letter_change_warnings($c, 'inactive', $lc)['gaps'], array('Confirmed' => $names), 'C6 making the All letter inactive: same gaps');
+  t_eq(dh_letter_change_warnings($c, 'inactive', $ten)['gaps'], array(), 'C6 making the 10 Day letter inactive: the All letter still covers 10 Day');
+  $off = tc_letter($c, array('l_name' => 'Zzq off', 'l_event' => 'WaitList', 'l_deleted' => 1));
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'active', $off)), 'C6 making a letter active: nothing to warn');
+
+  $add = array('l_event' => 'Review', 'l_course_type' => 0, 'l_name' => 'Zzq review', 'l_subject' => 's');
+  $w = dh_letter_change_warnings($c, 'add', '', $add);
+  t_ok($w['review'] === TRUE && $w['gaps'] === array(), 'C7 a new Review letter: Review warning');
+  $rv = tc_letter($c, array('l_name' => 'Zzq review', 'l_event' => 'Review'));
+  t_ok(dh_letter_change_warnings($c, 'edit', $rv, $add)['review'], 'C7 editing a Review letter: Review warning every time');
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'inactive', $rv)), 'C7 making a Review letter inactive: no warning');
+  $rv2 = tc_letter($c, array('l_name' => 'Zzq review 2', 'l_event' => 'review', 'l_deleted' => 1));
+  t_ok(dh_letter_change_warnings($c, 'active', $rv2)['review'], 'C7 making a Review letter active: Review warning (any case)');
+
+  $t0 = tc_letter(0, array('l_name' => 'Zzq template'));
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings(0, 'inactive', $t0)), 'C8 template centre 0: never held');
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings(9900002, 'inactive', $lc)), "C8 another centre's letter: nothing");
+  $lcr = tc_letter($c, array('l_name' => 'Recommending Review', 'l_event' => 'R-ATReview'));
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'inactive', $lcr)), 'C8 a locked long-course letter: never held');
+
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'copy', $lc, array('l_course_type' => 0) + $form)), 'C9 a copy adds a letter: no gap');
+
+  $w = dh_letter_change_warnings($c, 'edit', $lc, $form);
+  $h = dh_letter_warnings_html($w);
+  t_ok(strpos($h, 'no letter') !== FALSE && strpos($h, 'Confirmed') !== FALSE && strpos($h, $names[10]) !== FALSE, 'C10 message names the status and course types');
+  t_ok(strpos($h, 'Save anyway') !== FALSE, 'C10 save message says Save anyway');
+  t_ok(strpos(dh_letter_warnings_html($w, 'inactive'), 'Make inactive anyway') !== FALSE, 'C10 inactive message says Make inactive anyway');
+  t_ok(strpos(dh_letter_warnings_html(array('gaps' => array('<b>X</b>' => array(1 => '<i>T</i>')), 'review' => FALSE)), '<b>X</b>') === FALSE, 'C10 names are escaped');
+  t_ok(strpos(dh_letter_warnings_html(array('gaps' => array(), 'review' => TRUE)), 'Review is an internal status') !== FALSE, 'C10 Review message');
+  t_eq(dh_letter_warnings_text(array('gaps' => array('Confirmed' => array(10 => '20 Day Course')), 'review' => TRUE)), 'Confirmed: 20 Day Course; letter for Review', 'C10 plain text line');
+  $before = (int) db_query("select count(*) from watchdog where type = 'letter_gap'")->fetchField();
+  dh_letter_gap_record($c, $lc, 'edit', $w);
+  t_eq((int) db_query("select count(*) from watchdog where type = 'letter_gap'")->fetchField(), $before + 1, 'C10 one letter_gap record');
+});
 t_done();
