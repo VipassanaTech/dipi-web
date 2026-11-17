@@ -22,5 +22,8 @@ t_in_txn(function () {
   $n = strpos($inline, 'dhLetterNote.note(');
   $old = strpos($inline, 'if ( (letters[tmp] === null)');
   t_ok($h !== FALSE && $n > $h && $n < $old, 'the note comes in the status handler, before the old early return');
+  t_ok(strpos($inline, 'avail.length == 1 && row.data().centreid == lettersCentre && !row.data().transferred && !lnote )') !== FALSE, 'the one-letter name does not replace the note');
+  $v = strpos($inline, 'var lnote = "";');
+  t_ok($v !== FALSE && $v < $n, 'lnote is declared before the note is worked out');
 });
 t_done();

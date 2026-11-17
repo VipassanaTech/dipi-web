@@ -1398,10 +1398,11 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					// No letter for this status and course type: say so under the status (js/search-letter-note.js).
 					// Not for rows of another centre, rows transferred after the page loaded, or long-course review rows.
 					var rd = row.data();
+					var lnote = "";
 					if (window.dhLetterNote && rd.centreid == lettersCentre && !rd.transferred
 						&& ["R-ATReview", "A-ATReview", "R-ATTransfer"].indexOf(rd.app_status) < 0)
 					{
-						var lnote = window.dhLetterNote.note(letters, tmp, rd.coursetype, courseTypeNames[rd.coursetype]);
+						lnote = window.dhLetterNote.note(letters, tmp, rd.coursetype, courseTypeNames[rd.coursetype]);
 						if (lnote)
 							$(".sub-letter-"+rd.aid).append($("<span class=\"letter-none\" style=\"color:#c62828;font-weight:bold\"></span>").text(lnote));
 					}
@@ -1416,7 +1417,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					// which letter Update will send. The id is not set: the server picks the same
 					// letter from the applicant centre. Skipped when the letter list is not for this
 					// row (multi-centre LC search) or the row was transferred after page load.
-					if ( avail.length == 1 && row.data().centreid == lettersCentre && !row.data().transferred )
+					if ( avail.length == 1 && row.data().centreid == lettersCentre && !row.data().transferred && !lnote )
 						$(".sub-letter-"+row.data().aid).text(avail[0].status);
 					if ( avail.length > 1 )
 					{
