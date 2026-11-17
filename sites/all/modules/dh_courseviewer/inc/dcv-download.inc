@@ -12,10 +12,10 @@
 /** The release offered for download. */
 function dcv_app_release() {
   return array(
-    'version' => '1.1.6',
-    'date'    => '2026-10-12',
-    'file'    => 'DipiApp-1.1.6.apk',
-    'sha256'  => '84124b8f87a2efbfa19553897aadb8d8d352329b1cc328a9aed66de9d1c7eb50',
+    'version' => '1.1.7',
+    'date'    => '2026-11-17',
+    'file'    => 'DipiApp-1.1.7.apk',
+    'sha256'  => '8e9c61a2039b24e38eee234360d61fdd6c58c56d5b525391858d14bfe7700648',
   );
 }
 

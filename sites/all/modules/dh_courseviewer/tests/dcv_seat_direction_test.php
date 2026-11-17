@@ -23,6 +23,8 @@ ok(dcv_seat_direction('', 'RIGHT') === 'right' && dcv_seat_direction('', 'LEFT')
 ok(dcv_seat_direction('left', 'RIGHT') === 'left' && dcv_seat_direction('right', 'LEFT') === 'right', 'a set direction wins');
 ok(dcv_seat_direction(' Right ', 'LEFT') === 'right' && dcv_seat_direction('LEFT', 'RIGHT') === 'left', 'set values are trimmed and lower-cased');
 ok(dcv_seat_direction('ltr', 'LEFT') === 'left' && dcv_seat_direction('0', 'RIGHT') === 'right', 'an unknown value counts as unset, as in Dipi');
+ok(dcv_chowky_position('', 'right') === 'right' && dcv_chowky_position('', 'left') === 'left', 'unset chowky: on the side the seats run to, as Dipi (dh_chowky_position)');
+ok(dcv_chowky_position(' Back ', 'right') === 'back' && dcv_chowky_position('left', 'right') === 'left' && dcv_chowky_position('top', 'left') === 'left', 'a set chowky side wins; unknown counts as unset');
 
 $cfg = db_query("select cs_seat_config from dh_center_setting where cs_center = 5")->fetchField();
 ok($cfg !== FALSE && $cfg !== '', 'fixture: centre 5 has a seat config');
@@ -43,6 +45,18 @@ try {
   $flipped = preg_replace('/^(\[LEFT\]\s*\R)/mi', "$1SeatDirection = right\n", $flipped);
   $set($flipped);
   ok(dirs(dcv_build_bundle(COURSE)) === array('RIGHT' => 'left', 'LEFT' => 'right'), 'set: the bundle keeps the centre\'s choice');
+
+  // Group-wise plans (Dipi dh_group_dims): a group's own direction / chowky side wins, else the
+  // section's, else the natural side. The fixture keeps "GROUP1-SeatDirection = right" in RIGHT.
+  $grp = preg_replace('/^(\[RIGHT\]\s*\R)/mi', "$1SeatDirection = right\nGROUP2-SeatDirection = left\nGROUP3-ChowkyPosition = back\n", $none);
+  $set($grp);
+  $right = NULL; $left = NULL;
+  foreach (dcv_build_bundle(COURSE)['sections'] as $sec) { if ($sec['key'] === 'RIGHT') { $right = $sec; } else { $left = $sec; } }
+  $g = array(); foreach ($right['groups'] as $x) { $g[$x['n']] = array($x['seat_direction'], $x['chowky_position']); }
+  ok($right['chowky_position'] === 'right' && $left['chowky_position'] === 'left', 'sections: an unset chowky is sent resolved (Male right, Female left)');
+  ok(isset($g[2]) && $g[2] === array('left', 'left'), 'group 2: its own right-to-left, chowky on the left');
+  ok(isset($g[3]) && $g[3] === array('right', 'back'), "group 3: the section's direction, its own chowky at the back");
+  ok(isset($g[1]) && $g[1] === array('right', 'right'), 'group 1: its own left-to-right, chowky on the right');
 }
 finally {
   $txn->rollback();

@@ -27,6 +27,38 @@ function dcv_seat_direction($value, $section_key) {
 }
 
 /**
+ * The chowky block's side as Dipi draws it (zero-day.inc dh_chowky_position): 'left', 'right' or
+ * 'back' when set; else the side the seats run to — left to right ('right') → right, right to left
+ * ('left') → left. $direction is a resolved dcv_seat_direction(). Pure.
+ */
+function dcv_chowky_position($value, $direction) {
+  $v = strtolower(trim((string) $value));
+  if ($v === 'left' || $v === 'right' || $v === 'back') { return $v; }
+  return ($direction === 'right') ? 'right' : 'left';
+}
+
+/**
+ * Seat direction and chowky side resolved as Dipi draws them, for each section and for each group
+ * with its own settings (Dipi dh_group_dims: the group's value, else the section's, else the
+ * natural side). Groups without their own settings take the section's resolved values in the app.
+ * Pure.
+ */
+function dcv_resolve_seat_layout(array $sections) {
+  foreach ($sections as $i => $s) {
+    $dir = dcv_seat_direction($s['seat_direction'], $s['key']);
+    foreach ($s['groups'] as $j => $g) {
+      $gdir = dcv_seat_direction(isset($g['seat_direction']) ? $g['seat_direction'] : $s['seat_direction'], $s['key']);
+      $sections[$i]['groups'][$j]['seat_direction'] = $gdir;
+      $sections[$i]['groups'][$j]['chowky_position'] =
+        dcv_chowky_position(isset($g['chowky_position']) ? $g['chowky_position'] : $s['chowky_position'], $gdir);
+    }
+    $sections[$i]['seat_direction'] = $dir;
+    $sections[$i]['chowky_position'] = dcv_chowky_position($s['chowky_position'], $dir);
+  }
+  return $sections;
+}
+
+/**
  * Parse cs_seat_config INI into structured sections for the app to render.
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
@@ -585,9 +617,7 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $naming_conv = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
-  foreach ($sections as $i => $s) {
-    $sections[$i]['seat_direction'] = dcv_seat_direction($s['seat_direction'], $s['key']);
-  }
+  $sections = dcv_resolve_seat_layout($sections);
   if ($plans !== NULL) {
     $sections = dcv_filter_sections($sections, $plans, $header['seat_plan']);
   }
