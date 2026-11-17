@@ -14,6 +14,19 @@ function dcv_seat_aid($v) {
 }
 
 /**
+ * A section's seat direction as Dipi's seating plan draws it (zero-day.inc dh_seat_direction):
+ * 'right' = left to right, 'left' = right to left; anything else — most centres leave it unset —
+ * is the section's natural side: RIGHT (Male) left to right, LEFT (Female) right to left. Sent
+ * resolved, so every app version draws the same order as Dipi, and an unset ChowkyPosition (which
+ * the app places by direction, as Dipi's dh_chowky_position does) lands on the same side. Pure.
+ */
+function dcv_seat_direction($value, $section_key) {
+  $v = strtolower(trim((string) $value));
+  if ($v === 'right' || $v === 'left') { return $v; }
+  return ($section_key === 'RIGHT') ? 'right' : 'left';
+}
+
+/**
  * Parse cs_seat_config INI into structured sections for the app to render.
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
@@ -572,6 +585,9 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $naming_conv = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
+  foreach ($sections as $i => $s) {
+    $sections[$i]['seat_direction'] = dcv_seat_direction($s['seat_direction'], $s['key']);
+  }
   if ($plans !== NULL) {
     $sections = dcv_filter_sections($sections, $plans, $header['seat_plan']);
   }
