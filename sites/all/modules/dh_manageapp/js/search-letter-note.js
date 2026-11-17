@@ -1,8 +1,11 @@
 /* Search page: a red note under the status when the chosen status has no letter for the
- * applicant's course type, e.g. "No letter for Cancelled – 10 Day Course. The applicant will
- * get no letter." Same rule as the server (dh_get_letter): an active letter of that status for
- * the course type or for All, with a subject. The page lists only active letters. Status names
- * are compared without upper/lower case and end spaces, as the database does.
+ * applicant's course type, e.g. "No letter for Cancelled - 10 Day Course. The applicant will
+ * get no letter." The note shows when no active letter of that status fits the course type
+ * (or All) with a subject. The server (dh_get_letter) also stops at the first fitting letter
+ * in its order: if that first letter has an empty subject, no letter goes out even though
+ * another one fits - the note stays silent then (it never shows a wrong red note). The page
+ * lists only active letters. Status names are compared without upper/lower case and end
+ * spaces, as the database does.
  */
 (function (root) {
   "use strict";

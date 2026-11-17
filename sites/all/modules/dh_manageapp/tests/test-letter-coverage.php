@@ -5,7 +5,7 @@ require __DIR__ . '/lib.php';
 
 // The send code's own query (dh_get_letter, letter not picked by hand): l_id, or NULL for "No letter Found!".
 function tc_send_pick($c, $e, $t) {
-  $r = db_query("select l_id, l_subject from dh_letter l where l_center='" . (int) $c . "' and l_event='" . addslashes($e) . "' and l_course_type in ('" . (int) $t . "', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1")->fetchAssoc();
+  $r = db_query("select l_id, l_name, l_subject, l_attachment, l_event, l_sms from dh_letter l where l_center='" . (int) $c . "' and l_event='" . addslashes($e) . "' and l_course_type in ('" . (int) $t . "', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1")->fetchAssoc();
   return ($r && !($r['l_subject'] == '')) ? (int) $r['l_id'] : NULL;
 }
 function tc_letter($centre, $over = array()) {
@@ -39,14 +39,31 @@ foreach (db_query("select distinct l_center from dh_letter where l_deleted = 0 a
 t_ok($n > 1000, "C2 checked $n centre/status/type cases");
 t_eq($bad, 0, 'C2 every case picks the same letter as the send code');
 
-// C3 the what-if path with the letter unchanged gives the same order (types stay numbers, same name order)
-$bad = 0;
-foreach (db_query("select * from dh_letter where l_deleted = 0 and l_center > 0 order by l_id desc limit 300")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+// C3 the what-if path with the letter unchanged gives the same order. Letters tied by name (equal as the
+// database compares them, same course type) may swap places: harmless, counted apart.
+function tc_tied($x, $y) {
+  return (bool) db_query("select a.l_course_type = b.l_course_type and a.l_name = b.l_name from dh_letter a, dh_letter b where a.l_id = :x and b.l_id = :y", array(':x' => (int) $x, ':y' => (int) $y))->fetchField();
+}
+$bad = 0; $tie = 0; $nl = 0;
+foreach (db_query("select * from dh_letter where l_deleted = 0 and l_center > 0 order by l_id desc")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+  $nl++;
   $a = array_column(_dh_lcov_candidates($row['l_center'], $row['l_event']), 'l_id');
   $b = array_column(_dh_lcov_candidates($row['l_center'], $row['l_event'], $row), 'l_id');
-  if ($a !== $b) $bad++;
+  if ($a === $b) continue;
+  $sa = $a; $sb = $b; sort($sa); sort($sb);
+  $ok = ($sa === $sb);
+  $n = count($a); $i = 0;
+  while ($ok && $i < $n) {
+    $j = $i + 1;
+    while ($j < $n && tc_tied($a[$i], $a[$j])) $j++;
+    $ra = array_slice($a, $i, $j - $i); $rb = array_slice($b, $i, $j - $i);
+    sort($ra); sort($rb);
+    if ($ra !== $rb) $ok = FALSE;
+    $i = $j;
+  }
+  if ($ok) $tie++; else $bad++;
 }
-t_eq($bad, 0, 'C3 what-if with no change = same letters in the same order (300 letters)');
+t_eq($bad, 0, "C3 what-if with no change = same letters in the same order ($nl letters, $tie tie-only differences)");
 
 // C4 edge cases on a made-up centre
 t_in_txn(function () {

@@ -1023,7 +1023,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
 				var lettersCentre = '.(int) $centre.';
-				var courseTypeNames = '.json_encode(db_query("select td_id, td_val1 from dh_type_detail where td_type = 'COURSE-TYPE'")->fetchAllKeyed(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT).';
+				var courseTypeNames = '.(json_encode(db_query("select td_id, td_val1 from dh_type_detail where td_type = 'COURSE-TYPE'")->fetchAllKeyed(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: '{}').';
 				var courses = '.$courses_json.';
 				var centres = '.$centres_json.';
 
