@@ -19,13 +19,27 @@ function _dh_refmove_ids($ids, $col)
 }
 
 // Copy each not-yet-moved referral's copy (dh_student + its lowest course-count row) into the r_* columns.
-function dh_refmove_details($dry, $ids = NULL)
+// $refresh (with $ids): first make the listed, already moved referrals "not moved" again, but only those still pointing at
+// their old copy (links has not run for them), so edits made to the copy by the old code since the first run are copied in.
+function dh_refmove_details($dry, $ids = NULL, $refresh = FALSE)
 {
 	list($w, $args) = _dh_refmove_ids($ids, 'r.r_id');
+	$refresh = $refresh && $ids !== NULL;
+	$to_refresh = 0;
+	if ($refresh)
+	{
+		$rw = "from dh_referral r join dh_referral_move_bak b on b.r_id = r.r_id where r.r_student = b.old_student and r.r_moved is not null $w";
+		$to_refresh = (int) db_query("select count(*) $rw", $args)->fetchField();
+		if (!$dry)
+			db_query("update dh_referral r join dh_referral_move_bak b on b.r_id = r.r_id set r.r_moved = null
+				where r.r_student = b.old_student and r.r_moved is not null $w", $args);
+	}
 	$sum = array(
 		'to_move' => (int) db_query("select count(*) from dh_referral r join dh_student s on s.s_id = r.r_student where r.r_moved is null $w", $args)->fetchField(),
 		'no_copy' => (int) db_query("select count(*) from dh_referral r left join dh_student s on s.s_id = r.r_student where r.r_moved is null and s.s_id is null $w", $args)->fetchField(),
 		'already_moved' => (int) db_query("select count(*) from dh_referral r where r.r_moved is not null $w", $args)->fetchField());
+	if ($refresh)
+		$sum['to_refresh'] = $to_refresh;
 	if ($dry)
 		return $sum;
 	$now = date('Y-m-d H:i:s');
@@ -36,7 +50,7 @@ function dh_refmove_details($dry, $ids = NULL)
 		if (strpos($f, 'sci_') === 0)
 			$set[] = "r.$c = ifnull(i.$f, 0)";
 		elseif ($f === 's_dob')
-			$set[] = "r.r_dob = case when s.s_dob < '1900-01-01' then null else s.s_dob end";     // a zero date is no date
+			$set[] = "r.r_dob = case when s.s_dob < '1900-01-01' or month(s.s_dob) = 0 or dayofmonth(s.s_dob) = 0 then null else s.s_dob end";     // a zero date (or zero month/day) is no date
 		else
 			$set[] = "r.$c = s.$f";
 	$set[] = 'r.r_photo = s.s_photo';
@@ -103,6 +117,14 @@ function dh_refmove_links($dry, $ids = NULL)
 			$record[$copy] = array($id, $group[$id]);
 	}
 	$sum['copies_to_record'] = count($record);
+	// Referrals NOT in the backup (added or edited between the details pull and now) that point at an old copy: link them afresh.
+	$skip_bak = " and r.r_id not in (select r_id from dh_referral_move_bak)";
+	list($wr, $argr) = _dh_refmove_ids($ids, 'r.r_id');
+	$cand_sql = "select r.* from dh_referral r where r.r_student > 0 $skip_bak $wr and r.r_student in (select rc_student from dh_referral_copy where rc_status = 'open')";
+	$sum['recheck_candidates'] = (int) db_query("select count(*) from ($cand_sql) x", $argr)->fetchField();
+	if ($record)
+		$sum['recheck_candidates'] += (int) db_query("select count(*) from dh_referral r where r.r_student in (:rec) $skip_bak $wr
+			and r.r_student not in (select rc_student from dh_referral_copy where rc_status = 'open')", array(':rec' => array_keys($record)) + $argr)->fetchField();
 	if ($dry)
 		return $sum;
 	$txn = db_transaction();
@@ -119,6 +141,12 @@ function dh_refmove_links($dry, $ids = NULL)
 		foreach ($record as $copy => $x)
 			$sum['copies_recorded'] += db_query('insert ignore into dh_referral_copy (rc_student, rc_referral, rc_group, rc_status, rc_created) values (:s, :r, :g, :st, :t)',
 				array(':s' => $copy, ':r' => $x[0], ':g' => $x[1], ':st' => 'open', ':t' => $now))->rowCount();
+		$sum['rechecked'] = 0;
+		foreach (db_query($cand_sql, $argr)->fetchAll(PDO::FETCH_ASSOC) as $x)
+		{
+			dh_referral_set_link((int) $x['r_id'], dh_referral_link_find(dh_referral_who_row($x)), 'move recheck');
+			$sum['rechecked']++;
+		}
 	}
 	catch (Exception $e)
 	{
