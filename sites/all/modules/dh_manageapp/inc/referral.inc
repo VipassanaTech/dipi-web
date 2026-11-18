@@ -964,9 +964,10 @@ function dh_addedit_referral()
 		$row = $ref ? dh_referral_form_row($ref) : array();
 	}
 		
-	return drupal_get_form('dh_referral_form', $row);
-	
-
+	$form = drupal_get_form('dh_referral_form', $row);
+	if (arg(2) == 'edit' && !empty($row['r_id']))
+		return array('form' => $form, 'history' => array('#markup' => '<div class="ref-history" style="margin-top:24px">' . dh_referral_history_html($row['r_id']) . '</div>'));
+	return $form;
 }
 
 
@@ -1054,6 +1055,7 @@ function dh_referral_results()
 			$deleted_log[$l->rl_referral] = array('when' => $l->rl_tstamp, 'who' => $l->name);    // the last one wins
 	}
 
+	$can_history = $center_id ? user_access('manage center referral list') : user_access('manage referral list');
 	$result = db_query($q);
 	$rows = array();
 	while( $r = $result->fetchAssoc() )
@@ -1062,6 +1064,7 @@ function dh_referral_results()
 
 		$rs['sid'] = $r['r_student'];
 		$rs['ref_id'] = $r['r_id'];
+		$rs['history'] = $can_history ? 1 : 0;
 
 
 		if (user_access('manage referral list') && !$center_id)
@@ -1275,9 +1278,7 @@ function dh_referral_results()
 		            "<td><label>Referral-Course:</label></td>"+
                 "<td colspan=3>"+d.ref_course+"</td>"+
                 "</tr>"+
-                "<tr>"+
-                "<td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading Activity Log...</div></td>"+
-                "</tr>"+
+                (d.history ? "<tr><td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading History...</div></td></tr>" : "")+
 		        "</table>"+
 		    "</div>";
 		}
@@ -1413,7 +1414,7 @@ function dh_referral_results()
 			            tr.addClass("shown");
 			 
 			            $("div.slider", row.child()).slideDown();
-                  $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
+                  if (row.data().history) $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
 			        }
 			    });
 
@@ -1593,62 +1594,25 @@ function referral_delete( $id )
 
 function referral_readonly($id)
 {
-  global $user;
-
-  $out = array();
-  $out['status'] = 'OK';
-  $out['msg'] ="";
-
-  $fields['r_updated_by'] = $user->uid;
-  $fields['r_updated'] = date('Y-m-d H:i:s');
-  $fields['r_readonly'] = $_REQUEST['readonly'];
-
-  if($id > 0 && $fields['r_readonly'] == "1")
-  {
-    db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
-    $out['msg'] ="Added readonly flag to referral.";
-    drupal_json_output($out);
-    exit;
-  }
-  elseif($id > 0 && $fields['r_readonly'] == "0")
-  {
-    db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
-    $out['msg'] ="Removed readonly flag from referral.";
-    drupal_json_output($out);
-    exit;
-  }
+  $out = array('status' => 'OK', 'msg' => '');
+  $want = isset($_REQUEST['readonly']) ? (string) $_REQUEST['readonly'] : '';
+  if ($id > 0 && ($want === '1' || $want === '0'))
+    $out['msg'] = dh_referral_set_readonly($id, $want === '1');
   else
   {
     $out['status'] = 'Failed';
-    $out['msg'] ="Invalid Params.";
-    drupal_json_output($out);
-    exit;
+    $out['msg'] = 'Invalid Params.';
   }
-
-
+  drupal_json_output($out);
+  exit;
 }
 
 
 function get_referral_activity($ref_id)
 {
-
-  $q = "select DATE_FORMAT(rl_tstamp, '%r, %D %M %Y'), rl_event, rl_msg, name from dh_referral_log left join users on dh_referral_log.rl_user=users.uid where rl_referral=:rl_referral order by rl_id desc";
-  $res = db_query($q, array(':rl_referral' => $ref_id));
-
-  $data = array();
-
-  while($row = $res->fetchAssoc())
-  {
-    $data[] = $row;
-  }
-
-  $headers = array('Timestamp', 'Activity', 'Message', 'User');
-  $out = '<h4>Referral Activity Log</h4>';
-  if (!empty($data))
-    $out .= theme('table', array('header' => $headers, 'rows' => $data)) ;
-  print $out;
+  // The menu's access callback (dh_referral_can_edit) has already checked this user may edit the referral.
+  print dh_referral_history_html($ref_id);
   exit;
-
 }
 
 function add_referral_activity($ref_id, $ref_event, $ref_msg)

@@ -755,10 +755,11 @@ function dh_manageapp_menu()
          'access arguments' => array('add referral list'),
          'type' => MENU_CALLBACK);
 
-    $items['referral/get-activity/%'] = array( 'title' => t('Get Referral Activity'),
+    $items['referral/get-activity/%'] = array( 'title' => t('Referral History'),
          'page callback' => 'get_referral_activity',
          'page arguments' => array(2),
-         'access arguments' => array('view referral list'),
+         'access callback' => 'dh_referral_can_edit',
+         'access arguments' => array(2),
          'type' => MENU_CALLBACK);
 
     $items['center-referral/%centre_id'] = array('title' => t('Center Referral List'),

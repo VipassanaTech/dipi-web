@@ -1232,6 +1232,7 @@ function my_referral()
 
   $q = dh_referral_list_sql("(r_deleted = 0) and r_center = 0 and r_teacher = " . (int) $at_id);
 
+  $can_history = TRUE;
   $result = db_query($q);
   $rows = array();
   while( $r = $result->fetchAssoc() )
@@ -1240,6 +1241,7 @@ function my_referral()
 
     $rs['sid'] = $r['r_student'];
     $rs['ref_id'] = $r['r_id'];
+    $rs['history'] = $can_history ? 1 : 0;
     $rs['name'] = $r['Full Name'];
 
     $rs['del'] = l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array("attributes" => array("class" => array("ref-del")))) ;
@@ -1402,9 +1404,7 @@ function my_referral()
 		            "<td><label>Referral-Course:</label></td>"+
                 "<td colspan=3>"+d.ref_course+"</td>"+
                 "</tr>"+
-                "<tr>"+
-                "<td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading Activity Log...</div></td>"+
-                "</tr>"+
+                (d.history ? "<tr><td colspan=4><div class=\"activity-log-"+d.ref_id+"\">Loading History...</div></td></tr>" : "")+
             "</table>"+
         "</div>";
     }
@@ -1450,7 +1450,7 @@ function my_referral()
                   tr.addClass("shown");
 
                   $("div.slider", row.child()).slideDown();
-                  $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
+                  if (row.data().history) $(".activity-log-"+row.data().ref_id).load("/referral/get-activity/"+row.data().ref_id);
               }
           });
 

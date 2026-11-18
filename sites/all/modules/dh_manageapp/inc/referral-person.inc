@@ -199,3 +199,29 @@ function dh_referral_link_from_finalize($ref_id, $sid, array $a)
 		return FALSE;
 	}
 }
+
+// The referral's history (dh_referral_log), newest first, every value escaped. Shown only to people who can edit it.
+function dh_referral_history_html($ref_id)
+{
+	$rows = array();
+	foreach (db_query('select l.rl_tstamp, l.rl_event, l.rl_msg, u.name from dh_referral_log l left join users u on u.uid = l.rl_user
+		where l.rl_referral = :r order by l.rl_id desc', array(':r' => (int) $ref_id)) as $l)
+		$rows[] = array(check_plain(date('d M Y, h:i A', strtotime($l->rl_tstamp))), check_plain($l->rl_event), check_plain($l->rl_msg), check_plain((string) $l->name));
+	if (!$rows)
+		return '<h4>History</h4><p>' . t('No history yet.') . '</p>';
+	return '<h4>History</h4>' . theme('table', array('header' => array(t('When'), t('What'), t('Details'), t('By')), 'rows' => $rows));
+}
+
+// The r-only box on the main list: store it and log the change. Returns the message the page shows.
+function dh_referral_set_readonly($ref_id, $on)
+{
+	global $user;
+	$on = $on ? 1 : 0;
+	$was = (int) db_query('select r_readonly from dh_referral where r_id = :r', array(':r' => (int) $ref_id))->fetchField();
+	if ($was !== $on)
+	{
+		db_update('dh_referral')->fields(array('r_readonly' => $on, 'r_updated_by' => $user->uid, 'r_updated' => date('Y-m-d H:i:s')))->condition('r_id', $ref_id)->execute();
+		add_referral_activity($ref_id, 'Edited', 'Read-only (r-only): ' . ($was ? 'Yes' : 'No') . ' -> ' . ($on ? 'Yes' : 'No'));
+	}
+	return $on ? 'Added readonly flag to referral.' : 'Removed readonly flag from referral.';
+}
