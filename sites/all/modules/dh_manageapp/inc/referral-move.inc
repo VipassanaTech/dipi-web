@@ -155,7 +155,7 @@ function dh_refmove_rollback($dry, $ids = NULL)
 		db_query("update dh_referral r join dh_referral_move_bak b on b.r_id = r.r_id set r.r_student = b.old_student where r.r_student <> b.old_student $w", $args);
 		foreach (db_query("select r.* from dh_referral r left join dh_referral_move_bak b on b.r_id = r.r_id where b.r_id is null and r.r_moved is not null $w", $args)->fetchAll(PDO::FETCH_ASSOC) as $r)
 		{
-			$s = array('s_created_by' => (int) $r['r_created_by'], 's_updated_by' => (int) $r['r_updated_by'], 's_created' => $r['r_created'], 's_updated' => $r['r_updated']);
+			$s = array('s_photo' => $r['r_photo'], 's_created_by' => (int) $r['r_created_by'], 's_updated_by' => (int) $r['r_updated_by'], 's_created' => $r['r_created'], 's_updated' => $r['r_updated']);
 			$sci = array();
 			foreach (dh_referral_person_map() as $f => $c)
 				if (strpos($f, 'sci_') === 0)
@@ -165,6 +165,7 @@ function dh_refmove_rollback($dry, $ids = NULL)
 			$sid = (int) db_insert('dh_student')->fields($s)->execute();
 			db_insert('dh_student_course_input')->fields($sci + array('sci_student' => $sid))->execute();
 			db_update('dh_referral')->fields(array('r_student' => $sid))->condition('r_id', $r['r_id'])->execute();
+			db_query('insert ignore into dh_referral_move_bak (r_id, old_student, moved_at) values (:r, :s, :now)', array(':r' => $r['r_id'], ':s' => $sid, ':now' => date('Y-m-d H:i:s')));
 		}
 		list($wc, $argc) = _dh_refmove_ids($ids, 'rc_referral');
 		db_query("delete from dh_referral_copy where rc_status = 'open' $wc", $argc);

@@ -57,7 +57,7 @@ t_in_txn(function () {
   t_eq(array($again['links_changed'], $again['copies_recorded'], $moved()), array(0, 0, 5), 'K5 a second run changes nothing');
   t_eq(dh_referral_link_find(dh_referral_who_row($get($r3))), 0, 'K6 an open copy is no longer found');
 
-  $r6 = $ref(0, array('r_f_name' => 'Zzqtest', 'r_l_name' => 'Movenew', 'r_cnt_10d' => 2, 'r_moved' => date('Y-m-d H:i:s')));
+  $r6 = $ref(0, array('r_f_name' => 'Zzqtest', 'r_l_name' => 'Movenew', 'r_cnt_10d' => 2, 'r_photo' => 'private://zzq/move6.jpg', 'r_moved' => date('Y-m-d H:i:s')));
   db_update('dh_referral')->fields(array('r_phone_mobile' => '9822222222', 'r_updated' => date('Y-m-d H:i:s', time() + 60)))->condition('r_id', $r3)->execute();
   $ids[] = $r6;
   dh_refmove_rollback(FALSE, $ids);
@@ -67,5 +67,8 @@ t_in_txn(function () {
   t_eq(db_query('select sci_10d from dh_student_course_input where sci_student = :s', array(':s' => $s6))->fetchField(), 2, 'B3 with its course counts');
   t_eq(db_query('select s_phone_mobile from dh_student where s_id = :s', array(':s' => $c3))->fetchField(), '9822222222', 'B4 an edit after the move goes back into the copy');
   t_eq(db_query("select count(*) from dh_referral_copy where rc_student in (:s) and rc_status = 'open'", array(':s' => array($c1, $c3, $c4, $c5)))->fetchField(), 0, 'B5 the open copy rows are removed');
+  t_eq(db_query('select s_photo from dh_student where s_id = :s', array(':s' => $s6))->fetchField(), 'private://zzq/move6.jpg', 'B6 the new copy keeps the photo');
+  dh_refmove_rollback(FALSE, $ids);
+  t_eq(array((int) db_query("select count(*) from dh_student where s_l_name = 'Movenew'")->fetchField(), (int) $get($r6)['r_student']), array(1, $s6), 'B7 a second rollback adds no second copy');
 });
 t_done();
