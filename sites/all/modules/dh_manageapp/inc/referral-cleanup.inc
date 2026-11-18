@@ -98,7 +98,7 @@ function dh_refclean_run($apply, $only = NULL)
 		$w = ' and rc_student in (:only)';
 		$args[':only'] = $only ? array_values(array_map('intval', $only)) : array(0);
 	}
-	$sum = array('merge' => 0, 'keep' => 0, 'remove' => 0, 'stay' => 0, 'merged' => 0, 'removed' => 0, 'errors' => 0, 'batch' => $apply ? $batch : '');
+	$sum = array('merge' => 0, 'keep' => 0, 'remove' => 0, 'stay' => 0, 'merged' => 0, 'removed' => 0, 'errors' => 0, 'unexpected' => 0, 'batch' => $apply ? $batch : '');
 	foreach (db_query("select rc_student from dh_referral_copy where rc_status = 'open' $w order by rc_student", $args)->fetchCol() as $copy)
 	{
 		$p = dh_refclean_plan($copy);
@@ -109,19 +109,30 @@ function dh_refclean_run($apply, $only = NULL)
 		try
 		{
 			$status = 'kept';
-			if ($p['do'] === 'merge' && dh_refclean_merge($copy, $p['into'], $log) === 'removed')
+			$res = NULL;
+			if ($p['do'] === 'merge')
 			{
-				$status = 'merged';
-				$sum['merged']++;
+				$res = dh_refclean_merge($copy, $p['into'], $log);
+				if ($res === 'removed')
+				{
+					$status = 'merged';
+					$sum['merged']++;
+				}
 			}
 			elseif ($p['do'] === 'remove')
 			{
 				$s = array('students_removed' => 0);
-				if (dh_student_remove_if_empty($copy, $log, $s) === 'removed')
+				$res = dh_student_remove_if_empty($copy, $log, $s);
+				if ($res === 'removed')
 				{
 					$status = 'removed';
 					$sum['removed']++;
 				}
+			}
+			if ($res !== NULL && $res !== 'removed')
+			{
+				$sum['unexpected']++;
+				watchdog('referral', 'Copy cleanup: student @s was not removed (result: @r), kept', array('@s' => $copy, '@r' => is_scalar($res) ? (string) $res : gettype($res)), WATCHDOG_WARNING);
 			}
 			db_update('dh_referral_copy')->fields(array('rc_status' => $status, 'rc_batch' => $batch, 'rc_updated' => date('Y-m-d H:i:s')))->condition('rc_student', $copy)->execute();
 		}

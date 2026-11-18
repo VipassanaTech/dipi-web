@@ -35,6 +35,7 @@ t_in_txn(function () {
   $sum = dh_refclean_run(TRUE, $only);
   $b = $sum['batch'];
   t_eq(array($sum['merged'], $sum['removed'], $sum['errors']), array(1, 1, 0), 'A1 one merged, one removed, no errors');
+  t_eq(array($dry['unexpected'], $sum['unexpected']), array(0, 0), 'A1b the summary reports unexpected remove results (none here)');
   t_eq(db_query('select sc_student from dh_student_course where sc_id = :i', array(':i' => $sc1))->fetchField(), $real, 'A2 the copy\'s course moved to the real record');
   t_eq(db_query('select count(*) from dh_student_course where sc_id = :i', array(':i' => $dup))->fetchField(), 0, 'A3 a duplicate of a course the real record has is dropped');
   t_eq(db_query('select s_phone_home from dh_student where s_id = :s', array(':s' => $real))->fetchField(), '0221234567', 'A4 an empty field of the real record is filled');
