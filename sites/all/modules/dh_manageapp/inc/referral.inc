@@ -80,6 +80,8 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#required' => 1,
 		'#maxlength' => 50,
 	);
+	if (!empty($edit_data['r_student']) && ($line = dh_referral_link_summary($edit_data['r_student'])) !== '')
+		$form[$group]['ref_link_line'] = array('#markup' => '<p class="ref-link-line" style="clear:both;margin:4px 0 8px;font-weight:600">' . check_plain($line) . '</p>', '#weight' => 3.5);
 
 	$form[$group]['s_gender'] = array(
 		'#title' => 'Gender',
@@ -712,6 +714,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		$action = 'Update';
 
 	$form['sub'] = array('#type' => 'submit', '#value' => $action, '#weight' => 50);
+	$form['ref_aid'] = array('#type' => 'value', '#value' => isset($edit_data['ref_aid']) ? (int) $edit_data['ref_aid'] : 0);
   
   return $form;
 }
@@ -745,156 +748,107 @@ function dh_referral_form_validate($form, &$form_state)
   }
 }
 
-function dh_referral_form_submit($form, &$form_state)
+// Save the referral form. Person details go into the referral's own r_* columns, never into dh_student. Every
+// changed field is logged; the link to the person's real student record is set on add and kept on edit unless the
+// details now match a different student; applications are re-flagged. Returns the referral id.
+// $ref_id 0 = add. $route = 'referral' | 'center-referral' | 'at-portal'; $centre = the centre in the address.
+function dh_referral_save(array $input, array $values, $ref_id, $route, $centre)
 {
 	global $user;
-	$input = $form_state['input'];
-
-	foreach ($form_state['input'] as $key => $value) 
+	$app = $app_r = $app_s = array();
+	foreach ($input as $key => $value)
 	{
-		if ( substr($key,0,2) == 's_')
+		if (substr($key, 0, 2) == 's_')
 			$app[$key] = $value;
-		if ( substr($key,0,2) == 'r_')
+		if (substr($key, 0, 2) == 'r_')
 			$app_r[$key] = $value;
-		if ( substr($key,0,4) == 'sci_')
+		if (substr($key, 0, 4) == 'sci_')
 			$app_s[$key] = $value;
 	}
-	
-	if ($app['s_dob']['date'] == '')
-		$app['s_dob'] = NULL;
-  else
-    $app['s_dob'] = $app['s_dob']['date'];
+	$app['s_dob'] = (isset($app['s_dob']['date']) && $app['s_dob']['date'] !== '') ? $app['s_dob']['date'] : NULL;
 
-  // AT Portal form of a teacher: the referring teacher is always the logged-in teacher, not
-  // a posted value. (A login without an Active teacher record keeps choosing from the list.)
-  if (arg(0) == 'at-portal' && ($at_id = _dh_referral_at_teacher_id()))
-    $app_r['r_teacher'] = $at_id;
+	// AT Portal form of a teacher: the referring teacher is always the logged-in teacher, not a posted value.
+	// (A login without an Active teacher record keeps choosing from the list.)
+	if ($route == 'at-portal' && ($at_id = _dh_referral_at_teacher_id()))
+		$app_r['r_teacher'] = $at_id;
+	foreach (array('r_teacher', 'r_course_type', 'r_course_center') as $k)
+		if (!isset($app_r[$k]) || $app_r[$k] === '')
+			$app_r[$k] = NULL;
+	// Dates arrive as array('date' => 'Y-m-d'): store the string, or NULL when empty.
+	foreach ($app_r as $k => $v)
+		if (is_array($v))
+			$app_r[$k] = (isset($v['date']) && $v['date'] !== '') ? $v['date'] : NULL;
+	foreach (array('r_listed_10d', 'r_listed_stp', 'r_listed_spl', 'r_listed_20d', 'r_listed_30d', 'r_listed_45d', 'r_listed_60d', 'r_listed_tsc',
+			'r_listed_10d_seva', 'r_listed_lc_seva', 'r_listed_longseva') as $k)
+		if (!isset($app_r[$k]) || $app_r[$k] == '')
+			$app_r[$k] = '0';
+	$app_r['r_center'] = ($route == 'center-referral') ? (int) $centre : 0;
 
-  if ($app_r['r_teacher'] == '')
-    $app_r['r_teacher'] = NULL;
-
-    if ($app_r['r_course_type'] == '')
-        $app_r['r_course_type'] = NULL;
-
-    if ($app_r['r_course_start']['date'] == '')
-        $app_r['r_course_start'] = NULL;
-
-    if ($app_r['r_course_center'] == '')
-        $app_r['r_course_center'] = NULL;
-
-
-	if ($app_r['r_listed_10d'] == '')
-		$app_r['r_listed_10d'] = '0';
-	if ($app_r['r_listed_stp'] == '')
-		$app_r['r_listed_stp'] = '0';
-	if ($app_r['r_listed_spl'] == '')
-		$app_r['r_listed_spl'] = '0';
-	if ($app_r['r_listed_20d'] == '')
-		$app_r['r_listed_20d'] = '0';
-	if ($app_r['r_listed_30d'] == '')
-		$app_r['r_listed_30d'] = '0';
-	if ($app_r['r_listed_45d'] == '')
-		$app_r['r_listed_45d'] = '0';
-	if ($app_r['r_listed_60d'] == '')
-		$app_r['r_listed_60d'] = '0';
-	if ($app_r['r_listed_tsc'] == '')
-		$app_r['r_listed_tsc'] = '0';
-	if ($app_r['r_listed_10d_seva'] == '')
-		$app_r['r_listed_10d_seva'] = '0';
-	if ($app_r['r_listed_lc_seva'] == '')
-		$app_r['r_listed_lc_seva'] = '0';
-	if ($app_r['r_listed_longseva'] == '')
-		$app_r['r_listed_longseva'] = '0';
-
-	if(arg(0) == 'center-referral')
-		$app_r['r_center'] = arg(1);
-	else
-		$app_r['r_center'] = 0;
-
-
-	if ($app['s_city'] <> '')
-	{	
-		$q = "select c_id from dh_city where c_country='".$app['s_country']."' and c_state='".$app['s_state']."' and c_name='".$app['s_city']."' limit 1";
-		$city_id = db_query($q)->fetchField();
-		//watchdog('lala - $city_id', $q);
-		if ( $city_id <> '')
+	if (isset($app['s_city']) && $app['s_city'] <> '')
+	{
+		$city_id = db_query('select c_id from dh_city where c_country = :co and c_state = :st and c_name = :n limit 1',
+			array(':co' => $app['s_country'], ':st' => $app['s_state'], ':n' => $app['s_city']))->fetchField();
+		if ($city_id <> '')
 			$app['s_city'] = $city_id;
 		else
 		{
-				$q = "select ci.c_id from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join 
-					dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where 
-					pc_pin='".$app['s_zip']."' limit 0,1";
-				$city = db_query($q)->fetchField();
-				if ($city > 0)
-					$app['s_city'] = $city;
-				else
-				{
-					/* We just could not find the city, so lets just add it */
-					$f['c_country'] = $app['s_country'];
-					$f['c_state'] = $app['s_state'];
-					$f['c_name'] = $app['s_city'];
-					$city = db_insert('dh_city')->fields($f)->execute();
-					$app['s_city'] = $city;
-				}
-			//unset($app['a_city']);
-
+			$city = db_query('select ci.c_id from dh_pin_code p left join dh_city ci on p.pc_city = ci.c_id where pc_pin = :pin limit 0,1',
+				array(':pin' => $app['s_zip']))->fetchField();
+			if ($city > 0)
+				$app['s_city'] = $city;
+			else    // We just could not find the city, so lets just add it
+				$app['s_city'] = db_insert('dh_city')->fields(array('c_country' => $app['s_country'], 'c_state' => $app['s_state'], 'c_name' => $app['s_city']))->execute();
 		}
-
 	}
 	else
-		unset($app['s_city']);
+		unset($app['s_city']);                                  // blank: an edit keeps the stored city
+	if (isset($app['s_f_name']))
+		$app['s_f_name'] = ucwords(strtolower($app['s_f_name']));
+	if (isset($app['s_l_name']))
+		$app['s_l_name'] = ucwords(strtolower($app['s_l_name']));
 
-    $app['s_f_name'] = ucwords(strtolower($app['s_f_name']) );
-    $app['s_l_name'] = ucwords(strtolower($app['s_l_name']) );
-
-    $app['s_updated_by'] = $user->uid;
-	$app['s_updated'] = date('Y-m-d H:i:s');
-    $app_r['r_updated_by'] = $user->uid;
-	$app_r['r_updated'] = date('Y-m-d H:i:s');
-
-
-	if ( arg(2) == 'edit')
-	{
-		$ref_id = arg(3);
-		$student_id = db_query("select r_student from dh_referral where r_id=$ref_id")->fetchField();
-
-		db_update('dh_student')->fields($app)->condition('s_id', $student_id )->execute();
-
-    $sci_id = db_query("select sci_id from dh_student_course_input where sci_student=$student_id")->fetchField();
-
-    if($sci_id)
-    {
-      db_update('dh_student_course_input')->fields($app_s)->condition('sci_student', $student_id )->execute();
-    }
-    else
-    {
-      $app_s['sci_student'] = $student_id;
-      db_insert('dh_student_course_input')->fields($app_s)->execute();
-    }
-
-		db_update('dh_referral')->fields($app_r)->condition('r_id', $ref_id )->execute();
-	}
-	else 
-	{
-		$app['s_created_by'] = $user->uid;
-	    $app['s_created'] = date('Y-m-d H:i:s');
-	    $app_r['r_created_by'] = $user->uid;
-		$app_r['r_created'] = date('Y-m-d H:i:s');
-
-		$student_id = db_insert('dh_student')->fields($app)->execute();
-
-		$app_s['sci_student'] = $student_id;
-		db_insert('dh_student_course_input')->fields($app_s)->execute();
-
-		$app_r['r_student'] = $student_id;
-		$ref_id = db_insert('dh_referral')->fields($app_r)->execute();
-
-	}
-
-	/*update dh_applicant with a_referral for new/edit referral*/
+	// The form's s_* / sci_* fields -> the referral's own columns.
+	foreach (dh_referral_person_map() as $f => $c)
+		if (strpos($f, 'sci_') === 0)
+			$app_r[$c] = (isset($app_s[$f]) && ctype_digit((string) $app_s[$f])) ? (int) $app_s[$f] : 0;
+		elseif (array_key_exists($f, $app))
+			$app_r[$c] = $app[$f];
+	$now = date('Y-m-d H:i:s');
+	$app_r['r_updated_by'] = $user->uid;
+	$app_r['r_updated'] = $now;
+	$aid = !empty($values['ref_aid']) ? (int) $values['ref_aid'] : 0;
 
 	if ($ref_id)
-    update_referral_flag($ref_id);
+	{
+		$old = db_query('select * from dh_referral where r_id = :r', array(':r' => $ref_id))->fetchAssoc();
+		db_update('dh_referral')->fields($app_r)->condition('r_id', $ref_id)->execute();
+		dh_referral_log_changes($ref_id, $old, $app_r);
+		$link = dh_referral_link_find(dh_referral_who_row($app_r));
+		if ($link && $link != (int) $old['r_student'])
+			dh_referral_set_link($ref_id, $link, 'typed match');
+	}
+	else
+	{
+		$app_r['r_created_by'] = $user->uid;
+		$app_r['r_created'] = $now;
+		$app_r['r_moved'] = $now;
+		$app_r['r_student'] = 0;
+		$a = $aid ? db_query('select * from dh_applicant where a_id = :a', array(':a' => $aid))->fetchAssoc() : FALSE;
+		if ($a && $a['a_photo'] !== '')
+			$app_r['r_photo'] = $a['a_photo'];
+		$ref_id = (int) db_insert('dh_referral')->fields($app_r)->execute();
+		add_referral_activity($ref_id, 'Created', 'Referral created');
+		$link = dh_referral_link_find($a ? $a : dh_referral_who_row($app_r));
+		if ($link)
+			dh_referral_set_link($ref_id, $link, $a ? "application $aid" : 'typed match');
+	}
+	update_referral_flag($ref_id);
+	return $ref_id;
+}
+
+function dh_referral_form_submit($form, &$form_state)
+{
+	$ref_id = dh_referral_save($form_state['input'], $form_state['values'], arg(2) == 'edit' ? (int) arg(3) : 0, arg(0), arg(1));
 
 	drupal_set_message(t("Details updated successfully"), 'status');
 
@@ -906,8 +860,8 @@ function dh_referral_form_submit($form, &$form_state)
 			drupal_set_message(t('The End Date has passed, so this referral is under the Inactive tab. Set a later End Date to make it active.'), 'warning');
 		drupal_goto ('center-referral/'.arg(1), $passed ? array('query' => array('show' => 'inactive')) : array());
 	}
-  elseif (arg(0) == 'at-portal')
-    drupal_goto (!empty($form_state['values']['at_return']) ? $form_state['values']['at_return'] : 'at-portal');
+	elseif (arg(0) == 'at-portal')
+		drupal_goto (!empty($form_state['values']['at_return']) ? $form_state['values']['at_return'] : 'at-portal');
 	else
 		drupal_goto ('referral/'.arg(1));
 }
@@ -991,6 +945,8 @@ function dh_addedit_referral()
 				foreach ($count_box as $k => $len)
 					if (!ctype_digit((string) $new_row[$k]) || strlen((string) $new_row[$k]) > $len)
 						unset($new_row[$k]);
+				$new_row['ref_aid'] = (int) $aid;                     // the save takes the photo and the link from this application
+				$new_row['r_student'] = dh_referral_link_find($row);  // shows "Student record found" on the form
 			}
 			elseif (arg(0) == 'at-portal')
 				drupal_set_message(t('Details can be filled in only for a student of your own courses. You can type the details below.'), 'warning');
@@ -1001,9 +957,11 @@ function dh_addedit_referral()
 		return drupal_get_form('dh_referral_form', $new_row);
 	}		
 	elseif (arg(2) == 'edit') {
-		$row = db_query("select * from dh_referral left join dh_student on r_student=s_id 
-		  left join dh_student_course on r_student=sc_student left join dh_student_course_input on r_student = sci_student
-			where r_id='".arg(3)."'")->fetchAssoc();
+		$ref = db_query('select * from dh_referral where r_id = :r', array(':r' => (int) arg(3)))->fetchAssoc();
+		// Before the move script has run, the r_* columns are still empty: never open such a referral for editing.
+		if ($ref && $ref['r_moved'] === NULL)
+			return t('This referral is being updated by the system. Please try again in a few minutes.');
+		$row = $ref ? dh_referral_form_row($ref) : array();
 	}
 		
 	return drupal_get_form('dh_referral_form', $row);
