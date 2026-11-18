@@ -134,6 +134,17 @@ function dh_letter_review_link($step, $code)
 	return $base === '' ? '' : $base.$code;
 }
 
+/* A new code for an LC review link: the application number plus 15 random letters and digits (the form the email
+   review page accepts). random_int is a secure random source. */
+function dh_lc_review_code($app_id)
+{
+	$chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	$code = '';
+	for ($i = 0; $i < 15; $i++)
+		$code .= $chars[random_int(0, 61)];
+	return $app_id.$code;
+}
+
 /* The "LC review letter" label next to an LC letter's name. */
 function dh_letter_lc_badge()
 {

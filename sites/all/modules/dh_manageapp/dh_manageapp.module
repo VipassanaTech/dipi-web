@@ -2641,8 +2641,12 @@ function update_status_external($app_id, $new_status)
 			$uid = $user_ids['COURSE-APPLICANT-UID'];
 			if ( $altered_status == 'A-ATReview' )
 				$uid = $user_ids['COURSE-R-AT-UID'];
-			elseif ( $altered_status == 'Received' ) 
+			elseif ( $altered_status == 'Received' )
 				$uid = $user_ids['COURSE-A-AT-UID'];
+			// A transfer without a login comes only from the email review page (status-trigger.php): log it under the
+			// recommending email user, like that page's approvals and rejections (a login below overrides this).
+			elseif ( $altered_status == 'R-ATTransfer' )
+				$uid = $user_ids['COURSE-R-AT-UID'];
 
 			if (($new_status == 'Rejected-R-AT') && ($altered_status == 'Rejected'))
 				$uid = $user_ids['COURSE-R-AT-UID'];

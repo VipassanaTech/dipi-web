@@ -1279,12 +1279,16 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		$al_row = db_query($q)->fetchAssoc();
 		$auth_area = $al_row['al_area_auth'];
 		$auth_reco = $al_row['al_recommending_auth'];
+		// Each step (recommending, area) has its own code, and a step without one gets a fresh code. A step's code is
+		// wiped when that step's AT changes (trigger dh_lc_bu), so the new AT's email carries a new link and the
+		// former AT's link stops working.
+		$new_codes = array();
 		if (!$auth_reco)
-		{
-	 		$auth_area = $id.generate_random_str(15);
-	 		$auth_reco = $id.generate_random_str(15);
-			db_update('dh_applicant_lc')->fields(array('al_area_auth' => $auth_area, 'al_recommending_auth' => $auth_reco))->condition('al_applicant', $id)->execute();
-		}
+			$new_codes['al_recommending_auth'] = $auth_reco = dh_lc_review_code($id);
+		if (!$auth_area)
+			$new_codes['al_area_auth'] = $auth_area = dh_lc_review_code($id);
+		if ($new_codes)
+			db_update('dh_applicant_lc')->fields($new_codes)->condition('al_applicant', $id)->execute();
 		$search['[RAuth]'] = $auth_reco;
 		$search['[AAuth]'] = $auth_area;
 		// [ReviewLink]: the link start from the admin settings plus this AT's code (recommending or area).
