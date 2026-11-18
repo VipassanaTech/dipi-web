@@ -174,3 +174,28 @@ function dh_referral_list_sql($where)
 		where $where
 		order by r.r_created";
 }
+
+// Course finalize: an attended applicant flagged with a referral that has no link yet links that referral to the
+// student record finalize just chose, when the referral's typed details still match the application (the shared rule).
+// Never throws: a failure goes to watchdog and finalize goes on.
+function dh_referral_link_from_finalize($ref_id, $sid, array $a)
+{
+	try
+	{
+		$ref = db_query('select r_id, r_student, r_deleted, r_f_name, r_l_name, r_email, r_phone_mobile, r_pancard, r_aadhar, r_voter_id, r_passport
+			from dh_referral where r_id = :r', array(':r' => (int) $ref_id))->fetchAssoc();
+		if (!$ref || $ref['r_deleted'] || (int) $ref['r_student'] || !$sid)
+			return FALSE;
+		$m = dh_referral_match_sql(dh_referral_who($ref, 'r_'), 'a.a_');
+		if (!$m)
+			return FALSE;
+		if (!db_query('select 1 from dh_applicant a where a.a_id = :aid and ' . $m[0], $m[1] + array(':aid' => (int) $a['a_id']))->fetchField())
+			return FALSE;
+		return dh_referral_set_link($ref_id, $sid, 'finalize of course ' . (int) $a['a_course']);
+	}
+	catch (Exception $e)
+	{
+		watchdog('referral', 'Link from finalize failed for referral @r: @m', array('@r' => $ref_id, '@m' => $e->getMessage()), WATCHDOG_WARNING);
+		return FALSE;
+	}
+}
