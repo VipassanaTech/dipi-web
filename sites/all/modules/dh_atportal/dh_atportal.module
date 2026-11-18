@@ -153,6 +153,11 @@ function dh_atportal_menu()
          'access arguments' => array('access at portal'),
          'type' => MENU_CALLBACK);
 
+  $items['at-portal/referral/edit/%atrefedit'] = array('title' => t('Edit Referral'),
+         'page callback' => 'dh_addedit_referral',
+         'access arguments' => array('add referral list'),
+         'type' => MENU_CALLBACK);
+
   $items['at-portal/referral/update/%atrefid'] = array('title' => t('Update AT Referral Date'),
          'page callback' => 'at_referral_update',
          'page arguments' => array(3),
@@ -373,6 +378,15 @@ function atappid_load ( $id )
 
 	return false;
 	
+}
+
+// The logged-in AT's own referral that is not deleted (the full-form edit page).
+function atrefedit_load($id)
+{
+  $id = atrefid_load($id);
+  if (!$id)
+    return FALSE;
+  return db_query('select 1 from dh_referral where r_id = :r and r_deleted = 0', array(':r' => (int) $id))->fetchField() ? $id : FALSE;
 }
 
 function atrefid_load ( $id )
@@ -1242,9 +1256,9 @@ function my_referral()
     $rs['sid'] = $r['r_student'];
     $rs['ref_id'] = $r['r_id'];
     $rs['history'] = $can_history ? 1 : 0;
-    $rs['name'] = $r['Full Name'];
-
-    $rs['del'] = l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array("attributes" => array("class" => array("ref-del")))) ;
+    $rs['name'] = l($r['Full Name'], 'at-portal/referral/edit/'.$rs['ref_id']);
+    $rs['del'] = $r['r_readonly'] ? t('r-only')
+      : l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array('query' => array('token' => drupal_get_token('at-referral-delete-'.$rs['ref_id'])), "attributes" => array("class" => array("ref-del"))));
     $rs['update'] = '<a href="#" class="ref-upd">Update</a>' ;
 
 
@@ -1537,21 +1551,28 @@ function my_referral()
 
 
 
-function at_referral_delete( $id )
+// Delete one of the AT's own referrals (the route's loader checked it is theirs). An r-only referral stays.
+// Returns 'deleted' or 'readonly'.
+function dh_at_referral_delete($id)
 {
   global $user;
+  if (db_query('select r_readonly from dh_referral where r_id = :r', array(':r' => (int) $id))->fetchField())
+    return 'readonly';
+  db_update('dh_referral')->fields(array('r_updated_by' => $user->uid, 'r_updated' => date('Y-m-d H:i:s'), 'r_deleted' => 1))->condition('r_id', $id)->execute();
+  db_query('update dh_applicant set a_referral = 0 where a_referral = :r', array(':r' => (int) $id));
+  add_referral_activity($id, 'Deleted', 'Referral deleted (AT Portal)');
+  return 'deleted';
+}
 
-  $fields['r_updated_by'] = $user->uid;
-  $fields['r_updated'] = date('Y-m-d H:i:s');
-  $fields['r_deleted'] = 1;
-
-  db_update('dh_referral')->fields($fields)->condition('r_id', $id )->execute();
-
-  db_query("update dh_applicant set a_referral=0 where a_referral=$id");
-
-  drupal_set_message("Referral delete successfully.");
-
-  drupal_goto ('at-portal/my-referral');
+function at_referral_delete( $id )
+{
+  if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], 'at-referral-delete-'.$id))
+    drupal_set_message(t('The Delete link has expired. Please click Delete again.'), 'error');
+  elseif (dh_at_referral_delete($id) == 'readonly')
+    drupal_set_message(t('This referral is marked read-only by the referral admin, so it cannot be deleted.'), 'error');
+  else
+    drupal_set_message(t('Referral deleted.'));
+  drupal_goto('at-portal/my-referral');
 }
 
 

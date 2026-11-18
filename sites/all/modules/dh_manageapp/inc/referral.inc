@@ -25,13 +25,16 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
     // Opened from a course's applicant list (details filled in): go back there afterwards.
     if (!empty($edit_data['s_course']))
       $at_return = 'at-portal/my-course/'.(int) $edit_data['s_course'].'/applicants';
+    elseif (arg(2) == 'edit')
+      $at_return = 'at-portal/my-referral';
     $form['at_return'] = array('#type' => 'value', '#value' => $at_return);
   }
 
 	if ($center_id)
 		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Center Referral List", "center-referral/".arg(1)).'</h3>');
   elseif($at_referral)
-    $form['b'] = array('#markup' => '<h2>Add Referral</h2>'.($at_return ? '<p>'.l(t('← Back to the applicant list'), $at_return).'</p>' : ''));
+    $form['b'] = array('#markup' => '<h2>'.(arg(2) == 'edit' ? t('Edit Referral') : t('Add Referral')).'</h2>'
+      .($at_return ? '<p>'.l(arg(2) == 'edit' ? t('← Back to My Referrals') : t('← Back to the applicant list'), $at_return).'</p>' : ''));
  	else
  		$form['b'] = array('#markup' => '<h3>'.l("Back to Dashboard", "centre/".arg(1))."&nbsp|&nbsp".l("Back to Referral List", "referral/".arg(1)).'</h3>');
  	
