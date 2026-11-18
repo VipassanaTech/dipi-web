@@ -36,7 +36,7 @@ function rc_rows($uid, $path, $query = array()) {
       $out = array();
       foreach ($rows as $r) {
         unset($r['del'], $r['update'], $r['sid']);
-        foreach ($r as $k => $v) $r[$k] = trim(strip_tags((string) $v));
+        foreach ($r as $k => $v) $r[$k] = trim(str_replace("\x01", '&nbsp;', html_entity_decode(str_replace('&nbsp;', "\x01", strip_tags((string) $v)), ENT_QUOTES, 'UTF-8')));
         $out[$r['ref_id']] = $r;
       }
       ksort($out);

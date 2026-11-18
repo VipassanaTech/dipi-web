@@ -24,6 +24,9 @@ t_in_txn(function () {
     'L1 edit opens only the AT\'s own referral that is not deleted');
   t_eq(atrefedit_load($own_ro), $own_ro, 'L2 an r-only referral can be edited (decision 9)');
 
+  $centre_ref = $ref(array('r_teacher' => $t[0]['t_id'], 'r_center' => 1));
+  t_eq(atrefedit_load($centre_ref), FALSE, 'L3 a centre referral is refused even when its teacher is the AT');
+
   $app = db_query('select * from dh_referral where r_id = :r', array(':r' => $own))->fetchAssoc();
   $in = dh_referral_form_row($app);
   foreach (array('s_dob', 'r_start', 'r_end', 'r_course_start') as $k)

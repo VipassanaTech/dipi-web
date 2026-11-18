@@ -84,7 +84,7 @@ function dh_referral_form($form, &$form_state, $edit_data = array())
 		'#maxlength' => 50,
 	);
 	if (!empty($edit_data['r_student']) && ($line = dh_referral_link_summary($edit_data['r_student'])) !== '')
-		$form[$group]['ref_link_line'] = array('#markup' => '<p class="ref-link-line" style="clear:both;margin:4px 0 8px;font-weight:600">' . check_plain($line) . '</p>', '#weight' => 3.5);
+		$form[$group]['ref_link_line'] = array('#markup' => '<p class="ref-link-line" style="clear:both;margin:4px 0 8px;font-weight:600">' . $line . '</p>', '#weight' => 3.5);
 
 	$form[$group]['s_gender'] = array(
 		'#title' => 'Gender',
@@ -768,6 +768,10 @@ function dh_referral_save(array $input, array $values, $ref_id, $route, $centre)
 		if (substr($key, 0, 4) == 'sci_')
 			$app_s[$key] = $value;
 	}
+	// Only these posted referral keys are taken; every other r_* key (r_readonly, r_deleted, r_student, r_id, ...) is dropped.
+	$app_r = array_intersect_key($app_r, array_flip(array('r_listed_10d', 'r_listed_stp', 'r_listed_spl', 'r_listed_20d', 'r_listed_30d',
+		'r_listed_45d', 'r_listed_60d', 'r_listed_tsc', 'r_listed_10d_seva', 'r_listed_lc_seva', 'r_listed_longseva', 'r_special',
+		'r_start', 'r_end', 'r_reason', 'r_listed_by', 'r_teacher', 'r_course_center', 'r_course_type', 'r_course_start')));
 	$app['s_dob'] = (isset($app['s_dob']['date']) && $app['s_dob']['date'] !== '') ? $app['s_dob']['date'] : NULL;
 
 	// AT Portal form of a teacher: the referring teacher is always the logged-in teacher, not a posted value.
@@ -826,9 +830,18 @@ function dh_referral_save(array $input, array $values, $ref_id, $route, $centre)
 		$old = db_query('select * from dh_referral where r_id = :r', array(':r' => $ref_id))->fetchAssoc();
 		db_update('dh_referral')->fields($app_r)->condition('r_id', $ref_id)->execute();
 		dh_referral_log_changes($ref_id, $old, $app_r);
-		$link = dh_referral_link_find(dh_referral_who_row($app_r));
-		if ($link && $link != (int) $old['r_student'])
-			dh_referral_set_link($ref_id, $link, 'typed match');
+		// Keep the current link while it still matches the typed details; switch only when it no longer does.
+		$now_row = array_merge($old, $app_r);
+		$m = dh_referral_match_sql(dh_referral_who($now_row, 'r_'), 's.s_');
+		$still = FALSE;
+		if ($m && (int) $old['r_student'] > 0)
+			$still = db_query('select 1 from dh_student s where s.s_id = :cur and ' . $m[0], $m[1] + array(':cur' => (int) $old['r_student']))->fetchField();
+		if (!$still)
+		{
+			$link = dh_referral_link_find(dh_referral_who_row($app_r));
+			if ($link && $link != (int) $old['r_student'])
+				dh_referral_set_link($ref_id, $link, 'typed match');
+		}
 	}
 	else
 	{
@@ -1077,7 +1090,7 @@ function dh_referral_results()
 		elseif (user_access('manage center referral list') && $center_id)
 		  $rs['name'] = _ma_make_link($r['Full Name'],'center-referral/'.arg(1).'/edit/'.$rs['ref_id']);
 		else
-		  $rs['name'] = $r['Full Name'];
+		  $rs['name'] = check_plain((string) $r['Full Name']);
 
         if($r['r_special'])
             $rs['name'] = $rs['name']."<br>(Special List)";
@@ -1112,7 +1125,7 @@ function dh_referral_results()
     if($center_id)
     {
       $rs['ref_by_title'] = "Center Referral By:";
-      $rs['ref_by'] = $r['r_listed_by'];
+      $rs['ref_by'] = check_plain((string) $r['r_listed_by']);
     }
     else
     {
@@ -1123,27 +1136,27 @@ function dh_referral_results()
     }
 
     $r['r_course_type'] = db_query("select td_val1 FROM dh_type_detail where td_id=:td_id", array(':td_id' => $r['r_course_type']))->fetchField();
-    $rs['ref_course'] = "Center: {$r['r_course_center']}, Type: {$r['r_course_type']}, Start-Date: {$r['r_course_start']}";
+    $rs['ref_course'] = "Center: " . check_plain((string) $r['r_course_center']) . ", Type: " . check_plain((string) $r['r_course_type']) . ", Start-Date: " . check_plain((string) $r['r_course_start']);
 
     $rs['gender'] = (strtoupper($r['s_gender'])=='M')?'Male':'Female';
 		//if ($r['City'] == '')
 		//	$r['City'] = $r['s_city_str'];
-		$rs['location'] = $r['Country'].', '.$r['State'].', '.$r['City'];
-		$rs['city'] = $r['City'];
-		$rs['state'] = $r['State'];
-		$rs['country'] = $r['Country'];
-		$rs['pin'] = $r['s_zip'];
+		$rs['location'] = check_plain($r['Country'].', '.$r['State'].', '.$r['City']);
+		$rs['city'] = check_plain((string) $r['City']);
+		$rs['state'] = check_plain((string) $r['State']);
+		$rs['country'] = check_plain((string) $r['Country']);
+		$rs['pin'] = check_plain((string) $r['s_zip']);
 		$rs['age'] = $r['Age'];
-		$rs['address'] = $r['s_address'];//." - ".$r['s_zip'];			
-		$rs['contact'] = '<label>H:&nbsp;</label>'.$r['s_phone_home']." <label>M:&nbsp;</label>".$r['s_phone_mobile']." <label>O:&nbsp;</label>".$r['s_phone_office']." <label>Email:&nbsp;</label>".$r['s_email'];
-		$rs['contact_home'] = $r['s_phone_home'];
-		$rs['contact_mobile'] = $r['s_phone_mobile'];
-		$rs['contact_office'] = $r['s_phone_office'];
-		$rs['contact_email'] = $r['s_email'];
-		$rs['aadhar'] = $r['s_aadhar'];
-		$rs['pancard'] = $r['s_pancard'];
-		$rs['passport'] = $r['s_passport'];
-		$rs['voter_id'] = $r['s_voter_id'];
+		$rs['address'] = check_plain((string) $r['s_address']);//." - ".$r['s_zip'];			
+		$rs['contact'] = '<label>H:&nbsp;</label>'.check_plain((string) $r['s_phone_home'])." <label>M:&nbsp;</label>".check_plain((string) $r['s_phone_mobile'])." <label>O:&nbsp;</label>".check_plain((string) $r['s_phone_office'])." <label>Email:&nbsp;</label>".check_plain((string) $r['s_email']);
+		$rs['contact_home'] = check_plain((string) $r['s_phone_home']);
+		$rs['contact_mobile'] = check_plain((string) $r['s_phone_mobile']);
+		$rs['contact_office'] = check_plain((string) $r['s_phone_office']);
+		$rs['contact_email'] = check_plain((string) $r['s_email']);
+		$rs['aadhar'] = check_plain((string) $r['s_aadhar']);
+		$rs['pancard'] = check_plain((string) $r['s_pancard']);
+		$rs['passport'] = check_plain((string) $r['s_passport']);
+		$rs['voter_id'] = check_plain((string) $r['s_voter_id']);
 
 		$rs['course_teen'] = $r['sci_teen']?$r['sci_teen']:"0";
 		$rs['course_10d'] = $r['sci_10d']?$r['sci_10d']:"0";
@@ -1169,21 +1182,21 @@ function dh_referral_results()
 		$rs['ref_10dseva'] = $r['r_listed_10d_seva']?"Yes":"No";
 		$rs['ref_lcseva'] = $r['r_listed_lc_seva']?"Yes":"No";
 		$rs['ref_longseva'] = $r['r_listed_longseva']?"Yes":"No";
-		$rs['ref_reason'] = $r['r_reason'];
+		$rs['ref_reason'] = check_plain((string) $r['r_reason']);
 		$rs['ref_start'] = $r['r_start'];
 		$rs['ref_end'] = $r['r_end'];
 
-		$rs['Education'] = $r['s_education'];
-		$rs['Company'] = $r['s_company'];
-		$rs['Dept'] = $r['s_department'];
-		$rs['Occ'] = $r['s_occupation'];
+		$rs['Education'] = check_plain((string) $r['s_education']);
+		$rs['Company'] = check_plain((string) $r['s_company']);
+		$rs['Dept'] = check_plain((string) $r['s_department']);
+		$rs['Occ'] = check_plain((string) $r['s_occupation']);
 		if ($r['s_occupation'] == '')
-			$rs['Occ'] = $r['s_occupation_past'];
-		$rs['Designation'] = $r['s_designation'];
+			$rs['Occ'] = check_plain((string) $r['s_occupation_past']);
+		$rs['Designation'] = check_plain((string) $r['s_designation']);
 		$rs['photo'] = '';
 		if ( $r['s_photo'] <> '')
-			$rs['photo'] = file_create_url($r['s_photo']);
-		$rs['link_line'] = check_plain(dh_referral_link_summary($r['r_student']));
+			$rs['photo'] = check_url(file_create_url($r['s_photo']));
+		$rs['link_line'] = dh_referral_link_summary($r['r_student']);
 		//$rows[] = array_values($rs);
 		
 		$rows[] = $rs;

@@ -457,7 +457,7 @@ function dh_course_sync($course_id, $opts = array())
 			$newer = $pre_sid ? dh_student_has_newer_course($pre_sid, $course_id) : FALSE;
 			$ctx['newer'] = $newer;
 			$sid = dh_student_apply($sid, $r, $strong, $ctx);
-			if (!empty($r['a_referral']))
+			if (!empty($r['a_referral']) && empty($opts['batch']))
 				dh_referral_link_from_finalize((int) $r['a_referral'], $sid, $r);
 
 			$c = array('sc_student' => $sid, 'sc_applicant' => (int) $r['a_id'], 'sc_center' => $r['a_center'], 'sc_course' => $r['a_course'],

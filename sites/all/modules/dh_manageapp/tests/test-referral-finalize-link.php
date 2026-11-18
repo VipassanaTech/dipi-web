@@ -31,6 +31,12 @@ t_in_txn(function () {
   t_eq($link($r2), $s2, 'F3 a linked referral keeps its link');
   t_eq($link($r3), 0, 'F4 a referral whose typed details no longer match the application is not linked');
   t_ok($student($a4) > 0 && $student($a4) !== $copy, 'F5 finalize never matches an open referral copy');
+  // Back-fill batch: no referral linking (link writes are not in the student log, so an undo could not reverse them).
+  $course2 = t_make_course();
+  $r7 = $ref(array('r_f_name' => 'Zzqtest', 'r_l_name' => 'Finseven', 'r_email' => 'zzqfin7@example.invalid'));
+  $a7 = t_make_applicant($course2, array('a_f_name' => 'Zzqtest', 'a_l_name' => 'Finseven', 'a_email' => 'zzqfin7@example.invalid', 'a_referral' => $r7));
+  $sum2 = dh_course_sync($course2, array('mail_fn' => 't_record_mail', 'files' => 'none', 'batch' => 'zzq-batch-link', 'uid' => 0));
+  t_eq(array($sum2['errors'], $link($r7)), array(0, 0), 'F7 inside a back-fill batch an unlinked flagged referral stays unlinked');
   t_eq(dh_referral_link_from_finalize(999999999, 1, array('a_id' => 1, 'a_course' => 1)), FALSE, 'F6 an unknown referral: FALSE, no exception');
 });
 t_done();
