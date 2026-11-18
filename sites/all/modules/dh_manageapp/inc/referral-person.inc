@@ -139,3 +139,12 @@ function dh_referral_link_summary($sid)
 	return t('Student record found: @n in DIPI, last: @c, @d', array('@n' => format_plural($n, '1 course', '@count courses'),
 		'@c' => $last['c_name'], '@d' => date('d M Y', strtotime($last['c_start']))));
 }
+
+// The person's real student record, found with finalize's own rule (dh_student_find), or 0.
+// Open referral copies are never found (see dh_student_find's $exclude).
+function dh_referral_link_find(array $a, $exclude = NULL)
+{
+	$a += array('a_f_name' => '', 'a_l_name' => '');
+	$m = dh_student_find($a, $exclude);
+	return (int) $m['sid'];
+}

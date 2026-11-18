@@ -69,9 +69,20 @@ function dh_id_is_shared($kind, $v)
 }
 
 /* The existing student for an applicant, or sid 0. IDs first (each needs the same first name or
-   date of birth), then first + last name with email, mobile or date of birth. */
-function dh_student_find($a)
+   date of birth), then first + last name with email, mobile or date of birth.
+   $exclude: NULL = skip the referral copies still waiting for step 2 (dh_referral_copy, status open);
+   an array = skip exactly those student ids (the referral move script passes its own list). */
+function dh_student_find($a, $exclude = NULL)
 {
+	$skip = '';
+	$skip_args = array();
+	if ($exclude === NULL)
+		$skip = " and s_id not in (select rc_student from dh_referral_copy where rc_status = 'open')";
+	elseif ($exclude)
+	{
+		$skip = ' and s_id not in (:skip)';
+		$skip_args = array(':skip' => array_values(array_map('intval', $exclude)));
+	}
 	$f = trim((string) $a['a_f_name']);
 	$dob = isset($a['a_dob']) ? trim((string) $a['a_dob']) : '';
 	if (!dh_dob_known($dob))
@@ -82,7 +93,7 @@ function dh_student_find($a)
 		if ($v === '' || dh_id_is_junk($k, $v) || dh_id_is_shared($k, $v))
 			continue;
 		$best = NULL;
-		foreach (db_query("select s_id, s_f_name, s_dob from dh_student where s_$k = :v order by s_id", array(':v' => $v)) as $s)
+		foreach (db_query("select s_id, s_f_name, s_dob from dh_student where s_$k = :v $skip order by s_id", array(':v' => $v) + $skip_args) as $s)
 		{
 			$same_dob = ($dob !== '' && dh_dob_known($s->s_dob) && (string) $s->s_dob === $dob);
 			$same_first = ($f !== '' && strcasecmp(trim((string) $s->s_f_name), $f) === 0);
@@ -100,7 +111,7 @@ function dh_student_find($a)
 		$v = isset($a["a_$k"]) ? trim((string) $a["a_$k"]) : '';
 		if ($v === '' || $f === '' || ($k === 'dob' && !dh_dob_known($v)))
 			continue;
-		$sid = db_query("select s_id from dh_student where s_f_name = :f and s_l_name = :l and s_$k = :v order by s_id limit 1", $name + array(':v' => $v))->fetchField();
+		$sid = db_query("select s_id from dh_student where s_f_name = :f and s_l_name = :l and s_$k = :v $skip order by s_id limit 1", $name + array(':v' => $v) + $skip_args)->fetchField();
 		if ($sid)
 			return array('sid' => (int) $sid, 'how' => "name+$k", 'strong' => TRUE);
 	}
