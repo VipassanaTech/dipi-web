@@ -839,6 +839,9 @@ function dh_backfill_undo_row($l, &$ctx)
 			return ($set && db_update($table)->fields($set)->condition($key, $old[$key])->execute()) ? 'undone' : 'skipped';
 		case 'sci-added':
 			return db_delete('dh_student_course_input')->condition('sci_id', (int) $l['sl_new'])->execute() ? 'undone' : 'skipped';
+		case 'patrika-moved':
+			// The referral copy cleanup moved a subscription from the copy (sl_student) to the real record (sl_new).
+			return db_update('dh_patrika')->fields(array('p_student' => (int) $l['sl_student']))->condition('p_id', (int) $l['sl_old'])->condition('p_student', (int) $l['sl_new'])->execute() ? 'undone' : 'skipped';
 		case 'patrika-unlinked':
 			return db_update('dh_patrika')->fields(array('p_student' => (int) $l['sl_student']))->condition('p_id', (int) $l['sl_old'])->condition('p_student', 0)->execute() ? 'undone' : 'skipped';
 		case 'updated':
