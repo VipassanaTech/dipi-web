@@ -1667,17 +1667,22 @@ function dh_referral_end_ok($r_end)
 	return (string) $r_end === '' || (string) $r_end >= $today;
 }
 
-// The list query's condition for a tab. The global referral list ($center_id 0) keeps
-// its old condition: every referral that is not deleted.
-function dh_referral_tab_where($center_id, $tab)
+// The condition for one tab: Active = not deleted, end date today or later; Inactive = not deleted, end date passed;
+// Deleted = deleted. Any other value counts as Active.
+function dh_referral_tab_cond($tab)
 {
-	if (!$center_id)
-		return "(r_deleted = 0)";
 	if ($tab == 'deleted')
 		return "(r_deleted = 1)";
 	if ($tab == 'inactive')
 		return "(r_deleted = 0) and (r_end < curdate())";
 	return "(r_deleted = 0) and (r_end >= curdate())";
+}
+
+// The list query's condition. A centre list has three tabs; the main (global) list shows active referrals only
+// (ATs see their expired and deleted ones in the AT Portal).
+function dh_referral_tab_where($center_id, $tab)
+{
+	return dh_referral_tab_cond($center_id ? $tab : 'active');
 }
 
 // How many each tab shows: one per referral, as the list shows.
@@ -1735,15 +1740,18 @@ function dh_referral_twins($ref_id)
 // date, the activity log says so, and applications in courses that have not started are
 // matched to it again (as on any save). Returns array('tab', 'end', 'twins') or FALSE
 // when it is not a deleted centre referral.
-function dh_referral_undelete($ref_id)
+// $global = a main-list (AT) referral from the AT Portal: the expiry cron starts again (new email, then 100 days; decision 10).
+function dh_referral_undelete($ref_id, $global = FALSE)
 {
 	global $user;
-	$r = db_query("select r_center, r_end, r_end >= curdate() as ok from dh_referral where r_id = :r and r_deleted = 1 and r_center <> 0",
+	$r = db_query('select r_center, r_end, r_end >= curdate() as ok from dh_referral where r_id = :r and r_deleted = 1 and ' . ($global ? 'r_center = 0' : 'r_center <> 0'),
 		array(':r' => $ref_id))->fetchAssoc();
 	if (!$r)
 		return FALSE;
-	$n = db_update('dh_referral')->fields(array('r_deleted' => 0, 'r_updated' => date('Y-m-d H:i:s'), 'r_updated_by' => $user->uid))
-		->condition('r_id', $ref_id)->condition('r_deleted', 1)->execute();
+	$fields = array('r_deleted' => 0, 'r_updated' => date('Y-m-d H:i:s'), 'r_updated_by' => $user->uid);
+	if ($global)
+		$fields['r_email_notification_date'] = NULL;
+	$n = db_update('dh_referral')->fields($fields)->condition('r_id', $ref_id)->condition('r_deleted', 1)->execute();
 	if (!$n)
 		return FALSE;
 	$tab = dh_referral_tab_of(0, $r['ok']);

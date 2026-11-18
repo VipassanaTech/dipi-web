@@ -28,8 +28,8 @@ foreach (db_query("select distinct r_center from dh_referral where r_center <> 0
   $checked++;
 }
 t_ok($checked > 0 && $all_same, "L1 every centre: Active + Inactive = the old list exactly ($checked centres)");
-t_eq(t_tab_ids(0, ''), t_old_ids(0), 'L2 the global referral list shows exactly what it did before');
-t_eq(dh_referral_tab_where(0, 'deleted'), '(r_deleted = 0)', 'L3 the global list ignores any tab');
+t_eq(t_tab_ids(0, ''), db_query('select r_id from dh_referral r where (r_deleted = 0) and (r_end >= curdate()) and r_center = 0 order by r_id')->fetchCol(), 'L2 the global referral list shows active referrals only');
+t_eq(dh_referral_tab_where(0, 'deleted'), '(r_deleted = 0) and (r_end >= curdate())', 'L3 the global list ignores any tab');
 
 t_in_txn(function () use ($C, $C2) {
   $before = dh_centre_referral_counts($C);

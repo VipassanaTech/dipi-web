@@ -158,6 +158,12 @@ function dh_atportal_menu()
          'access arguments' => array('add referral list'),
          'type' => MENU_CALLBACK);
 
+  $items['at-portal/referral/undelete/%atrefid'] = array('title' => t('Undelete AT Referral'),
+         'page callback' => 'at_referral_undelete',
+         'page arguments' => array(3),
+         'access arguments' => array('access at portal'),
+         'type' => MENU_CALLBACK);
+
   $items['at-portal/referral/update/%atrefid'] = array('title' => t('Update AT Referral Date'),
          'page callback' => 'at_referral_update',
          'page arguments' => array(3),
@@ -1244,7 +1250,16 @@ function my_referral()
   $out = '<h2>'.l("Back to AT-Portal", "/at-portal").'</h2>';
 
 
-  $q = dh_referral_list_sql("(r_deleted = 0) and r_center = 0 and r_teacher = " . (int) $at_id);
+  $tab = (isset($_GET['show']) && in_array($_GET['show'], array('inactive', 'deleted'), TRUE)) ? $_GET['show'] : 'active';
+  $n = dh_at_referral_counts($at_id);
+  $out .= '<ul class="nav nav-tabs ref-tabs" style="margin:6px 0 10px">';
+  foreach (dh_centre_referral_tabs() as $k => $label)
+    $out .= '<li'.($k == $tab ? ' class="active"' : '').'>'.l($label.' ('.$n[$k].')', 'at-portal/my-referral', $k == 'active' ? array() : array('query' => array('show' => $k))).'</li>';
+  $out .= '</ul>';
+  if ($tab == 'inactive')
+    $out .= '<p class="ref-tab-help">'.t('Expired referrals are deleted automatically 100 days after the expiry email. To keep one, open it and set a later End Date.').'</p>';
+
+  $q = dh_referral_list_sql(dh_referral_tab_cond($tab) . " and r_center = 0 and r_teacher = " . (int) $at_id);
 
   $can_history = TRUE;
   $result = db_query($q);
@@ -1260,6 +1275,13 @@ function my_referral()
     $rs['del'] = $r['r_readonly'] ? t('r-only')
       : l("Delete", "at-portal/referral/delete/".$rs['ref_id'], array('query' => array('token' => drupal_get_token('at-referral-delete-'.$rs['ref_id'])), "attributes" => array("class" => array("ref-del"))));
     $rs['update'] = '<a href="#" class="ref-upd">Update</a>' ;
+    if ($tab == 'deleted')
+    {
+      $rs['name'] = check_plain($r['Full Name']);
+      $rs['del'] = l(t('Undelete'), 'at-portal/referral/undelete/'.$rs['ref_id'],
+        array('query' => array('token' => drupal_get_token('at-referral-undelete-'.$rs['ref_id'])), 'attributes' => array('class' => array('ref-undel'))));
+      $rs['update'] = '';
+    }
 
 
     $rs['ref_by_title'] = "not required";
@@ -1571,8 +1593,37 @@ function at_referral_delete( $id )
   elseif (dh_at_referral_delete($id) == 'readonly')
     drupal_set_message(t('This referral is marked read-only by the referral admin, so it cannot be deleted.'), 'error');
   else
-    drupal_set_message(t('Referral deleted.'));
+    drupal_set_message(t('Referral deleted. It is now under the Deleted tab, where it can be undeleted.'));
   drupal_goto('at-portal/my-referral');
+}
+
+// How many of this AT's referrals each tab of My Referrals shows.
+function dh_at_referral_counts($at_id)
+{
+  $n = array();
+  foreach (array_keys(dh_centre_referral_tabs()) as $tab)
+    $n[$tab] = (int) db_query('select count(*) from dh_referral where r_center = 0 and r_teacher = :t and ' . dh_referral_tab_cond($tab), array(':t' => (int) $at_id))->fetchField();
+  return $n;
+}
+
+// at-portal/referral/undelete/{id} (the Undelete button on the Deleted tab of My Referrals).
+function at_referral_undelete($id)
+{
+  if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], 'at-referral-undelete-'.$id))
+    drupal_set_message(t('The Undelete link has expired. Please click Undelete again.'), 'error');
+  elseif (!($res = dh_referral_undelete($id, TRUE)))
+    drupal_set_message(t('This referral could not be undeleted. It may have been undeleted already.'), 'error');
+  elseif ($res['tab'] == 'active')
+  {
+    drupal_set_message(t('Referral undeleted. It is now under the Active tab.'));
+    drupal_goto('at-portal/my-referral');
+  }
+  else
+  {
+    drupal_set_message(t('Referral undeleted. It is under the Inactive tab because its End Date has passed. Open it and set a later End Date to make it active.'));
+    drupal_goto('at-portal/my-referral', array('query' => array('show' => 'inactive')));
+  }
+  drupal_goto('at-portal/my-referral', array('query' => array('show' => 'deleted')));
 }
 
 
