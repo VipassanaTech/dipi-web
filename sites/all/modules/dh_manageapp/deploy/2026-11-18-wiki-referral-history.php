@@ -47,5 +47,31 @@ foreach ($pages as $alias => $p) {
   echo "[$alias] nid $nid updated (new revision)\n";
 }
 
+// The centre tabs (deployed 12 Nov), placed just above the History paragraph of the Center Referral List page.
+$tabs_marker = 'Active, Inactive and Deleted tabs';
+$tabs = "<p><b>Active, Inactive and Deleted tabs</b>: the Center Referral List has three tabs.</p>\n"
+  . "<ul>\n"
+  . "<li><b>Active</b>: End Date today or later. These show on matching applications.</li>\n"
+  . "<li><b>Inactive (end date passed)</b>: to make one active again, open it and set a later End Date.</li>\n"
+  . "<li><b>Deleted</b>: click <b>Undelete</b> to bring a referral back. It returns to Active or Inactive by its End Date.</li>\n"
+  . "</ul>\n";
+$nid = db_query("select b.nid from book b join node n on n.nid = b.nid where b.bid = 10 and n.title = 'Center Referral List'")->fetchField();
+if ($nid) {
+  $node = node_load($nid);
+  $body = $node->body[LANGUAGE_NONE][0]['value'];
+  $at = strpos($body, '<p><b>History</b>: in the Center Referral List');
+  if (strpos($body, $tabs_marker) !== FALSE)
+    echo "[wiki-center-referral] nid $nid already has the tabs section\n";
+  elseif ($at === FALSE)
+    echo "[wiki-center-referral] WARN: History paragraph not found in nid $nid; tabs section not added\n";
+  else {
+    $node->body[LANGUAGE_NONE][0]['value'] = substr($body, 0, $at) . $tabs . substr($body, $at);
+    $node->revision = 1;
+    $node->log = 'Center referrals: Active / Inactive / Deleted tabs and Undelete (18 Nov 2026)';
+    node_save($node);
+    echo "[wiki-center-referral] nid $nid tabs section added (new revision)\n";
+  }
+}
+
 drupal_flush_all_caches();
 echo "done. Check /wiki-referral and /wiki-center-referral\n";
