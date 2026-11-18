@@ -3990,6 +3990,10 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 	$cols = (isset($_REQUEST['cols']) && $_REQUEST['cols'] == 2) ? 2 : 1;
 	// ?room=0 hides the Room column (screen and print); shown by default.
 	$show_room = !(isset($_REQUEST['room']) && $_REQUEST['room'] === '0');
+	// Cell lists only (main and group-wise), screen only: ?part=old | new shows just the
+	// Old or the New students' sections, so one part can be printed. Servers (old students
+	// by definition, labelled "Server") are their own group: they show only under All.
+	$part = ($iscell && $pdf === '' && isset($_REQUEST['part']) && in_array($_REQUEST['part'], array('old', 'new'), TRUE)) ? $_REQUEST['part'] : '';
 	$gender = array('M', 'F');
 	$data = array('M' => array(), 'F' => array());
 	$age_range = array();
@@ -4021,7 +4025,7 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 		if ($r['Age'] < $age_range[$G][$cl][$r['a_old']][$b]['lower']) $age_range[$G][$cl][$r['a_old']][$b]['lower'] = $r['Age'];
 	}
 
-	$dl_name = dh_course_file_basename($centre, $course, $file_slug);
+	$dl_name = dh_course_file_basename($centre, $course, $file_slug.($part !== '' ? '-'.$part : ''));
 	$out = '<html><head><title>'.$dl_name.'</title>';
 	$out .= '<style>@import url("'.$base_url.'/sites/all/modules/dh_manageapp/css/cell-list.css?v=20261007");</style>';
 	$out .= '</head><body>';
@@ -4031,20 +4035,36 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 	$keep_cols = ($cols == 2) ? array('cols' => 2) : array();
 	$keep_sort = ($sort == $sort_key) ? array('sort' => $sort_key) : array();
 	$keep_room = $show_room ? array() : array('room' => 0);
+	$keep_part = ($part !== '') ? array('part' => $part) : array();
+	// "Pages: All / Old / New" (cell lists only); keeps the sort, columns and room choice.
+	// One unbreakable group, so the label never wraps away from its choices.
+	$part_links = '';
+	if ($iscell)
+	{
+		$keep_view = $keep_sort + $keep_cols + $keep_room;
+		$part_links = ' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <span class="cl-pages" style="white-space:nowrap">Pages: '.
+			($part === '' ? '<b>All</b>' : l('All', $sort_base, array('query' => $keep_view))).
+			' &middot; '.
+			($part === 'old' ? '<b>Old</b>' : l('Old', $sort_base, array('query' => array('part' => 'old') + $keep_view))).
+			' &middot; '.
+			($part === 'new' ? '<b>New</b>' : l('New', $sort_base, array('query' => array('part' => 'new') + $keep_view))).
+			'</span>';
+	}
 	$out .= '<div class="cl-sort no-print"><a href="'.$base_url.'/course/'.$centre.'/'.$course.'">&#8592; Back to Course page</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="'.$base_url.'/'.$resource.'-workbench/'.$centre.'/'.$course.'?plan='.$mode.'">&#8592; Back to Workbench</a>'.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Sort by: '.
-		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols + $keep_room))).
+		($sort == 'name' ? '<b>Name</b>' : l('Name', $sort_base, array('query' => array('sort' => 'name') + $keep_cols + $keep_room + $keep_part))).
 		' &middot; '.
-		($sort == $sort_key ? '<b>'.$noun.'</b>' : l($noun, $sort_base, array('query' => array('sort' => $sort_key) + $keep_cols + $keep_room))).
+		($sort == $sort_key ? '<b>'.$noun.'</b>' : l($noun, $sort_base, array('query' => array('sort' => $sort_key) + $keep_cols + $keep_room + $keep_part))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Columns: '.
-		($cols == 1 ? '<b>1</b>' : l('1', $sort_base, array('query' => $keep_sort + $keep_room))).
+		($cols == 1 ? '<b>1</b>' : l('1', $sort_base, array('query' => $keep_sort + $keep_room + $keep_part))).
 		' &middot; '.
-		($cols == 2 ? '<b>2</b>' : l('2', $sort_base, array('query' => array('cols' => 2) + $keep_sort + $keep_room))).
+		($cols == 2 ? '<b>2</b>' : l('2', $sort_base, array('query' => array('cols' => 2) + $keep_sort + $keep_room + $keep_part))).
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; Room: '.
-		($show_room ? '<b>Show</b>' : l('Show', $sort_base, array('query' => $keep_sort + $keep_cols))).
+		($show_room ? '<b>Show</b>' : l('Show', $sort_base, array('query' => $keep_sort + $keep_cols + $keep_part))).
 		' &middot; '.
-		(!$show_room ? '<b>Hide</b>' : l('Hide', $sort_base, array('query' => array('room' => 0) + $keep_sort + $keep_cols))).
+		(!$show_room ? '<b>Hide</b>' : l('Hide', $sort_base, array('query' => array('room' => 0) + $keep_sort + $keep_cols + $keep_part))).
+		$part_links.
 		' &nbsp;&nbsp;&bull;&nbsp;&nbsp; <a href="#" onclick="window.print();return false;">Print</a>'.
 		'</div>';
 	if ($has_fixed)
@@ -4063,6 +4083,8 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 		for ($i = 1; $i >= 0; $i--)
 		{
 			if (empty($data[$g][$cl][$i])) continue;
+			// "Pages: Old / New": only that part's student sections; servers only under All.
+			if ($part !== '' && ($cl === 'server' || ($part === 'old') !== ($i == 1))) continue;
 			$batches = $data[$g][$cl][$i];
 			ksort($batches, SORT_NUMERIC);              // Batch 1 before Batch 2, ...
 			$num_batches = count($batches);             // label "Batch N" only when more than one
@@ -4114,6 +4136,8 @@ function dh_alloc_list($centre, $course, $resource = 'cell', $mode = 'main', $de
 		}
 		}
 	}
+	if ($part !== '' && $first)                    // the chosen part has nobody in it
+		$out .= '<p class="cl-empty">'.($part === 'old' ? t('No old students in this list.') : t('No new students in this list.')).'</p>';
 	$out .= '</div>';                              // .main-div
 	$out .= '</td></tr></tbody></table>';          // .cl-doc outer running-header table
 	$out .= '</html>';
