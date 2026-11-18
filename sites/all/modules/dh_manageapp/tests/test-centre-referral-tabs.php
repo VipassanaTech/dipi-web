@@ -10,11 +10,11 @@ list($C, $C2) = $centres;
 
 // The old list condition, before the tabs: every referral that is not deleted.
 function t_old_ids($centre) {
-  return db_query("select r_id from dh_referral r join dh_student s on s.s_id = r.r_student where (r_deleted = 0) and r_center = :c order by r_id",
+  return db_query("select r_id from dh_referral r where (r_deleted = 0) and r_center = :c order by r_id",
     array(':c' => $centre))->fetchCol();
 }
 function t_tab_ids($centre, $tab) {
-  return db_query("select r_id from dh_referral r join dh_student s on s.s_id = r.r_student where ".dh_referral_tab_where($centre, $tab)." and r_center = :c order by r_id",
+  return db_query("select r_id from dh_referral r where ".dh_referral_tab_where($centre, $tab)." and r_center = :c order by r_id",
     array(':c' => $centre))->fetchCol();
 }
 

@@ -1035,22 +1035,7 @@ function dh_referral_results()
 
 	$tab_where = dh_referral_tab_where($center_id, $tab);
 
-	$q = "select r_special, r_readonly, r_id, a.s_id, r_student, concat(s_f_name,' ',s_l_name) as 'Full Name', s_gender, s_city, ci.c_name as 'City', s.s_name as 'State', co.c_name as 'Country', s_address, s_zip, s_email, s_phone_home, s_phone_office, s_phone_mobile, s_passport, s_aadhar, s_voter_id, s_pancard, s_education, s_occupation, s_occupation_past, s_company, s_designation, s_department, s_photo, TIMESTAMPDIFF( YEAR, s_dob, CURDATE() ) as 'Age', sci_teen, sci_10d, sci_stp, sci_spl, sci_20d, sci_30d, sci_45d, sci_60d, sci_tsc, sci_teacher,sci_service, CONCAT( IFNULL(sci_first_year, ''),'-',IFNULL(sci_first_month, ''),'-',IFNULL(sci_first_day, ''), ', ', sci_first_location_str) as 'first_course', sc_desc_physical,  sc_desc_medication,  sc_desc_mental, sc_desc_other_technique, sc_addiction_current, sc_uri, r_listed_10d, r_listed_stp, r_listed_spl, r_listed_20d, r_listed_30d, r_listed_45d, r_listed_60d, r_listed_tsc, r_listed_10d_seva, r_listed_lc_seva, r_listed_longseva, r_listed_by, r_reason, r_start, r_end, r_deleted, r_updated, r_updated_by,
-		r_course_center, r_course_type, r_course_start,
-    concat(ifnull(t_f_name, ''), ' ', ifnull(t_l_name, ''), ' (', t_code, ')') as teacher, t_id as teacher_id
-    from dh_student a
-    left join dh_student_course sc on (a.s_id=sc_student)
-    left join dh_student_course_input sci on (a.s_id=sci_student)
-    left join dh_referral r on (a.s_id=r_student)
-    left join dh_teacher t on (r.r_teacher=t.t_id)
-    left join dh_country co on (s_country=co.c_code)
-    left join dh_state s on (s_state = s.s_code and s.s_country = co.c_code)
-    left join dh_city ci on (s_city=ci.c_id)
-    where  (a.s_id=r_student) and
-    {$tab_where} and
-    r_center={$center_id} {$ref_clause}
-    group by a.s_id
-    order by r.r_created";
+	$q = dh_referral_list_sql("{$tab_where} and r_center={$center_id} {$ref_clause}");
 
 	//c.c_name as 'last_course'
 	//drupal_set_message($q);
@@ -1075,7 +1060,7 @@ function dh_referral_results()
 	{
 		unset($rs);
 
-		$rs['sid'] = $r['s_id'];
+		$rs['sid'] = $r['r_student'];
 		$rs['ref_id'] = $r['r_id'];
 
 
@@ -1189,14 +1174,10 @@ function dh_referral_results()
 		if ($r['s_occupation'] == '')
 			$rs['Occ'] = $r['s_occupation_past'];
 		$rs['Designation'] = $r['s_designation'];
-		$rs['othertechnique'] = $r['sc_desc_other_technique']?$r['sc_desc_other_technique']:"";
-		$rs['physical'] = $r['sc_desc_physical']?$r['sc_desc_physical']:"";
-		$rs['mental'] = $r['sc_desc_mental']?$r['sc_desc_mental']:"";
-		$rs['medication'] = $r['sc_desc_medication']?$r['sc_desc_medication']:"";
-		$rs['addiction'] = $r['sc_addiction_current']?$r['sc_addiction_current']:"";
 		$rs['photo'] = '';
 		if ( $r['s_photo'] <> '')
 			$rs['photo'] = file_create_url($r['s_photo']);
+		$rs['link_line'] = check_plain(dh_referral_link_summary($r['r_student']));
 		//$rows[] = array_values($rs);
 		
 		$rows[] = $rs;
@@ -1273,6 +1254,7 @@ function dh_referral_results()
 		                "<td><label>Department:</label></td>"+
 		                "<td>"+d.Dept+"</td>"+photo+
 		            "</tr>"+
+		            (d.link_line ? "<tr><td colspan=\"4\"><b>"+d.link_line+"</b></td></tr>" : "")+
 		            "<tr>"+
 			            "<td><label>Referral listed for:</label></td>"+
 		                "<td><table><tr><td>10d</td><td>STP</td><td>SPL</td><td>20d</td><td>30d</td><td>45d</td><td>60d</td><td>TSC</td><td>10-Day Seva</td><td>LC Seva</td><td>Long Term Seva</td></tr>"+
@@ -1731,13 +1713,12 @@ function dh_referral_tab_where($center_id, $tab)
 	return "(r_deleted = 0) and (r_end >= curdate())";
 }
 
-// How many each tab shows, counted the way the list counts (one row per person record).
+// How many each tab shows: one per referral, as the list shows.
 function dh_centre_referral_counts($centre)
 {
 	$n = array();
 	foreach (array_keys(dh_centre_referral_tabs()) as $tab)
-		$n[$tab] = (int) db_query("select count(distinct r.r_student) from dh_referral r join dh_student s on s.s_id = r.r_student
-			where ".dh_referral_tab_where($centre, $tab)." and r.r_center = :c", array(':c' => $centre))->fetchField();
+		$n[$tab] = (int) db_query("select count(*) from dh_referral r where ".dh_referral_tab_where($centre, $tab)." and r.r_center = :c", array(':c' => $centre))->fetchField();
 	return $n;
 }
 

@@ -53,9 +53,8 @@ function delete_expired_referral($referral_from_email, $referral_cc_email)
   $uid = $system_uids['COURSE-SYSTEM-UID'];
 
   $q = "select
-      r_id, s_f_name, s_l_name, t_email, t_f_name, t_l_name
+      r_id, r.r_f_name as s_f_name, r.r_l_name as s_l_name, t_email, t_f_name, t_l_name
       from dh_referral r
-      left join dh_student s on r.r_student = s.s_id
       left join dh_teacher t on r.r_teacher = t.t_id
       where
       r_deleted=0 and
@@ -117,9 +116,8 @@ function send_referral_notification($referral_from_email, $referral_cc_email)
   db_query($q);
 
   $q = "select
-    r_id, s_f_name, s_l_name, t_email, t_f_name, t_l_name
+    r_id, r.r_f_name as s_f_name, r.r_l_name as s_l_name, t_email, t_f_name, t_l_name
     from dh_referral r
-    left join dh_student s on r.r_student=s.s_id
     left join dh_teacher t on r.r_teacher = t.t_id
     where
     r_deleted=0 and

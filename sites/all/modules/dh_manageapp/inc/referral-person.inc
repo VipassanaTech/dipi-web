@@ -148,3 +148,29 @@ function dh_referral_link_find(array $a, $exclude = NULL)
 	$m = dh_student_find($a, $exclude);
 	return (int) $m['sid'];
 }
+
+// The referral list query (main, centre and AT Portal lists): one row per referral, the person from the referral's
+// own columns under the aliases the row builders already read. Photo: the linked student's, else the referral's own.
+function dh_referral_list_sql($where)
+{
+	return "select r.r_special, r.r_readonly, r.r_id, r.r_student, concat(r.r_f_name, ' ', r.r_l_name) as 'Full Name', r.r_gender as s_gender,
+		ci.c_name as 'City', st.s_name as 'State', co.c_name as 'Country', r.r_address as s_address, r.r_zip as s_zip, r.r_email as s_email,
+		r.r_phone_home as s_phone_home, r.r_phone_office as s_phone_office, r.r_phone_mobile as s_phone_mobile, r.r_passport as s_passport,
+		r.r_aadhar as s_aadhar, r.r_voter_id as s_voter_id, r.r_pancard as s_pancard, r.r_education as s_education, r.r_occupation as s_occupation,
+		'' as s_occupation_past, r.r_company as s_company, r.r_designation as s_designation, r.r_department as s_department,
+		coalesce(nullif(ls.s_photo, ''), r.r_photo) as s_photo, TIMESTAMPDIFF(YEAR, r.r_dob, CURDATE()) as 'Age',
+		r.r_cnt_teen as sci_teen, r.r_cnt_10d as sci_10d, r.r_cnt_stp as sci_stp, r.r_cnt_spl as sci_spl, r.r_cnt_20d as sci_20d,
+		r.r_cnt_30d as sci_30d, r.r_cnt_45d as sci_45d, r.r_cnt_60d as sci_60d, r.r_cnt_tsc as sci_tsc, r.r_cnt_service as sci_service,
+		r.r_listed_10d, r.r_listed_stp, r.r_listed_spl, r.r_listed_20d, r.r_listed_30d, r.r_listed_45d, r.r_listed_60d, r.r_listed_tsc,
+		r.r_listed_10d_seva, r.r_listed_lc_seva, r.r_listed_longseva, r.r_listed_by, r.r_reason, r.r_start, r.r_end, r.r_deleted,
+		r.r_updated, r.r_updated_by, r.r_course_center, r.r_course_type, r.r_course_start,
+		concat(ifnull(t.t_f_name, ''), ' ', ifnull(t.t_l_name, ''), ' (', t.t_code, ')') as teacher, t.t_id as teacher_id
+		from dh_referral r
+		left join dh_student ls on ls.s_id = r.r_student
+		left join dh_teacher t on t.t_id = r.r_teacher
+		left join dh_country co on co.c_code = r.r_country
+		left join dh_state st on st.s_code = r.r_state and st.s_country = co.c_code
+		left join dh_city ci on ci.c_id = r.r_city
+		where $where
+		order by r.r_created";
+}
