@@ -925,12 +925,12 @@ function _dh_referral_at_teacher_id()
 
 function update_referral_flag($ref_id)
 {
-  // Re-flag applications for this referral: clear its old flags, then flag the
-  // applications in courses that have not started yet which match the referral's
-  // person under the shared rule (dh_referral_match_sql in application.inc - the
-  // same rule set_referral uses), within the referral's centre if it has one.
-  $ref = db_query("select r_center, r_deleted, s_f_name, s_l_name, s_email, s_phone_mobile, s_pancard, s_aadhar, s_voter_id, s_passport
-      from dh_referral r left join dh_student s on s.s_id = r.r_student where r_id = :r", array(':r' => $ref_id))->fetchAssoc();
+  // Re-flag applications for this referral: clear its old flags, then flag the applications in courses that have
+  // not started yet which match, under the shared rule (dh_referral_match_sql in application.inc), the referral's
+  // typed details (r_*) or its linked student's current details, within the referral's centre if it has one.
+  $ref = db_query("select r.r_center, r.r_deleted, r.r_f_name, r.r_l_name, r.r_email, r.r_phone_mobile, r.r_pancard, r.r_aadhar, r.r_voter_id, r.r_passport,
+      s.s_f_name, s.s_l_name, s.s_email, s.s_phone_mobile, s.s_pancard, s.s_aadhar, s.s_voter_id, s.s_passport
+      from dh_referral r left join dh_student s on s.s_id = r.r_student where r.r_id = :r", array(':r' => $ref_id))->fetchAssoc();
   if (!$ref)
     return;
 
@@ -940,15 +940,23 @@ function update_referral_flag($ref_id)
   if ($ref['r_deleted'])
     return;
 
-  $m = dh_referral_match_sql(dh_referral_who($ref, 's_'), 'a.a_');
-  if (!$m)
+  $conds = $args = array();
+  foreach (array('r_' => 'rt', 's_' => 'rs') as $prefix => $p)
+  {
+    $m = dh_referral_match_sql(dh_referral_who($ref, $prefix), 'a.a_', $p);
+    if ($m)
+    {
+      $conds[] = $m[0];
+      $args += $m[1];
+    }
+  }
+  if (!$conds)
     return;
-  list($cond, $args) = $m;
   $args[':ref'] = $ref_id;
   $centre = $ref['r_center'] ? " and a.a_center = ".(int) $ref['r_center'] : "";
   db_query("update dh_applicant a join dh_course co on a.a_course = co.c_id
       set a.a_referral = :ref
-      where co.c_start > curdate() $centre and $cond", $args);
+      where co.c_start > curdate() $centre and (".implode(' or ', $conds).")", $args);
 }
 
 function dh_addedit_referral()
@@ -1792,24 +1800,29 @@ function dh_centre_referral_tab_bar($centre, $tab)
 	return $out.'<p class="ref-tab-help">'.$help[$tab].'</p>';
 }
 
-// Other referrals of the same centre that are not deleted and are for the same person
-// (the shared matching rule: any real ID, or first + last name with the email or mobile).
+// Other referrals of the same centre that are not deleted and are for the same person: the shared matching rule
+// on the typed details (any real ID, or first + last name with the email or mobile), or the same linked student.
 // Returns rows of r_id, name, r_end, active (1 = end date today or later).
 function dh_referral_twins($ref_id)
 {
-	$ref = db_query("select r_center, s_f_name, s_l_name, s_email, s_phone_mobile, s_pancard, s_aadhar, s_voter_id, s_passport
-		from dh_referral r join dh_student s on s.s_id = r.r_student where r_id = :r", array(':r' => $ref_id))->fetchAssoc();
+	$ref = db_query('select r_center, r_student, r_f_name, r_l_name, r_email, r_phone_mobile, r_pancard, r_aadhar, r_voter_id, r_passport
+		from dh_referral where r_id = :r', array(':r' => $ref_id))->fetchAssoc();
 	if (!$ref || !$ref['r_center'])
 		return array();
-	$m = dh_referral_match_sql(dh_referral_who($ref, 's_'), 's.s_');
-	if (!$m)
+	$m = dh_referral_match_sql(dh_referral_who($ref, 'r_'), 'r.r_');
+	$cond = $m ? $m[0] : '';
+	$args = $m ? $m[1] : array();
+	if ($ref['r_student'])
+	{
+		$cond = $cond ? "($cond or r.r_student = :link)" : 'r.r_student = :link';
+		$args[':link'] = (int) $ref['r_student'];
+	}
+	if ($cond === '')
 		return array();
-	list($cond, $args) = $m;
 	$args[':me'] = $ref_id;
 	$args[':c'] = $ref['r_center'];
-	return db_query("select r.r_id, concat(s.s_f_name, ' ', s.s_l_name) as name, r.r_end, (r.r_end >= curdate()) as active
-		from dh_referral r join dh_student s on s.s_id = r.r_student
-		where r.r_center = :c and r.r_deleted = 0 and r.r_id <> :me and $cond order by r.r_id", $args)->fetchAll();
+	return db_query("select r.r_id, concat(r.r_f_name, ' ', r.r_l_name) as name, r.r_end, (r.r_end >= curdate()) as active
+		from dh_referral r where r.r_center = :c and r.r_deleted = 0 and r.r_id <> :me and $cond order by r.r_id", $args)->fetchAll();
 }
 
 // Undelete a deleted centre referral. It goes back under Active or Inactive by its end

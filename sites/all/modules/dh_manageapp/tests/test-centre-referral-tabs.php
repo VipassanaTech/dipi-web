@@ -35,10 +35,13 @@ t_in_txn(function () use ($C, $C2) {
   $before = dh_centre_referral_counts($C);
   $mk = function ($centre, $end_days, $deleted, $person = array()) {
     static $n = 0; $n++;
-    $s = t_make_student(array_merge(array('s_l_name' => "Reftab$n", 's_email' => "zzqreftab$n@example.invalid"), $person));
+    $p = array_merge(array('s_f_name' => 'Zzqtest', 's_l_name' => "Reftab$n", 's_email' => "zzqreftab$n@example.invalid"), $person);
+    $s = t_make_student($p);
     return (int) db_insert('dh_referral')->fields(array('r_student' => $s, 'r_center' => $centre, 'r_reason' => 'zzq test',
       'r_listed_by' => 'zzq', 'r_start' => date('Y-m-d', strtotime('-60 days')), 'r_end' => date('Y-m-d', strtotime("$end_days days")),
-      'r_listed_10d' => 1, 'r_deleted' => $deleted, 'r_created_by' => 0, 'r_updated_by' => 0))->execute();
+      'r_listed_10d' => 1, 'r_deleted' => $deleted, 'r_created_by' => 0, 'r_updated_by' => 0, 'r_moved' => date('Y-m-d H:i:s'),
+      'r_f_name' => $p['s_f_name'], 'r_l_name' => $p['s_l_name'], 'r_email' => $p['s_email'],
+      'r_phone_mobile' => isset($p['s_phone_mobile']) ? $p['s_phone_mobile'] : NULL))->execute();
   };
   $A  = $mk($C, '+30', 0);            // active
   $T0 = $mk($C, '+0', 0);             // ends today: still active

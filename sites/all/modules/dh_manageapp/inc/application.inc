@@ -903,36 +903,37 @@ function dh_referral_who($row, $prefix)
 // expression ranking a match by what matched, in the order set_referral always used:
 // PAN, Aadhaar, National ID, Passport, then name - with its own args (pass them only
 // when the ORDER BY is used) - or NULL if there is nothing to match on.
-function dh_referral_match_sql($who, $col)
+// $p = placeholder prefix, so that two calls can share one query (default 'rm').
+function dh_referral_match_sql($who, $col, $p = 'rm')
 {
 	$or = $args = $id_order = $order_args = array();
 	foreach (array('pancard', 'aadhar', 'voter_id', 'passport') as $rank => $k)
 		if (dh_id_usable($who[$k]))
 		{
-			$or[] = "{$col}{$k} = :rm_$k";
-			$args[":rm_$k"] = $who[$k];
-			$id_order[] = "when {$col}{$k} = :rmo_$k then $rank";      // own placeholder: never reuse one
-			$order_args[":rmo_$k"] = $who[$k];
+			$or[] = "{$col}{$k} = :{$p}_$k";
+			$args[":{$p}_$k"] = $who[$k];
+			$id_order[] = "when {$col}{$k} = :{$p}o_$k then $rank";      // own placeholder: never reuse one
+			$order_args[":{$p}o_$k"] = $who[$k];
 		}
 	// Name + contact rule. Its args are added only when the clause itself is: an
 	// unused placeholder value makes PDO reject the whole query (HY093).
 	$contact = $contact_args = array();
 	if ($who['email'] !== '')
 	{
-		$contact[] = "{$col}email = :rm_email";
-		$contact_args[':rm_email'] = $who['email'];
+		$contact[] = "{$col}email = :{$p}_email";
+		$contact_args[":{$p}_email"] = $who['email'];
 	}
 	if ($who['phone_mobile'] !== '')
 	{
-		$contact[] = "{$col}phone_mobile = :rm_mobile";
-		$contact_args[':rm_mobile'] = $who['phone_mobile'];
+		$contact[] = "{$col}phone_mobile = :{$p}_mobile";
+		$contact_args[":{$p}_mobile"] = $who['phone_mobile'];
 	}
 	if ($contact && $who['f_name'] !== '' && $who['l_name'] !== '')
 	{
-		$or[] = "({$col}f_name = :rm_f and {$col}l_name = :rm_l and (".implode(' or ', $contact)."))";
+		$or[] = "({$col}f_name = :{$p}_f and {$col}l_name = :{$p}_l and (".implode(' or ', $contact)."))";
 		$args += $contact_args;
-		$args[':rm_f'] = $who['f_name'];
-		$args[':rm_l'] = $who['l_name'];
+		$args[":{$p}_f"] = $who['f_name'];
+		$args[":{$p}_l"] = $who['l_name'];
 	}
 	if (!$or)
 		return NULL;
@@ -1576,33 +1577,41 @@ function send_at_email()
     exit;
 }
 
-function set_referral( $app_id )
+// The referral an application matches now (0 = none). The shared rule (dh_referral_match_sql) runs against each
+// referral's typed details (r.r_*) OR its linked student's current details (s.s_*), among referrals that are not
+// deleted and are global or for the application's centre. When several match: keep the current one if it still
+// matches, then by what matched (PAN, Aadhaar, National ID, Passport, then name), then the oldest. Writes nothing.
+function dh_referral_pick($app_id)
 {
-	// Find the referral for this application with the shared rule (all real IDs,
-	// or name + email/mobile; see dh_referral_match_sql), among referrals that are
-	// not deleted and are global or for the application's centre. When several
-	// match: keep the current one if it still matches, then by what matched (PAN,
-	// Aadhaar, National ID, Passport, then name), then the oldest. No match clears
-	// the flag.
 	$res = db_query("select a_f_name, a_l_name, a_center, a_email, a_phone_mobile, a_passport, a_voter_id, a_pancard, a_aadhar, a_referral
 		from dh_applicant where a_id = :a_id", array(':a_id' => $app_id))->fetchAssoc();
 	if (!$res)
-		return;
-
-	$referral = 0;
-	$m = dh_referral_match_sql(dh_referral_who($res, 'a_'), 's.s_');
-	if ($m)
+		return 0;
+	$who = dh_referral_who($res, 'a_');
+	$typed = dh_referral_match_sql($who, 'r.r_', 'rt');
+	if (!$typed)
+		return 0;                                    // nothing to match on (the linked side would use the same details)
+	$linked = dh_referral_match_sql($who, 's.s_', 'rs');
+	$args = $typed[1] + $linked[1] + array(':centre' => (int) $res['a_center'], ':current' => (int) $res['a_referral']);
+	$order = '';
+	if ($typed[2] !== '')
 	{
-		list($cond, $args, $id_first, $order_args) = $m;
-		$args += $order_args;
-		$args[':centre'] = (int) $res['a_center'];
-		$args[':current'] = (int) $res['a_referral'];
-		$referral = (int) db_query("select r.r_id from dh_referral r join dh_student s on s.s_id = r.r_student
-			where r.r_deleted = 0 and r.r_center in (0, :centre) and $cond
-			order by (r.r_id = :current) desc, ".($id_first !== '' ? "$id_first, " : '')."r.r_id limit 1", $args)->fetchField();
+		$order = 'least(' . $typed[2] . ', ' . $linked[2] . '), ';
+		$args += $typed[3] + $linked[3];
 	}
+	return (int) db_query("select r.r_id from dh_referral r left join dh_student s on s.s_id = r.r_student
+		where r.r_deleted = 0 and r.r_center in (0, :centre) and (" . $typed[0] . ' or ' . $linked[0] . ")
+		order by (r.r_id = :current) desc, {$order}r.r_id limit 1", $args)->fetchField();
+}
 
-	if ($referral <> (int) $res['a_referral'])
+function set_referral( $app_id )
+{
+	// Store the referral this application matches now (dh_referral_pick); no match clears the flag.
+	$cur = db_query('select a_referral from dh_applicant where a_id = :a', array(':a' => $app_id))->fetchField();
+	if ($cur === FALSE)
+		return;
+	$referral = dh_referral_pick($app_id);
+	if ($referral <> (int) $cur)
 		db_query("update dh_applicant set a_referral = :r where a_id = :a", array(':r' => $referral, ':a' => $app_id));
 }
 
