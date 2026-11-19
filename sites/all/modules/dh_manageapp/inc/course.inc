@@ -340,6 +340,8 @@ function dh_manage_courses()
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/select2.min.css');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/select2.min.js');
 	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.select2.js');
+	// Course dates as Day / Month / Year dropdowns: the calendar popup cannot show on phones.
+	drupal_add_js(drupal_get_path('module', 'dh_manageapp').'/js/editor.dmy.js');
 
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
 
@@ -360,10 +362,10 @@ function dh_manage_courses()
 					table: "#course-table",
 				    fields: [
 				        { name: "dh_course.c_course_type", label: "Course Type", type: "select", def: "6" },
-				        { name: "dh_course.c_start", label:  "Start Date", type: "date", dateFormat:"dd M yy"  }, //dateFormat: $.datepicker.ISO_8601 
-				        { name: "dh_course.c_end", label: "End Date", type: "date", dateFormat:"dd M yy" }, 
+				        { name: "dh_course.c_start", label:  "Start Date", type: "dmy" },
+				        { name: "dh_course.c_end", label: "End Date", type: "dmy", fieldInfo: "If not set, it is filled in automatically from the course length." },
 				        { name: "dh_course.c_cancelled", label: "Cancelled", type:"radio", options: [{label: "No", value: 0},  {label: "Yes", value:1}] },
-				        { name: "dh_course.c_enrol_date", label: "Enrollment Date", type: "date", dateFormat: "dd M yy" },  
+				        { name: "dh_course.c_enrol_date", label: "Enrollment Date", type: "dmy", fieldInfo: "If not set, it is filled in automatically as 90 days before the Start Date." },
 				        { name: "dh_course.c_status", label: "Course Status", type: "select", def: "Open" },
 				        { name: "dh_course.c_status_nm", label: "Status New Male", type: "select", def: "Open" },
 				        { name: "dh_course.c_status_om", label: "Status Old Male", type: "select", def: "Open" },

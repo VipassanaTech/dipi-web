@@ -493,3 +493,10 @@ details.lcov .lcov-help { margin: 0 12px 8px; color: #555; }
 details.lcov .lcov-scroll { overflow-x: auto; margin: 0 12px 12px; }
 table.lcov-table td.lcov-none { color: #c62828; font-weight: bold; }
 .lcov-warn ul.lcov-gaps { margin: 4px 0 6px 20px; }
+
+/* Dates as Day / Month / Year dropdowns in the course editor (js/editor.dmy.js): big enough to tap on a phone. */
+.dh-dmy { display: flex; flex-wrap: wrap; gap: 6px; }
+.dh-dmy select { min-height: 34px; font-size: 15px; padding: 2px 4px; }
+.dh-dmy .dh-dmy-day { min-width: 4.5em; }
+.dh-dmy .dh-dmy-month { min-width: 5.5em; }
+.dh-dmy .dh-dmy-year { min-width: 6em; }
