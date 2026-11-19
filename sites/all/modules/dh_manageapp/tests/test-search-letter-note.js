@@ -48,5 +48,9 @@ t("no letters at all (PHP sends []): note", function () {
 t("unknown course type name: generic words", function () {
   assert.ok(ln.note({}, "Confirmed", 77, undefined).indexOf("this course type") > 0);
 });
+t("Left and Clarification-Response are optional: no note (any case)", function () {
+  assert.strictEqual(ln.note(letters, "Left", 6, "10 Day Course"), "");
+  assert.strictEqual(ln.note(letters, "clarification-response ", 6, "10 Day Course"), "");
+});
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

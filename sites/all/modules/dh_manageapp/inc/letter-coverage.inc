@@ -54,6 +54,23 @@ function dh_letter_cover_is_review($status)
 	return _dh_lcov_key($status) === 'review';
 }
 
+/* TRUE for Left and Clarification-Response: most centres send no letter for them, so a missing letter is fine.
+   The Letter check shows "No letter (optional)" in grey, not counted; a change is not held; the search page shows
+   no note (js/search-letter-note.js). A centre may still add a letter: it is sent as before. */
+function dh_letter_cover_is_optional($status)
+{
+	$keys = &drupal_static(__FUNCTION__);
+	if ($keys === NULL)
+	{
+		$sys = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS'")->fetchAllKeyed();
+		$keys = array('left', 'clarification-response');
+		foreach (array('STATUS-LEFT', 'STATUS-CLARIFICATIONRESPONSE') as $k)
+			if (!empty($sys[$k]) && !in_array(_dh_lcov_key($sys[$k]), $keys, TRUE))
+				$keys[] = _dh_lcov_key($sys[$k]);
+	}
+	return in_array(_dh_lcov_key($status), $keys, TRUE);
+}
+
 /**
  * The centre's active letters for $status in the order DIPI tries them, each
  * array(l_id, l_name, l_course_type, l_subject). $override = one letter as it would be
@@ -157,7 +174,7 @@ function dh_letter_change_warnings($centre, $action, $id, $fields = array())
 	$after = dh_letter_coverage($centre, $new);
 	foreach ($before as $status => $bytype)
 	{
-		if (dh_letter_cover_is_review($status))
+		if (dh_letter_cover_is_review($status) || dh_letter_cover_is_optional($status))
 			continue;
 		foreach ($bytype as $tid => $l)
 			if ($l !== NULL && $after[$status][$tid] === NULL)
@@ -237,6 +254,7 @@ function dh_letter_check_box($centre)
 	foreach (dh_letter_coverage($centre) as $status => $bytype)
 	{
 		$review = dh_letter_cover_is_review($status);
+		$optional = dh_letter_cover_is_optional($status);
 		$row = array(array('data' => check_plain($status), 'header' => TRUE));
 		$bad = FALSE;
 		foreach ($types as $tid => $tname)
@@ -246,6 +264,8 @@ function dh_letter_check_box($centre)
 				$row[] = l($l['l_name'], "letters/$centre/view/".$l['l_id']);
 			elseif ($review)
 				$row[] = '&ndash;';
+			elseif ($optional)
+				$row[] = array('data' => t('No letter (optional)'), 'class' => array('lcov-optional'));
 			else
 			{
 				$row[] = array('data' => t('No letter'), 'class' => array('lcov-none'));
@@ -266,6 +286,6 @@ function dh_letter_check_box($centre)
 		? format_plural($n_bad, 'Letter check: 1 status has course types with no letter', 'Letter check: @count statuses have course types with no letter')
 		: t('Letter check: every status has a letter');
 	return '<details class="lcov"><summary class="'.($n_bad ? 'lcov-bad' : 'lcov-good').'">'.$summary.'</summary>'
-		.'<p class="lcov-help">'.t('The letter DIPI sends for each status and each course type you run. "No letter" means the applicant gets no letter for that status. Review is an internal status, so it needs no letter.').'</p>'
+		.'<p class="lcov-help">'.t('The letter DIPI sends for each status and each course type you run. "No letter" means the applicant gets no letter for that status. Review is an internal status, so it needs no letter. Left and Clarification-Response are optional: most centres send no letter for them.').'</p>'
 		.'<div class="lcov-scroll">'.theme('table', array('header' => $header, 'rows' => array_merge($rows, $last), 'attributes' => array('class' => array('lcov-table')))).'</div></details>';
 }

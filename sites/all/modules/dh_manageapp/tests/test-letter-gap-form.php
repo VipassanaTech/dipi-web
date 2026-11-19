@@ -133,4 +133,20 @@ t_in_txn(function () {
   t_ok(strpos(dh_manage_letters(), '<details class="lcov">') !== FALSE, 'H4 the Letters page shows the box');
 });
 
+// H5 optional statuses (Left, Clarification-Response): grey "No letter (optional)", not counted
+t_in_txn(function () {
+  $c = 9900001;
+  t_make_course(array('c_center' => $c, 'c_course_type' => 6));
+  drupal_static_reset('dh_letter_course_types_to_cover_runs');
+  drupal_static_reset('dh_letter_cover_statuses');
+  foreach (dh_letter_cover_statuses() as $s)
+    if (!dh_letter_cover_is_review($s) && !dh_letter_cover_is_optional($s))
+      tf_letter($c, array('l_name' => 'Zzq ' . $s, 'l_event' => $s));
+  $h = dh_letter_check_box($c);
+  t_ok(strpos($h, 'Letter check: every status has a letter') !== FALSE, 'H5 only the optional statuses have no letter: the summary is green');
+  t_ok(strpos($h, 'lcov-none') === FALSE, 'H5 no red cell');
+  t_eq(substr_count($h, 'lcov-optional'), 2, 'H5 two grey cells (Left and Clarification-Response, one course type)');
+  t_ok(strpos($h, 'No letter (optional)') !== FALSE, 'H5 they say "No letter (optional)"');
+  t_ok(strpos($h, 'Left and Clarification-Response are optional') !== FALSE, 'H5 the help line explains it');
+});
 t_done();

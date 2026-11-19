@@ -142,4 +142,17 @@ t_in_txn(function () {
   dh_letter_gap_record($c, $lc, 'edit', $w);
   t_eq((int) db_query("select count(*) from watchdog where type = 'letter_gap'")->fetchField(), $before + 1, 'C10 one letter_gap record');
 });
+// C11 Left and Clarification-Response are optional: a missing letter is fine, never held
+t_ok(dh_letter_cover_is_optional('Left') && dh_letter_cover_is_optional('clarification-response ') && !dh_letter_cover_is_optional('Confirmed') && !dh_letter_cover_is_optional('Review'),
+  'C11 Left and Clarification-Response are optional (any case); Confirmed and Review are not');
+t_in_txn(function () {
+  $c = 9900001;
+  tc_types($c, array(6));
+  $left = tc_letter($c, array('l_name' => 'Zzq left', 'l_event' => 'Left'));
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'inactive', $left)), 'C11 making the only Left letter inactive: not held');
+  $cr = tc_letter($c, array('l_name' => 'Zzq clar', 'l_event' => 'Clarification-Response'));
+  t_ok(!dh_letter_has_warnings(dh_letter_change_warnings($c, 'inactive', $cr)), 'C11 making the only Clarification-Response letter inactive: not held');
+  $conf = tc_letter($c, array('l_name' => 'Zzq conf', 'l_event' => 'Confirmed'));
+  t_ok(dh_letter_has_warnings(dh_letter_change_warnings($c, 'inactive', $conf)), 'C11 a needed status (Confirmed) is still held');
+});
 t_done();

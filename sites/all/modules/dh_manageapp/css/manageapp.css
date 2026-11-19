@@ -492,6 +492,8 @@ details.lcov > summary.lcov-good { color: #2e7d32; }
 details.lcov .lcov-help { margin: 0 12px 8px; color: #555; }
 details.lcov .lcov-scroll { overflow-x: auto; margin: 0 12px 12px; }
 table.lcov-table td.lcov-none { color: #c62828; font-weight: bold; }
+/* Left / Clarification-Response with no letter: optional, so grey, not red (dh_letter_cover_is_optional). */
+table.lcov-table td.lcov-optional { color: #777; font-style: italic; }
 .lcov-warn ul.lcov-gaps { margin: 4px 0 6px 20px; }
 
 /* Dates as Day / Month / Year dropdowns in the course editor (js/editor.dmy.js): big enough to tap on a phone. */

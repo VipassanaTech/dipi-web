@@ -30,10 +30,11 @@
     return out;
   }
 
-  // The note text, or "" when no note is due. Review and Custom never get one.
+  // The note text, or "" when no note is due. Review and Custom never get one, nor the optional
+  // Left and Clarification-Response (most centres send no letter for them; dh_letter_cover_is_optional).
   function note(letters, status, ct, typeName) {
     var s = norm(status);
-    if (s === "" || s === "review" || s === "custom") return "";
+    if (s === "" || s === "review" || s === "custom" || s === "left" || s === "clarification-response") return "";
     if (ct === undefined || ct === null || ct === "") return "";
     if (fitting(letters, status, ct).length) return "";
     return "No letter for " + String(status) + " – " + (typeName ? String(typeName) : "this course type") +
