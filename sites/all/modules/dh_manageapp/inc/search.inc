@@ -471,6 +471,8 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
         $rs['reco_status'] = $r['al_recommending_approved'];
         $rs['area_t'] = $r['al_area_at'];
         $rs['area_status'] = $r['al_area_at_approved'];
+        // For the "R-AT Review" warning: the AT who transferred this application, while still the recommending AT.
+        $rs['transfer_at'] = $LC ? dh_lc_transfer_warning_at($r) : '';
 
         $rs['app_created'] = $r['a_created'];
 
@@ -1488,10 +1490,17 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					if (s == "")
 					{
 						alert("Please select a status");
-						return;	
-					} 			
+						return;
+					}
 					var tr1 = $(this).closest("tr");
 					var row1 = table.row( tr1 );
+					// The AT transferred this application and is still its recommending AT: ask before sending it back to them.
+					var tat = (row1.data() || {}).transfer_at;
+					if (s == "R-ATReview" && tat)
+					{
+						if (!confirm(tat + " transferred this application to the registrar.\nSend it back to " + tat + "?\n\nTo choose another AT, click Cancel and edit the application first."))
+							return;
+					}
 
 					$(tr1).loading();
 					$.getJSON( "/change-status/"+id, { s: s, l: letter, c:comment } )
@@ -2576,6 +2585,27 @@ function dh_manageapp_search_form_submit($form, &$form_state)
 	$form_state['storage'] = $form_state['input'];
 	$form_state['rebuild'] = TRUE;
 //	drupal_goto("donation-report-results", array('query' => $data));
+}
+
+/* The registrar's "R-AT Review" warning on a transferred LC application: the name of the recommending AT who
+   transferred it to the registrar, while that AT is still the recommending AT; '' otherwise. An AT's own transfer
+   (AT Portal, email link, app) saves the decision "Transfer to Registrar"; DIPI's move when the AT has no email
+   address does not, and sending that one back to the same AT is expected. The AT's name at the time of the transfer
+   is the last "RecoAT Assigned to" in the Activity Log before the last move to R-ATTransfer. $r needs a_id,
+   a_status, al_recommending, al_recommending_approved. */
+function dh_lc_transfer_warning_at($r)
+{
+	if ($r['a_status'] != 'R-ATTransfer' || $r['al_recommending_approved'] != 'Transfer to Registrar' || trim((string) $r['al_recommending']) === '')
+		return '';
+	$moved = db_query("select max(l_id) from dh_log where l_module = 'Applicant' and l_identifier = :a and l_event = 'Status Change' and l_msg like :m",
+		array(':a' => (string) $r['a_id'], ':m' => '%To R-ATTransfer'))->fetchField();
+	if (!$moved)
+		return '';
+	$then = db_query("select l_msg from dh_log where l_module = 'Applicant' and l_identifier = :a and l_event = 'LC Workflow' and l_msg like :p and l_id < :t order by l_id desc limit 1",
+		array(':a' => (string) $r['a_id'], ':p' => 'RecoAT Assigned to %', ':t' => $moved))->fetchField();
+	if ($then === FALSE)
+		return '';
+	return strcasecmp(trim(substr($then, strlen('RecoAT Assigned to '))), trim($r['al_recommending'])) == 0 ? $r['al_recommending'] : '';
 }
 
 function dh_search_lc ($type)
