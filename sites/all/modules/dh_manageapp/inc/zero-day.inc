@@ -415,6 +415,23 @@ function dh_course_search($centre_id)
 }
 
 
+/**
+ * Course types whose students do not stay overnight (1 Day Course, Children Course): Zero Day does not
+ * insist on a room for them, though staff may still give one. Keys of dh_type_detail.
+ */
+function dh_room_optional_types()
+{
+	return array('1-DayOSC', 'Child-Teen');
+}
+
+/** TRUE when Zero Day may save an arrival without a room for this course. */
+function dh_room_optional($course_id)
+{
+	$key = db_query("select td.td_key from dh_course c join dh_type_detail td on td.td_id = c.c_course_type where c.c_id = :c",
+		array(':c' => (int) $course_id))->fetchField();
+	return in_array((string) $key, dh_room_optional_types(), TRUE);
+}
+
 function dh_get_acco($centre_id, $course_id)
 {
 	$acco['M'] = $acco['F'] = array();
@@ -547,6 +564,7 @@ function dh_zero_main()
 		(function ($) {
 			var acco = '.$acco_json.';
 			var alloted = '.$alloted_json.';
+			var room_optional = '.(dh_room_optional($course_id) ? 'true' : 'false').';
 			var CELL_OPTS = '.$cellopts_json.';
 			var DINING_OPTS = '.$diningopts_json.';
 			var cur_gender = "";
@@ -648,8 +666,8 @@ function dh_zero_main()
 				"  <form class=\"zd-form\">"+
 				"    <div class=\"zd-row\">"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Room &amp; Group</div><div class=\"zd-fields\">"+
-				"        <div class=\"zd-field\"><label for=\"section\">Section</label><select name=\"section\" id=\"section\" class=\"form-control attending-fields\">"+s+"</select></div>"+
-				"        <div class=\"zd-field\"><label for=\"room-no\">Room No</label><select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields\"><option value=\"\">Choose</option></select></div>"+
+				"        <div class=\"zd-field\"><label for=\"section\">Section"+(room_optional ? " (optional)" : "")+"</label><select name=\"section\" id=\"section\" class=\"form-control attending-fields\">"+s+"</select></div>"+
+				"        <div class=\"zd-field\"><label for=\"room-no\">Room No"+(room_optional ? " (optional)" : "")+"</label><select name=\"room-no\" id=\"room-no\" class=\"form-control attending-fields\"><option value=\"\">Choose</option></select></div>"+
 				"        <div class=\"zd-field zd-sep\"><label for=\"group\">Group</label><select name=\"group\" id=\"group\" class=\"form-control attending-fields\">"+group+"</select></div>"+
 				"      </div></div>"+
 				"      <div class=\"zd-group\"><div class=\"zd-group-title\">Special Seating</div><div class=\"zd-fields zd-radios\">"+

@@ -2769,7 +2769,9 @@ function dh_app_update_attended()
 		exit;
 	}
 
-	if (strtotime(date('Y-m-d')) <= strtotime($r['c_start']))
+	// A room is required up to the start day, except on courses whose students do not stay overnight
+	// (1 Day Course, Children Course: dh_room_optional), where staff may still give one.
+	if (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) && !dh_room_optional($course_id))
 	{
 
 		if ($_REQUEST['s'] == '')
