@@ -753,18 +753,24 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
 	$form[$group]['t_pincode'] = array('#title' => 'PIN / Zip code', '#type' => 'textfield', '#size' => '10', '#weight' => 6.3, 
 		'#default_value' => (isset($edit_data['t_pincode']))?$edit_data['t_pincode']:'', '#maxlength' => 10 );
 
-	$country_codes = db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();	
-	$country_codes['0'] = 'Choose';
-	$form[$group]['t_country'] = array('#title' => 'Country', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6, 
+	$country_codes = array('0' => 'Choose') + db_query("select c_code, CONCAT(c_name,' ','(',c_code,')') from dh_country order by c_name")->fetchAllKeyed();
+	$form[$group]['t_country'] = array('#title' => 'Country', '#type' => 'select', '#options' =>  $country_codes,  '#weight' => 6,
 		'#default_value' => isset($edit_data['t_country'])?$edit_data['t_country']:'0', '#required' => 0, );
 
-	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'textfield', '#size' => '20', '#weight' => 6.1, 
-		'#default_value' => isset($edit_data['t_state'])?$edit_data['t_state']:'', '#maxlength' => 20,
-    '#attached' => array(
-          'library' => array(
-            array('system', 'ui.autocomplete'),
-        )),
-     );
+	// State: a list of the chosen country's states (full names shown, the code is saved). The list is
+	// built from the country sent with the form, so a state picked after changing the country is valid.
+	// Required whenever that country has states.
+	$saved_country = isset($edit_data['t_country']) ? $edit_data['t_country'] : '0';
+	$state_country = isset($form_state['input']['t_country']) ? $form_state['input']['t_country'] : $saved_country;
+	$states = dh_atportal_states($state_country);
+	$saved_state = isset($edit_data['t_state']) ? trim((string) $edit_data['t_state']) : '';
+	$state_default = ($state_country === $saved_country) ? dh_atportal_state_default($saved_country, $saved_state) : '';
+	$form[$group]['t_state'] = array('#title' => 'State', '#type' => 'select', '#weight' => 6.1,
+		'#options' => $states, '#empty_value' => '', '#empty_option' => dh_atportal_state_empty_label($state_country, count($states)),
+		'#default_value' => $state_default, '#required' => !empty($states),
+	);
+	if ($saved_state !== '' && $state_default === '' && $state_country === $saved_country)
+		$form[$group]['t_state']['#description'] = t('Saved earlier: %s. Please choose your state from the list.', array('%s' => $saved_state));
 
 	$form[$group]['t_city'] = array('#title' => 'City', '#type' => 'textfield', '#size' => '20', '#weight' => 6.2, 
 		'#default_value' => isset($edit_data['t_city'])?$edit_data['t_city']:'', '#maxlength' => 50 );
@@ -1129,7 +1135,38 @@ function dh_atportal_profile($form, &$form_state, $edit_data = array())
       $(document).ready(function(){
 
         check_appointments();
-        autocomplete_state("#edit-t-state", "#edit-t-country");
+
+        // Country and State as searchable lists. Changing the country loads its states (full names shown,
+        // the code is saved); State is required when the country has states.
+        var $country = $("#edit-t-country"), $state = $("#edit-t-state");
+        var stateLabel = $("label[for=edit-t-state]");
+        function stateRequired(on) {
+            stateLabel.find(".form-required").remove();
+            if (on) stateLabel.append(\' <span class="form-required" title="This field is required.">*</span>\');
+        }
+        function stateList(first, list) {
+            $state.empty().append(new Option(first, ""));
+            $.each(list || [], function (i, s) { $state.append(new Option(s.text, s.id)); });
+            $state.val("").prop("disabled", false).trigger("change");
+            stateRequired((list || []).length > 0);
+        }
+        $country.select2({ width: "100%" });
+        $state.select2({ width: "100%" });
+        // Only a real change of country reloads the states, and only the reply for the latest
+        // country is used (a slow earlier reply must not replace the list or a state already picked).
+        var shownCountry = $country.val(), wanted = 0;
+        $country.on("change", function () {
+            var cc = $country.val();
+            if (cc === shownCountry) return;
+            shownCountry = cc;
+            var ask = ++wanted;
+            $state.closest(".form-item").find(".description").remove();
+            if (!cc || cc === "0") { stateList("Choose the country first", []); return; }
+            $state.prop("disabled", true).empty().append(new Option("Loading states...", "")).trigger("change");
+            $.getJSON(Drupal.settings.basePath + "at-portal/states/" + encodeURIComponent(cc))
+                .done(function (list) { if (ask === wanted) stateList(list.length ? "- Choose state -" : "No states listed for this country", list); })
+                .fail(function () { if (ask === wanted) stateList("Could not load the states. Please choose the country again.", []); });
+        });
 
         $(document).on("change", "input[type=checkbox][name=t_sat]", function(){
             check_appointments();
@@ -1203,6 +1240,10 @@ function dh_atportal_profile_validate($form, &$form_state)
             else
                 form_set_error($k, t('@f: this is not a valid mobile number for the chosen country.', array('@f' => $label)));
         }
+    // State must be one of the chosen country's states (a code, never a typed name); "required" is on the field.
+    $st = isset($in['t_state']) ? (string) $in['t_state'] : '';
+    if ($st !== '' && !array_key_exists($st, dh_atportal_states(isset($in['t_country']) ? $in['t_country'] : '')))
+        form_set_error('t_state', t('State: please choose your state from the list.'));
     if (isset($in['t_dob']) && dh_teacher_dob_value($in['t_dob']) === FALSE)
         form_set_error('t_dob][day', t('Date of Birth: please choose a day, month and year that make a real date (or leave all three empty).'));
     // The photo (already cropped by the photo editor in the browser), saved on submit.
@@ -1494,6 +1535,50 @@ function dh_atportal_profile_submit($form, &$form_state)
 
 	drupal_set_message(t("Details added/updated successfully"), 'status');
 
+}
+
+/**
+ * The states DIPI lists for a country, as code => name in name order; empty when it lists none
+ * (or the country is "Choose" / not a country code).
+ */
+function dh_atportal_states($country)
+{
+	$country = (string) $country;
+	if ($country === '0' || !preg_match('/^[A-Za-z0-9]{1,10}$/', $country))
+		return array();
+	return db_query("select s_code, s_name from dh_state where s_country = :c order by s_name", array(':c' => $country))->fetchAllKeyed();
+}
+
+/**
+ * The state to show as chosen for a saved value: the saved code, or the code of the state whose name
+ * was typed earlier (the old free-text box). '' when the saved value matches no state of the country.
+ */
+function dh_atportal_state_default($country, $saved)
+{
+	$saved = trim((string) $saved);
+	if ($saved === '')
+		return '';
+	foreach (dh_atportal_states($country) as $code => $name)
+		if (strcasecmp($code, $saved) == 0 || strcasecmp(trim($name), $saved) == 0)
+			return $code;
+	return '';
+}
+
+/** The first, empty line of the State list. */
+function dh_atportal_state_empty_label($country, $count)
+{
+	if ((string) $country === '' || (string) $country === '0')
+		return t('Choose the country first');
+	return $count ? t('- Choose state -') : t('No states listed for this country');
+}
+
+/** Page callback (at-portal/states/%): one country's states as JSON [{id: code, text: name}]. */
+function dh_atportal_states_json($country)
+{
+	$out = array();
+	foreach (dh_atportal_states($country) as $code => $name)
+		$out[] = array('id' => $code, 'text' => $name);
+	drupal_json_output($out);
 }
 
 /**

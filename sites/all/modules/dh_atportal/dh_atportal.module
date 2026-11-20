@@ -80,6 +80,13 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at profile'),
 	       'type' => MENU_CALLBACK);
 
+    // The State list of the profile form: one country's states as JSON (address-book.inc).
+    $items['at-portal/states/%'] = array( 'title' => 'States',
+	       'page callback' => 'dh_atportal_states_json',
+	       'page arguments' => array(2),
+	       'access arguments' => array('access at profile'),
+	       'type' => MENU_CALLBACK);
+
     // A teacher's photo (bio.inc): 'me' for one's own; a t_id for the AT Book team and for those
     // who can open the AT Address Book (dh_teacher_photo_access).
     $items['at-portal/teacher-photo/%'] = array( 'title' => t('Teacher Photo'),
