@@ -64,6 +64,14 @@ try {
   t_ok($res === 'ok' && $row['aa_section'] === 'Zq' && $row['aa_acco'] === '7', 'S6 1 Day Course with a room: the room is saved (still allowed)');
   list($res, $row) = $save($app('10-Day'), 'Zq', '8');
   t_ok($res === 'ok' && $row['a_attended'] == 1 && $row['aa_acco'] === '8', 'S7 10 Day Course with a room: saved as before');
+  list($res, $row) = $save($app('1-DayOSC'), '', '');
+  t_ok($res === 'ok' && $row['a_attended'] == 1, 'S10 a SECOND 1 Day Course student with no room: also marked arrived, no "already alloted" (' . $res . ')');
+  list($res, $row) = $save($app('Child-Teen'), '', '');
+  t_ok($res === 'ok' && $row['a_attended'] == 1, 'S11 a SECOND Children Course student with no room: also marked arrived (' . $res . ')');
+  list($res, $row) = $save($app('1-DayOSC'), 'Zq', '7');
+  t_ok($res === 'Room has already been alloted' && $row['a_attended'] == 0, 'S12 1 Day Course: a room already given (Zq-7) is still refused "' . $res . '"');
+  list($res, $row) = $save($app('10-Day'), 'Zq', '8');
+  t_ok($res === 'Room has already been alloted' && $row['a_attended'] == 0, 'S13 10 Day Course: a room already given (Zq-8) is still refused "' . $res . '"');
   t_eq(db_query("select count(*) from dh_applicant where a_id in (:a) and a_status <> 'Confirmed'", array(':a' => $made['app']))->fetchField(), 0,
     'S8 no status changed (no letters can follow)');
 }

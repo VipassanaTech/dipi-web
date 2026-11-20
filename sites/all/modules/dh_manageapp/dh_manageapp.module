@@ -2827,9 +2827,10 @@ function dh_app_update_attended()
 	// (string) keeps a missing parameter comparing as '' exactly as before.
 	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and aa_section=:section and aa_acco=:acco and aa_applicant <> :app",
 		array(':course' => $course_id, ':gender' => $gender, ':section' => (string) $fields['aa_section'], ':acco' => (string) $fields['aa_acco'], ':app' => $app_id))->fetchField();
-	if ($check_id > 0 && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
+	// Only a real room can be taken twice: no room (allowed on 1 Day / Children courses) is never a clash.
+	if ($check_id > 0 && trim((string) $fields['aa_acco']) !== '' && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
-		$out['status'] = false; 
+		$out['status'] = false;
 		$out['msg'] = 'Room has already been alloted';
 		drupal_json_output($out);
 		exit;		
