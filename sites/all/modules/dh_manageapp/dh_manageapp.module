@@ -2860,8 +2860,8 @@ function dh_app_update_attended()
 
 	// Request values go in as placeholders, never into the SQL text (SQL injection fix).
 	// (string) keeps a missing parameter comparing as '' exactly as before.
-	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and aa_section=:section and aa_acco=:acco and aa_applicant <> :app",
-		array(':course' => $course_id, ':gender' => $gender, ':section' => (string) $fields['aa_section'], ':acco' => (string) $fields['aa_acco'], ':app' => $app_id))->fetchField();
+	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and trim(aa_section)=:section and trim(aa_acco)=:acco and aa_applicant <> :app",
+		array(':course' => $course_id, ':gender' => $gender, ':section' => trim((string) $fields['aa_section']), ':acco' => trim((string) $fields['aa_acco']), ':app' => $app_id))->fetchField();
 	// Only a real room can be taken twice: no room (allowed on 1 Day / Children courses) is never a clash.
 	if ($check_id > 0 && trim((string) $fields['aa_acco']) !== '' && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
@@ -2869,6 +2869,28 @@ function dh_app_update_attended()
 		$out['msg'] = 'Room has already been alloted';
 		drupal_json_output($out);
 		exit;		
+	}
+
+	// A place another course uses at the same time needs "use it anyway" (ov=1) from the popup; a place the
+	// person already had is not asked again. Saved places may start with a space, so compare trimmed.
+	if (trim((string) $fields['aa_acco']) !== '' && (!isset($_REQUEST['ov']) || $_REQUEST['ov'] !== '1'))
+	{
+		$prev = db_query("select aa_section, aa_acco from dh_applicant_attended where aa_applicant = :a", array(':a' => $app_id))->fetchAssoc();
+		if (!$prev || trim((string) $prev['aa_section']) !== trim((string) $fields['aa_section']) || trim((string) $prev['aa_acco']) !== trim((string) $fields['aa_acco']))
+		{
+			$ov = dh_rooms_overlap_taken($course_id);
+			$g = strtoupper($gender);
+			$sec = trim((string) $fields['aa_section']);
+			$plc = trim((string) $fields['aa_acco']);
+			if (isset($ov[$g][$sec][$plc]))
+			{
+				$out['status'] = false;
+				$out['overlap'] = true;
+				$out['msg'] = 'This place is used by ' . $ov[$g][$sec][$plc] . ' at the same time. Choose it again and confirm to use it anyway.';
+				drupal_json_output($out);
+				exit;
+			}
+		}
 	}
 
 	$lv_check = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and ((aa_laundry=:laundry and aa_laundry <> '') or (aa_valuable=:valuable and aa_valuable <> '')) and aa_applicant <> :app",
