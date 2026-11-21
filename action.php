@@ -15,7 +15,7 @@ if ( !is_numeric($id) )
    exit(1);
 }
 
-if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronRCExpected", "ReminderFinalize", "VRIReminderFinalize", "LCTransferReminder")) )
+if ( !in_array($action, array("Photo", "Finalize", "AutoCancel", "CronRCExpected", "ReminderFinalize", "VRIReminderFinalize")) )
 {
    echo "Invalid Action!\n";
    exit(1);
@@ -48,9 +48,6 @@ switch($action)
    break;
    case 'VRIReminderFinalize':
    vri_reminder_finalize();
-   break;
-   case 'LCTransferReminder':
-   reminder_lc_transfer();   // daily: long-course applications waiting in R-ATTransfer (inc/course.inc)
    break;
 }
 //update_status_external($id, $event);
