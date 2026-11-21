@@ -1017,6 +1017,19 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 
   if ( ($lc_date <> '') && ($lc_date <> $lc_date_was) && (parse_last_lc_date($lc_date) === false) )
     form_set_error('al_last_lc_date', t('Last LC Date is not a date DIPI can read, so the gap since the last long course cannot be worked out. Use a full date or a month and year, for example 15/08/2019, 2019-08-15, Aug 2019 or 08/2019. A year on its own is not enough.'));
+
+  /* Attending Course? = Yes marks the application attended and Confirmed (dh_ma_applicant_form_submit). A long-course
+     application needs both reviews approved first - the Zero Day popup checks the same (dh_lc_attend_block). */
+  if (!empty($form_state['input']['attending']))
+  {
+    $lc_block = '';
+    if (arg(2) == 'edit')
+      $lc_block = dh_lc_attend_block((int) arg(1));
+    elseif (arg(1) == 'add')
+      $lc_block = dh_lc_attend_block(0, (int) arg(3));
+    if ($lc_block !== '')
+      form_set_error('attending', $lc_block);
+  }
 }
 
 function dh_ma_applicant_form_submit($form, &$form_state)

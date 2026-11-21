@@ -2733,6 +2733,36 @@ function update_status_external($app_id, $new_status)
 		watchdog('Applicant', "ID $app_id - New status $new_status, old status is ".$row['a_status']);
 }
 
+/* May this application be marked attended? A long-course application (course type td_val3 'LC') only when both
+   reviews are Approved: the Recommending AT and the Area AT. Students, servers and teachers alike (a teacher's own
+   application is approved at both steps by the AT Portal). Someone already attended is not checked again, so their
+   room, cell etc. can still be changed. $app_id 0 = a new application for course $course_id (the Add form).
+   Returns '' when allowed, else the message to show (HTML-safe: names are escaped).
+   Used by the Zero Day popup (dh_app_update_attended) and the application form (dh_ma_applicant_form_validate). */
+function dh_lc_attend_block($app_id, $course_id = 0)
+{
+	if (!$app_id)
+	{
+		$lc = db_query("select td_val3 from dh_course left join dh_type_detail on td_id = c_course_type where c_id = :c", array(':c' => $course_id))->fetchField();
+		if (strtoupper(trim((string) $lc)) != 'LC')
+			return '';
+		return t('Not marked attended: a new long-course application needs both reviews approved first. Save it with Attending Course? = No; it then goes to the teachers for review.');
+	}
+	$r = db_query("select td.td_val3, a.a_attended, (select count(*) from dh_applicant_attended where aa_applicant = a.a_id) aa,
+			al.al_recommending, al.al_recommending_approved, al.al_area_at, al.al_area_at_approved
+		from dh_applicant a left join dh_course c on c.c_id = a.a_course left join dh_type_detail td on td.td_id = c.c_course_type
+		left join dh_applicant_lc al on al.al_applicant = a.a_id where a.a_id = :a limit 1", array(':a' => $app_id))->fetchAssoc();
+	if (!$r || strtoupper(trim((string) $r['td_val3'])) != 'LC' || $r['a_attended'] == 1 || $r['aa'] > 0)
+		return '';
+	$ok = function ($v) { return strcasecmp(trim((string) $v), 'Approved') == 0; };
+	if ($ok($r['al_recommending_approved']) && $ok($r['al_area_at_approved']))
+		return '';
+	$name = function ($v) { return trim((string) $v) === '' ? 'not chosen' : trim($v); };
+	$step = function ($v) { return trim((string) $v) === '' ? 'Pending' : trim($v); };
+	return t('Not marked attended: this long-course application needs both reviews approved first. Recommending AT (@rn): @rs. Area AT (@an): @as. The teachers approve it by the review email or the AT Portal, or the registrar can choose Approved in Change Status on the search page.',
+		array('@rn' => $name($r['al_recommending']), '@rs' => $step($r['al_recommending_approved']), '@an' => $name($r['al_area_at']), '@as' => $step($r['al_area_at_approved'])));
+}
+
 function dh_app_update_attended()
 {
 	global $user;
@@ -2765,6 +2795,17 @@ function dh_app_update_attended()
 		$out['acco'] = dh_get_acco( $centre_id , $course_id );
 		$out['alloted'] = dh_get_alloted( $centre_id , $course_id);
 
+		drupal_json_output($out);
+		exit;
+	}
+
+	// A long-course application is marked attended only after both reviews are approved (marking it attended also
+	// sets Confirmed, below). Someone already attended is not checked again.
+	$lc_block = dh_lc_attend_block($app_id);
+	if ($lc_block !== '')
+	{
+		$out['status'] = false;
+		$out['msg'] = $lc_block;
 		drupal_json_output($out);
 		exit;
 	}
