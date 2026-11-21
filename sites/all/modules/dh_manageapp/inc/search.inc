@@ -1028,8 +1028,19 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				var dhUserName = '.drupal_json_encode($user->name).';
 				/* A long-course review decision (Approved / Rejected on an R-ATReview or A-ATReview row) is the centre team
 				   deciding for the teacher: ask for the comment saved with that step (optional when approving, the reason
-				   when rejecting). The server puts who decided for whom in front of it (dh_lc_review_comment). */
-				function dhLcReviewComment(rd, s, send)
+				   when rejecting). The server puts who decided for whom in front of it (dh_lc_review_comment).
+				   The box opens when the decision is chosen (atSelect: it only keeps the comment, Update saves) and again at
+				   Update if it was cancelled. Approving the Recommending step needs the Area teacher chosen first. */
+				function dhLcIsReviewDecision(rd, s)
+				{
+					return ["Approved", "Rejected-R-AT", "Rejected-A-AT"].indexOf(s) >= 0 && ["R-ATReview", "A-ATReview"].indexOf(rd.app_status) >= 0;
+				}
+				function dhLcNoAreaTeacher(rd, s)
+				{
+					return s == "Approved" && rd.app_status == "R-ATReview" && !$.trim(rd.area_t || "");
+				}
+				var dhLcNoAreaMsg = "Choose the Area teacher first: edit the application, then approve.";
+				function dhLcReviewComment(rd, s, send, atSelect)
 				{
 					var reco = (rd.app_status == "R-ATReview");
 					var at = $.trim((reco ? rd.reco_t : rd.area_t) || "");
@@ -1044,9 +1055,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							+ "<textarea class=\"form-control lc-review-comment\" rows=\"3\"></textarea>"
 							+ "<p style=\"margin:6px 0 0;color:#555;font-size:12px\">Saved as the " + step + " comment. Unless you are "
 							+ (at ? esc(at) : "that teacher") + ", it starts with: <i>" + (reject ? "Rejected" : "Approved") + " by user &quot;"
-							+ esc(dhUserName) + "&quot; on behalf of " + who + " with comment:</i></p></div></form>",
+							+ esc(dhUserName) + "&quot; on behalf of " + who + " with comment:</i></p>"
+							+ (atSelect ? "<p style=\"margin:6px 0 0;font-weight:bold\">Then press Update to save the decision.</p>" : "") + "</div></form>",
 						buttons: {
-							ok: { text: reject ? "Reject" : "Approve", btnClass: reject ? "btn-red" : "btn-green", action: function () {
+							ok: { text: atSelect ? "OK" : (reject ? "Reject" : "Approve"), btnClass: reject ? "btn-red" : "btn-green", action: function () {
 								var c = $.trim(this.$content.find(".lc-review-comment").val());
 								if (reject && !c) { $.alert("Please give the rejection reason."); return false; }
 								send(c);
@@ -1427,6 +1439,22 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	                $(".sub-letter-"+row.data().aid).text("");
 	                $(".sub-letter-"+row.data().aid).attr("subletter", "");
 	                $(".sub-letter-"+row.data().aid).attr("subcomment", "");
+	                $(".sub-letter-"+row.data().aid).attr("subreview", "").attr("reviewready", "");
+					// A long-course review decision: its comment box now (dhLcReviewComment); no letter choice for it.
+					if (dhLcIsReviewDecision(row.data(), tmp))
+					{
+						var rdr = row.data();
+						if (dhLcNoAreaTeacher(rdr, tmp))
+						{
+							$.alert(dhLcNoAreaMsg);
+							s.val("");
+							return;
+						}
+						dhLcReviewComment(rdr, tmp, function (c) {
+							$(".sub-letter-"+rdr.aid).attr("subreview", c).attr("reviewready", "1").text(c ? "Comment: " + c : "No comment");
+						}, true);
+						return;
+					}
 					// No letter for this status and course type: say so under the status (js/search-letter-note.js).
 					// Not for rows of another centre, rows transferred after the page loaded, or long-course review rows.
 					var rd = row.data();
@@ -1538,7 +1566,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					  .done(function( json ) {
 					  	if (json.status == "OK")
 					  	{
-					  		$(".sub-letter-"+id).attr("subcomment", "");
+					  		$(".sub-letter-"+id).attr("subcomment", "").attr("subreview", "").attr("reviewready", "");
 					  		if ( s != "'.$system_statues['STATUS-CUSTOM'].'")
 								row1.data().status = s;
 							if ( json.newstatus != "" )
@@ -1560,8 +1588,16 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					});
 					};
 					var rd1 = row1.data() || {};
-					if (["Approved", "Rejected-R-AT", "Rejected-A-AT"].indexOf(s) >= 0 && ["R-ATReview", "A-ATReview"].indexOf(rd1.app_status) >= 0)
-						dhLcReviewComment(rd1, s, send);
+					if (dhLcIsReviewDecision(rd1, s))
+					{
+						var sl1 = $(".sub-letter-"+id);
+						if (dhLcNoAreaTeacher(rd1, s))
+							$.alert(dhLcNoAreaMsg);
+						else if (sl1.attr("reviewready") == "1")
+							send(sl1.attr("subreview") || "");
+						else
+							dhLcReviewComment(rd1, s, send, false);
+					}
 					else
 						send(comment);
 
