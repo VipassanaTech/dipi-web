@@ -34,6 +34,30 @@ function _dh_rooms_in_use_msg($in_use, $g, $sec, $p)
 	return isset($in_use[$k]) ? 'Place ' . $p . ' is used by ' . $in_use[$k][0] . ". It can't be changed until that course is over." : '';
 }
 
+/** TRUE when the centre has no rooms yet but still has a typed room list (old accommodation settings) to bring in. */
+function dh_rooms_has_old_list($centre_id)
+{
+	if (dh_rooms_centre_has_rooms($centre_id))
+		return FALSE;
+	return (bool) db_query("select 1 from dh_center_setting_acco where csa_center = :c and csa_deleted = 0 and trim(csa_room) <> '' limit 1", array(':c' => (int) $centre_id))->fetchField();
+}
+
+/** The section's spelling already used by this centre and side (SQL match ignores letter case), else $sec as typed. */
+function _dh_rooms_section_spelling($centre_id, $g, $sec)
+{
+	$e = db_query("select cr_section from dh_center_room where cr_center = :c and cr_gender = :g and cr_section = :s and cr_deleted = 0 order by cr_id limit 1",
+		array(':c' => (int) $centre_id, ':g' => $g, ':s' => $sec))->fetchField();
+	return ($e === FALSE || $e === NULL) ? $sec : $e;
+}
+
+/** The next free weight in a section: one more than the largest there (0 for an empty section). */
+function _dh_rooms_next_weight($centre_id, $g, $sec)
+{
+	$m = db_query("select max(cr_weight) from dh_center_room where cr_center = :c and cr_gender = :g and cr_section = :s and cr_deleted = 0",
+		array(':c' => (int) $centre_id, ':g' => $g, ':s' => $sec))->fetchField();
+	return ($m === NULL || $m === FALSE) ? 0 : (int) $m + 1;
+}
+
 /** TRUE when $p is one of $list, ignoring letter case. */
 function _dh_rooms_has_place($list, $p)
 {
@@ -82,6 +106,9 @@ function dh_rooms_action($centre_id, $in, $uid)
 				$places[] = $p;
 		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
 		if ($sec === '' || mb_strlen($sec) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
+		if (strpos($sec, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
+		if (!$id && dh_rooms_has_old_list($centre_id)) return _dh_rooms_err('This centre still uses its old room list. Use "Bring in the old room list" first.');
+		$sec = _dh_rooms_section_spelling($centre_id, $g, $sec);
 		if ($name === '' || mb_strlen($name) > 40) return _dh_rooms_err('Room name must be 1 to 40 letters.');
 		if (!isset($toilets[$toilet])) return _dh_rooms_err('Choose a toilet type.');
 		if (!$places || count($places) > 30) return _dh_rooms_err('A room needs 1 to 30 places.');
@@ -96,7 +123,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 			if (!$old) return _dh_rooms_err('This room is not in this centre.');
 			$old_places = _dh_rooms_places($id);
 			foreach ($old_places as $p)
-				if ((mb_strtoupper($sec) !== mb_strtoupper($old['cr_section']) || $g !== $old['cr_gender'] || !_dh_rooms_has_place($places, $p)) && ($m = _dh_rooms_in_use_msg($in_use, $old['cr_gender'], $old['cr_section'], $p)) !== '')
+				if ((mb_strtoupper($sec) !== mb_strtoupper($old['cr_section']) || $g !== $old['cr_gender'] || !in_array($p, $places, TRUE)) && ($m = _dh_rooms_in_use_msg($in_use, $old['cr_gender'], $old['cr_section'], $p)) !== '')
 					return _dh_rooms_err($m);
 			$txn = db_transaction();
 			db_update('dh_center_room')->fields(array('cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet,
@@ -114,7 +141,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		{
 			$txn = db_transaction();
 			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet,
-				'cr_weight' => 0, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
+				'cr_weight' => _dh_rooms_next_weight($centre_id, $g, $sec), 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
 			_dh_rooms_write_places($id, $places);
 			dh_rooms_log($centre_id, 'create', array('room' => array(NULL, $g . ' ' . $sec . ' ' . $name . ': ' . implode(', ', $places) . ' (' . $toilets[$toilet] . ')')), $id);
 		}
@@ -131,6 +158,9 @@ function dh_rooms_action($centre_id, $in, $uid)
 				$suf[] = $s;
 		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
 		if ($sec === '' || mb_strlen($sec) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
+		if (strpos($sec, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
+		if (dh_rooms_has_old_list($centre_id)) return _dh_rooms_err('This centre still uses its old room list. Use "Bring in the old room list" first.');
+		$sec = _dh_rooms_section_spelling($centre_id, $g, $sec);
 		if (!isset($toilets[$toilet])) return _dh_rooms_err('Choose a toilet type.');
 		if ($from < 0 || $to < $from) return _dh_rooms_err('"To" must be the same as or after "From".');
 		if ($to - $from + 1 > 200) return _dh_rooms_err('Add at most 200 rooms at once.');
@@ -149,14 +179,20 @@ function dh_rooms_action($centre_id, $in, $uid)
 			$plan[(string) $n] = $places;
 		}
 		$txn = db_transaction();
+		$weight = _dh_rooms_next_weight($centre_id, $g, $sec);
 		foreach ($plan as $name => $places)
 		{
 			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => (string) $name, 'cr_toilet' => $toilet,
-				'cr_weight' => 0, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
+				'cr_weight' => $weight++, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
 			_dh_rooms_write_places($id, $places);
 		}
 		dh_rooms_log($centre_id, 'create', array('room' => array(NULL, count($plan) . ' rooms ' . $from . '-' . $to . ' in ' . $g . ' ' . $sec . ' (' . $toilets[$toilet] . ')')));
 		return array('ok' => TRUE, 'msg' => count($plan) . ' rooms added.');
+
+	case 'import_old':
+		if (dh_rooms_centre_has_rooms($centre_id)) return _dh_rooms_err('Rooms are already set up for this centre.');
+		$rep = dh_rooms_convert_centre($centre_id, TRUE, (int) $uid);
+		return array('ok' => TRUE, 'msg' => $rep['rooms'] . ' rooms and ' . $rep['places'] . ' places brought in from the old room list. Please check the toilet types.');
 
 	case 'set_toilet':
 	case 'clear_review':
@@ -239,6 +275,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		$to = trim((string) (isset($in['to']) ? $in['to'] : ''));
 		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
 		if ($to === '' || mb_strlen($to) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
+		if (strpos($to, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
 		if (db_query("select 1 from dh_center_room where cr_center = :c and cr_gender = :g and cr_section = :s and cr_deleted = 0 limit 1",
 			array(':c' => $centre_id, ':g' => $g, ':s' => $to))->fetchField()) return _dh_rooms_err('Section ' . $to . ' already exists.');
 		foreach ($in_use as $v)
@@ -257,7 +294,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 /** GET JSON: the centre's rooms, places in use, toilet types. */
 function dh_rooms_data_page($centre_id)
 {
-	drupal_json_output(array('ok' => TRUE, 'rooms' => dh_rooms_load($centre_id), 'in_use' => array_keys(dh_rooms_places_in_use($centre_id)), 'toilets' => dh_room_toilet_types()));
+	drupal_json_output(array('ok' => TRUE, 'rooms' => dh_rooms_load($centre_id), 'in_use' => array_keys(dh_rooms_places_in_use($centre_id)), 'toilets' => dh_room_toilet_types(), 'old_list' => dh_rooms_has_old_list($centre_id)));
 	drupal_exit();
 }
 
@@ -273,6 +310,7 @@ function dh_rooms_save_page($centre_id)
 	$out = dh_rooms_action($centre_id, $_POST, $user->uid);
 	$out['rooms'] = dh_rooms_load($centre_id);
 	$out['in_use'] = array_keys(dh_rooms_places_in_use($centre_id));
+	$out['old_list'] = dh_rooms_has_old_list($centre_id);
 	drupal_json_output($out);
 	drupal_exit();
 }

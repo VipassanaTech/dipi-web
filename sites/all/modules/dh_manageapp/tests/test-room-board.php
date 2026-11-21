@@ -81,6 +81,9 @@ t_in_txn(function () {
   db_update('dh_course')->fields(array('c_finalized' => 1))->condition('c_id', $A)->execute();
   t_eq($ap(array('op' => 'remove', 'a_id' => $shyam))['msg'], "This course is finalized. Rooms can't be changed here.", 'B20 finalized course is read-only');
   $other = t_make_centre();
+  t_eq(dh_room_board_data($cen, $A)['has_rooms'], TRUE, 'B22 has_rooms true for a centre with rooms');
+  $cB = t_make_course(array('c_center' => $other));
+  t_eq(dh_room_board_data($other, $cB)['has_rooms'], FALSE, 'B23 has_rooms false for a centre without rooms');
   t_eq(dh_room_board_apply($other, $A, array('op' => 'remove', 'a_id' => $shyam), 1)['msg'], 'This course is not in this centre.', 'B21 course of another centre refused');
 });
 $GLOBALS['user'] = $keep;

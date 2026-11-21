@@ -665,12 +665,13 @@ function dh_zero_main()
 				var group = "";
 				for(i=1; i<10; i++)
 					group += "<option value=\""+i+"\">"+i+"</option>";
-				var s = "<option value=\"\">Choose</option>";
+				var s = $("<select/>").append(new Option("Choose", ""));
 				$.each(params.sections, function(key, item) {
 					var ovs = (room_overlap[cur_gender] && room_overlap[cur_gender][key]) || {};
 					var n = get_rooms(key, cur_gender).filter(function (p) { return !ovs[p]; }).length;
-					s += "<option value=\""+key+"\">"+key+" ("+n+" free)</option>";
+					s.append(new Option(key+" ("+n+" free)", key));
 				});
+				s = s.html();
 				var out = "" +
 				"<div id=\"dialog-form\" title=\"Student Attended\">"+
 				"  <div class=\"zd-head\"><span class=\"title-applicant-name\">"+name+"</span>"+
@@ -846,7 +847,7 @@ function dh_zero_main()
 				        	//allFields.removeClass( "ui-state-error" );
 				      	}
 			    	});
-				    $("#section").select2({width: "100%", dropdownParent: $("#section").closest(".ui-dialog")});
+				    $("#section").select2({width: "100%", dropdownAutoWidth: true, dropdownParent: $("#section").closest(".ui-dialog")});
 				    $("#section").trigger("change");
 				    if (t.attr("id") == "table-attending")
 				    {
@@ -904,7 +905,7 @@ function dh_zero_main()
 						$r.append(o);
 					});
 					ov_ok = "";
-					$r.select2({width: "100%", dropdownParent: $r.closest(".ui-dialog")});
+					$r.select2({width: "100%", dropdownAutoWidth: true, dropdownParent: $r.closest(".ui-dialog")});
 
 				});
 			 

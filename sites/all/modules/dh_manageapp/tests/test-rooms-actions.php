@@ -59,5 +59,43 @@ t_in_txn(function () {
   t_ok($act(array('op' => 'clear_review', 'ids' => array($room12['id'])))['ok'], 'A23 clear "needs review"');
   t_eq((int) db_query("select cr_review from dh_center_room where cr_id = :r", array(':r' => $room12['id']))->fetchField(), 0, 'A24 cleared');
   t_ok((int) db_query("select count(*) from dh_center_log where cl_center = :c and cl_area = 'rooms'", array(':c' => $cen))->fetchField() >= 10, 'A25 changes are in the Change Log');
+
+  // Final review: letter case, '|', order of new rooms.
+  $c2 = t_make_centre();
+  $a2 = function ($in) use ($c2) { return dh_rooms_action($c2, $in, 0); };
+  $sec2 = function () use ($c2) { return db_query("select group_concat(distinct binary cr_section) from dh_center_room where cr_center = :c and cr_deleted = 0", array(':c' => $c2))->fetchField(); };
+  t_make_room($c2, 'M', 'B', '1', array('1'));
+  $r = $a2(array('op' => 'save_room', 'id' => 0, 'gender' => 'M', 'section' => 'b', 'name' => '2', 'toilet' => 'western', 'places' => array('2')));
+  t_ok($r['ok'] && $sec2() === 'B', 'A1b a section typed in another letter case keeps the existing spelling (save_room)');
+  $r = $a2(array('op' => 'add_many', 'gender' => 'M', 'section' => 'b', 'from' => 5, 'to' => 6, 'suffixes' => array(), 'toilet' => 'both'));
+  t_ok($r['ok'] && $sec2() === 'B', 'A1b-2 same for add_many');
+  t_eq($a2(array('op' => 'save_room', 'id' => 0, 'gender' => 'M', 'section' => 'B|1', 'name' => '9', 'toilet' => 'western', 'places' => array('9')))['msg'], 'Section can\'t contain "|".', 'A1c save_room refuses |');
+  t_eq($a2(array('op' => 'add_many', 'gender' => 'M', 'section' => 'B|1', 'from' => 7, 'to' => 7, 'toilet' => 'both'))['msg'], 'Section can\'t contain "|".', 'A1c-2 add_many refuses |');
+  t_eq($a2(array('op' => 'rename_section', 'gender' => 'M', 'from' => 'B', 'to' => 'B|1'))['msg'], 'Section can\'t contain "|".', 'A1c-3 rename_section refuses |');
+
+  $up2 = t_make_course(array('c_center' => $c2, 'c_start' => date('Y-m-d', strtotime('+5 days')), 'c_end' => date('Y-m-d', strtotime('+15 days'))));
+  $r12 = t_make_room($c2, 'M', 'D', '12', array('12A'));
+  t_make_applicant($up2, array('a_gender' => 'M'), array('aa_section' => 'D', 'aa_acco' => '12A'));
+  $m = $a2(array('op' => 'save_room', 'id' => $r12, 'gender' => 'M', 'section' => 'D', 'name' => '12', 'toilet' => 'western', 'places' => array('12a')))['msg'];
+  t_ok(strpos($m, 'Place 12A is used by') === 0, 'A21d a case-only rename of an in-use place is refused');
+
+  $a2(array('op' => 'add_many', 'gender' => 'F', 'section' => 'C', 'from' => 101, 'to' => 103, 'suffixes' => array(), 'toilet' => 'both'));
+  t_ok($a2(array('op' => 'save_room', 'id' => 0, 'gender' => 'F', 'section' => 'C', 'name' => '50', 'toilet' => 'both', 'places' => array('50')))['ok'], 'A26 add room 50 later');
+  t_eq(array_map(function ($r) { return $r['name']; }, dh_rooms_load($c2, 'F')), array('101', '102', '103', '50'), 'A27 a later new room sorts after the earlier ones');
+
+  // Centre not converted yet: old typed list.
+  $c3 = t_make_centre();
+  $a3 = function ($in) use ($c3) { return dh_rooms_action($c3, $in, 0); };
+  t_eq(dh_rooms_has_old_list($c3), FALSE, 'A30 no typed list, no old list');
+  db_insert('dh_center_setting_acco')->fields(array('csa_center' => $c3, 'csa_gender' => 'M', 'csa_section' => 'B', 'csa_room' => '1, 2', 'csa_deleted' => 0))->execute();
+  t_eq(dh_rooms_has_old_list($c3), TRUE, 'A31 a typed list is an old list');
+  $old = 'This centre still uses its old room list. Use "Bring in the old room list" first.';
+  t_eq($a3(array('op' => 'save_room', 'id' => 0, 'gender' => 'M', 'section' => 'B', 'name' => '3', 'toilet' => 'western', 'places' => array('3')))['msg'], $old, 'A32 new room refused while old list');
+  t_eq($a3(array('op' => 'add_many', 'gender' => 'M', 'section' => 'B', 'from' => 3, 'to' => 4, 'toilet' => 'both'))['msg'], $old, 'A33 add_many refused while old list');
+  $r = $a3(array('op' => 'import_old'));
+  t_ok($r['ok'] && strpos($r['msg'], '2 rooms and 2 places brought in') === 0, 'A34 import ok: ' . $r['msg']);
+  t_eq(dh_rooms_has_old_list($c3), FALSE, 'A35 old list gone once rooms exist');
+  t_ok($a3(array('op' => 'save_room', 'id' => 0, 'gender' => 'M', 'section' => 'B', 'name' => '3', 'toilet' => 'western', 'places' => array('3')))['ok'], 'A36 save_room works now');
+  t_eq($a3(array('op' => 'import_old'))['msg'], 'Rooms are already set up for this centre.', 'A37 import twice refused');
 });
 t_done();

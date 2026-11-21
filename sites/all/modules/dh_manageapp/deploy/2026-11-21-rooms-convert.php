@@ -1,7 +1,7 @@
 <?php
 // Rooms: convert every centre's typed room list (dh_center_setting_acco) into rooms + places.
 // DRY RUN by default: prints the report, writes nothing. --apply writes. --centre=ID limits to one centre.
-// Run from the Drupal root:  php7.4 sites/all/modules/dh_manageapp/deploy/2026-11-21-rooms-convert.php [--apply] [--centre=ID]
+// Run from the Drupal root (prod: php7.3):  php sites/all/modules/dh_manageapp/deploy/2026-11-21-rooms-convert.php [--apply] [--centre=ID]
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1'; $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['SCRIPT_NAME'] = '/index.php';
@@ -20,7 +20,7 @@ echo ($apply ? "APPLY" : "DRY RUN (nothing is written)") . " — " . count($ids)
 printf("%-6s %-32s %6s %7s %7s %5s %5s %7s %10s %s\n", 'centre', 'name', 'rooms', 'shared', 'places', 'dups', 'long', 'review', 'past-only', 'note');
 foreach ($ids as $c)
 {
-	$r = dh_rooms_convert_centre($c, $apply, 0);
+	$r = dh_rooms_convert_centre($c, $apply, dh_system_uid());
 	$name = (string) db_query("select c_name from dh_center where c_id = :c", array(':c' => $c))->fetchField();
 	printf("%-6s %-32s %6d %7d %7d %5d %5d %7d %10d %s\n", $c, mb_substr($name, 0, 32), $r['rooms'], $r['shared_rooms'], $r['places'], $r['duplicates'],
 		$r['too_long'], $r['review_added'], $r['past_only_missing'], $r['skipped']);

@@ -235,6 +235,11 @@ function dh_centre_log_viewer($centre_id, $form)
 		'csa_gender' => array('title' => 'Gender', 'options' => NULL),
 		'csa_section' => array('title' => 'Section', 'options' => NULL),
 		'csa_room' => array('title' => 'Rooms', 'options' => NULL),
+		'room' => array('title' => 'Room', 'options' => NULL),
+		'section' => array('title' => 'Section', 'options' => NULL),
+		'toilet' => array('title' => 'Toilet', 'options' => NULL),
+		'places' => array('title' => 'Places', 'options' => NULL),
+		'converted' => array('title' => 'Converted', 'options' => NULL),
 		'uc_user' => array('title' => 'User', 'options' => NULL),
 		'uc_center' => array('title' => 'Centre', 'options' => NULL),
 	);

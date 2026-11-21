@@ -53,7 +53,7 @@ function dh_room_board_data($centre_id, $course_id)
 			'section' => trim((string) $r['aa_section']), 'place' => trim((string) $r['aa_acco']));
 	}
 	return array('ok' => TRUE, 'course' => dh_rooms_course_label($course_id), 'optional' => dh_room_optional($course_id), 'finalized' => (bool) $c['c_finalized'],
-		'sides' => $sides, 'rooms' => $rooms, 'people' => $people, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
+		'sides' => $sides, 'has_rooms' => dh_rooms_centre_has_rooms($centre_id), 'rooms' => $rooms, 'people' => $people, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
 }
 
 function _dh_room_board_person($course_id, $a_id)
@@ -103,7 +103,7 @@ function dh_room_board_apply($centre_id, $course_id, $in, $uid)
 				_dh_room_board_set($centre_id, $p, $q['aa_section'], $q['aa_acco'], $uid);
 				_dh_room_board_set($centre_id, $q, $p['aa_section'], $p['aa_acco'], $uid);
 			}
-			catch (Exception $e)
+			catch (Throwable $e)
 			{
 				$txn->rollback();
 				throw $e;
@@ -158,7 +158,7 @@ function dh_room_board_save_page($centre_id, $course_id)
 function dh_room_board_page($centre_id, $course_id)
 {
 	if (!_dh_room_board_course($centre_id, $course_id))
-		return drupal_not_found();
+		return MENU_NOT_FOUND;
 	$label = dh_rooms_course_label($course_id);
 	drupal_set_title('Room Board');
 	$path = drupal_get_path('module', 'dh_manageapp');

@@ -2,7 +2,7 @@
  * every change POSTs {op, token, ...} to saveUrl and redraws from the rooms it returns. */
 (function ($) {
   'use strict';
-  var S, rooms = [], inUse = {}, side = 'M', open = {}, picked = {}, q = '', fToilet = '', onlyReview = false;
+  var S, rooms = [], oldList = false, inUse = {}, side = 'M', open = {}, picked = {}, q = '', fToilet = '', onlyReview = false, lastMsg = '';
 
   function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function badge(t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t] || t) + '</span>'; }
@@ -43,7 +43,10 @@
         + '<button class="btn btn-default dhr-ok">Mark as checked</button><button class="btn btn-link dhr-none">Clear selection</button>' : '')
       + '</div><div class="dhr-formbox"></div>';
     var g = bySection(list);
-    if (!g.order.length) h += '<p>No rooms yet. Use "Add room" or "Add many rooms".</p>';
+    if (!g.order.length) {
+      if (!rooms.length && oldList) h += '<div class="dhr-note">This centre still uses its old room list. Bring it in here to see and edit its rooms.</div><p><button class="btn btn-primary dhr-import">Bring in the old room list</button></p>';
+      else h += '<p>No rooms yet. Use "Add room" or "Add many rooms".</p>';
+    }
     g.order.forEach(function (sec) {
       var rs = g.o[sec], shown = rs.filter(matches), isOpen = open[side + '|' + sec] || (q && shown.length);
       if ((q || fToilet || onlyReview) && !shown.length) return;
@@ -70,9 +73,10 @@
     $.post(S.saveUrl, $.extend({op: op, token: S.token, gender: side}, payload), null, 'json')
       .done(function (r) {
         if (r.rooms) rooms = r.rooms;
+        if (typeof r.old_list !== 'undefined') oldList = !!r.old_list;
         if (r.in_use) { inUse = {}; r.in_use.forEach(function (k) { inUse[k] = 1; }); }
         if (!r.ok) { alert(r.msg); render(); return; }
-        picked = {}; render(); if (after) after();
+        lastMsg = r.msg; picked = {}; render(); if (after) after();
       })
       .fail(function () { alert('Could not save. Please check the connection and try again.'); });
   }
@@ -111,7 +115,7 @@
 
   $(function () {
     S = Drupal.settings.dhRooms;
-    $.getJSON(S.dataUrl).done(function (d) { rooms = d.rooms; d.in_use.forEach(function (k) { inUse[k] = 1; }); render(); })
+    $.getJSON(S.dataUrl).done(function (d) { rooms = d.rooms; oldList = !!d.old_list; d.in_use.forEach(function (k) { inUse[k] = 1; }); render(); })
       .fail(function () { $('#dh-rooms-app').html('<p>Could not load the rooms. Please reload the page.</p>'); });
     var app = $(document);
     app.on('click', '.dhr-tab', function () { side = $(this).data('side'); picked = {}; render(); });
@@ -120,6 +124,7 @@
     app.on('change', '.dhr-ft', function () { fToilet = $(this).val(); render(); });
     app.on('click', '.dhr-sec-head', function (e) { if ($(e.target).hasClass('dhr-ren')) return; var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
     app.on('click', '.dhr-tile', function () { var id = $(this).data('id'); if (picked[id]) delete picked[id]; else picked[id] = 1; render(); });
+    app.on('click', '.dhr-import', function () { if (confirm('Bring in the old room list now?')) post('import_old', {}, function () { if (lastMsg) alert(lastMsg); }); });
     app.on('click', '.dhr-none', function () { picked = {}; render(); });
     app.on('click', '.dhr-add', function () { roomForm(null); });
     app.on('click', '.dhr-edit', function () { roomForm(roomById(pickedIds()[0])); });

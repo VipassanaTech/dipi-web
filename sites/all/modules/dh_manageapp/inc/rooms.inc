@@ -21,14 +21,15 @@ function dh_rooms_load($centre_id, $gender = NULL)
 {
 	$args = array(':c' => (int) $centre_id);
 	$where = '';
-	if ($gender !== NULL) { $where = ' and cr_gender = :g'; $args[':g'] = $gender; }
+	$pwhere = '';
+	if ($gender !== NULL) { $where = ' and cr_gender = :g'; $pwhere = ' and r.cr_gender = :g'; $args[':g'] = $gender; }
 	$rooms = array();
 	foreach (db_query("select * from dh_center_room where cr_center = :c and cr_deleted = 0" . $where, $args) as $r)
 		$rooms[$r->cr_id] = array('id' => (int) $r->cr_id, 'gender' => strtoupper($r->cr_gender), 'section' => $r->cr_section, 'name' => $r->cr_name,
 			'toilet' => $r->cr_toilet, 'review' => (int) $r->cr_review, 'weight' => (int) $r->cr_weight, 'places' => array());
 	if ($rooms)
-		foreach (db_query("select crp_id, crp_room, crp_name from dh_center_room_place where crp_room in (:r) and crp_deleted = 0 order by crp_weight, crp_id",
-			array(':r' => array_keys($rooms))) as $p)
+		foreach (db_query("select p.crp_id, p.crp_room, p.crp_name from dh_center_room_place p join dh_center_room r on r.cr_id = p.crp_room
+			where r.cr_center = :c and r.cr_deleted = 0 and p.crp_deleted = 0" . $pwhere . " order by p.crp_weight, p.crp_id", $args) as $p)
 			$rooms[$p->crp_room]['places'][] = array('id' => (int) $p->crp_id, 'name' => $p->crp_name);
 	$rooms = array_values($rooms);
 	usort($rooms, 'dh_rooms_cmp');
@@ -113,8 +114,8 @@ function dh_rooms_places_in_use($centre_id)
 {
 	$used = array();
 	$labels = array();
-	foreach (db_query("select a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
-		join dh_course c on c.c_id = a.a_course where a.a_center = :c and a.a_attended = 1 and TRIM(aa.aa_acco) <> '' and c.c_end >= curdate() and c.c_deleted = 0
+	foreach (db_query("select a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_course c join dh_applicant a on a.a_course = c.c_id
+		join dh_applicant_attended aa on aa.aa_applicant = a.a_id where c.c_center = :c and c.c_deleted = 0 and c.c_end >= curdate() and a.a_attended = 1 and trim(aa.aa_acco) <> ''
 		order by c.c_start", array(':c' => (int) $centre_id)) as $r)
 	{
 		$k = strtoupper($r->a_gender) . '|' . $r->aa_section . '|' . $r->aa_acco;

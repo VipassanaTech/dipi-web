@@ -9,9 +9,10 @@
   function key(sec, place) { return sec + '|' + place; }
   function holders() {
     var h = {};
-    D.people.forEach(function (p) { if (p.gender === side && p.place !== '') h[key(p.section, p.place)] = p; });
+    D.people.forEach(function (p) { if (p.gender === side && p.place !== '') (h[key(p.section, p.place)] = h[key(p.section, p.place)] || []).push(p); });
     return h;
   }
+  function anyHit(list) { return list.some(hit); }
   function person(id) { return D.people.filter(function (p) { return p.a_id === id; })[0]; }
   function other(sec, place) { var o = D.overlap[side] || {}; return (o[sec] && o[sec][place]) || ''; }
   // One line of what centres look at when giving a room: Old/New/Server, age, job, education, state + country, a different nationality.
@@ -34,16 +35,22 @@
 
   function render() {
     if (!D.ok) { $('#dh-rb-app').html('<p>' + esc(D.msg) + '</p>'); return; }
+    if (!D.has_rooms) { $('#dh-rb-app').html('<p>This centre has no rooms yet. Rooms are set up on the Rooms page.</p>'); return; }
     if (!side) side = D.sides[0] || 'M';
     var H = holders(), rooms = D.rooms.filter(function (r) { return r.gender === side; });
-    var total = 0, placed = 0, otherN = 0;
-    rooms.forEach(function (r) { r.places.forEach(function (p) { total++; if (H[key(r.section, p.name)]) placed++; else if (other(r.section, p.name)) otherN++; }); });
+    var total = 0, placed = 0, otherN = 0, shared = 0, usedPlaces = 0;
+    rooms.forEach(function (r) { r.places.forEach(function (p) {
+      var w = H[key(r.section, p.name)];
+      total++;
+      if (w) { placed += w.length; usedPlaces++; if (w.length > 1) shared++; } else if (other(r.section, p.name)) otherN++;
+    }); });
     var waiting = D.people.filter(function (p) { return p.gender === side && p.place === ''; });
     var h = '';
     if (D.finalized) h += '<div class="dhr-note">This course is finalized. The board is read-only.</div>';
     if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + esc(s) + '">' + (s === 'M' ? 'Men' : 'Women') + '</button>'; }).join('') + '</div>';
     h += '<div class="dhrb-counts"><div class="dhrb-count">Places<b>' + total + '</b></div><div class="dhrb-count">Placed<b>' + placed + '</b></div>'
-      + '<div class="dhrb-count">Other course<b>' + otherN + '</b></div><div class="dhrb-count">Free<b>' + (total - placed - otherN) + '</b></div></div>';
+      + '<div class="dhrb-count">Other course<b>' + otherN + '</b></div><div class="dhrb-count">Free<b>' + (total - usedPlaces - otherN) + '</b></div></div>';
+    if (shared) h += '<div class="dhr-note">' + shared + ' places have more than one person.</div>';
     h += '<div class="dhrb-main"><div>';
     var c = chosen ? person(chosen) : null;
     if (c) h += '<div class="dhrb-chosen"><b>Chosen: ' + esc(c.name) + '</b><br><small>' + esc(details(c)) + '</small><br>' + hintsHtml(c)
@@ -69,7 +76,7 @@
     order.forEach(function (sec) {
       var rs = bySec[sec], n = 0, pn = 0, on = 0;
       rs.forEach(function (r) { r.places.forEach(function (p) { n++; if (H[key(sec, p.name)]) pn++; else if (other(sec, p.name)) on++; }); });
-      var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && hit(w); }); }));
+      var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && anyHit(w); }); }));
       h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b><span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
         + '<small>' + pn + ' placed · ' + on + ' other course · ' + (n - pn - on) + ' free</small><span style="flex:1"></span>' + (isOpen ? '▾' : '▸') + '</div>';
       if (isOpen) {
@@ -79,7 +86,7 @@
           var pl = r.places.map(function (p) {
             var who = H[key(sec, p.name)], o = other(sec, p.name);
             if (freeOnly && (who || o)) return '';
-            if (who) return '<div class="dhrb-pl taken' + (chosen === who.a_id ? ' on' : '') + (q && hit(who) ? ' hit' : '') + '" title="' + esc(details(who)) + '" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '" data-a="' + who.a_id + '"><span>' + esc(p.name) + '</span><span>' + esc(who.name) + '</span></div>';
+            if (who) return '<div class="dhrb-pl taken' + (who.some(function (x) { return chosen === x.a_id; }) ? ' on' : '') + (q && anyHit(who) ? ' hit' : '') + '" title="' + esc(who.map(details).join(' / ')) + '" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '" data-a="' + who[0].a_id + '"><span>' + esc(p.name) + '</span><span>' + esc(who.map(function (x) { return x.name; }).join(', ')) + (who.length > 1 ? ' <span class="dhr-t">' + who.length + ' people</span>' : '') + '</span></div>';
             if (o) return '<div class="dhrb-pl other" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>' + esc(o) + '</span></div>';
             return '<div class="dhrb-pl free" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>Free</span></div>';
           }).join('');
@@ -128,6 +135,7 @@
       if (who) {
         if (!chosen || chosen === who) { chosen = chosen === who ? null : who; render(); return; }
         var c = person(chosen);
+        if (c.section === sec && c.place === place) { chosen = null; render(); return; }
         if (c.place === '') { alert('This place is taken. Choose a free place for ' + c.name + ', or take the other person out of the room first.'); return; }
         save({op: 'swap', a_id: chosen, other: who});
         return;
