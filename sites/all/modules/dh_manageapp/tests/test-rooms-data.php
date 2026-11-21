@@ -38,5 +38,10 @@ t_in_txn(function () {
   t_make_applicant($past, array('a_gender' => 'M'), array('aa_section' => 'B', 'aa_acco' => '3'));
   $use = dh_rooms_places_in_use($cen);
   t_ok(isset($use['M|B|12A']) && !isset($use['M|B|3']), 'D12 places in use: an upcoming course counts, a past one does not');
+  t_make_applicant($B, array('a_gender' => 'M'), array('aa_section' => 'B', 'aa_acco' => ' 12B'));
+  $taken = dh_rooms_overlap_taken($A);
+  t_ok(isset($taken['M']['B']['12B']) && !isset($taken['M']['B'][' 12B']), 'D12b a saved place with a leading space is compared trimmed (overlap)');
+  $use = dh_rooms_places_in_use($cen);
+  t_ok(isset($use['M|B|12B']) && !isset($use['M| B|12B']) && !isset($use['M|B| 12B']), 'D12c a saved place with a leading space is compared trimmed (in use)');
 });
 t_done();

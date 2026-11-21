@@ -107,8 +107,8 @@ function dh_rooms_convert_centre($centre_id, $apply = FALSE, $uid = 0)
 		$plan[$g . '|' . $sec][] = array('name' => $p, 'places' => array($p), 'review' => 1);
 		$rep['review_added']++;
 	}
-	foreach (db_query("select distinct a.a_gender, aa.aa_section, aa.aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
-		join dh_course c on c.c_id = a.a_course where a.a_center = :c and a.a_attended = 1 and aa.aa_acco <> ''
+	foreach (db_query("select distinct a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
+		join dh_course c on c.c_id = a.a_course where a.a_center = :c and a.a_attended = 1 and TRIM(aa.aa_acco) <> ''
 		and c.c_end < curdate() and c.c_end >= curdate() - interval 365 day", array(':c' => $centre_id)) as $r)
 		if (!isset($known[strtoupper($r->a_gender) . '|' . $r->aa_section . '|' . strtolower($r->aa_acco)]))
 			$rep['past_only_missing']++;

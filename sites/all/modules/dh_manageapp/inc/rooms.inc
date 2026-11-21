@@ -98,8 +98,8 @@ function dh_rooms_overlap_taken($course_id)
 	if (!$others)
 		return $taken;
 	$labels = array();
-	foreach (db_query("select a.a_course, a.a_gender, aa.aa_section, aa.aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
-		where a.a_course in (:o) and a.a_attended = 1 and aa.aa_acco <> ''", array(':o' => $others)) as $r)
+	foreach (db_query("select a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
+		where a.a_course in (:o) and a.a_attended = 1 and TRIM(aa.aa_acco) <> ''", array(':o' => $others)) as $r)
 	{
 		if (!isset($labels[$r->a_course]))
 			$labels[$r->a_course] = dh_rooms_course_label($r->a_course);
@@ -113,8 +113,8 @@ function dh_rooms_places_in_use($centre_id)
 {
 	$used = array();
 	$labels = array();
-	foreach (db_query("select a.a_course, a.a_gender, aa.aa_section, aa.aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
-		join dh_course c on c.c_id = a.a_course where a.a_center = :c and a.a_attended = 1 and aa.aa_acco <> '' and c.c_end >= curdate() and c.c_deleted = 0
+	foreach (db_query("select a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
+		join dh_course c on c.c_id = a.a_course where a.a_center = :c and a.a_attended = 1 and TRIM(aa.aa_acco) <> '' and c.c_end >= curdate() and c.c_deleted = 0
 		order by c.c_start", array(':c' => (int) $centre_id)) as $r)
 	{
 		$k = strtoupper($r->a_gender) . '|' . $r->aa_section . '|' . $r->aa_acco;

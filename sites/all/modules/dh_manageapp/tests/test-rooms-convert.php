@@ -37,5 +37,13 @@ t_in_txn(function () {
     array('F-D-7:7A+7B+7C:unset:0', 'M-B-12:12A+12B:unset:0', 'M-B-13:13:unset:0', 'M-B-40:40:unset:1', 'M-C-1:1:unset:0', 'M-C-2:2:unset:0'), 'C4 rooms written, toilet Not set, the course-only place marked needs review');
   t_eq(db_query("select count(*) from dh_center_log where cl_center = :c and cl_area = 'rooms'", array(':c' => $cen))->fetchField(), 1, 'C5 one Change Log line');
   t_eq(dh_rooms_convert_centre($cen, TRUE)['skipped'], 'already has rooms', 'C6 a second run skips the centre');
+
+  $cenb = t_make_centre();
+  db_insert('dh_center_setting_acco')->fields(array('csa_center' => $cenb, 'csa_gender' => 'M', 'csa_section' => 'B', 'csa_room' => '12A, 12B', 'csa_deleted' => 0))->execute();
+  $upb = t_make_course(array('c_center' => $cenb, 'c_start' => date('Y-m-d', strtotime('+10 days')), 'c_end' => date('Y-m-d', strtotime('+20 days'))));
+  t_make_applicant($upb, array('a_gender' => 'M'), array('aa_section' => 'B', 'aa_acco' => ' 12A'));
+  $repb = dh_rooms_convert_centre($cenb, FALSE);
+  t_eq($repb['review_added'], 0, 'C1b a saved place with a leading space (" 12A") matches the list: nothing needs review');
+  t_eq($repb['rooms'], 1, 'C1b the list makes one room (12 with 12A and 12B)');
 });
 t_done();
