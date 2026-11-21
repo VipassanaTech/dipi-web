@@ -41,7 +41,7 @@
     var waiting = D.people.filter(function (p) { return p.gender === side && p.place === ''; });
     var h = '';
     if (D.finalized) h += '<div class="dhr-note">This course is finalized. The board is read-only.</div>';
-    if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + s + '">' + (s === 'M' ? 'Men' : 'Women') + '</button>'; }).join('') + '</div>';
+    if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + esc(s) + '">' + (s === 'M' ? 'Men' : 'Women') + '</button>'; }).join('') + '</div>';
     h += '<div class="dhrb-counts"><div class="dhrb-count">Places<b>' + total + '</b></div><div class="dhrb-count">Placed<b>' + placed + '</b></div>'
       + '<div class="dhrb-count">Other course<b>' + otherN + '</b></div><div class="dhrb-count">Free<b>' + (total - placed - otherN) + '</b></div></div>';
     h += '<div class="dhrb-main"><div>';
@@ -62,7 +62,7 @@
     });
     if (!list.length) h += '<p><small>' + (q ? 'Nobody found.' : (show === 'waiting' ? 'Everyone is placed.' : 'Nobody here yet.')) + '</small></p>';
     h += '</div><div><div class="dhr-bar"><select class="form-control dhrb-ft" style="width:auto"><option value="">All toilets</option>'
-      + Object.keys(D.toilets).map(function (k) { return '<option value="' + k + '"' + (k === fToilet ? ' selected' : '') + '>' + esc(D.toilets[k]) + '</option>'; }).join('')
+      + Object.keys(D.toilets).map(function (k) { return '<option value="' + esc(k) + '"' + (k === fToilet ? ' selected' : '') + '>' + esc(D.toilets[k]) + '</option>'; }).join('')
       + '</select><label style="font-weight:normal"><input type="checkbox" class="dhrb-free"' + (freeOnly ? ' checked' : '') + '> Free only</label></div>';
     var order = [], bySec = {};
     rooms.forEach(function (r) { if (!bySec[r.section]) { bySec[r.section] = []; order.push(r.section); } bySec[r.section].push(r); });
@@ -84,7 +84,7 @@
             return '<div class="dhrb-pl free" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>Free</span></div>';
           }).join('');
           if (!pl) return;
-          h += '<div class="dhrb-room"><b>' + esc(r.name) + '</b> <span class="dhr-t dhr-t-' + r.toilet + '">' + esc(D.toilets[r.toilet]) + '</span>' + pl + '</div>';
+          h += '<div class="dhrb-room"><b>' + esc(r.name) + '</b> <span class="dhr-t dhr-t-' + esc(r.toilet) + '">' + esc(D.toilets[r.toilet]) + '</span>' + pl + '</div>';
         });
         h += '</div>';
       }
@@ -108,13 +108,14 @@
     S = Drupal.settings.dhRoomBoard;
     $.getJSON(S.dataUrl).done(function (d) { D = d; render(); }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
     var doc = $(document);
-    doc.on('click', '#dh-rb-app .dhr-tab', function () { side = $(this).data('side'); chosen = null; render(); });
+    doc.on('click', '#dh-rb-app .dhr-tab[data-side]', function () { side = $(this).data('side'); chosen = null; render(); });
     doc.on('click', '.dhrb-sec', function () { var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
     doc.on('input', '.dhrb-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhrb-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
     doc.on('change', '.dhrb-ft', function () { fToilet = $(this).val(); render(); });
     doc.on('change', '.dhrb-free', function () { freeOnly = this.checked; render(); });
     doc.on('click', '.dhrb-card', function () {
       var a = $(this).data('a'), p = person(a);
+      if (!p) return;
       chosen = chosen === a ? null : a;
       if (chosen && p.place) open[side + '|' + p.section] = true;   // a placed person: open their section so the place shows
       render();
