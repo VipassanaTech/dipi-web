@@ -31,6 +31,7 @@ include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once(dirname(__FILE__)."/inc/rooms.inc");
 include_once(dirname(__FILE__)."/inc/rooms-convert.inc");
 include_once(dirname(__FILE__)."/inc/rooms-editor.inc");
+include_once(dirname(__FILE__)."/inc/room-board.inc");
 include_once(dirname(__FILE__)."/inc/workbench.inc");
 include_once dirname(__FILE__) . "/inc/center-dashboard.inc";
 include_once dirname(__FILE__) . "/inc/dana-s3.inc";
@@ -269,6 +270,21 @@ function dh_manageapp_menu()
 	       'page callback' => 'dh_rooms_save_page',
 	       'page arguments' => array(1),
 	       'access arguments' => array('access centre settings'),
+	       'type' => MENU_CALLBACK);
+	$items['room-board/%centre_id/%course_id'] = array( 'title' => t('Room Board'),
+	       'page callback' => 'dh_room_board_page',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+	$items['room-board/%centre_id/%course_id/data'] = array( 'title' => t('Room Board data'),
+	       'page callback' => 'dh_room_board_data_page',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+	$items['room-board/%centre_id/%course_id/save'] = array( 'title' => t('Room Board save'),
+	       'page callback' => 'dh_room_board_save_page',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
 
