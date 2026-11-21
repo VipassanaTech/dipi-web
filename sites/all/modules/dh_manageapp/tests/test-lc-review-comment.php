@@ -16,17 +16,21 @@ require_once DRUPAL_ROOT . "/includes/bootstrap.inc"; drupal_bootstrap(DRUPAL_BO
 if (stripos(db_query("select @@hostname")->fetchField(), "vri") !== FALSE) exit("refusing\n");
 $GLOBALS["conf"]["mailgun_key"] = "zzq-no-mail"; $GLOBALS["conf"]["mode_test_emails"] = "";
 $in = json_decode($argv[1], TRUE); $GLOBALS["user"] = user_load(1);
+if (!empty($in["anon"])) $GLOBALS["user"] = drupal_anonymous_user();
 if (!empty($in["name"])) $GLOBALS["user"]->name = $in["name"];
 if ($in["page"] == "search") { $_GET["q"] = "change-status/" . (int) $in["app"]; $_REQUEST = $_GET = array_merge(array("q" => $_GET["q"]), $in["req"]); _change_status(); }
 else { $_GET["q"] = "lc-review/app/" . (int) $in["app"]; $form = array(); $fs = array("input" => $in["req"]); dh_atportal_review_form_submit($form, $fs); }
 ');
-$made = array('centre' => 0, 'course' => array(), 'app' => array(), 'teacher' => array());
+$made = array('centre' => 0, 'course' => array(), 'app' => array(), 'teacher' => array(), 'lcadmin' => array());
 $max = function ($t, $col) { return (int) db_query("select coalesce(max($col), 0) from $t")->fetchField(); };
 $start = array('dh_tag' => $max('dh_tag', 't_id'), 'dh_log' => $max('dh_log', 'l_id'));
 $me = user_load(1)->name;
 try {
   $made['teacher'][] = db_insert('dh_teacher')->fields(array('t_code' => 'ZZQ9', 't_gender' => 'M', 't_f_name' => 'Zzq', 't_l_name' => 'Recoteacher', 't_status' => 'Active', 't_created_by' => 0, 't_updated_by' => 0))->execute();
   $made['teacher'][] = db_insert('dh_teacher')->fields(array('t_code' => 'ZZQ8', 't_gender' => 'F', 't_f_name' => 'Zzq', 't_l_name' => 'Areateacher', 't_status' => 'Active', 't_created_by' => 0, 't_updated_by' => 0))->execute();
+  // The AT Portal test user (uid 1, named "zzqlcadmin" below) is an "LC Admin for AT" for both made-up teachers.
+  foreach ($made['teacher'] as $tid)
+    $made['lcadmin'][] = db_insert('dh_lc_admin')->fields(array('la_user' => 1, 'la_teacher' => $tid, 'la_deleted' => 0, 'la_created_by' => 1, 'la_updated_by' => 1))->execute();
 
   // --- the helper
   $sh = (object) array('uid' => 0, 'name' => 'sushama.hp');
@@ -54,8 +58,8 @@ try {
     $made['app'][] = $id;
     return $id;
   };
-  $run = function ($page, $id, $req, $name = '') use ($runner) {
-    $out = (string) shell_exec('php7.4 ' . escapeshellarg($runner) . ' ' . escapeshellarg(json_encode(array('page' => $page, 'app' => $id, 'req' => $req, 'name' => $name))) . ' 2>/dev/null');
+  $run = function ($page, $id, $req, $name = '', $anon = FALSE) use ($runner) {
+    $out = (string) shell_exec('php7.4 ' . escapeshellarg($runner) . ' ' . escapeshellarg(json_encode(array('page' => $page, 'app' => $id, 'req' => $req, 'name' => $name, 'anon' => $anon))) . ' 2>/dev/null');
     $p = strpos($out, '{'); $j = $p === FALSE ? NULL : json_decode(substr($out, $p), TRUE);
     return is_array($j) ? ($j['status'] == 'OK' ? 'OK' : 'Failed: ' . $j['msg']) : 'no json: ' . substr($out, 0, 300);
   };
@@ -116,6 +120,19 @@ try {
   $run('portal', $p5, array('action' => 'ApproveOwnApplication', 'comments' => 'Own application', 'area_teacher' => ''), 'zzq9.m');
   $r = $lcrow($p5);
   t_eq(array($r['r'], $r['rc'], $r['ar'], $r['ac']), array('Approved', 'Own application', 'Approved', 'Self approved by AT.'), 'P7 portal: a teacher approving their own application: unchanged');
+
+  // --- the retired centre form: a user who is not a teacher of the application (nor an LC Admin for one) saves nothing
+  $q1 = $new('R-ATReview', 'Pending', 'Pending');
+  $before = $lcrow($q1);
+  $run('portal', $q1, array('owner_center_app' => '1', 'reco_teacher' => 'Zzq Recoteacher', 'reco_action' => 'Approved', 'reco_comments' => 'centre form',
+    'area_teacher' => 'Zzq Areateacher', 'area_action' => 'Approved', 'area_comments' => 'centre form'), 'zzqcentre', TRUE);
+  t_eq($lcrow($q1), $before, 'R1 portal: the old centre form\'s fields from a non-teacher: nothing saved');
+  $run('portal', $q1, array('action' => 'Approved', 'comments' => 'x', 'area_teacher' => 'Zzq Areateacher'), 'zzqcentre', TRUE);
+  t_eq($lcrow($q1), $before, 'R2 portal: a review from a non-teacher: nothing saved');
+  $q2 = $new('R-ATReview', 'Pending', 'Pending');
+  $run('portal', $q2, array('owner_center_app' => '1', 'reco_action' => 'Approved', 'reco_comments' => 'old field', 'action' => 'Approved', 'comments' => 'Ok', 'area_teacher' => 'Zzq Areateacher'), 'zzq9.m');
+  $r = $lcrow($q2);
+  t_eq(array($r['r'], $r['rc']), array('Approved', 'Ok'), 'R3 portal: a teacher\'s post that also carries the old centre fields: only the teacher\'s own review is used');
 }
 finally {
   if ($made['app']) {
@@ -131,6 +148,7 @@ finally {
   }
   foreach ($made['course'] as $c) { db_delete('dh_course')->condition('c_id', $c)->execute(); db_delete('dh_course_log')->condition('crl_course', $c)->execute(); }
   if ($made['centre']) db_delete('dh_center')->condition('c_id', $made['centre'])->execute();
+  if ($made['lcadmin']) db_delete('dh_lc_admin')->condition('la_id', $made['lcadmin'], 'IN')->execute();
   if ($made['teacher']) {
     db_delete('dh_teacher')->condition('t_id', $made['teacher'], 'IN')->execute();
     db_delete('dh_teacher_log')->condition('tl_teacher', $made['teacher'], 'IN')->execute();   // rows written by the dh_teacher triggers

@@ -19,7 +19,6 @@ function dh_atportal_permission()
 	$perms['access any profile'] = array('title' => t('Access Any AT Profile') );
 	$perms['add assistant teacher'] = array('title' => t('Add AT'));
 	$perms['at portal superadmin'] = array('title' => t('AT Portal Superadmin'));
-	$perms['approve applications'] = array('title' => t('Center LC Admin Approve/Reject Apps'));
 	$perms['approve applications on behalf of at'] = array('title' => t('Teacher LC Admin Approve/Reject Apps'));
     $perms['access area cluster'] = array('title' => t('Access Area Cluster') ) ;
 	$perms['at view courses'] = array('title' => t('AT View Own Courses (read-only)'),
@@ -653,7 +652,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
 	$at_name = db_query($q)->fetchField();
 
-	if (($at_name == '') && (!user_access('approve applications')) && (!user_access('approve applications on behalf of at')))
+	if (($at_name == '') && (!user_access('approve applications on behalf of at')))
 	{
 		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
 		return $form;
@@ -673,14 +672,9 @@ function dh_atportal_apps_form($form, &$form_state, $type)
 			break;
 		case 'all':
 			$diff_days = 365;
-			if (user_access('approve applications'))
-			{
-				$cntrs = dh_atportal_get_centers_assigned();
-				$where = 'a_center in (-1)';
-				if (count($cntrs) > 0)
-					$where = "a_center in (".implode(",", $cntrs).") ";
-			}
-			elseif (user_access('approve applications on behalf of at'))
+			// (The centre team's list of their centres' applications went with the retired centre review form, 21 Nov 2026:
+			// centre users decide from the DIPI search page.)
+			if (user_access('approve applications on behalf of at'))
 			{
 				$ats = dh_atportal_get_ats_assigned();
 				$where = 'a_center in (-1)';
@@ -727,7 +721,7 @@ function dh_atportal_apps_form($form, &$form_state, $type)
       $r['al_area_at_approved'] = "Cancelled";
     }
 
-		if (user_access('approve applications on behalf of at') || user_access("approve applications"))
+		if (user_access('approve applications on behalf of at'))
 		{
 			$rs['RStatus'] = $r['al_recommending']."<br>".dh_atportal_make_pretty($r['al_recommending_approved']);
 			$rs['AStatus'] = $r['al_area_at']."<br>".dh_atportal_make_pretty($r['al_area_at_approved']);
@@ -818,7 +812,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
 
 	$at_names = array();
-	if (user_access('approve applications on behalf of at') && (! user_access("approve applications")))
+	if (user_access('approve applications on behalf of at'))
 	{
 		$at_names = dh_atportal_get_ats_assigned();
 	}
@@ -949,10 +943,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	if (in_array($r['al_recommending'], $at_names) || in_array($r['al_area_at'], $at_names) )
 		$owner = True;
 
-	if ($reco_done && $area_done && (!user_access('approve applications'))  )
+	if ($reco_done && $area_done)
 		return $form;
 
-	if ( (!$owner) && (! user_access("approve applications")) )
+	// Only the teachers of this application (or an LC Admin for them) decide here. The centre team's form (role "LC
+	// Admin For Center") was retired on 21 Nov 2026: re-saving it undid confirmations and re-sent rejection letters;
+	// centre users decide from the DIPI search page (Change Status, with the "on behalf of" comment).
+	if (!$owner)
 		return $form;
 	//drupal_set_message("Rdone: ".$reco_done." ($at_name | ".$r['al_recommending'].")");
 
@@ -972,60 +969,20 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	$form['action'] = array('#title' => 'Action', '#type' => 'select',  '#options' => array( '' => 'Choose Action', 
 		'Approved' => 'Approve', 'Rejected' => 'Reject', 'Transfer to Registrar' => 'Transfer to Registrar'));
 
-	$owner_center_app = in_array($r['a_center'], dh_atportal_get_centers_assigned());
-	$form['owner_center_app'] = array(
-		'#type' => 'hidden',
-		'#value' => $owner_center_app,
-	);
-  //if (user_access('approve applications'))
-  	if (user_access('approve applications') && $owner_center_app )
+	if (!$reco_done)
 	{
-		$options_reco_t = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_status='Active' order by t_f_name, t_l_name")->fetchAllKeyed();
-		$options_reco_t[''] = 'Select Recommending AT';
-		$form['reco_teacher'] = array('#type' => 'select', '#options' => $options_reco_t,
-            '#title' => 'Select Recommending AT',
-            '#default_value' => isset($r['al_recommending'])?$r['al_recommending']:'',
-        );
-		$form['reco_action'] = $form['action'];
-		unset($form['action']);
-		unset($form['reco_action']['#options']['Transfer to Registrar']);
-		$form['reco_action']['#title'] = 'Recommending AT Action';
-        $form['reco_action']['#default_value'] = isset($r['al_recommending_approved'])?$r['al_recommending_approved']:'';
-		$form['reco_comments'] = array('#type' => 'textarea', '#rows' => 3,
-            '#title' => 'Recommending AT Comments',
-            '#default_value' => isset($r['al_recommending_comments'])?$r['al_recommending_comments']:'',
-        );
+		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title); // '#required' => True
 
-		$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t,
-            '#title' => $area_teacher_title,
-            '#default_value' => isset($r['al_area_at'])?$r['al_area_at']:'',
-        );
-		$form['area_action'] = $form['reco_action'];
-		$form['area_action']['#title'] = 'AreaT Action';
-        $form['area_action']['#default_value'] = isset($r['al_area_at_approved'])?$r['al_area_at_approved']:'';
-		$form['area_comments'] = array('#type' => 'textarea', '#rows' => 3,
-            '#title' => 'AreaT Comments',
-            '#default_value' => isset($r['al_area_at_comments'])?$r['al_area_at_comments']:'',
-        );
-
+        if($own_app && !$sixty_day_course)
+            $form['action']['#options']['ApproveOwnApplication'] = 'ApproveOwnApplication';
 	}
-	else
+	if ($reco_done)
 	{
-		if (!$reco_done)
-		{
-			$form['area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title); // '#required' => True
-
-            if($own_app && !$sixty_day_course)
-                $form['action']['#options']['ApproveOwnApplication'] = 'ApproveOwnApplication';
-		}
-		if ($reco_done)
-		{
-			unset($form['action']['#options']['Transfer to Registrar']);
-			$form['action']['#options']['Transfer'] = 'Transfer';
-			$form['transfer_area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title);
-		}
-		$form['comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
+		unset($form['action']['#options']['Transfer to Registrar']);
+		$form['action']['#options']['Transfer'] = 'Transfer';
+		$form['transfer_area_teacher'] = array('#type' => 'select', '#options' => $options_area_t, '#title' => $area_teacher_title);
 	}
+	$form['comments'] = array('#type' => 'textarea', '#rows' => 3, '#title' => 'Comments');
 
 
 	$form['sub'] = array('#type' => 'submit',  '#value' => 'Submit Review');
@@ -1072,14 +1029,13 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 			$(document).ready(function(){
 				$("#edit-area-teacher").select2();
                 $("#edit-transfer-area-teacher").select2();
-				$("#edit-reco-teacher").select2();
                 $("#edit-transfer-area-teacher").attr("required", false);
                 $(".form-item-transfer-area-teacher").hide();
-				$("#edit-action,#edit-reco-action,#edit-area-action").change(function(){
+				$("#edit-action").change(function(){
 					check_required($(this).attr("id").replace("-action", ""), $(this).val());
 				});
 				$("#edit-sub").click(function(){
-					if (($("#edit-action").val() == "Approved") || ($("#edit-reco-action").val() == "Approved"))
+					if ($("#edit-action").val() == "Approved")
 					{
 						if ($("#edit-area-teacher").val() == "")
 						{
@@ -1109,31 +1065,24 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 function dh_atportal_review_form_submit($form, &$form_state )
 {
 	global $user;
+	// Only a teacher of this application (Recommending AT / Area AT), or an LC Admin for them, may save a review. The
+	// form shows no Submit to anyone else; this also refuses a hand-made post (e.g. the retired centre form's fields).
+	$at_names = user_access('approve applications on behalf of at') ? dh_atportal_get_ats_assigned() : array();
+	$own_at = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = :n limit 1",
+		array(':n' => $user->name))->fetchField();
+	if ($own_at)
+		$at_names[] = $own_at;
+	$review_ats = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_applicant = :a", array(':a' => arg(2)))->fetchAssoc();
+	if (!$review_ats || !(in_array($review_ats['al_recommending'], $at_names) || in_array($review_ats['al_area_at'], $at_names)))
+	{
+		drupal_set_message(t('Not saved: only a teacher of this application can save its review.'), 'error');
+		return;
+	}
 	drupal_set_message(t('Application updated successfully'));
-	$input = $form_state['input'];	
+	$input = $form_state['input'];
     $update_ac_teacher_code = false;
 	$app = array();
-	if (user_access('approve applications') && $input['owner_center_app'])
-	{
-		if ($input['reco_teacher'] <> '')
-			$app['al_recommending'] = $input['reco_teacher'];
-		
-		if ($input['reco_action'] <> '')
-			$app['al_recommending_approved'] = $input['reco_action'];
-
-		if ($input['reco_comments'] <> '')
-			$app['al_recommending_comments'] = $input['reco_comments'];
-
-		if ($input['area_teacher'] <> '')
-			$app['al_area_at'] = $input['area_teacher'];
-
-		if ($input['area_action'] <> '')
-			$app['al_area_at_approved'] = $input['area_action'];
-
-		if ($input['area_comments'] <> '')
-			$app['al_area_at_comments'] = $input['area_comments'];
-	}
-	else
+	// (The centre team's branch went with the retired centre review form, 21 Nov 2026.)
 	{
 		// A decision made for another teacher (an "LC Admin for AT", or the other teacher of this application) is saved
 		// with who decided for whom in front of the comment; the teacher's own decision as typed (dh_lc_review_comment).
@@ -1225,7 +1174,7 @@ function dh_atportal_review_form_submit($form, &$form_state )
 		}
 	}
 
-	if (user_access('approve applications') || user_access('approve applications on behalf of at'))
+	if (user_access('approve applications on behalf of at'))
 		drupal_goto("lc-review/all");
 	else
 		drupal_goto("lc-review/me");
