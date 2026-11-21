@@ -457,7 +457,12 @@ function dh_get_alloted($centre_id, $course_id)
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
 	{
-		$alloted[strtoupper($r['a_gender'])][$r['aa_section']][] = $r['aa_acco']; 
+		// Saved places may start with a space; the room list is trimmed, so trim here too.
+		$sec = trim((string) $r['aa_section']);
+		$plc = trim((string) $r['aa_acco']);
+		if ($plc === '')
+			continue;
+		$alloted[strtoupper($r['a_gender'])][$sec][] = $plc;
 	}
 	return $alloted;
 }
@@ -785,19 +790,31 @@ function dh_zero_main()
 					        		ov_ok = $("#room-no").val();
 					        	}
 					        	$(".ui-dialog-buttonset").loading({zIndex: 9999});
-						        $.ajax({
-						          url: "/app-update-attended/" + cur_app_id ,
-						          method: "POST",
-						          data: {s: $("#section").val(), r: $("#room-no").val(), g: $("#group").val(),l: $("#laundry").val(), v: $("#valuable").val(),
+					        	var payload = {s: $("#section").val(), r: $("#room-no").val(), g: $("#group").val(),l: $("#laundry").val(), v: $("#valuable").val(),
 						          	c: $("#cell").val(), gc: $("#groupcell").val(), cf: $("#cell-fixed").is(":checked") , gcf: $("#groupcell-fixed").is(":checked") ,
 						          	dn: $("#dining").val(), gdn: $("#groupdining").val(), df: $("#dining-fixed").is(":checked") , gdf: $("#groupdining-fixed").is(":checked") , chow: $("#special-seating-chowky").is(":checked") ,
 						          	chai: $("#special-seating-chair").is(":checked"), back:  $("#special-seating-backrest").is(":checked"),
 						          	comment: $("#comments").val(), a: $("#attending").is(":checked"),
-						          	ov: (ov_ok && ov_ok === $("#room-no").val()) ? "1" : ""  },
+						          	ov: (ov_ok && ov_ok === $("#room-no").val()) ? "1" : ""  };
+					        	var send = function () { $.ajax({
+						          url: "/app-update-attended/" + cur_app_id ,
+						          method: "POST",
+						          data: payload,
 						          dataType: "json",
 						        })
 								.done(function( data ){
-						          	if ( ! data.status )
+						          	if ( data.overlap === true )
+						          	{
+						          		$(".ui-dialog-buttonset").loading("stop");
+						          		if (confirm("This place is used by another course at the same time. Use it anyway?"))
+						          		{
+						          			ov_ok = $("#room-no").val();
+						          			payload.ov = "1";
+						          			$(".ui-dialog-buttonset").loading({zIndex: 9999});
+						          			send();
+						          		}
+						          	}
+						          	else if ( ! data.status )
 						          	{
 						          		$(".validateTips").html(data.msg);
 							        	$(".ui-dialog-buttonset").loading("stop");
@@ -817,7 +834,8 @@ function dh_zero_main()
 						        	$(".ui-dialog-buttonset").loading("stop");
 									alert("Failed!!" + textStatus)
 
-								});
+								}); };
+					        	send();
 				        	},
 				        	Cancel: function() {
 				          		$(this).dialog( "close" );
@@ -835,7 +853,7 @@ function dh_zero_main()
 				    	var temp;
 				    	var sec = "";
 				    	Object.keys(acco[cur_gender] || {}).forEach(function (sn) { if (data[8].indexOf(sn + "-") === 0 && sn.length > sec.length) sec = sn; });
-				    	if (sec !== "") def_room = data[8].substring(sec.length + 1);
+				    	if (sec !== "") def_room = $.trim(data[8].substring(sec.length + 1));
 				    	$("#section").val(sec).trigger("change");
 				    	$("#laundry").val(data[9]);
 				    	$("#valuable").val(data[10]);
@@ -897,7 +915,7 @@ function dh_zero_main()
 	';
 	drupal_add_js($js, 'inline');
 	drupal_add_css(drupal_get_path('module', 'dh_manageapp').'/css/manageapp.css');
-	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}#dialog-form .zd-row>.zd-group{flex:1 1 200px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .zd-field .select2-container{min-width:120px}#dialog-form .zd-field .select2-container{min-width:160px}#dialog-form .zd-valrow{display:flex;align-items:center;gap:8px}#dialog-form .zd-valrow .select2-container{flex:1 1 auto}#dialog-form .zd-fix{display:inline-flex;align-items:center;gap:3px;font-weight:400;font-size:12px;white-space:nowrap;margin:0}#dialog-form .zd-fix input{width:16px;height:16px;margin:0}#dialog-form .zd-field.zd-sep{margin-left:18px;padding-left:18px;border-left:1px solid #ddd}.zd-dialog .select2-dropdown{z-index:10001}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-row{flex-direction:column}}', array('type' => 'inline'));
+	drupal_add_css('#dialog-form .zd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:16px;font-weight:600;margin-bottom:8px}#dialog-form .zd-attend{font-size:14px}#dialog-form .zd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}#dialog-form .zd-row>.zd-group{flex:1 1 200px}#dialog-form .zd-group{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;background:#fafafa}#dialog-form .zd-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#777;margin-bottom:6px}#dialog-form .zd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}#dialog-form .zd-field{display:flex;flex-direction:column;gap:2px}#dialog-form .zd-field label{font-size:12px;font-weight:600;color:#444;margin:0}#dialog-form .zd-field input[type=text],#dialog-form .zd-field select{padding:5px 7px;border:1px solid #bbb;border-radius:4px;min-width:78px}#dialog-form .zd-field.zd-check{align-items:center}#dialog-form .zd-field.zd-check input{width:18px;height:18px;margin-top:4px}#dialog-form .zd-radios{gap:16px}#dialog-form .zd-radios label{font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:0}#dialog-form .zd-comments{margin-top:10px}#dialog-form .zd-comments textarea{width:100%;box-sizing:border-box}#dialog-form .zd-field .select2-container{min-width:160px}#dialog-form .zd-valrow{display:flex;align-items:center;gap:8px}#dialog-form .zd-valrow .select2-container{flex:1 1 auto}#dialog-form .zd-fix{display:inline-flex;align-items:center;gap:3px;font-weight:400;font-size:12px;white-space:nowrap;margin:0}#dialog-form .zd-fix input{width:16px;height:16px;margin:0}#dialog-form .zd-field.zd-sep{margin-left:18px;padding-left:18px;border-left:1px solid #ddd}.zd-dialog .select2-dropdown{z-index:10001}#dialog-form .validateTips{color:#a00;margin:4px 0}.zd-dialog{max-width:96vw !important}.zd-dialog .ui-dialog-content{max-height:72vh;overflow:auto}@media(max-width:640px){#dialog-form .zd-row{flex-direction:column}}', array('type' => 'inline'));
 
 	$out .= '<div id="dialog-div"></div><div id="attended-list">'.dh_manageapp_attended($centre_id, $course_id).'</div>';
 

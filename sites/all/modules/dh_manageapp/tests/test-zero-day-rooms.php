@@ -39,6 +39,8 @@ try {
   t_eq($save($x, 'B', '12A'), 'ok', 'Z3 saving again with the same place does not ask again');
   t_eq($save($new(), 'B', '12B'), 'ok', 'Z4 a free place is saved as before');
   t_eq($save($new(), 'B', '14A'), 'Room has already been alloted', 'Z5 a place saved with a leading space (" 14A") still counts as taken');
+  $al = dh_get_alloted($cen, $A);
+  t_ok(isset($al['M']['B']) && in_array('14A', $al['M']['B'], TRUE) && !in_array(' 14A', $al['M']['B'], TRUE), 'Z7 dh_get_alloted lists the place trimmed (14A, not " 14A")');
 }
 finally {
   if ($made['app']) {
