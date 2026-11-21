@@ -5,13 +5,22 @@
 .dhr-note { background: #faeeda; color: #633806; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
 .dhr-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
 .dhr-bar input[type=text] { flex: 1; min-width: 180px; }
-.dhr-sec { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
-.dhr-sec-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px; cursor: pointer; background: #fafafa; flex-wrap: wrap; }
+/* No overflow:hidden on a section: it would stop its bar from staying in view (sticky). */
+.dhr-sec { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; }
+.dhr-sec-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px; cursor: pointer; background: #fafafa; flex-wrap: wrap; border-radius: 7px; }
+.dhr-sec.open > .dhr-sec-head { border-radius: 7px 7px 0 0; }
+.dhr-secbar { position: sticky; top: var(--dhr-top, 0px); z-index: 20; background: #fff; padding: 8px 10px 2px; border-bottom: 1px solid #eee; box-shadow: 0 2px 4px rgba(0, 0, 0, .06); }
+.dhr-secbar .dhr-bar { margin-bottom: 6px; }
+.dhr-secpad { padding: 8px 10px 0; }
+.dhr-secbar .dhr-formbox { max-height: 60vh; overflow: auto; }
+.dhr-picked { background: #e7f1fb; border-radius: 6px; padding: 6px 8px; }
+.dhr-hint { color: #666; display: block; margin-bottom: 6px; }
 .dhr-sec-head b { min-width: 90px; }
 .dhr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; padding: 8px 10px; }
 .dhr-tile { border: 1px solid #ddd; border-radius: 6px; padding: 6px 8px; background: #fff; cursor: pointer; font-size: 13px; }
 .dhr-tile.sel { border: 2px solid #378add; }
 .dhr-tile.rev { border-color: #ef9f27; }
+.dhr-tile.sel, .dhr-tile.sel.rev { border: 2px solid #378add; background: #f3f8fd; }
 .dhr-chip { display: inline-block; font-size: 12px; padding: 0 5px; border: 1px solid #ddd; border-radius: 4px; margin: 2px 2px 0 0; }
 .dhr-t { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-top: 4px; }
 .dhr-t-indian { background: #eaf3de; color: #27500a; } .dhr-t-western { background: #e6f1fb; color: #0c447c; }
