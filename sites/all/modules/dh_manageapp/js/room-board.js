@@ -139,38 +139,8 @@
     $('#dh-rb-app').html(h);
   }
 
-  // Print every section of this side (with the filters in use): one table per section, Room · Place · Who · Toilet.
-  function printBoard() {
-    var H = holders(), g = bySection(D.rooms.filter(onSide)), body = '';
-    g.order.forEach(function (sec) {
-      var rows = '';
-      g.o[sec].forEach(function (r) {
-        if (fToilet && r.toilet !== fToilet) return;
-        var first = true;
-        r.places.forEach(function (p) {
-          var st = state(H, sec, p.name), w = H[key(sec, p.name)];
-          if (fPlace !== 'all' && st !== fPlace) return;
-          var who = w ? w.map(label).join(', ') : (st === 'placed' ? otherSide(sec, p.name) + ' (this course)' : (st === 'other' ? otherCourse(sec, p.name) : 'Free'));
-          rows += '<tr class="' + (first ? 'rs' : '') + (st === 'free' ? ' free' : '') + '"><td>' + (first ? esc(r.name) : '') + '</td><td>' + esc(p.name) + '</td><td>' + esc(who) + '</td><td>' + (first ? esc(D.toilets[r.toilet]) : '') + '</td></tr>';
-          first = false;
-        });
-      });
-      if (rows) body += '<h2>Section ' + esc(sec) + (g.o[sec][0].gender === 'B' ? ' (Men + Women)' : '') + '</h2><table><thead><tr><th>Room</th><th>Place</th><th>Who</th><th>Toilet</th></tr></thead><tbody>' + rows + '</tbody></table>';
-    });
-    var fp = FILTERS.filter(function (f) { return f[0] === fPlace; })[0];
-    var note = [fPlace !== 'all' ? 'Only: ' + fp[1] : '', fToilet ? 'Toilet: ' + D.toilets[fToilet] : ''].filter(Boolean).join(' · ');
-    window.dhRoomsCommon.printDoc('Room Board - ' + D.course + ' - ' + (side === 'M' ? 'Men' : 'Women'), note, body);
-  }
-
-  function save(payload) {
-    if (D.finalized) return;
-    $.post(S.saveUrl, $.extend({token: S.token}, payload), null, 'json').done(function (r) {
-      if (r.confirm) { if (confirm(r.msg)) save($.extend(payload, {confirm: 1})); return; }
-      if (r.data) D = r.data;
-      if (!r.ok) alert(r.msg); else chosen = null;
-      render();
-    }).fail(function () { alert('Could not save. Please check the connection and try again.'); });
-  }
+  // Print every section of this side, with the filters in use (rooms-common.js boardPrint).
+  function printBoard() { window.dhRoomsCommon.boardPrint(D, side, fPlace, fToilet); }
 
   function setTop() { return window.dhRoomsCommon.fixedTop('dh-rb-app'); }
 

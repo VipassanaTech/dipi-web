@@ -45,7 +45,9 @@
     h += '<div class="dhr-bar"><input type="text" class="form-control dhr-q" placeholder="Find room or place, e.g. 112B" value="' + esc(q) + '">'
       + '<select class="form-control dhr-ft" style="width:auto">' + toiletOptions(fToilet, true) + '</select>'
       + '<button class="btn btn-default btn-sm dhr-openall">Open all</button><button class="btn btn-default btn-sm dhr-closeall">Close all</button>'
-      + '<button class="btn btn-default btn-sm dhr-print">Print</button></div>';
+      // Print: the room list alone, or with the students of a running / coming course (S.courses; needs Zero Day access).
+      + '<select class="form-control dhr-print" style="width:auto"><option value="">Print…</option><option value="rooms">Rooms only</option>'
+      + (S.courses || []).map(function (c) { return '<option value="' + c.id + '">With students: ' + esc(c.label) + '</option>'; }).join('') + '</select></div>';
     // The top is for the whole centre (a new section); a section's own buttons are inside it.
     h += '<div class="dhr-bar"><button class="btn btn-default dhr-add">Add room</button><button class="btn btn-default dhr-many">Add many rooms</button>'
       + '<small class="dhr-hint">Open a section to change its rooms.</small></div><div class="dhr-formbox" data-sec=""></div>';
@@ -141,10 +143,10 @@
     var g = bySection(sideRooms()), body = '';
     g.order.forEach(function (sec) {
       var rows = g.o[sec].filter(matches).map(function (r) {
-        return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.places.map(function (p) { return p.name; }).join(', ')) + '</td><td>' + esc(S.toilets[r.toilet] || r.toilet) + '</td></tr>';
+        return '<tr class="rs"><td>' + esc(r.name) + '</td><td>' + esc(r.places.map(function (p) { return p.name; }).join(', ')) + '</td><td>' + esc(S.toilets[r.toilet] || r.toilet) + '</td></tr>';
       }).join('');
-      if (rows) body += '<h2>Section ' + esc(sec) + (g.o[sec][0].gender === 'B' ? ' (Men + Women)' : '') + ' · ' + n(g.o[sec].length, 'room') + ', ' + n(places(g.o[sec]), 'place') + '</h2>'
-        + '<table><thead><tr><th>Room</th><th>Places</th><th>Toilet</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      if (rows) body += '<h2>Section ' + esc(sec) + (g.o[sec][0].gender === 'B' ? ' (Men + Women)' : '') + ' · ' + n(g.o[sec].length, 'room') + ', ' + n(places(g.o[sec]), 'bed') + '</h2>'
+        + '<table><thead><tr><th>Room</th><th>Beds</th><th>Toilet</th></tr></thead><tbody>' + rows + '</tbody></table>';
     });
     var note = [q ? 'Search: ' + q : '', fToilet ? 'Toilet: ' + S.toilets[fToilet] : '', onlyReview ? 'Only rooms that need a look' : ''].filter(Boolean).join(' · ');
     window.dhRoomsCommon.printDoc('Rooms - ' + $.trim($('.dh-rooms h2').first().text()) + ' - ' + (side === 'M' ? 'Men' : 'Women'), note, body);
@@ -176,7 +178,21 @@
     app.on('change', '.dhr-ft', function () { fToilet = $(this).val(); render(); });
     app.on('click', '.dhr-openall', function () { bySection(sideRooms()).order.forEach(function (sec) { open[side + '|' + sec] = true; }); render(); });
     app.on('click', '.dhr-closeall', function () { Object.keys(open).forEach(function (k) { if (k.indexOf(side + '|') === 0) open[k] = false; }); picked = {}; pickedSec = ''; render(); });
-    app.on('click', '.dhr-print', function () { printRooms(); });
+    app.on('change', '.dhr-print', function () {
+      var v = $(this).val();
+      $(this).val('');
+      if (v === 'rooms') { printRooms(); return; }
+      var c = (S.courses || []).filter(function (x) { return String(x.id) === v; })[0];
+      if (!c) return;
+      var w = window.dhRoomsCommon.printWindow();   // opened now, filled when the course data arrives
+      if (!w) return;
+      $.getJSON(c.dataUrl).done(function (d) {
+        if (!d.ok) { w.close(); alert(d.msg); return; }
+        var s = d.sides.indexOf(side) > -1 ? side : d.sides[0];
+        if (!s) { w.close(); alert('You do not have access to the students of this course.'); return; }
+        window.dhRoomsCommon.boardPrint(d, s, 'all', '', w);
+      }).fail(function () { w.close(); alert('Could not load the students. Please try again.'); });
+    });
     app.on('click', '.dhr-sec-head', function (e) {
       if ($(e.target).hasClass('dhr-ren')) return;
       var sec = String($(this).attr('data-sec')), k = side + '|' + sec;

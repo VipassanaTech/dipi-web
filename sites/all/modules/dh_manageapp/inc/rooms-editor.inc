@@ -481,8 +481,14 @@ function dh_rooms_page($centre_id)
 	drupal_set_title('Rooms');
 	$path = drupal_get_path('module', 'dh_manageapp');
 	drupal_add_css($path . '/css/rooms.css');
+	// Courses whose students can be printed with the rooms: running, starting within 15 days or ended up to 3 days ago.
+	$courses = array();
+	if (user_access('access zero day'))
+		foreach (db_query("select c_id from dh_course where c_center = :c and c_deleted = 0 and coalesce(c_cancelled, 0) = 0
+			and c_end >= curdate() - interval 3 day and c_start <= curdate() + interval 15 day order by c_start, c_id", array(':c' => (int) $centre_id))->fetchCol() as $cid)
+			$courses[] = array('id' => (int) $cid, 'label' => dh_rooms_course_label($cid), 'dataUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $cid . '/data'));
 	drupal_add_js(array('dhRooms' => array('centre' => (int) $centre_id, 'dataUrl' => url('centre/' . (int) $centre_id . '/rooms/data'),
-		'saveUrl' => url('centre/' . (int) $centre_id . '/rooms/save'), 'token' => drupal_get_token('dh-rooms'), 'toilets' => dh_room_toilet_types())), 'setting');
+		'saveUrl' => url('centre/' . (int) $centre_id . '/rooms/save'), 'token' => drupal_get_token('dh-rooms'), 'toilets' => dh_room_toilet_types(), 'courses' => $courses)), 'setting');
 	drupal_add_js($path . '/js/rooms-common.js');
 	drupal_add_js($path . '/js/rooms-editor.js');
 	return '<div class="dh-rooms"><p>' . l('Back to Centre settings', 'centre/' . (int) $centre_id . '/edit') . ' | ' . l('Back to Dashboard', 'centre/' . (int) $centre_id) . '</p>'
