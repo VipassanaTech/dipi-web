@@ -4,8 +4,8 @@
   'use strict';
   var S, rooms = [], inUse = {}, side = 'M', open = {}, picked = {}, q = '', fToilet = '', onlyReview = false;
 
-  function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html(); }
-  function badge(t) { return '<span class="dhr-t dhr-t-' + t + '">' + esc(S.toilets[t] || t) + '</span>'; }
+  function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function badge(t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t] || t) + '</span>'; }
   function needsLook(r) { return r.review || r.toilet === 'unset'; }
   function sideRooms() { return rooms.filter(function (r) { return r.gender === side; }); }
   function places(list) { return list.reduce(function (n, r) { return n + r.places.length; }, 0); }
@@ -23,7 +23,7 @@
   }
   function toiletOptions(sel, withAll) {
     var h = withAll ? '<option value="">All toilets</option>' : '';
-    $.each(S.toilets, function (k, v) { h += '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + esc(v) + '</option>'; });
+    $.each(S.toilets, function (k, v) { h += '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(v) + '</option>'; });
     return h;
   }
 
@@ -49,7 +49,7 @@
       if ((q || fToilet || onlyReview) && !shown.length) return;
       var counts = {};
       rs.forEach(function (r) { counts[r.toilet] = (counts[r.toilet] || 0) + 1; });
-      var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + t + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
+      var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
       h += '<div class="dhr-sec"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b><span>' + rs.length + ' rooms · ' + places(rs) + ' places</span>'
         + sum + '<span style="flex:1"></span><a href="#" class="dhr-ren" data-sec="' + esc(sec) + '">Rename</a> <span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
@@ -78,7 +78,7 @@
   }
 
   function roomForm(r) {
-    var sec = r ? r.section : (Object.keys(open).filter(function (k) { return k.indexOf(side + '|') === 0; }).map(function (k) { return k.slice(2); })[0] || '');
+    var sec = r ? r.section : (Object.keys(open).filter(function (k) { return open[k] && k.indexOf(side + '|') === 0; }).map(function (k) { return k.slice(2); })[0] || '');
     var h = '<div class="dhr-form"><b>' + (r ? 'Edit room ' + esc(r.name) : 'Add a room') + '</b>'
       + '<label>Section<input type="text" class="form-control f-sec" maxlength="10" value="' + esc(sec) + '"></label>'
       + '<label>Room name<input type="text" class="form-control f-name" maxlength="40" value="' + esc(r ? r.name : '') + '"></label>'
@@ -118,17 +118,17 @@
     app.on('click', '.dhr-only', function (e) { e.preventDefault(); onlyReview = !onlyReview; render(); });
     app.on('input', '.dhr-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhr-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
     app.on('change', '.dhr-ft', function () { fToilet = $(this).val(); render(); });
-    app.on('click', '.dhr-sec-head', function (e) { if ($(e.target).hasClass('dhr-ren')) return; var k = side + '|' + $(this).data('sec'); open[k] = !open[k]; render(); });
+    app.on('click', '.dhr-sec-head', function (e) { if ($(e.target).hasClass('dhr-ren')) return; var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
     app.on('click', '.dhr-tile', function () { var id = $(this).data('id'); if (picked[id]) delete picked[id]; else picked[id] = 1; render(); });
     app.on('click', '.dhr-none', function () { picked = {}; render(); });
     app.on('click', '.dhr-add', function () { roomForm(null); });
     app.on('click', '.dhr-edit', function () { roomForm(roomById(pickedIds()[0])); });
     app.on('click', '.dhr-many', function () { manyForm(''); });
-    app.on('click', '.dhr-manyhere', function () { manyForm($(this).data('sec')); });
+    app.on('click', '.dhr-manyhere', function () { manyForm($(this).attr('data-sec')); });
     app.on('click', '.f-cancel', function () { $('.dhr-formbox').empty(); });
     app.on('change', '.dhr-set', function () { if ($(this).val()) post('set_toilet', {ids: pickedIds(), toilet: $(this).val()}); });
     app.on('change', '.dhr-setsec', function () {
-      var sec = $(this).data('sec'), t = $(this).val();
+      var sec = $(this).attr('data-sec'), t = $(this).val();
       if (!t) return;
       var ids = sideRooms().filter(function (r) { return r.section === String(sec); }).map(function (r) { return r.id; });
       if (confirm('Set toilet "' + S.toilets[t] + '" for all ' + ids.length + ' rooms of section ' + sec + '?')) post('set_toilet', {ids: ids, toilet: t}); else render();
@@ -139,7 +139,7 @@
     app.on('click', '.dhr-ok', function () { post('clear_review', {ids: pickedIds()}); });
     app.on('click', '.dhr-ren', function (e) {
       e.preventDefault();
-      var from = String($(this).data('sec')), to = prompt('New name for section ' + from + ':', from);
+      var from = String($(this).attr('data-sec')), to = prompt('New name for section ' + from + ':', from);
       if (to && $.trim(to) !== from) post('rename_section', {from: from, to: $.trim(to)});
     });
   });
