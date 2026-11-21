@@ -1355,6 +1355,77 @@ Thanks,
 	}
 }
 
+/* The daily "waiting for a new Recommending AT" reminder to each centre (21 Nov 2026): long-course applications back at
+   the centre without the recommending AT's approval (R-ATTransfer) in courses not yet started. 601 such applications
+   were never handled since 2025, and nobody was told. One message per centre, to its LC admin email, else the centre's
+   reply-to address (as the finalize reminder). Returns array of array('centre', 'to', 'subject', 'text', 'count'); sends
+   nothing (reminder_lc_transfer() does). */
+function dh_lc_transfer_reminders()
+{
+	$rows = db_query("select a.a_id, a.a_center, CONCAT_WS(' ', NULLIF(TRIM(a.a_f_name), ''), NULLIF(TRIM(a.a_m_name), ''), NULLIF(TRIM(a.a_l_name), '')) as name,
+			c.c_name, c.c_start, al.al_recommending,
+			(select max(l.l_tstamp) from dh_log l where l.l_module = 'Applicant' and l.l_identifier = a.a_id and l.l_event = 'Status Change' and l.l_msg like '% To R-ATTransfer') as since
+		from dh_applicant a join dh_course c on c.c_id = a.a_course left join dh_applicant_lc al on al.al_applicant = a.a_id
+		where a.a_status = 'R-ATTransfer' and c.c_deleted = 0 and c.c_cancelled = 0 and c.c_start >= :today and a.a_center > 0
+		order by a.a_center, c.c_start, since", array(':today' => date('Y-m-d')))->fetchAll(PDO::FETCH_ASSOC);
+	$by = array();
+	foreach ($rows as $r)
+		$by[$r['a_center']][] = $r;
+	$out = array();
+	foreach ($by as $centre => $apps)
+	{
+		$to = trim((string) db_query("select c_lc_admin_email from dh_center where c_id = :c", array(':c' => $centre))->fetchField());
+		if ($to === '')
+			$to = trim((string) db_query("select cs_email_reply_to from dh_center_setting where cs_center = :c", array(':c' => $centre))->fetchField());
+		if ($to === '')
+			continue;
+		$lines = array();
+		foreach ($apps as $r)
+		{
+			$days = $r['since'] ? (int) floor((time() - strtotime($r['since'])) / 86400) : NULL;
+			$lines[] = '- ' . $r['name'] . ' (application ' . $r['a_id'] . '), ' . $r['c_name']
+				. (trim((string) $r['al_recommending']) !== '' ? ': returned from ' . trim($r['al_recommending']) : '')
+				. ($days !== NULL ? ', waiting ' . $days . ($days == 1 ? ' day' : ' days') : '');
+		}
+		$n = count($apps);
+		$text = "Dear Registrar,\n\n"
+			. ($n == 1 ? 'This long course application was' : "These $n long course applications were")
+			. " returned to the centre without approval from the Recommending AT and " . ($n == 1 ? 'is' : 'are') . " waiting for you (status R-ATTransfer):\n\n"
+			. implode("\n", $lines) . "\n\n"
+			. "Please edit each application to choose another Recommending AT and set it back to R-AT Review, or cancel it.\n"
+			. "The student has been told and can also choose another teacher with the link in their letter.\n\n"
+			. "Thanks,\n- DIPI Automation.\n";
+		$out[] = array('centre' => (int) $centre, 'to' => $to, 'subject' => 'DIPI: long course applications waiting for a new Recommending AT (' . $n . ')',
+			'text' => $text, 'count' => $n);
+	}
+	return $out;
+}
+
+/* Sends dh_lc_transfer_reminders() (action.php 0 LCTransferReminder, daily). Test mode: to the test address, as the
+   finalize reminder. */
+function reminder_lc_transfer()
+{
+	$msgs = dh_lc_transfer_reminders();
+	if (!$msgs)
+		return;
+	$mg = Mailgun::create(variable_get('mailgun_key', ''));
+	$test_mode = variable_get('mode_test', '0');
+	$mailgun_domain = get_mailgun_domain("DIPI Automation <noreply@vridhamma.org>");
+	foreach ($msgs as $m)
+	{
+		$options = array('from' => 'DIPI Automation <noreply@vridhamma.org>', 'to' => $test_mode ? variable_get('mode_test_emails', '') : $m['to'],
+			'subject' => $m['subject'], 'text' => $m['text'], 'v:test-mode' => $test_mode);
+		try
+		{
+			$mg->messages()->send($mailgun_domain, $options);
+		}
+		catch (Exception $e)
+		{
+			watchdog('LCTransferReminder', 'Centre @c: @m', array('@c' => $m['centre'], '@m' => $e->getMessage()), WATCHDOG_ERROR);
+		}
+	}
+}
+
 function vri_reminder_finalize()
 {
 
