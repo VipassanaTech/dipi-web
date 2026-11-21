@@ -865,8 +865,10 @@ function _ajax_get_acco_options($section, $gender, $centre, $course)
 			}
 		}
 	}
-	// Places already given in this course (compared trimmed: old saves can start with a space).
-	$result = db_query("select trim(aa_acco) as acco from dh_applicant_attended left join dh_applicant on aa_applicant = a_id where a_course = :course and a_gender = :g and trim(aa_section) = :s and trim(aa_acco) <> ''", array(':course' => $course, ':g' => $gender, ':s' => trim($section)));
+	// Places already given in this course (compared trimmed: old saves can start with a space). In a shared
+	// (men + women) section a place is taken by anyone, so the side is not compared there.
+	$shared = dh_rooms_is_shared(dh_rooms_shared_sections($centre), $section) ? 1 : 0;
+	$result = db_query("select trim(aa_acco) as acco from dh_applicant_attended left join dh_applicant on aa_applicant = a_id where a_course = :course and (:shared = 1 or a_gender = :g) and trim(aa_section) = :s and trim(aa_acco) <> ''", array(':course' => $course, ':shared' => $shared, ':g' => $gender, ':s' => trim($section)));
 	while($r = $result->fetchAssoc())
 		if ( isset($rooms[$r['acco']]) )
 			unset($rooms[$r['acco']]);

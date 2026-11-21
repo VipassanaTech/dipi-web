@@ -453,6 +453,8 @@ function dh_get_acco($centre_id, $course_id)
 function dh_get_alloted($centre_id, $course_id)
 {
 	$alloted['M'] = $alloted['F'] = array();
+	// A place in a shared (men + women) section is taken for both sides, whoever holds it.
+	$shared = dh_rooms_shared_sections($centre_id);
 	$q = "select a_gender, aa_section, aa_acco from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and a_attended=1";
 	$result = db_query($q);
 	while($r = $result->fetchAssoc())
@@ -462,7 +464,8 @@ function dh_get_alloted($centre_id, $course_id)
 		$plc = trim((string) $r['aa_acco']);
 		if ($plc === '')
 			continue;
-		$alloted[strtoupper($r['a_gender'])][$sec][] = $plc;
+		foreach (dh_rooms_is_shared($shared, $sec) ? array('M', 'F') : array(strtoupper($r['a_gender'])) as $g)
+			$alloted[$g][$sec][] = $plc;
 	}
 	return $alloted;
 }
@@ -576,6 +579,7 @@ function dh_zero_main()
 			var room_info = '.json_encode(dh_rooms_place_index($centre_id)).';
 			var room_overlap = '.json_encode(dh_rooms_overlap_taken($course_id)).';
 			var room_toilets = '.json_encode(dh_room_toilet_types()).';
+			var room_shared = '.json_encode(array_values(dh_rooms_shared_sections($centre_id))).';
 			var ov_ok = "";
 			var CELL_OPTS = '.$cellopts_json.';
 			var DINING_OPTS = '.$diningopts_json.';
@@ -669,7 +673,7 @@ function dh_zero_main()
 				$.each(params.sections, function(key, item) {
 					var ovs = (room_overlap[cur_gender] && room_overlap[cur_gender][key]) || {};
 					var n = get_rooms(key, cur_gender).filter(function (p) { return !ovs[p]; }).length;
-					s.append(new Option(key+" ("+n+" free)", key));
+					s.append(new Option(key+" ("+n+" free"+(room_shared.indexOf(key) > -1 ? ", men + women" : "")+")", key));
 				});
 				s = s.html();
 				var out = "" +
@@ -804,13 +808,13 @@ function dh_zero_main()
 						          dataType: "json",
 						        })
 								.done(function( data ){
-						          	if ( data.overlap === true )
+						          	if ( data.overlap === true || data.mixed === true )
 						          	{
 						          		$(".ui-dialog-buttonset").loading("stop");
-						          		if (confirm("This place is used by another course at the same time. Use it anyway?"))
+						          		if (confirm(data.mixed === true ? data.msg : "This place is used by another course at the same time. Use it anyway?"))
 						          		{
-						          			ov_ok = $("#room-no").val();
-						          			payload.ov = "1";
+						          			if (data.overlap === true) { ov_ok = $("#room-no").val(); payload.ov = "1"; }
+						          			if (data.mixed === true) payload.mx = "1";
 						          			$(".ui-dialog-buttonset").loading({zIndex: 9999});
 						          			send();
 						          		}

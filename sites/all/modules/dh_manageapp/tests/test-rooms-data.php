@@ -15,8 +15,8 @@ t_in_txn(function () {
   $rF = t_make_room($cen, 'F', 'C', '7', array('7A', '7B', '7C'), 'both');
   t_eq(dh_rooms_centre_has_rooms($cen), TRUE, 'D3 now it has rooms');
   $all = dh_rooms_load($cen);
-  t_eq(array_map(function ($r) { return $r['gender'] . '-' . $r['section'] . '-' . $r['name']; }, $all), array('F-C-7', 'M-A-1', 'M-B-3', 'M-B-12'), 'D4 order: gender, section, then natural room name');
-  t_eq($all[3]['places'][1]['name'], '12B', 'D5 places in their order');
+  t_eq(array_map(function ($r) { return $r['gender'] . '-' . $r['section'] . '-' . $r['name']; }, $all), array('M-A-1', 'M-B-3', 'M-B-12', 'F-C-7'), 'D4 order: section, then side, then natural room name');
+  t_eq($all[2]['places'][1]['name'], '12B', 'D5 places in their order');
   t_eq(count(dh_rooms_load($cen, 'F')), 1, 'D6 one side only');
   t_eq(dh_rooms_acco($cen), array('M' => array('A' => array('1'), 'B' => array('3', '12A', '12B')), 'F' => array('C' => array('7A', '7B', '7C'))), 'D7 acco shape like dh_get_acco');
   $idx = dh_rooms_place_index($cen);

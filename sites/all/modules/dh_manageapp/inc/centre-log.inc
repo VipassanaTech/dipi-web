@@ -240,6 +240,8 @@ function dh_centre_log_viewer($centre_id, $form)
 		'toilet' => array('title' => 'Toilet', 'options' => NULL),
 		'places' => array('title' => 'Places', 'options' => NULL),
 		'converted' => array('title' => 'Converted', 'options' => NULL),
+		'used_by' => array('title' => 'Used by', 'options' => NULL),
+		'checked' => array('title' => 'Checked', 'options' => NULL),
 		'uc_user' => array('title' => 'User', 'options' => NULL),
 		'uc_center' => array('title' => 'Centre', 'options' => NULL),
 	);

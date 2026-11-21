@@ -34,7 +34,7 @@ t_in_txn(function () {
   t_eq(dh_rooms_convert_centre($cen, TRUE), $want, 'C3 apply gives the same report');
   $rooms = dh_rooms_load($cen);
   t_eq(array_map(function ($r) { return $r['gender'] . '-' . $r['section'] . '-' . $r['name'] . ':' . implode('+', array_map(function ($p) { return $p['name']; }, $r['places'])) . ':' . $r['toilet'] . ':' . $r['review']; }, $rooms),
-    array('F-D-7:7A+7B+7C:unset:0', 'M-B-12:12A+12B:unset:0', 'M-B-13:13:unset:0', 'M-B-40:40:unset:1', 'M-C-1:1:unset:0', 'M-C-2:2:unset:0'), 'C4 rooms written, toilet Not set, the course-only place marked needs review');
+    array('M-B-12:12A+12B:unset:0', 'M-B-13:13:unset:0', 'M-B-40:40:unset:1', 'M-C-1:1:unset:0', 'M-C-2:2:unset:0', 'F-D-7:7A+7B+7C:unset:0'), 'C4 rooms written, toilet Not set, the course-only place marked needs review');
   t_eq(db_query("select count(*) from dh_center_log where cl_center = :c and cl_area = 'rooms'", array(':c' => $cen))->fetchField(), 1, 'C5 one Change Log line');
   t_eq(dh_rooms_convert_centre($cen, TRUE)['skipped'], 'already has rooms', 'C6 a second run skips the centre');
 

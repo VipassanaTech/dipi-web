@@ -25,7 +25,10 @@ function dh_room_board_data($centre_id, $course_id)
 	if (!$c)
 		return array('ok' => FALSE, 'msg' => 'This course is not in this centre.');
 	$sides = _dh_room_board_sides();
-	$rooms = array_values(array_filter(dh_rooms_load($centre_id), function ($r) use ($sides) { return in_array($r['gender'], $sides, TRUE); }));
+	// A shared (men + women) section shows on every side the user has.
+	$rooms = array_values(array_filter(dh_rooms_load($centre_id), function ($r) use ($sides) { return $sides && ($r['gender'] === 'B' || in_array($r['gender'], $sides, TRUE)); }));
+	$shared = dh_rooms_shared_sections($centre_id);
+	$cross = array_fill_keys($sides, array());   // [side][section][place] = 'Man'/'Woman': a shared place held by the other side in this course
 	$people = array();
 	foreach (db_query("select a.a_id, a.a_f_name, a.a_m_name, a.a_l_name, a.a_gender, a.a_type, a.a_old, a.a_problem_physical, TIMESTAMPDIFF(YEAR, a.a_dob, CURDATE()) as age,
 		a.a_occupation, a.a_education, co.c_name as country_name, co.c_nationality, st.s_name as state_name, ae.ae_nationality,
@@ -35,6 +38,12 @@ function dh_room_board_data($centre_id, $course_id)
 		where a.a_course = :c and a.a_attended = 1 order by a.a_f_name, a.a_l_name", array(':c' => (int) $course_id))->fetchAll(PDO::FETCH_ASSOC) as $r)
 	{
 		$g = strtoupper($r['a_gender']);
+		$sec = trim((string) $r['aa_section']);
+		$plc = trim((string) $r['aa_acco']);
+		if ($plc !== '' && dh_rooms_is_shared($shared, $sec))
+			foreach ($sides as $s)
+				if ($s !== $g)
+					$cross[$s][$sec][$plc] = $g === 'F' ? 'Woman' : 'Man';
 		if (!in_array($g, $sides, TRUE))
 			continue;
 		$hints = array();
@@ -50,10 +59,10 @@ function dh_room_board_data($centre_id, $course_id)
 			'state' => (string) $r['state_name'], 'country' => (string) $r['country_name'],
 			'nationality' => ($nat !== '' && strcasecmp($nat, (string) $r['c_nationality']) !== 0) ? mb_substr(dh_day0_case($nat), 0, 60) : '',
 			'hints' => $hints,
-			'section' => trim((string) $r['aa_section']), 'place' => trim((string) $r['aa_acco']));
+			'section' => $sec, 'place' => $plc);
 	}
 	return array('ok' => TRUE, 'course' => dh_rooms_course_label($course_id), 'optional' => dh_room_optional($course_id), 'finalized' => (bool) $c['c_finalized'],
-		'sides' => $sides, 'has_rooms' => dh_rooms_centre_has_rooms($centre_id), 'rooms' => $rooms, 'people' => $people, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
+		'sides' => $sides, 'has_rooms' => dh_rooms_centre_has_rooms($centre_id), 'rooms' => $rooms, 'people' => $people, 'cross' => $cross, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
 }
 
 function _dh_room_board_person($course_id, $a_id)
@@ -116,13 +125,24 @@ function dh_room_board_apply($centre_id, $course_id, $in, $uid)
 			$place = trim((string) (isset($in['place']) ? $in['place'] : ''));
 			$idx = dh_rooms_place_index($centre_id);
 			if (!isset($idx[$g][$sec][$place])) return array('ok' => FALSE, 'msg' => 'There is no place ' . $place . ' in section ' . $sec . '.', 'confirm' => FALSE);
-			$holder = db_query("select a.a_f_name, a.a_m_name, a.a_l_name from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
-				where a.a_course = :c and a.a_attended = 1 and a.a_gender = :g and trim(aa.aa_section) = :s and trim(aa.aa_acco) = :p and a.a_id <> :a limit 1",
-				array(':c' => (int) $course_id, ':g' => $g, ':s' => $sec, ':p' => $place, ':a' => $p['a_id']))->fetchAssoc();
+			// In a shared section a place is taken by anyone; elsewhere only by the same side.
+			$is_shared = dh_rooms_is_shared(dh_rooms_shared_sections($centre_id), $sec) ? 1 : 0;
+			$holder = db_query("select a.a_f_name, a.a_m_name, a.a_l_name, a.a_gender from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id
+				where a.a_course = :c and a.a_attended = 1 and (:shared = 1 or a.a_gender = :g) and trim(aa.aa_section) = :s and trim(aa.aa_acco) = :p and a.a_id <> :a limit 1",
+				array(':c' => (int) $course_id, ':shared' => $is_shared, ':g' => $g, ':s' => $sec, ':p' => $place, ':a' => $p['a_id']))->fetchAssoc();
+			if ($holder && strtoupper($holder['a_gender']) !== $g)
+				return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' is taken by ' . (strtoupper($holder['a_gender']) === 'F' ? 'a woman' : 'a man') . ' in this course.', 'confirm' => FALSE);
 			if ($holder) return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' was just given to ' . dh_day0_name($holder) . '. The board has been refreshed.', 'confirm' => FALSE);
 			$ov = dh_rooms_overlap_taken($course_id);
-			if (isset($ov[$g][$sec][$place]) && empty($in['confirm']))
-				return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' is used by ' . $ov[$g][$sec][$place] . ' at the same time. Use it anyway?', 'confirm' => TRUE);
+			$warn = array();
+			if (isset($ov[$g][$sec][$place]))
+				$warn[] = 'Place ' . $place . ' is used by ' . $ov[$g][$sec][$place] . ' at the same time.';
+			// The other side in the same room, or in the section when entering it (see dh_rooms_mix_warning).
+			$mix = $is_shared ? dh_rooms_mix_warning($course_id, $sec, $place, $g, $p['aa_section'], $p['aa_acco']) : '';
+			if ($warn && empty($in['confirm']))
+				return array('ok' => FALSE, 'msg' => implode(' ', $warn) . ($mix !== '' ? ' ' . $mix : '') . ' Use it anyway?', 'confirm' => TRUE);
+			if ($mix !== '' && empty($in['confirm']))
+				return array('ok' => FALSE, 'msg' => $mix . dh_rooms_mix_ask($g), 'confirm' => TRUE);
 			_dh_room_board_set($centre_id, $p, $sec, $place, $uid);
 			return array('ok' => TRUE, 'msg' => 'Saved.', 'confirm' => FALSE);
 		}

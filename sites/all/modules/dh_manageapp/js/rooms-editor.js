@@ -7,8 +7,13 @@
   function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function badge(t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t] || t) + '</span>'; }
   function needsLook(r) { return r.review || r.toilet === 'unset'; }
-  function sideRooms() { return rooms.filter(function (r) { return r.gender === side; }); }
+  // A shared section (gender "B") is used by men and women, so it shows on both tabs.
+  function onSide(r, s) { return r.gender === s || r.gender === 'B'; }
+  function sideRooms() { return rooms.filter(function (r) { return onSide(r, side); }); }
+  function otherSide() { return side === 'M' ? 'F' : 'M'; }
+  var WHO = {M: 'men', F: 'women', B: 'men and women'};
   function places(list) { return list.reduce(function (n, r) { return n + r.places.length; }, 0); }
+  function n(count, word) { return count + ' ' + word + (count === 1 ? '' : 's'); }
   function matches(r) {
     if (fToilet && r.toilet !== fToilet) return false;
     if (onlyReview && !needsLook(r)) return false;
@@ -28,11 +33,11 @@
   }
 
   function render() {
-    var men = rooms.filter(function (r) { return r.gender === 'M'; }), women = rooms.filter(function (r) { return r.gender === 'F'; });
+    var men = rooms.filter(function (r) { return onSide(r, 'M'); }), women = rooms.filter(function (r) { return onSide(r, 'F'); });
     var list = sideRooms(), look = list.filter(needsLook).length, nPicked = Object.keys(picked).length;
     var h = '<div class="dhr-tabs"><button class="dhr-tab' + (side === 'M' ? ' on' : '') + '" data-side="M">Men · ' + places(men) + ' places</button>'
       + '<button class="dhr-tab' + (side === 'F' ? ' on' : '') + '" data-side="F">Women · ' + places(women) + ' places</button></div>';
-    if (look) h += '<div class="dhr-note">' + look + ' rooms need a look: toilet "Not set", or added from a course. '
+    if (look) h += '<div class="dhr-note">' + (look === 1 ? '1 room needs' : look + ' rooms need') + ' a look: toilet "Not set", or added from a course. '
       + '<a href="#" class="dhr-only">' + (onlyReview ? 'Show all rooms' : 'Show only these') + '</a></div>';
     h += '<div class="dhr-bar"><input type="text" class="form-control dhr-q" placeholder="Find room or place, e.g. 112B" value="' + esc(q) + '">'
       + '<select class="form-control dhr-ft" style="width:auto">' + toiletOptions(fToilet, true) + '</select></div>';
@@ -48,16 +53,20 @@
       else h += '<p>No rooms yet. Use "Add room" or "Add many rooms".</p>';
     }
     g.order.forEach(function (sec) {
-      var rs = g.o[sec], shown = rs.filter(matches), isOpen = open[side + '|' + sec] || (q && shown.length);
+      var rs = g.o[sec], shown = rs.filter(matches), isOpen = open[side + '|' + sec] || (q && shown.length), used = rs[0].gender;
       if ((q || fToilet || onlyReview) && !shown.length) return;
       var counts = {};
       rs.forEach(function (r) { counts[r.toilet] = (counts[r.toilet] || 0) + 1; });
       var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
-      h += '<div class="dhr-sec"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b><span>' + rs.length + ' rooms · ' + places(rs) + ' places</span>'
+      h += '<div class="dhr-sec"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b>' + (used === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '')
+        + '<span>' + n(rs.length, 'room') + ' · ' + n(places(rs), 'place') + '</span>'
         + sum + '<span style="flex:1"></span><a href="#" class="dhr-ren" data-sec="' + esc(sec) + '">Rename</a> <span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
-        h += '<div class="dhr-bar" style="padding:8px 10px 0"><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
-          + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-manyhere" data-sec="' + esc(sec) + '">Add rooms here</button></div><div class="dhr-tiles">';
+        h += '<div class="dhr-bar" style="padding:8px 10px 0"><label style="font-weight:normal">Used by <select class="form-control dhr-used" data-sec="' + esc(sec) + '" style="width:auto;display:inline-block">'
+          + [['M', 'Men only'], ['F', 'Women only'], ['B', 'Men and Women']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === used ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+          + '</select></label><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
+          + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-manyhere" data-sec="' + esc(sec) + '">Add rooms here</button>'
+          + '<button class="btn btn-default btn-sm dhr-delsec" data-sec="' + esc(sec) + '">Delete section</button></div><div class="dhr-tiles">';
         shown.forEach(function (r) {
           h += '<div class="dhr-tile' + (picked[r.id] ? ' sel' : '') + (needsLook(r) ? ' rev' : '') + '" data-id="' + r.id + '"><b>' + esc(r.name) + '</b><br>'
             + r.places.map(function (p) { return '<span class="dhr-chip">' + esc(p.name) + '</span>'; }).join('') + '<br>' + badge(r.toilet) + '</div>';
@@ -142,6 +151,19 @@
     app.on('click', '.dhr-split', function () { post('split', {id: pickedIds()[0]}); });
     app.on('click', '.dhr-del', function () { var r = roomById(pickedIds()[0]); if (confirm('Remove room ' + r.name + '?')) post('remove', {id: r.id}); });
     app.on('click', '.dhr-ok', function () { post('clear_review', {ids: pickedIds()}); });
+    app.on('change', '.dhr-used', function () {
+      var sec = String($(this).attr('data-sec')), to = $(this).val(), oth = otherSide();
+      var twin = rooms.some(function (r) { return r.gender === oth && r.section.toUpperCase() === sec.toUpperCase(); });
+      var ask = (to === 'B' && twin)
+        ? ({M: 'Men', F: 'Women'})[oth] + ' also have a section ' + sec + '. Join them into one section for men and women? The ' + WHO[oth] + "'s rooms of " + sec + ' will be replaced by these rooms.'
+        : 'Section ' + sec + ' will be used by ' + WHO[to] + '. OK?';
+      if (confirm(ask)) post('set_used_by', {section: sec, to: to}, function () { if (lastMsg) alert(lastMsg); }); else render();
+    });
+    app.on('click', '.dhr-delsec', function () {
+      var sec = String($(this).attr('data-sec')), rs = sideRooms().filter(function (r) { return r.section === sec; });
+      if (confirm('Delete section ' + sec + ': ' + n(rs.length, 'room') + ', ' + n(places(rs), 'place') + '?' + (rs.length && rs[0].gender === 'B' ? ' It is used by men and women.' : '')))
+        post('delete_section', {section: sec}, function () { if (lastMsg) alert(lastMsg); });
+    });
     app.on('click', '.dhr-ren', function (e) {
       e.preventDefault();
       var from = String($(this).attr('data-sec')), to = prompt('New name for section ' + from + ':', from);

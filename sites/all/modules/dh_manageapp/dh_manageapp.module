@@ -2860,8 +2860,10 @@ function dh_app_update_attended()
 
 	// Request values go in as placeholders, never into the SQL text (SQL injection fix).
 	// (string) keeps a missing parameter comparing as '' exactly as before.
-	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and a_gender=:gender and trim(aa_section)=:section and trim(aa_acco)=:acco and aa_applicant <> :app",
-		array(':course' => $course_id, ':gender' => $gender, ':section' => trim((string) $fields['aa_section']), ':acco' => trim((string) $fields['aa_acco']), ':app' => $app_id))->fetchField();
+	// In a shared (men + women) section a place is taken by anyone, so the side is not compared there.
+	$shared_sec = dh_rooms_is_shared(dh_rooms_shared_sections($centre_id), $fields['aa_section']) ? 1 : 0;
+	$check_id = db_query("select aa_id from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course=:course and (:shared = 1 or a_gender=:gender) and trim(aa_section)=:section and trim(aa_acco)=:acco and aa_applicant <> :app",
+		array(':course' => $course_id, ':shared' => $shared_sec, ':gender' => $gender, ':section' => trim((string) $fields['aa_section']), ':acco' => trim((string) $fields['aa_acco']), ':app' => $app_id))->fetchField();
 	// Only a real room can be taken twice: no room (allowed on 1 Day / Children courses) is never a clash.
 	if ($check_id > 0 && trim((string) $fields['aa_acco']) !== '' && (strtotime(date('Y-m-d')) <= strtotime($r['c_start']) ) )
 	{
@@ -2887,6 +2889,28 @@ function dh_app_update_attended()
 				$out['status'] = false;
 				$out['overlap'] = true;
 				$out['msg'] = 'This place is used by ' . $ov[$g][$sec][$plc] . ' at the same time. Choose it again and confirm to use it anyway.';
+				drupal_json_output($out);
+				exit;
+			}
+		}
+	}
+
+	// A shared section with people of the other side (in the same room, or in the section when entering it; this
+	// course or one at the same time) needs "place anyway" (mx=1) from the popup. The same place is not asked again.
+	if ($shared_sec && trim((string) $fields['aa_acco']) !== '' && (!isset($_REQUEST['mx']) || $_REQUEST['mx'] !== '1'))
+	{
+		$prev = db_query("select aa_section, aa_acco from dh_applicant_attended where aa_applicant = :a", array(':a' => $app_id))->fetchAssoc();
+		$psec = $prev ? trim((string) $prev['aa_section']) : '';
+		$pplc = $prev ? trim((string) $prev['aa_acco']) : '';
+		if (mb_strtoupper($psec) !== mb_strtoupper(trim((string) $fields['aa_section'])) || $pplc !== trim((string) $fields['aa_acco']))
+		{
+			$g = strtoupper($gender);
+			$warn = dh_rooms_mix_warning($course_id, $fields['aa_section'], $fields['aa_acco'], $g, $psec, $pplc);
+			if ($warn !== '')
+			{
+				$out['status'] = false;
+				$out['mixed'] = true;
+				$out['msg'] = $warn . dh_rooms_mix_ask($g);
 				drupal_json_output($out);
 				exit;
 			}
