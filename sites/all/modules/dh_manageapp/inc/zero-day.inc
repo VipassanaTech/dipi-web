@@ -434,9 +434,12 @@ function dh_room_optional($course_id)
 
 function dh_get_acco($centre_id, $course_id)
 {
+	// The new room list (rooms.inc) once the centre has rooms; the old typed list before that.
+	if (dh_rooms_centre_has_rooms($centre_id))
+		return dh_rooms_acco($centre_id);
 	$acco['M'] = $acco['F'] = array();
-	$q = "select csa_gender, csa_section, csa_room from dh_center_setting_acco where csa_center=$centre_id and csa_deleted=0";
-	$result = db_query($q);
+	$q = "select csa_gender, csa_section, csa_room from dh_center_setting_acco where csa_center=:c and csa_deleted=0";
+	$result = db_query($q, array(':c' => (int) $centre_id));
 	while($r = $result->fetchAssoc())
 	{
 		$temp = explode(",", $r['csa_room']);

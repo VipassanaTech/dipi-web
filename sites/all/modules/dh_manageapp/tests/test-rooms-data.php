@@ -43,5 +43,14 @@ t_in_txn(function () {
   t_ok(isset($taken['M']['B']['12B']) && !isset($taken['M']['B'][' 12B']), 'D12b a saved place with a leading space is compared trimmed (overlap)');
   $use = dh_rooms_places_in_use($cen);
   t_ok(isset($use['M|B|12B']) && !isset($use['M| B|12B']) && !isset($use['M|B| 12B']), 'D12c a saved place with a leading space is compared trimmed (in use)');
+  t_eq(dh_get_acco($cen, $A), dh_rooms_acco($cen), 'D13 Zero Day reads the new room list when the centre has rooms');
+  $old = t_make_centre();
+  db_insert('dh_center_setting_acco')->fields(array('csa_center' => $old, 'csa_gender' => 'M', 'csa_section' => 'X', 'csa_room' => '5, 6', 'csa_deleted' => 0))->execute();
+  t_eq(dh_get_acco($old, 0), array('M' => array('X' => array('5', '6')), 'F' => array()), 'D14 a centre without rooms still reads its old typed list');
+  t_eq(_ajax_get_section_options('M', $cen), array('' => 'Choose', 'A' => 'A', 'B' => 'B'), 'D15 application form sections come from the new room list');
+  t_make_applicant($A, array('a_gender' => 'M'), array('aa_section' => 'B', 'aa_acco' => ' 12A'));
+  t_eq(_ajax_get_acco_options('B', 'M', $cen, $A), array('' => 'Choose', '3' => '3', '12B' => '12B'), 'D16 application form rooms come from the new list; a place saved as " 12A" counts as taken');
+  t_eq(_ajax_get_acco_options('X', 'M', $old, 0), array('' => 'Choose', '5' => '5', '6' => '6'), 'D17 a centre without rooms: old typed list, spaces trimmed');
+  t_eq(_ajax_get_section_options('M', $old), array('' => 'Choose', 'X' => 'X'), 'D18 old typed list sections still work');
 });
 t_done();

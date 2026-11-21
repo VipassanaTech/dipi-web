@@ -816,8 +816,16 @@ function ajax_acco_dropdown_callback($form, $form_state) {
 function _ajax_get_section_options($gender, $centre)
 {
 	$sections = array('' => 'Choose');
-	$q = "select csa_section from dh_center_setting_acco where csa_center='$centre' and csa_gender='$gender' and csa_deleted=0";
-	$res = db_query($q);
+	if (dh_rooms_centre_has_rooms($centre))
+	{
+		$acco = dh_rooms_acco($centre);
+		$g = strtoupper($gender);
+		if (isset($acco[$g]))
+			foreach (array_keys($acco[$g]) as $sec)
+				$sections[$sec] = $sec;
+		return $sections;
+	}
+	$res = db_query("select csa_section from dh_center_setting_acco where csa_center = :c and csa_gender = :g and csa_deleted = 0", array(':c' => $centre, ':g' => $gender));
 	while($r = $res->fetchAssoc())
 		$sections[$r['csa_section']] = $r['csa_section'];
 	return $sections;
@@ -825,38 +833,43 @@ function _ajax_get_section_options($gender, $centre)
 
 function _ajax_get_acco_options($section, $gender, $centre, $course)
 {
-	//watchdog("acco", "Sec - $section, Gen - $gender, Centre - $centre, Course -  $course");
 	$rooms = array('' => 'Choose');
 
-	$q = "select csa_room from dh_center_setting_acco where csa_center='$centre' and csa_section='$section' and csa_gender='$gender' and csa_deleted=0";
-	$result = db_query($q);
-	$i = 0;
-	while($r = $result->fetchAssoc())
+	if (dh_rooms_centre_has_rooms($centre))
 	{
-		$temp = explode(",", $r['csa_room'] );
-		foreach ($temp as $v) 
+		$acco = dh_rooms_acco($centre);
+		$g = strtoupper($gender);
+		if (isset($acco[$g][$section]))
+			foreach ($acco[$g][$section] as $p)
+				$rooms[$p] = $p;
+	}
+	else
+	{
+		$result = db_query("select csa_room from dh_center_setting_acco where csa_center = :c and csa_section = :s and csa_gender = :g and csa_deleted = 0", array(':c' => $centre, ':s' => $section, ':g' => $gender));
+		while($r = $result->fetchAssoc())
 		{
-			$temp1 = explode(":", $v);
-			if (count($temp1) == 2)
+			$temp = explode(",", $r['csa_room'] );
+			foreach ($temp as $v)
 			{
-				for($i = $temp1[0]; $i<= $temp1[1]; $i++)
-					$rooms[ $i ] = $i;
+				$v = trim($v);
+				if ($v === '')
+					continue;
+				$temp1 = explode(":", $v);
+				if (count($temp1) == 2)
+				{
+					for($i = (int) trim($temp1[0]); $i <= (int) trim($temp1[1]); $i++)
+						$rooms[ $i ] = $i;
+				}
+				else
+					$rooms[$v] = $v;
 			}
-			else
-				$rooms[$v] = $v;
 		}
 	}
-	$alloted = array();
-	$q = "select aa_acco from dh_applicant_attended left join dh_applicant on aa_applicant=a_id where a_course='$course' and a_gender='$gender' and aa_section='$section' and aa_acco<>'' and aa_acco is not null";
-	$result = db_query($q);
+	// Places already given in this course (compared trimmed: old saves can start with a space).
+	$result = db_query("select trim(aa_acco) as acco from dh_applicant_attended left join dh_applicant on aa_applicant = a_id where a_course = :course and a_gender = :g and trim(aa_section) = :s and trim(aa_acco) <> ''", array(':course' => $course, ':g' => $gender, ':s' => trim($section)));
 	while($r = $result->fetchAssoc())
-		$alloted[] = $r['aa_acco'];
-
-	foreach($alloted as $v ) 
-		if ( isset($rooms[$v]) )
-			unset($rooms[$v]);
-	//watchdog('lala', print_r($result,true)) ;
-	//watchdog('lala', $q.print_r($rooms, true) );
+		if ( isset($rooms[$r['acco']]) )
+			unset($rooms[$r['acco']]);
 	return $rooms;
 }
 
