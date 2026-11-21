@@ -53,7 +53,7 @@ function dh_room_board_data($centre_id, $course_id)
 			'section' => trim((string) $r['aa_section']), 'place' => trim((string) $r['aa_acco']));
 	}
 	return array('ok' => TRUE, 'course' => dh_rooms_course_label($course_id), 'optional' => dh_room_optional($course_id), 'finalized' => (bool) $c['c_finalized'],
-		'sides' => $sides, 'rooms' => $rooms, 'people' => $people, 'overlap' => dh_rooms_overlap_taken($course_id), 'toilets' => dh_room_toilet_types());
+		'sides' => $sides, 'rooms' => $rooms, 'people' => $people, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
 }
 
 function _dh_room_board_person($course_id, $a_id)
@@ -84,6 +84,7 @@ function dh_room_board_apply($centre_id, $course_id, $in, $uid)
 		$p = _dh_room_board_person($course_id, isset($in['a_id']) ? $in['a_id'] : 0);
 		if (!$p) return array('ok' => FALSE, 'msg' => 'This person has not arrived for this course.', 'confirm' => FALSE);
 		$g = strtoupper($p['a_gender']);
+		if (!in_array($g, _dh_room_board_sides(), TRUE)) return array('ok' => FALSE, 'msg' => 'You do not have access to this person.', 'confirm' => FALSE);
 		if ($op === 'remove')
 		{
 			_dh_room_board_set($centre_id, $p, '', '', $uid);
@@ -93,11 +94,20 @@ function dh_room_board_apply($centre_id, $course_id, $in, $uid)
 		{
 			$q = _dh_room_board_person($course_id, isset($in['other']) ? $in['other'] : 0);
 			if (!$q) return array('ok' => FALSE, 'msg' => 'This person has not arrived for this course.', 'confirm' => FALSE);
+			if (!in_array(strtoupper($q['a_gender']), _dh_room_board_sides(), TRUE)) return array('ok' => FALSE, 'msg' => 'You do not have access to this person.', 'confirm' => FALSE);
 			if (strtoupper($q['a_gender']) !== $g) return array('ok' => FALSE, 'msg' => 'Only people on the same side can swap.', 'confirm' => FALSE);
 			if ($p['aa_acco'] === '' || $q['aa_acco'] === '') return array('ok' => FALSE, 'msg' => 'Both people need a place to swap.', 'confirm' => FALSE);
 			$txn = db_transaction();
-			_dh_room_board_set($centre_id, $p, $q['aa_section'], $q['aa_acco'], $uid);
-			_dh_room_board_set($centre_id, $q, $p['aa_section'], $p['aa_acco'], $uid);
+			try
+			{
+				_dh_room_board_set($centre_id, $p, $q['aa_section'], $q['aa_acco'], $uid);
+				_dh_room_board_set($centre_id, $q, $p['aa_section'], $p['aa_acco'], $uid);
+			}
+			catch (Exception $e)
+			{
+				$txn->rollback();
+				throw $e;
+			}
 			return array('ok' => TRUE, 'msg' => 'Swapped.', 'confirm' => FALSE);
 		}
 		if ($op === 'place')

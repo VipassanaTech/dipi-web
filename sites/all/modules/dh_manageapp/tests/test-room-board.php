@@ -64,6 +64,20 @@ t_in_txn(function () {
   t_ok((int) db_query("select count(*) from dh_log where l_event = 'Room' and l_identifier in (:a)", array(':a' => array((string) $ram, (string) $shyam)))->fetchField() >= 4, 'B18 every change is logged');
   $stranger = t_make_applicant($B, array('a_gender' => 'M'));
   t_eq($ap(array('op' => 'remove', 'a_id' => $stranger))['msg'], 'This person has not arrived for this course.', 'B19 a person of another course is refused');
+  // B22: a user with only the men's side cannot touch a woman, and sees no women or women's overlap.
+  t_make_applicant($B, array('a_gender' => 'F'), array('aa_section' => 'D', 'aa_acco' => '7A'));
+  $role = new stdClass(); $role->name = 'zzq room men ' . mt_rand(1000, 9999); user_role_save($role);
+  user_role_grant_permissions($role->rid, array('access zero day', 'access male'));
+  $men = (object) array('uid' => 999999, 'name' => 'zzqmen', 'status' => 1, 'roles' => array(DRUPAL_AUTHENTICATED_RID => 'authenticated user', $role->rid => $role->name));
+  $user = $men; drupal_static_reset('user_access'); drupal_static_reset('user_role_permissions');
+  t_eq(dh_room_board_apply($cen, $A, array('op' => 'remove', 'a_id' => $gita), 999999)['msg'], 'You do not have access to this person.', 'B22 a men-only user cannot change a woman');
+  t_eq(dh_room_board_apply($cen, $A, array('op' => 'swap', 'a_id' => $ram, 'other' => $gita), 999999)['msg'], 'You do not have access to this person.', 'B22b swap with a woman refused');
+  $md = dh_room_board_data($cen, $A);
+  $fem = 0; foreach ($md['people'] as $x) if ($x['gender'] === 'F') $fem++;
+  t_eq(array($md['sides'], $fem, isset($md['overlap']['F'])), array(array('M'), 0, FALSE), 'B22c men-only data: no women, no women\'s overlap');
+  $user = user_load(1); drupal_static_reset('user_access'); drupal_static_reset('user_role_permissions');
+  t_eq($place($gita), NULL, 'B22d the woman\'s room is unchanged');
+
   db_update('dh_course')->fields(array('c_finalized' => 1))->condition('c_id', $A)->execute();
   t_eq($ap(array('op' => 'remove', 'a_id' => $shyam))['msg'], "This course is finalized. Rooms can't be changed here.", 'B20 finalized course is read-only');
   $other = t_make_centre();
