@@ -1025,6 +1025,36 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				var dataset = '.$data.';
 				var letters = '.$letters_json.';				
 				var lettersCentre = '.(int) $centre.';
+				var dhUserName = '.drupal_json_encode($user->name).';
+				/* A long-course review decision (Approved / Rejected on an R-ATReview or A-ATReview row) is the centre team
+				   deciding for the teacher: ask for the comment saved with that step (optional when approving, the reason
+				   when rejecting). The server puts who decided for whom in front of it (dh_lc_review_comment). */
+				function dhLcReviewComment(rd, s, send)
+				{
+					var reco = (rd.app_status == "R-ATReview");
+					var at = $.trim((reco ? rd.reco_t : rd.area_t) || "");
+					var step = reco ? "Recommending AT" : "Area AT";
+					var reject = (s != "Approved");
+					var esc = function (t) { return $("<div/>").text(t).html(); };
+					var who = at ? "&quot;" + esc(at) + "&quot;" : "the teacher";
+					$.confirm({
+						title: (reject ? "Reject" : "Approve") + " the " + step + " review",
+						content: "<form class=\"formName\"><div class=\"form-group\">"
+							+ "<label>" + (reject ? "Rejection reason (needed)" : "Comment (optional)") + "</label>"
+							+ "<textarea class=\"form-control lc-review-comment\" rows=\"3\"></textarea>"
+							+ "<p style=\"margin:6px 0 0;color:#555;font-size:12px\">Saved as the " + step + " comment. Unless you are "
+							+ (at ? esc(at) : "that teacher") + ", it starts with: <i>" + (reject ? "Rejected" : "Approved") + " by user &quot;"
+							+ esc(dhUserName) + "&quot; on behalf of " + who + " with comment:</i></p></div></form>",
+						buttons: {
+							ok: { text: reject ? "Reject" : "Approve", btnClass: reject ? "btn-red" : "btn-green", action: function () {
+								var c = $.trim(this.$content.find(".lc-review-comment").val());
+								if (reject && !c) { $.alert("Please give the rejection reason."); return false; }
+								send(c);
+							}},
+							cancel: function () {}
+						}
+					});
+				}
 				var courseTypeNames = '.(json_encode(db_query("select td_id, td_val1 from dh_type_detail where td_type = 'COURSE-TYPE'")->fetchAllKeyed(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: '{}').';
 				var courses = '.$courses_json.';
 				var centres = '.$centres_json.';
@@ -1502,6 +1532,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 							return;
 					}
 
+					var send = function (comment) {
 					$(tr1).loading();
 					$.getJSON( "/change-status/"+id, { s: s, l: letter, c:comment } )
 					  .done(function( json ) {
@@ -1527,6 +1558,12 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					    alert(dhAjaxFailMsg("The status update", jqxhr, textStatus));
 					    $(tr1).loading("stop");
 					});
+					};
+					var rd1 = row1.data() || {};
+					if (["Approved", "Rejected-R-AT", "Rejected-A-AT"].indexOf(s) >= 0 && ["R-ATReview", "A-ATReview"].indexOf(rd1.app_status) >= 0)
+						dhLcReviewComment(rd1, s, send);
+					else
+						send(comment);
 
 				});
 

@@ -1880,6 +1880,14 @@ function _change_status()
 	$out['msg'] = '';
 	$out['confno'] = '';
 	$out['newstatus'] = '';
+	// A long-course review decision taken here is the centre team deciding for the teacher: the typed comment is saved as
+	// that step's comment, starting with who decided for whom (dh_lc_review_comment). A rejection needs a reason.
+	// a_updated_by first, so the Activity Log lines written by the review-row trigger name this user.
+	$lc_ats = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_applicant = :a", array(':a' => $app_id))->fetchAssoc();
+	$lc_decide = function ($set) use ($app_id, $user) {
+		db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $app_id)->execute();
+		db_update('dh_applicant_lc')->fields($set)->condition('al_applicant', $app_id)->execute();
+	};
 	if ( $status == 'Approved' || $status == 'R-ATReview')
 	{
 		$q = "select a_status from dh_applicant where a_id=".$app_id;
@@ -1890,8 +1898,8 @@ function _change_status()
 			if ($area_at)
 			{
 				$status = 'A-ATReview';
-				$q = "update dh_applicant_lc set al_recommending_approved='Approved' where al_applicant ='$app_id'";
-				db_query($q);				
+				$lc_decide(array('al_recommending_approved' => 'Approved',
+					'al_recommending_comments' => dh_lc_review_comment('Approved', $lc_ats['al_recommending'], $comment)));
 			}
 			else
 			{
@@ -1919,22 +1927,29 @@ function _change_status()
 		else
 		{
 			$status = 'Received';
-			$q = "update dh_applicant_lc set al_area_at_approved='Approved' where al_applicant ='$app_id'";
-			db_query($q);
+			$lc_decide(array('al_area_at_approved' => 'Approved',
+				'al_area_at_comments' => dh_lc_review_comment('Approved', $lc_ats['al_area_at'], $comment)));
 		}
 		$out['newstatus'] = $status;
 		update_status_external($app_id, $status);
 	}
 
-	elseif ( in_array($status, array('Rejected-R-AT', 'Rejected-A-AT')) ) 
+	elseif ( in_array($status, array('Rejected-R-AT', 'Rejected-A-AT')) )
 	{
+		if (trim((string) $comment) === '')
+		{
+			$out['status'] = 'Failed';
+			$out['msg'] = 'Please give the rejection reason.';
+			drupal_json_output($out);
+			exit;
+		}
 		if ( $status == 'Rejected-R-AT' )
-			$field = 'al_recommending_approved';
+			$lc_decide(array('al_recommending_approved' => 'Rejected',
+				'al_recommending_comments' => dh_lc_review_comment('Rejected', $lc_ats['al_recommending'], $comment)));
 		else
-			$field = 'al_area_at_approved';
-		$q = "update dh_applicant_lc set $field='Rejected' where al_applicant ='$app_id'";
-		db_query($q);				
-		update_status_external($app_id, $status);	
+			$lc_decide(array('al_area_at_approved' => 'Rejected',
+				'al_area_at_comments' => dh_lc_review_comment('Rejected', $lc_ats['al_area_at'], $comment)));
+		update_status_external($app_id, $status);
 		$out['newstatus'] = 'Rejected';
 	}
 	else
@@ -2731,6 +2746,38 @@ function update_status_external($app_id, $new_status)
 	}
 	else
 		watchdog('Applicant', "ID $app_id - New status $new_status, old status is ".$row['a_status']);
+}
+
+/* The teacher (dh_teacher full name, as saved in al_recommending / al_area_at) whose AT login this account is
+   (user name = t_code.t_gender, like the AT Portal), or '' when the account is not a teacher's login. */
+function dh_user_at_name($account)
+{
+	if (empty($account->name))
+		return '';
+	return (string) db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where CONCAT(t_code, '.', t_gender) = :n order by (t_status = 'Active') desc limit 1",
+		array(':n' => $account->name))->fetchField();
+}
+
+/* The comment saved with a long-course review decision (al_recommending_comments / al_area_at_comments). When the user
+   deciding is not that step's teacher - the centre team on the search page, an "LC Admin for AT", or the other teacher
+   on the AT Portal - it starts with who decided for whom:
+     Approved by user "abc" on behalf of "AT Name" with comment: <comment>      (no comment: ... on behalf of "AT Name".)
+   The teacher's own decision, or no decision ($decision not Approved / Rejected / Transfer to Registrar), is saved as
+   typed. $at_name = that step's teacher; $account = the user deciding (default: the current user). */
+function dh_lc_review_comment($decision, $at_name, $comment, $account = NULL)
+{
+	global $user;
+	$account = $account ? $account : $user;
+	$comment = trim((string) $comment);
+	$words = array('Approved' => 'Approved', 'Rejected' => 'Rejected', 'Transfer to Registrar' => 'Transferred to the registrar');
+	if (!isset($words[$decision]))
+		return $comment;
+	$norm = function ($s) { return strtolower(preg_replace('/\s+/', ' ', trim((string) $s))); };
+	$at_name = preg_replace('/\s+/', ' ', trim((string) $at_name));
+	if ($at_name !== '' && $norm(dh_user_at_name($account)) === $norm($at_name))
+		return $comment;
+	return $words[$decision] . ' by user "' . $account->name . '" on behalf of ' . ($at_name === '' ? 'the teacher' : '"' . $at_name . '"')
+		. ($comment === '' ? '.' : ' with comment: ' . $comment);
 }
 
 /* May this application be marked attended? A long-course application (course type td_val3 'LC') only when both

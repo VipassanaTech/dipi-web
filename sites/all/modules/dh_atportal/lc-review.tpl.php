@@ -135,14 +135,14 @@
 		if ($data['al_recommending_comments']):
 	?>
 		<h3>Recommending AT Comments:</h3>
-		<h4><?php print $data['al_recommending_comments']?></h4>
+		<h4><?php print nl2br(check_plain($data['al_recommending_comments'])) ?></h4>
 	 <?php endif ?>
 
 	<?php
 		if ($data['al_area_at_comments']):
 	?>
 		<h3>Area AT Comments:</h3>
-		<h4><?php print $data['al_area_at_comments']?></h4>
+		<h4><?php print nl2br(check_plain($data['al_area_at_comments'])) ?></h4>
 	 <?php endif ?>
 
 </div>

@@ -1135,6 +1135,9 @@ function dh_atportal_review_form_submit($form, &$form_state )
 	}
 	else
 	{
+		// A decision made for another teacher (an "LC Admin for AT", or the other teacher of this application) is saved
+		// with who decided for whom in front of the comment; the teacher's own decision as typed (dh_lc_review_comment).
+		$cur_ats = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_applicant = :a", array(':a' => arg(2)))->fetchAssoc();
         if(isset($input['action']) && $input['action'] == 'ApproveOwnApplication')
         {
             $app['al_area_at'] = "Not Applicable";
@@ -1152,13 +1155,13 @@ function dh_atportal_review_form_submit($form, &$form_state )
 		{
 			$app['al_area_at'] = $input['area_teacher'];
 			$app['al_recommending_approved'] = $input['action'];
-			$app['al_recommending_comments'] = $input['comments'];
+			$app['al_recommending_comments'] = dh_lc_review_comment($input['action'], $cur_ats['al_recommending'], $input['comments']);
 		}
 		else
 		{
 			$app['al_area_at_approved'] = $input['action'];
-			$app['al_area_at_comments'] = $input['comments'];
-		}		
+			$app['al_area_at_comments'] = dh_lc_review_comment($input['action'], $cur_ats['al_area_at'], $input['comments']);
+		}
 	}
 	$lc_id = arg(2);
 	db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $lc_id)->execute();
