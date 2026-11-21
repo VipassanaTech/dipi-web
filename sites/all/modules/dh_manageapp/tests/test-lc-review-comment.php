@@ -94,6 +94,15 @@ try {
   $a5 = $new('R-ATReview', 'Pending', 'Pending');
   t_eq($run('search', $a5, array('s' => 'Approved', 'c' => 'Mine', 'l' => ''), 'zzq9.m'), 'OK', 'S15 search: the Recommending teacher\'s own login approves');
   t_eq($lcrow($a5)['rc'], 'Mine', 'S16 ... comment saved as typed (no prefix)');
+  $a6 = $new('R-ATReview', 'Pending', 'Pending');
+  db_update('dh_applicant_lc')->fields(array('al_recommending' => ''))->condition('al_applicant', $a6)->execute();
+  t_eq($run('search', $a6, array('s' => 'Approved', 'c' => 'x', 'l' => '')), 'Failed: Please Edit application and choose the Recommending AT first!', 'S17 search: no Recommending AT: Approved refused');
+  t_eq($run('search', $a6, array('s' => 'Rejected-R-AT', 'c' => 'x', 'l' => '')), 'Failed: Please Edit application and choose the Recommending AT first!', 'S18 search: no Recommending AT: Rejected refused');
+  t_eq($lcrow($a6), array('a_status' => 'R-ATReview', 'r' => 'Pending', 'rc' => NULL, 'ar' => 'Pending', 'ac' => NULL), 'S19 ... and nothing changed');
+  $a7 = $new('A-ATReview', 'Approved', 'Pending', '');
+  t_eq($run('search', $a7, array('s' => 'Approved', 'c' => 'x', 'l' => '')), 'Failed: Please Edit application and choose Area teacher first!', 'S20 search: A-ATReview with no Area teacher: Approved refused');
+  t_eq($run('search', $a7, array('s' => 'Rejected-A-AT', 'c' => 'x', 'l' => '')), 'Failed: Please Edit application and choose Area teacher first!', 'S21 search: ... Rejected refused');
+  t_eq($lcrow($a7), array('a_status' => 'A-ATReview', 'r' => 'Approved', 'rc' => NULL, 'ar' => 'Pending', 'ac' => NULL), 'S22 ... and nothing changed');
 
   // --- AT Portal review form (an "LC Admin for AT", or a teacher)
   $p1 = $new('R-ATReview', 'Pending', 'Pending', '');

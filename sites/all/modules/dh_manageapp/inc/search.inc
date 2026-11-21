@@ -1030,16 +1030,23 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 				   deciding for the teacher: ask for the comment saved with that step (optional when approving, the reason
 				   when rejecting). The server puts who decided for whom in front of it (dh_lc_review_comment).
 				   The box opens when the decision is chosen (atSelect: it only keeps the comment, Update saves) and again at
-				   Update if it was cancelled. Approving the Recommending step needs the Area teacher chosen first. */
+				   Update if it was cancelled. A decision needs the teacher of that step chosen (Recommending AT / Area AT), and
+				   approving the Recommending step also the Area teacher (the server checks the same). */
 				function dhLcIsReviewDecision(rd, s)
 				{
 					return ["Approved", "Rejected-R-AT", "Rejected-A-AT"].indexOf(s) >= 0 && ["R-ATReview", "A-ATReview"].indexOf(rd.app_status) >= 0;
 				}
-				function dhLcNoAreaTeacher(rd, s)
+				function dhLcMissingTeacherMsg(rd, s)
 				{
-					return s == "Approved" && rd.app_status == "R-ATReview" && !$.trim(rd.area_t || "");
+					var reco = $.trim(rd.reco_t || ""), area = $.trim(rd.area_t || "");
+					if (rd.app_status == "R-ATReview" && !reco)
+						return "Choose the Recommending AT first: edit the application.";
+					if (rd.app_status == "A-ATReview" && !area)
+						return "Choose the Area teacher first: edit the application.";
+					if (s == "Approved" && rd.app_status == "R-ATReview" && !area)
+						return "Choose the Area teacher first: edit the application, then approve.";
+					return "";
 				}
-				var dhLcNoAreaMsg = "Choose the Area teacher first: edit the application, then approve.";
 				function dhLcReviewComment(rd, s, send, atSelect)
 				{
 					var reco = (rd.app_status == "R-ATReview");
@@ -1444,9 +1451,10 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					if (dhLcIsReviewDecision(row.data(), tmp))
 					{
 						var rdr = row.data();
-						if (dhLcNoAreaTeacher(rdr, tmp))
+						var missr = dhLcMissingTeacherMsg(rdr, tmp);
+						if (missr)
 						{
-							$.alert(dhLcNoAreaMsg);
+							$.alert(missr);
 							s.val("");
 							return;
 						}
@@ -1591,8 +1599,9 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					if (dhLcIsReviewDecision(rd1, s))
 					{
 						var sl1 = $(".sub-letter-"+id);
-						if (dhLcNoAreaTeacher(rd1, s))
-							$.alert(dhLcNoAreaMsg);
+						var miss1 = dhLcMissingTeacherMsg(rd1, s);
+						if (miss1)
+							$.alert(miss1);
 						else if (sl1.attr("reviewready") == "1")
 							send(sl1.attr("subreview") || "");
 						else

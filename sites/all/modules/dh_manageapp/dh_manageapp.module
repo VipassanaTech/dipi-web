@@ -1888,6 +1888,30 @@ function _change_status()
 		db_update('dh_applicant')->fields(array('a_updated_by' => $user->uid))->condition('a_id', $app_id)->execute();
 		db_update('dh_applicant_lc')->fields($set)->condition('al_applicant', $app_id)->execute();
 	};
+	// A review decision needs that step's teacher chosen: the decision and its comment are on their behalf.
+	// (Approving the Recommending step also needs the Area teacher - checked below, as before.)
+	if (in_array($status, array('Approved', 'Rejected-R-AT', 'Rejected-A-AT')))
+	{
+		$cur_status = db_query("select a_status from dh_applicant where a_id = :a", array(':a' => $app_id))->fetchField();
+		$need = '';
+		if ($status == 'Rejected-R-AT' || ($status == 'Approved' && $cur_status == 'R-ATReview'))
+		{
+			if (trim((string) ($lc_ats ? $lc_ats['al_recommending'] : '')) === '')
+				$need = 'Please Edit application and choose the Recommending AT first!';
+		}
+		elseif ($status == 'Rejected-A-AT' || ($status == 'Approved' && $cur_status != 'R-ATTransfer'))
+		{
+			if (trim((string) ($lc_ats ? $lc_ats['al_area_at'] : '')) === '')
+				$need = 'Please Edit application and choose Area teacher first!';
+		}
+		if ($need !== '')
+		{
+			$out['status'] = 'Failed';
+			$out['msg'] = $need;
+			drupal_json_output($out);
+			exit;
+		}
+	}
 	if ( $status == 'Approved' || $status == 'R-ATReview')
 	{
 		$q = "select a_status from dh_applicant where a_id=".$app_id;
