@@ -154,4 +154,18 @@ function dh_room_board_save_page($centre_id, $course_id)
 	drupal_exit();
 }
 
-function dh_room_board_page($centre_id, $course_id) { return ''; }
+/** The Room Board page of a course (js/room-board.js). */
+function dh_room_board_page($centre_id, $course_id)
+{
+	if (!_dh_room_board_course($centre_id, $course_id))
+		return drupal_not_found();
+	$label = dh_rooms_course_label($course_id);
+	drupal_set_title('Room Board');
+	$path = drupal_get_path('module', 'dh_manageapp');
+	drupal_add_css($path . '/css/rooms.css');
+	drupal_add_js(array('dhRoomBoard' => array('dataUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/data'),
+		'saveUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/save'), 'token' => drupal_get_token('dh-room-board'))), 'setting');
+	drupal_add_js($path . '/js/room-board.js');
+	return '<div class="dh-rb"><p>' . l('Back to Course', 'course/' . (int) $centre_id . '/' . (int) $course_id) . ' | ' . l('Zero Day', 'zero-day/' . (int) $centre_id . '/' . (int) $course_id) . '</p>'
+		. '<h2>' . check_plain($label) . '</h2><div id="dh-rb-app"><p>Loading the board…</p></div></div>';
+}

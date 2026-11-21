@@ -1,0 +1,138 @@
+/* Room Board of a course: sections → rooms → places, who is where, the people not placed yet.
+ * Tap a person, then a free place to place them; tap a placed person, then another place to move,
+ * or another placed person to swap. Every action POSTs to saveUrl and redraws from the returned data. */
+(function ($) {
+  'use strict';
+  var S, D = null, side = null, open = {}, chosen = null, q = '', fToilet = '', freeOnly = false, show = 'waiting';
+
+  function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function key(sec, place) { return sec + '|' + place; }
+  function holders() {
+    var h = {};
+    D.people.forEach(function (p) { if (p.gender === side && p.place !== '') h[key(p.section, p.place)] = p; });
+    return h;
+  }
+  function person(id) { return D.people.filter(function (p) { return p.a_id === id; })[0]; }
+  function other(sec, place) { var o = D.overlap[side] || {}; return (o[sec] && o[sec][place]) || ''; }
+  // One line of what centres look at when giving a room: Old/New/Server, age, job, education, state + country, a different nationality.
+  function details(p) {
+    var where = [p.state, p.country].filter(Boolean).join(', ');
+    return [p.server ? 'Server' : (p.old ? 'Old' : 'New'), p.age !== null ? p.age + ' yrs' : '', p.occupation, p.education, where,
+      p.nationality ? 'Nationality: ' + p.nationality : ''].filter(Boolean).join(' · ');
+  }
+  function hintsHtml(p) { return p.hints.map(function (x) { return '<span class="dhrb-hint">' + esc(x) + '</span>'; }).join(''); }
+  // Search: name, job, education, state, country, nationality or place.
+  function hit(p) {
+    if (!q) return true;
+    var t = q.toLowerCase();
+    return [p.name, p.occupation, p.education, p.state, p.country, p.nationality, p.place].some(function (s) { return s && String(s).toLowerCase().indexOf(t) >= 0; });
+  }
+  function roomOf(p) {
+    var r = D.rooms.filter(function (r) { return r.gender === p.gender && r.section === p.section && r.places.some(function (x) { return x.name === p.place; }); })[0];
+    return r ? r.name : '';
+  }
+
+  function render() {
+    if (!D.ok) { $('#dh-rb-app').html('<p>' + esc(D.msg) + '</p>'); return; }
+    if (!side) side = D.sides[0] || 'M';
+    var H = holders(), rooms = D.rooms.filter(function (r) { return r.gender === side; });
+    var total = 0, placed = 0, otherN = 0;
+    rooms.forEach(function (r) { r.places.forEach(function (p) { total++; if (H[key(r.section, p.name)]) placed++; else if (other(r.section, p.name)) otherN++; }); });
+    var waiting = D.people.filter(function (p) { return p.gender === side && p.place === ''; });
+    var h = '';
+    if (D.finalized) h += '<div class="dhr-note">This course is finalized. The board is read-only.</div>';
+    if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + s + '">' + (s === 'M' ? 'Men' : 'Women') + '</button>'; }).join('') + '</div>';
+    h += '<div class="dhrb-counts"><div class="dhrb-count">Places<b>' + total + '</b></div><div class="dhrb-count">Placed<b>' + placed + '</b></div>'
+      + '<div class="dhrb-count">Other course<b>' + otherN + '</b></div><div class="dhrb-count">Free<b>' + (total - placed - otherN) + '</b></div></div>';
+    h += '<div class="dhrb-main"><div>';
+    var c = chosen ? person(chosen) : null;
+    if (c) h += '<div class="dhrb-chosen"><b>Chosen: ' + esc(c.name) + '</b><br><small>' + esc(details(c)) + '</small><br>' + hintsHtml(c)
+      + '<br><small>' + (c.place ? 'In place ' + esc(c.place) + ' (Room ' + esc(roomOf(c)) + ', section ' + esc(c.section) + '). Tap a free place to move, or a person to swap.' : 'Not placed yet. Tap a free place.') + '</small>'
+      + '<p style="margin:6px 0 0">' + (c.place ? '<button class="btn btn-default btn-sm dhrb-remove">Take out of the room</button> ' : '') + '<button class="btn btn-link btn-sm dhrb-unchoose">Clear</button></p></div>';
+    var mine = D.people.filter(function (p) { return p.gender === side; }), placedN = mine.length - waiting.length;
+    h += '<div class="dhr-tabs">' + [['waiting', 'Not placed · ' + waiting.length], ['placed', 'Placed · ' + placedN], ['all', 'All · ' + mine.length]].map(function (t) {
+      return '<button class="dhr-tab dhrb-show' + (show === t[0] ? ' on' : '') + '" data-show="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>'
+      + (D.optional ? '<small>Room is optional on this course.</small>' : '')
+      + '<input type="text" class="form-control dhrb-q" placeholder="Find: name, job, education, state, country, place" value="' + esc(q) + '" style="margin:6px 0">';
+    var list = mine.filter(function (p) { return (show === 'all' || (show === 'placed') === (p.place !== '')) && hit(p); });
+    if (q) h += '<small>' + list.length + ' found</small>';
+    list.forEach(function (p) {
+      h += '<div class="dhrb-card' + (chosen === p.a_id ? ' on' : '') + '" data-a="' + p.a_id + '"><b>' + esc(p.name) + '</b>' + (p.place ? ' <span class="dhr-chip">' + esc(p.place) + '</span>' : '')
+        + '<br><small>' + esc(details(p)) + '</small><br>' + hintsHtml(p) + '</div>';
+    });
+    if (!list.length) h += '<p><small>' + (q ? 'Nobody found.' : (show === 'waiting' ? 'Everyone is placed.' : 'Nobody here yet.')) + '</small></p>';
+    h += '</div><div><div class="dhr-bar"><select class="form-control dhrb-ft" style="width:auto"><option value="">All toilets</option>'
+      + Object.keys(D.toilets).map(function (k) { return '<option value="' + k + '"' + (k === fToilet ? ' selected' : '') + '>' + esc(D.toilets[k]) + '</option>'; }).join('')
+      + '</select><label style="font-weight:normal"><input type="checkbox" class="dhrb-free"' + (freeOnly ? ' checked' : '') + '> Free only</label></div>';
+    var order = [], bySec = {};
+    rooms.forEach(function (r) { if (!bySec[r.section]) { bySec[r.section] = []; order.push(r.section); } bySec[r.section].push(r); });
+    order.forEach(function (sec) {
+      var rs = bySec[sec], n = 0, pn = 0, on = 0;
+      rs.forEach(function (r) { r.places.forEach(function (p) { n++; if (H[key(sec, p.name)]) pn++; else if (other(sec, p.name)) on++; }); });
+      var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && hit(w); }); }));
+      h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b><span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
+        + '<small>' + pn + ' placed · ' + on + ' other course · ' + (n - pn - on) + ' free</small><span style="flex:1"></span>' + (isOpen ? '▾' : '▸') + '</div>';
+      if (isOpen) {
+        h += '<div class="dhrb-rooms">';
+        rs.forEach(function (r) {
+          if (fToilet && r.toilet !== fToilet) return;
+          var pl = r.places.map(function (p) {
+            var who = H[key(sec, p.name)], o = other(sec, p.name);
+            if (freeOnly && (who || o)) return '';
+            if (who) return '<div class="dhrb-pl taken' + (chosen === who.a_id ? ' on' : '') + (q && hit(who) ? ' hit' : '') + '" title="' + esc(details(who)) + '" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '" data-a="' + who.a_id + '"><span>' + esc(p.name) + '</span><span>' + esc(who.name) + '</span></div>';
+            if (o) return '<div class="dhrb-pl other" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>' + esc(o) + '</span></div>';
+            return '<div class="dhrb-pl free" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>Free</span></div>';
+          }).join('');
+          if (!pl) return;
+          h += '<div class="dhrb-room"><b>' + esc(r.name) + '</b> <span class="dhr-t dhr-t-' + r.toilet + '">' + esc(D.toilets[r.toilet]) + '</span>' + pl + '</div>';
+        });
+        h += '</div>';
+      }
+      h += '</div>';
+    });
+    h += '</div></div>';
+    $('#dh-rb-app').html(h);
+  }
+
+  function save(payload) {
+    if (D.finalized) return;
+    $.post(S.saveUrl, $.extend({token: S.token}, payload), null, 'json').done(function (r) {
+      if (r.confirm) { if (confirm(r.msg)) save($.extend(payload, {confirm: 1})); return; }
+      if (r.data) D = r.data;
+      if (!r.ok) alert(r.msg); else chosen = null;
+      render();
+    }).fail(function () { alert('Could not save. Please check the connection and try again.'); });
+  }
+
+  $(function () {
+    S = Drupal.settings.dhRoomBoard;
+    $.getJSON(S.dataUrl).done(function (d) { D = d; render(); }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
+    var doc = $(document);
+    doc.on('click', '#dh-rb-app .dhr-tab', function () { side = $(this).data('side'); chosen = null; render(); });
+    doc.on('click', '.dhrb-sec', function () { var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
+    doc.on('input', '.dhrb-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhrb-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
+    doc.on('change', '.dhrb-ft', function () { fToilet = $(this).val(); render(); });
+    doc.on('change', '.dhrb-free', function () { freeOnly = this.checked; render(); });
+    doc.on('click', '.dhrb-card', function () {
+      var a = $(this).data('a'), p = person(a);
+      chosen = chosen === a ? null : a;
+      if (chosen && p.place) open[side + '|' + p.section] = true;   // a placed person: open their section so the place shows
+      render();
+    });
+    doc.on('click', '.dhrb-unchoose', function () { chosen = null; render(); });
+    doc.on('click', '.dhrb-show', function () { show = $(this).data('show'); render(); });
+    doc.on('click', '.dhrb-remove', function () { save({op: 'remove', a_id: chosen}); });
+    doc.on('click', '.dhrb-pl', function () {
+      var el = $(this), sec = String(el.attr('data-sec')), place = String(el.attr('data-place')), who = el.data('a');
+      if (who) {
+        if (!chosen || chosen === who) { chosen = chosen === who ? null : who; render(); return; }
+        var c = person(chosen);
+        if (c.place === '') { alert('This place is taken. Choose a free place for ' + c.name + ', or take the other person out of the room first.'); return; }
+        save({op: 'swap', a_id: chosen, other: who});
+        return;
+      }
+      if (!chosen) { alert('First tap a person, then tap a free place.'); return; }
+      save({op: 'place', a_id: chosen, section: sec, place: place});
+    });
+  });
+})(jQuery);

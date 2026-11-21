@@ -513,7 +513,7 @@ function dh_zero_main()
 
   	$q = "select c_name from dh_course where c_id=".arg(2);
   	$course_name = db_query($q)->fetchField();
-  	$out = '<h3>'.l("Back to Course", "course/".arg(1).'/'.arg(2)).'&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".arg(1)).'</h3>';
+  	$out = '<h3>'.l("Back to Course", "course/".arg(1).'/'.arg(2)).'&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Back to Dashboard", "centre/".arg(1)).'&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Room Board", "room-board/".arg(1).'/'.arg(2)).'</h3>';
   	$out .= '<h2>'.$course_name.'</h2>';
   	$out .= '<h4>'._ma_make_link('Add New Applicant', 'app/add/'.arg(1).'/'.arg(2)).'</h4>';
 

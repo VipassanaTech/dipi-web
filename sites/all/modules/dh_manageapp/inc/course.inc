@@ -109,6 +109,7 @@ function dh_course_dashboard()
 	if ($has_cells)  $modules['Cell Workbench']   = 'cell-workbench/'.arg(1).'/'.arg(2);
 	if ($has_dining) $modules['Dining Workbench'] = 'dining-workbench/'.arg(1).'/'.arg(2);
 	$modules['Seating Plan'] = 'seating/'.arg(1).'/'.arg(2);
+	$modules['Room Board'] = 'room-board/'.arg(1).'/'.arg(2);
 	$modules['Group-wise Seating'] = 'group-seating/'.arg(1).'/'.arg(2);
 	$modules += array( 'Laundry List' => 'laundry-list/'.arg(1).'/'.arg(2), 'Valuable List' => 'valuable-list/'.arg(1).'/'.arg(2), 'Student Chit' => 'student-chit/'.arg(1).'/'.arg(2) , 'Checking Slip' => 'checking-slip/'.arg(1).'/'.arg(2) , 'Course Summary Report' => 'report-day11/'.arg(1).'/'.arg(2), 'Generate Male PDF' => 'course-pdf-m/'.arg(1).'/'.arg(2), 'Generate Female PDF' => 'course-pdf-f/'.arg(1).'/'.arg(2)  );
 	$out .= '<ul class="multi-column">';
@@ -117,7 +118,7 @@ function dh_course_dashboard()
 	// (View Applications, Add Application, Assign Teacher, Zero Day) stays in place.
 	$new_tab = array('Day 0 List', 'Teachers List', 'Manager List', 'Cell Workbench',
 		'Dining Workbench',
-		'Seating Plan', 'Group-wise Seating', 'Laundry List', 'Valuable List',
+		'Room Board', 'Seating Plan', 'Group-wise Seating', 'Laundry List', 'Valuable List',
 		'Student Chit', 'Checking Slip', 'Course Summary Report',
 		'Generate Male PDF', 'Generate Female PDF');
 	foreach($modules as $key => $val )
