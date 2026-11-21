@@ -20,6 +20,8 @@ t_in_txn(function () {
   t_ok($r['ok'], 'A6 add many');
   t_eq(array_slice($names(), 1), array('M-C-101:101A+101B:both', 'M-C-102:102A+102B:both', 'M-C-103:103A+103B:both'), 'A7 three rooms, two places each');
   t_eq($act(array('op' => 'add_many', 'gender' => 'M', 'section' => 'C', 'from' => 1, 'to' => 300, 'suffixes' => array(), 'toilet' => 'both'))['ok'], FALSE, 'A8 more than 200 rooms at once refused');
+  t_eq($act(array('op' => 'add_many', 'gender' => 'M', 'section' => 'Z', 'from' => 1, 'to' => 11, 'suffixes' => array('1', '11'), 'toilet' => 'both'))['msg'], 'Place 111 is already in Room 1.', 'A8b a place repeated inside one add is refused');
+  t_eq((int) db_query("select count(*) from dh_center_room where cr_center = :c and cr_section = 'Z' and cr_deleted = 0", array(':c' => $cen))->fetchField(), 0, 'A8c nothing was added');
 
   $ids = array_map(function ($r) { return $r['id']; }, dh_rooms_load($cen, 'M'));
   t_ok($act(array('op' => 'set_toilet', 'ids' => array($ids[1], $ids[2]), 'toilet' => 'indian'))['ok'], 'A9 set toilet for two rooms');
@@ -43,6 +45,12 @@ t_in_txn(function () {
   $men = dh_rooms_load($cen, 'M');
   $last = end($men);
   t_ok($act(array('op' => 'remove', 'id' => $last['id']))['ok'], 'A21 remove a room not in use');
+  $twelveD = t_make_room($cen, 'M', 'B', '12d', array('12d'));
+  t_make_applicant($up, array('a_gender' => 'M'), array('aa_section' => 'B', 'aa_acco' => '12D'));
+  t_ok(strpos($act(array('op' => 'remove', 'id' => $twelveD))['msg'], 'Place 12d is used by') === 0, 'A21b a place in use is refused whatever the letter case');
+  $bBefore = (int) db_query("select count(*) from dh_center_room where cr_center = :c and cr_gender = 'M' and cr_section = 'B' and cr_deleted = 0", array(':c' => $cen))->fetchField();
+  t_eq($act(array('op' => 'rename_section', 'gender' => 'M', 'from' => 'b', 'to' => 'Bx'))['ok'], FALSE, 'A21c a section in use is refused when renamed in lower case');
+  t_eq((int) db_query("select count(*) from dh_center_room where cr_center = :c and cr_gender = 'M' and cr_section = 'B' and cr_deleted = 0", array(':c' => $cen))->fetchField(), $bBefore, 'A21c-b section B still has its rooms');
 
   $foreign = t_make_room($other, 'M', 'B', '1', array('1'));
   t_eq($act(array('op' => 'set_toilet', 'ids' => array($foreign), 'toilet' => 'both'))['msg'], 'This room is not in this centre.', 'A22 another centre\'s room is refused');

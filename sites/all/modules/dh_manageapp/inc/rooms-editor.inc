@@ -26,11 +26,28 @@ function _dh_rooms_place_owner($centre_id, $g, $sec, $p, $except_room = 0)
 		array(':c' => (int) $centre_id, ':g' => $g, ':s' => $sec, ':p' => $p, ':x' => (int) $except_room))->fetchField();
 }
 
-/** "Place X is used by <course>..." when a place of this centre/gender/section is in use, else ''. */
+/** "Place X is used by <course>..." when a place of this centre/gender/section is in use, else ''.
+ *  $in_use comes from dh_rooms_action(): upper-cased key => array(course label, original key). Letter case is ignored, as the DB does. */
 function _dh_rooms_in_use_msg($in_use, $g, $sec, $p)
 {
-	$k = $g . '|' . $sec . '|' . $p;
-	return isset($in_use[$k]) ? 'Place ' . $p . ' is used by ' . $in_use[$k] . ". It can't be changed until that course is over." : '';
+	$k = mb_strtoupper($g . '|' . $sec . '|' . $p);
+	return isset($in_use[$k]) ? 'Place ' . $p . ' is used by ' . $in_use[$k][0] . ". It can't be changed until that course is over." : '';
+}
+
+/** TRUE when $p is one of $list, ignoring letter case. */
+function _dh_rooms_has_place($list, $p)
+{
+	foreach ($list as $x)
+		if (mb_strtolower($x) === mb_strtolower($p))
+			return TRUE;
+	return FALSE;
+}
+
+/** The label of a toilet key; the raw key when it is not a known one. */
+function _dh_rooms_toilet_label($key)
+{
+	$t = dh_room_toilet_types();
+	return isset($t[$key]) ? $t[$key] : (string) $key;
 }
 
 function _dh_rooms_write_places($room_id, $places)
@@ -46,7 +63,9 @@ function dh_rooms_action($centre_id, $in, $uid)
 	$op = isset($in['op']) ? (string) $in['op'] : '';
 	$toilets = dh_room_toilet_types();
 	$now = date('Y-m-d H:i:s');
-	$in_use = dh_rooms_places_in_use($centre_id);
+	$in_use = array();
+	foreach (dh_rooms_places_in_use($centre_id) as $k => $label)
+		$in_use[mb_strtoupper($k)] = array($label, $k);
 	$g = isset($in['gender']) ? strtoupper((string) $in['gender']) : '';
 	$ids = (isset($in['ids']) && is_array($in['ids'])) ? array_values(array_unique(array_map('intval', $in['ids']))) : array();
 
@@ -77,7 +96,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 			if (!$old) return _dh_rooms_err('This room is not in this centre.');
 			$old_places = _dh_rooms_places($id);
 			foreach ($old_places as $p)
-				if (($sec !== $old['cr_section'] || $g !== $old['cr_gender'] || !in_array($p, $places, TRUE)) && ($m = _dh_rooms_in_use_msg($in_use, $old['cr_gender'], $old['cr_section'], $p)) !== '')
+				if ((mb_strtoupper($sec) !== mb_strtoupper($old['cr_section']) || $g !== $old['cr_gender'] || !_dh_rooms_has_place($places, $p)) && ($m = _dh_rooms_in_use_msg($in_use, $old['cr_gender'], $old['cr_section'], $p)) !== '')
 					return _dh_rooms_err($m);
 			$txn = db_transaction();
 			db_update('dh_center_room')->fields(array('cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet,
@@ -87,7 +106,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 			$ch = array();
 			if ($old['cr_name'] !== $name) $ch['room'] = array($old['cr_name'], $name);
 			if ($old['cr_section'] !== $sec || $old['cr_gender'] !== $g) $ch['section'] = array($old['cr_gender'] . ' ' . $old['cr_section'], $g . ' ' . $sec);
-			if ($old['cr_toilet'] !== $toilet) $ch['toilet'] = array($toilets[$old['cr_toilet']], $toilets[$toilet]);
+			if ($old['cr_toilet'] !== $toilet) $ch['toilet'] = array(_dh_rooms_toilet_label($old['cr_toilet']), $toilets[$toilet]);
 			if ($old_places !== $places) $ch['places'] = array(implode(', ', $old_places), implode(', ', $places));
 			dh_rooms_log($centre_id, 'update', $ch, $id);
 		}
@@ -116,6 +135,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		if ($from < 0 || $to < $from) return _dh_rooms_err('"To" must be the same as or after "From".');
 		if ($to - $from + 1 > 200) return _dh_rooms_err('Add at most 200 rooms at once.');
 		$plan = array();
+		$seen = array();
 		for ($n = $from; $n <= $to; $n++)
 		{
 			$places = $suf ? array_map(function ($s) use ($n) { return $n . $s; }, $suf) : array((string) $n);
@@ -123,6 +143,8 @@ function dh_rooms_action($centre_id, $in, $uid)
 			{
 				if (mb_strlen($p) > 15) return _dh_rooms_err('Place ' . $p . ' is too long (15 letters at most).');
 				if (($owner = _dh_rooms_place_owner($centre_id, $g, $sec, $p)) !== FALSE && $owner !== NULL) return _dh_rooms_err('Place ' . $p . ' is already in Room ' . $owner . '.');
+				if (isset($seen[mb_strtolower($p)])) return _dh_rooms_err('Place ' . $p . ' is already in Room ' . $seen[mb_strtolower($p)] . '.');
+				$seen[mb_strtolower($p)] = (string) $n;
 			}
 			$plan[(string) $n] = $places;
 		}
@@ -151,7 +173,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 			{
 				db_update('dh_center_room')->fields(array('cr_toilet' => $toilet, 'cr_review' => 0, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->condition('cr_id', $id)->execute();
 				if ($old['cr_toilet'] !== $toilet)
-					dh_rooms_log($centre_id, 'update', array('toilet' => array($toilets[$old['cr_toilet']], $toilets[$toilet])), $id);
+					dh_rooms_log($centre_id, 'update', array('toilet' => array(_dh_rooms_toilet_label($old['cr_toilet']), $toilets[$toilet])), $id);
 			}
 			else
 				db_update('dh_center_room')->fields(array('cr_review' => 0, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->condition('cr_id', $id)->execute();
@@ -219,10 +241,10 @@ function dh_rooms_action($centre_id, $in, $uid)
 		if ($to === '' || mb_strlen($to) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
 		if (db_query("select 1 from dh_center_room where cr_center = :c and cr_gender = :g and cr_section = :s and cr_deleted = 0 limit 1",
 			array(':c' => $centre_id, ':g' => $g, ':s' => $to))->fetchField()) return _dh_rooms_err('Section ' . $to . ' already exists.');
-		foreach ($in_use as $k => $label)
+		foreach ($in_use as $v)
 		{
-			list($kg, $ks, $kp) = explode('|', $k, 3);
-			if ($kg === $g && $ks === $from) return _dh_rooms_err(_dh_rooms_in_use_msg($in_use, $kg, $ks, $kp));
+			list($kg, $ks, $kp) = explode('|', $v[1], 3);
+			if ($kg === $g && mb_strtoupper($ks) === mb_strtoupper($from)) return _dh_rooms_err(_dh_rooms_in_use_msg($in_use, $kg, $ks, $kp));
 		}
 		db_update('dh_center_room')->fields(array('cr_section' => $to, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))
 			->condition('cr_center', $centre_id)->condition('cr_gender', $g)->condition('cr_section', $from)->condition('cr_deleted', 0)->execute();
