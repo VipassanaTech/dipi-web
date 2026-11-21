@@ -46,4 +46,8 @@
 .dhrb-pl.other { background: #f1efe8; color: #5f5e5a; }
 .dhrb-pl.hit { outline: 2px dashed #ef9f27; }
 .dhrb-chosen { border: 1px solid #378add; background: #e7f1fb; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 13px; }
+.dhrb-chosen .dhrb-det { display: block; }
+/* Pinned under the fixed site header while the board scrolls (no overflow:hidden on its parents). */
+.dhrb-pin { position: sticky; top: var(--dhr-top, 0px); z-index: 20; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
+@media (max-width: 700px) { .dhrb-pin .dhrb-det { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
 .dhr-shared { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #fbeaf0; color: #72243e; }

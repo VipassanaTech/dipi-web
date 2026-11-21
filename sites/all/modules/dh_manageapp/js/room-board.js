@@ -3,7 +3,9 @@
  * or another placed person to swap. Every action POSTs to saveUrl and redraws from the returned data. */
 (function ($) {
   'use strict';
+  // narrow = phone width (people list above the rooms): the pinned "Chosen" bar gets a button down to the rooms.
   var S, D = null, side = null, open = {}, chosen = null, q = '', fToilet = '', freeOnly = false, show = 'waiting';
+  var narrow = window.innerWidth < 700;
 
   function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function key(sec, place) { return sec + '|' + place; }
@@ -27,11 +29,14 @@
       p.nationality ? 'Nationality: ' + p.nationality : ''].filter(Boolean).join(' · ');
   }
   function hintsHtml(p) { return p.hints.map(function (x) { return '<span class="dhrb-hint">' + esc(x) + '</span>'; }).join(''); }
-  // Search: name, job, education, state, country, nationality or place.
+  // Where a person is, with the section (many sections have a place 2A): "R · 2A".
+  function where(p) { return p.place ? (p.section ? p.section + ' · ' + p.place : p.place) : ''; }
+  // Search: name, job, education, state, country, nationality or place ("2A", "R 2A", "R-2A" or "R · 2A").
   function hit(p) {
     if (!q) return true;
     var t = q.toLowerCase();
-    return [p.name, p.occupation, p.education, p.state, p.country, p.nationality, p.place].some(function (s) { return s && String(s).toLowerCase().indexOf(t) >= 0; });
+    return [p.name, p.occupation, p.education, p.state, p.country, p.nationality, p.place, p.place && where(p), p.place && p.section + ' ' + p.place, p.place && p.section + '-' + p.place]
+      .some(function (s) { return s && String(s).toLowerCase().indexOf(t) >= 0; });
   }
   function roomOf(p) {
     var r = D.rooms.filter(function (r) { return (r.gender === p.gender || r.gender === 'B') && r.section === p.section && r.places.some(function (x) { return x.name === p.place; }); })[0];
@@ -56,11 +61,14 @@
     h += '<div class="dhrb-counts"><div class="dhrb-count">Places<b>' + total + '</b></div><div class="dhrb-count">Placed<b>' + placed + '</b></div>'
       + '<div class="dhrb-count">Used by others<b>' + otherN + '</b></div><div class="dhrb-count">Free<b>' + (total - usedPlaces - otherN) + '</b></div></div>';
     if (shared) h += '<div class="dhr-note">' + (shared === 1 ? '1 place has' : shared + ' places have') + ' more than one person.</div>';
-    h += '<div class="dhrb-main"><div>';
+    // The chosen person sits in a bar over both columns that stays under the site header while the board scrolls.
+    h += '<div class="dhrb-wrap">';
     var c = chosen ? person(chosen) : null;
-    if (c) h += '<div class="dhrb-chosen"><b>Chosen: ' + esc(c.name) + '</b><br><small>' + esc(details(c)) + '</small><br>' + hintsHtml(c)
-      + '<br><small>' + (c.place ? 'In place ' + esc(c.place) + ' (Room ' + esc(roomOf(c)) + ', section ' + esc(c.section) + '). Tap a free place to move, or a person to swap.' : 'Not placed yet. Tap a free place.') + '</small>'
-      + '<p style="margin:6px 0 0">' + (c.place ? '<button class="btn btn-default btn-sm dhrb-remove">Take out of the room</button> ' : '') + '<button class="btn btn-link btn-sm dhrb-unchoose">Clear</button></p></div>';
+    if (c) h += '<div class="dhrb-chosen dhrb-pin"><b>Chosen: ' + esc(c.name) + '</b><small class="dhrb-det">' + esc(details(c)) + '</small>' + hintsHtml(c)
+      + '<small class="dhrb-det">' + (c.place ? 'In place ' + esc(c.place) + ' (Room ' + esc(roomOf(c)) + ', section ' + esc(c.section) + '). Tap a free place to move, or a person to swap.' : 'Not placed yet. Tap a free place.') + '</small>'
+      + '<p style="margin:6px 0 0">' + (narrow ? '<button class="btn btn-primary btn-sm dhrb-torooms">Find a place ↓</button> ' : '')
+      + (c.place ? '<button class="btn btn-default btn-sm dhrb-remove">Take out of the room</button> ' : '') + '<button class="btn btn-link btn-sm dhrb-unchoose">Clear</button></p></div>';
+    h += '<div class="dhrb-main"><div>';
     var mine = D.people.filter(function (p) { return p.gender === side; }), placedN = mine.length - waiting.length;
     h += '<div class="dhr-tabs">' + [['waiting', 'Not placed · ' + waiting.length], ['placed', 'Placed · ' + placedN], ['all', 'All · ' + mine.length]].map(function (t) {
       return '<button class="dhr-tab dhrb-show' + (show === t[0] ? ' on' : '') + '" data-show="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>'
@@ -69,7 +77,7 @@
     var list = mine.filter(function (p) { return (show === 'all' || (show === 'placed') === (p.place !== '')) && hit(p); });
     if (q) h += '<small>' + list.length + ' found</small>';
     list.forEach(function (p) {
-      h += '<div class="dhrb-card' + (chosen === p.a_id ? ' on' : '') + '" data-a="' + p.a_id + '"><b>' + esc(p.name) + '</b>' + (p.place ? ' <span class="dhr-chip">' + esc(p.place) + '</span>' : '')
+      h += '<div class="dhrb-card' + (chosen === p.a_id ? ' on' : '') + '" data-a="' + p.a_id + '"><b>' + esc(p.name) + '</b>' + (p.place ? ' <span class="dhr-chip">' + esc(where(p)) + '</span>' : '')
         + '<br><small>' + esc(details(p)) + '</small><br>' + hintsHtml(p) + '</div>';
     });
     if (!list.length) h += '<p><small>' + (q ? 'Nobody found.' : (show === 'waiting' ? 'Everyone is placed.' : 'Nobody here yet.')) + '</small></p>';
@@ -102,7 +110,7 @@
       }
       h += '</div>';
     });
-    h += '</div></div>';
+    h += '</div></div></div>';
     $('#dh-rb-app').html(h);
   }
 
@@ -116,8 +124,31 @@
     }).fail(function () { alert('Could not save. Please check the connection and try again.'); });
   }
 
+  // The site header is fixed at the top, so the pinned bar sits just below it (CSS --dhr-top).
+  function setTop() {
+    var t = 0, vh = window.innerHeight;
+    $('body').find('> *, > * > *, > * > * > *').each(function () {
+      if (this.offsetHeight === 0 || window.getComputedStyle(this).position !== 'fixed') return;
+      var b = this.getBoundingClientRect();
+      if (b.top < vh / 3 && b.height < vh / 2) t = Math.max(t, b.bottom);
+    });
+    var app = document.getElementById('dh-rb-app');
+    if (app) app.style.setProperty('--dhr-top', Math.round(t) + 'px');
+    return t;
+  }
+
   $(function () {
     S = Drupal.settings.dhRoomBoard;
+    setTop();
+    var rt = null;
+    $(window).on('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () {
+        setTop();
+        var nw = window.innerWidth < 700;
+        if (nw !== narrow) { narrow = nw; if (D) render(); }
+      }, 200);
+    });
     $.getJSON(S.dataUrl).done(function (d) { D = d; render(); }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
     var doc = $(document);
     doc.on('click', '#dh-rb-app .dhr-tab[data-side]', function () { side = $(this).data('side'); chosen = null; render(); });
@@ -133,6 +164,12 @@
       render();
     });
     doc.on('click', '.dhrb-unchoose', function () { chosen = null; render(); });
+    // Phone: jump from the people list down to the rooms, just below the pinned bar.
+    doc.on('click', '.dhrb-torooms', function () {
+      var col = $('.dhrb-main > div').eq(1)[0], pin = $('.dhrb-pin')[0];
+      if (!col) return;
+      window.scrollTo(0, col.getBoundingClientRect().top + window.pageYOffset - setTop() - (pin ? pin.offsetHeight : 0) - 6);
+    });
     doc.on('click', '.dhrb-show', function () { show = $(this).data('show'); render(); });
     doc.on('click', '.dhrb-remove', function () { save({op: 'remove', a_id: chosen}); });
     doc.on('click', '.dhrb-pl', function () {
