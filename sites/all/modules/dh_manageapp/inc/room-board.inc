@@ -185,6 +185,7 @@ function dh_room_board_page($centre_id, $course_id)
 	drupal_add_css($path . '/css/rooms.css');
 	drupal_add_js(array('dhRoomBoard' => array('dataUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/data'),
 		'saveUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/save'), 'token' => drupal_get_token('dh-room-board'))), 'setting');
+	drupal_add_js($path . '/js/rooms-common.js');
 	drupal_add_js($path . '/js/room-board.js');
 	return '<div class="dh-rb"><p>' . l('Back to Course', 'course/' . (int) $centre_id . '/' . (int) $course_id) . ' | ' . l('Zero Day', 'zero-day/' . (int) $centre_id . '/' . (int) $course_id) . '</p>'
 		. '<h2>' . check_plain($label) . '</h2><div id="dh-rb-app"><p>Loading the board…</p></div></div>';

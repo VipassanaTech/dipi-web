@@ -483,6 +483,7 @@ function dh_rooms_page($centre_id)
 	drupal_add_css($path . '/css/rooms.css');
 	drupal_add_js(array('dhRooms' => array('centre' => (int) $centre_id, 'dataUrl' => url('centre/' . (int) $centre_id . '/rooms/data'),
 		'saveUrl' => url('centre/' . (int) $centre_id . '/rooms/save'), 'token' => drupal_get_token('dh-rooms'), 'toilets' => dh_room_toilet_types())), 'setting');
+	drupal_add_js($path . '/js/rooms-common.js');
 	drupal_add_js($path . '/js/rooms-editor.js');
 	return '<div class="dh-rooms"><p>' . l('Back to Centre settings', 'centre/' . (int) $centre_id . '/edit') . ' | ' . l('Back to Dashboard', 'centre/' . (int) $centre_id) . '</p>'
 		. '<h2>' . check_plain($name) . '</h2><div id="dh-rooms-app"><p>Loading rooms…</p></div></div>';

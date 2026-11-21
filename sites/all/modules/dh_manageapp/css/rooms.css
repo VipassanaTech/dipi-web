@@ -52,3 +52,5 @@
 @media (max-width: 700px) { .dhrb-pin .dhrb-det { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
 .dhr-shared { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #fbeaf0; color: #72243e; }
 .dhrb-conf { font-weight: 500; color: #185fa5; }
+.dhrb-count[data-f] { cursor: pointer; } .dhrb-count.on { outline: 2px solid #378add; background: #e7f1fb; }
+.dhrb-pl.taken.xside { background: #fbeaf0; color: #72243e; cursor: not-allowed; }

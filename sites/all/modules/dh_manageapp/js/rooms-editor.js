@@ -43,7 +43,9 @@
     if (look) h += '<div class="dhr-note">' + (look === 1 ? '1 room needs' : look + ' rooms need') + ' a look: toilet "Not set", or added from a course. '
       + '<a href="#" class="dhr-only">' + (onlyReview ? 'Show all rooms' : 'Show only these') + '</a></div>';
     h += '<div class="dhr-bar"><input type="text" class="form-control dhr-q" placeholder="Find room or place, e.g. 112B" value="' + esc(q) + '">'
-      + '<select class="form-control dhr-ft" style="width:auto">' + toiletOptions(fToilet, true) + '</select></div>';
+      + '<select class="form-control dhr-ft" style="width:auto">' + toiletOptions(fToilet, true) + '</select>'
+      + '<button class="btn btn-default btn-sm dhr-openall">Open all</button><button class="btn btn-default btn-sm dhr-closeall">Close all</button>'
+      + '<button class="btn btn-default btn-sm dhr-print">Print</button></div>';
     // The top is for the whole centre (a new section); a section's own buttons are inside it.
     h += '<div class="dhr-bar"><button class="btn btn-default dhr-add">Add room</button><button class="btn btn-default dhr-many">Add many rooms</button>'
       + '<small class="dhr-hint">Open a section to change its rooms.</small></div><div class="dhr-formbox" data-sec=""></div>';
@@ -134,22 +136,27 @@
     });
   }
 
+  // Print every section of this side (with the search and filters in use): one table per section, Room · Places · Toilet.
+  function printRooms() {
+    var g = bySection(sideRooms()), body = '';
+    g.order.forEach(function (sec) {
+      var rows = g.o[sec].filter(matches).map(function (r) {
+        return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.places.map(function (p) { return p.name; }).join(', ')) + '</td><td>' + esc(S.toilets[r.toilet] || r.toilet) + '</td></tr>';
+      }).join('');
+      if (rows) body += '<h2>Section ' + esc(sec) + (g.o[sec][0].gender === 'B' ? ' (Men + Women)' : '') + ' · ' + n(g.o[sec].length, 'room') + ', ' + n(places(g.o[sec]), 'place') + '</h2>'
+        + '<table><thead><tr><th>Room</th><th>Places</th><th>Toilet</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    });
+    var note = [q ? 'Search: ' + q : '', fToilet ? 'Toilet: ' + S.toilets[fToilet] : '', onlyReview ? 'Only rooms that need a look' : ''].filter(Boolean).join(' · ');
+    window.dhRoomsCommon.printDoc('Rooms - ' + $.trim($('.dh-rooms h2').first().text()) + ' - ' + (side === 'M' ? 'Men' : 'Women'), note, body);
+  }
+
   function pickedIds() { return Object.keys(picked).map(Number); }
   function roomById(id) { return rooms.filter(function (r) { return r.id === id; })[0]; }
 
   $(function () {
     S = Drupal.settings.dhRooms;
     // The site header is fixed at the top, so a section's bar sticks just below it (CSS --dhr-top).
-    function setTop() {
-      var t = 0, vh = window.innerHeight;
-      $('body').find('> *, > * > *, > * > * > *').each(function () {
-        if (this.offsetHeight === 0 || window.getComputedStyle(this).position !== 'fixed') return;
-        var b = this.getBoundingClientRect();
-        if (b.top < vh / 3 && b.height < vh / 2) t = Math.max(t, b.bottom);
-      });
-      var app = document.getElementById('dh-rooms-app');
-      if (app) app.style.setProperty('--dhr-top', Math.round(t) + 'px');
-    }
+    function setTop() { window.dhRoomsCommon.fixedTop('dh-rooms-app'); }
     setTop();
     var rt = null;
     $(window).on('resize', function () {
@@ -167,6 +174,9 @@
     app.on('click', '.dhr-only', function (e) { e.preventDefault(); onlyReview = !onlyReview; render(); });
     app.on('input', '.dhr-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhr-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
     app.on('change', '.dhr-ft', function () { fToilet = $(this).val(); render(); });
+    app.on('click', '.dhr-openall', function () { bySection(sideRooms()).order.forEach(function (sec) { open[side + '|' + sec] = true; }); render(); });
+    app.on('click', '.dhr-closeall', function () { Object.keys(open).forEach(function (k) { if (k.indexOf(side + '|') === 0) open[k] = false; }); picked = {}; pickedSec = ''; render(); });
+    app.on('click', '.dhr-print', function () { printRooms(); });
     app.on('click', '.dhr-sec-head', function (e) {
       if ($(e.target).hasClass('dhr-ren')) return;
       var sec = String($(this).attr('data-sec')), k = side + '|' + sec;
