@@ -975,6 +975,14 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 
         if($own_app && !$sixty_day_course)
             $form['action']['#options']['ApproveOwnApplication'] = 'ApproveOwnApplication';
+
+		// Pass the review to another Recommending AT (21 Nov 2026): any Active teacher with an email in DIPI - the review
+		// request goes by email, and one to a teacher without an email moves the application to the registrar - except
+		// the present one. The application stays in R-ATReview (dh_atportal_review_form_submit).
+		$form['action']['#options']['TransferReco'] = 'Transfer to another Recommending AT';
+		$options_new_reco = db_query("select CONCAT(t_f_name, ' ', t_l_name) as 'name', CONCAT(t_f_name, ' ', t_l_name, '  ', IF(t_area != '', CONCAT('(',t_area,')'), '')) as 'area' from dh_teacher where t_status='Active' and ifnull(t_email, '') <> '' order by t_f_name, t_l_name")->fetchAllKeyed();
+		unset($options_new_reco[$r['al_recommending']]);
+		$form['transfer_reco_teacher'] = array('#type' => 'select', '#options' => array('' => 'Select the new Recommending AT') + $options_new_reco, '#title' => 'New Recommending AT');
 	}
 	if ($reco_done)
 	{
@@ -993,7 +1001,7 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 			{
 				var a = sel+"-comments";
 				console.log(a);
-				if ((val == "Approved") || (val == "Transfer to Registrar") || (val == "Transfer") || (val == "ApproveOwnApplication"))
+				if ((val == "Approved") || (val == "Transfer to Registrar") || (val == "Transfer") || (val == "TransferReco") || (val == "ApproveOwnApplication"))
 				{
 					$("label[for="+a+"]").text("Comments");
 					$("#"+a).attr("required", false);
@@ -1025,12 +1033,26 @@ function dh_atportal_review_form($form, &$form_state, $appid )
                     $("#edit-transfer-area-teacher").attr("required", false);
                     $(".form-item-transfer-area-teacher").hide();
                 }
+
+                if ((val == "TransferReco") && (sel == "edit"))
+                {
+                    $("#edit-transfer-reco-teacher").attr("required", true);
+                    $(".form-item-transfer-reco-teacher").show();
+                }
+                else if (val != "TransferReco")
+                {
+                    $("#edit-transfer-reco-teacher").attr("required", false);
+                    $(".form-item-transfer-reco-teacher").hide();
+                }
 			}
 			$(document).ready(function(){
 				$("#edit-area-teacher").select2();
                 $("#edit-transfer-area-teacher").select2();
                 $("#edit-transfer-area-teacher").attr("required", false);
                 $(".form-item-transfer-area-teacher").hide();
+                $("#edit-transfer-reco-teacher").select2();
+                $("#edit-transfer-reco-teacher").attr("required", false);
+                $(".form-item-transfer-reco-teacher").hide();
 				$("#edit-action").change(function(){
 					check_required($(this).attr("id").replace("-action", ""), $(this).val());
 				});
@@ -1043,6 +1065,11 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 							return false;
 						}
 					}
+                    if ( ($("#edit-action").val() == "TransferReco") && ($("#edit-transfer-reco-teacher").val() == "") )
+                    {
+                        alert("Please select the new Recommending AT");
+                        return false;
+                    }
                     if ( $("#edit-action").val() == "Transfer" )
                     {
                         if ($("#edit-transfer-area-teacher").val() == "")
@@ -1061,6 +1088,34 @@ function dh_atportal_review_form($form, &$form_state, $appid )
 	return $form;
 }
 
+
+/* A transfer needs a new teacher: chosen, and not the present one. (A name that is not in the dropdown - Active
+   teachers with an email for the Recommending AT; the course type's Area list for the Area AT - is refused by Drupal.) */
+function dh_atportal_review_form_validate($form, &$form_state)
+{
+	$in = $form_state['input'];
+	$action = isset($in['action']) ? $in['action'] : '';
+	if (!in_array($action, array('TransferReco', 'Transfer')))
+		return;
+	$cur = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_applicant = :a", array(':a' => arg(2)))->fetchAssoc();
+	$norm = function ($v) { return strtolower(preg_replace('/\s+/', ' ', trim((string) $v))); };
+	if ($action == 'TransferReco')
+	{
+		$to = isset($in['transfer_reco_teacher']) ? $in['transfer_reco_teacher'] : '';
+		if (trim($to) === '')
+			form_set_error('transfer_reco_teacher', t('Please select the new Recommending AT.'));
+		elseif ($cur && $norm($to) === $norm($cur['al_recommending']))
+			form_set_error('transfer_reco_teacher', t('@n is already the Recommending AT. Please select another teacher.', array('@n' => $to)));
+	}
+	else
+	{
+		$to = isset($in['transfer_area_teacher']) ? $in['transfer_area_teacher'] : '';
+		if (trim($to) === '')
+			form_set_error('transfer_area_teacher', t('Please select the new Area teacher.'));
+		elseif ($cur && $norm($to) === $norm($cur['al_area_at']))
+			form_set_error('transfer_area_teacher', t('@n is already the Area teacher. Please select another teacher.', array('@n' => $to)));
+	}
+}
 
 function dh_atportal_review_form_submit($form, &$form_state )
 {
@@ -1096,6 +1151,11 @@ function dh_atportal_review_form_submit($form, &$form_state )
             $app['al_area_at_comments'] = "Self approved by AT.";
             $update_ac_teacher_code = true;
         }
+        elseif (isset($input['action']) && $input['action'] == 'TransferReco')
+        {
+            // Another Recommending AT: the step stays Pending and the application in R-ATReview (mail + log below).
+            $app['al_recommending'] = trim($input['transfer_reco_teacher']);
+        }
         elseif (isset($input['transfer_area_teacher']) && $input['transfer_area_teacher'])
         {
             $app['al_area_at'] = $input['transfer_area_teacher'];
@@ -1121,6 +1181,17 @@ function dh_atportal_review_form_submit($form, &$form_state )
         db_update('dh_applicant_course')->fields(array('ac_teacher_code' => $ac_teacher_code))->condition('ac_applicant', $lc_id)->execute();
     }
 
+
+	// Passed to another Recommending AT: log who passed it to whom (with the comment) and send the new teacher the review
+	// request (a new link code: the review-row trigger cleared the old one, so the former teacher's link stops working).
+	if (isset($input['action']) && $input['action'] == 'TransferReco')
+	{
+		$centre = db_query("select a_center from dh_applicant where a_id = :a", array(':a' => $lc_id))->fetchField();
+		$note = trim((string) $input['comments']);
+		logit($centre, 'LC Workflow', $lc_id, "RecoAT Transfer from {$review_ats['al_recommending']} to {$app['al_recommending']}" . ($note !== '' ? " (Comment: $note)" : ''));
+		dh_send_letter('r-teacher', $lc_id, 'R-ATReview');
+		drupal_set_message(t('Sent to @n for the Recommending AT review.', array('@n' => $app['al_recommending'])));
+	}
 
 	$q = "select al_recommending_approved, al_area_at_approved from dh_applicant_lc where al_applicant=$lc_id";
 	$row = db_query($q)->fetchAssoc();
