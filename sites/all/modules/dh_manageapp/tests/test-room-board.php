@@ -29,10 +29,12 @@ t_in_txn(function () {
 
   $old = t_make_applicant($A, array('a_gender' => 'M', 'a_f_name' => 'old'), array('aa_section' => 'B', 'aa_acco' => ' 14A'));
 
+  db_update('dh_applicant')->fields(array('a_conf_no' => ' ZQ123 '))->condition('a_id', $ram)->execute();
   $data = dh_room_board_data($cen, $A);
   t_eq(array($data['ok'], count($data['rooms']), count($data['people'])), array(TRUE, 3, 4), 'B1 data: rooms of both sides, three arrived people');
   $p = array(); foreach ($data['people'] as $x) $p[$x['a_id']] = $x;
   t_eq(array($p[$ram]['name'], $p[$ram]['old'], $p[$ram]['section'], $p[$ram]['place']), array('Ram Kumar', TRUE, 'B', '12A'), 'B2 a placed person');
+  t_eq($p[$ram]['conf'], 'ZQ123', 'B2b the confirmation number comes with each person (trimmed)');
   t_ok(in_array('Chair', $p[$ram]['hints'], TRUE) && in_array('Physical: knee pain', $p[$ram]['hints'], TRUE) && in_array('Needs: needs a western toilet', $p[$ram]['hints'], TRUE), 'B3 hints: chair, physical problem, special needs');
   t_eq(array($p[$ram]['occupation'], $p[$ram]['education'], $p[$ram]['state'], $p[$ram]['country'], $p[$ram]['nationality']),
     array('Retired Teacher', 'M.A.', 'Zzqtest State', $co['c_name'], ''), 'B3b occupation, education, state, country; nationality hidden when it matches the country');

@@ -29,13 +29,16 @@
       p.nationality ? 'Nationality: ' + p.nationality : ''].filter(Boolean).join(' · ');
   }
   function hintsHtml(p) { return p.hints.map(function (x) { return '<span class="dhrb-hint">' + esc(x) + '</span>'; }).join(''); }
+  // Confirmation number + name, as staff call people: "AB123 Ram Kumar".
+  function label(p) { return (p.conf ? p.conf + ' ' : '') + p.name; }
+  function labelHtml(p) { return (p.conf ? '<span class="dhrb-conf">' + esc(p.conf) + '</span> ' : '') + esc(p.name); }
   // Where a person is, with the section (many sections have a place 2A): "R · 2A".
   function where(p) { return p.place ? (p.section ? p.section + ' · ' + p.place : p.place) : ''; }
-  // Search: name, job, education, state, country, nationality or place ("2A", "R 2A", "R-2A" or "R · 2A").
+  // Search: confirmation number, name, job, education, state, country, nationality or place ("2A", "R 2A", "R-2A" or "R · 2A").
   function hit(p) {
     if (!q) return true;
     var t = q.toLowerCase();
-    return [p.name, p.occupation, p.education, p.state, p.country, p.nationality, p.place, p.place && where(p), p.place && p.section + ' ' + p.place, p.place && p.section + '-' + p.place]
+    return [p.conf, p.name, p.occupation, p.education, p.state, p.country, p.nationality, p.place, p.place && where(p), p.place && p.section + ' ' + p.place, p.place && p.section + '-' + p.place]
       .some(function (s) { return s && String(s).toLowerCase().indexOf(t) >= 0; });
   }
   function roomOf(p) {
@@ -64,7 +67,7 @@
     // The chosen person sits in a bar over both columns that stays under the site header while the board scrolls.
     h += '<div class="dhrb-wrap">';
     var c = chosen ? person(chosen) : null;
-    if (c) h += '<div class="dhrb-chosen dhrb-pin"><b>Chosen: ' + esc(c.name) + '</b><small class="dhrb-det">' + esc(details(c)) + '</small>' + hintsHtml(c)
+    if (c) h += '<div class="dhrb-chosen dhrb-pin"><b>Chosen: ' + labelHtml(c) + '</b><small class="dhrb-det">' + esc(details(c)) + '</small>' + hintsHtml(c)
       + '<small class="dhrb-det">' + (c.place ? 'In place ' + esc(c.place) + ' (Room ' + esc(roomOf(c)) + ', section ' + esc(c.section) + '). Tap a free place to move, or a person to swap.' : 'Not placed yet. Tap a free place.') + '</small>'
       + '<p style="margin:6px 0 0">' + (narrow ? '<button class="btn btn-primary btn-sm dhrb-torooms">Find a place ↓</button> ' : '')
       + (c.place ? '<button class="btn btn-default btn-sm dhrb-remove">Take out of the room</button> ' : '') + '<button class="btn btn-link btn-sm dhrb-unchoose">Clear</button></p></div>';
@@ -73,11 +76,11 @@
     h += '<div class="dhr-tabs">' + [['waiting', 'Not placed · ' + waiting.length], ['placed', 'Placed · ' + placedN], ['all', 'All · ' + mine.length]].map(function (t) {
       return '<button class="dhr-tab dhrb-show' + (show === t[0] ? ' on' : '') + '" data-show="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>'
       + (D.optional ? '<small>Room is optional on this course.</small>' : '')
-      + '<input type="text" class="form-control dhrb-q" placeholder="Find: name, job, education, state, country, place" value="' + esc(q) + '" style="margin:6px 0">';
+      + '<input type="text" class="form-control dhrb-q" placeholder="Find: conf. no., name, job, education, state, country, place" value="' + esc(q) + '" style="margin:6px 0">';
     var list = mine.filter(function (p) { return (show === 'all' || (show === 'placed') === (p.place !== '')) && hit(p); });
     if (q) h += '<small>' + list.length + ' found</small>';
     list.forEach(function (p) {
-      h += '<div class="dhrb-card' + (chosen === p.a_id ? ' on' : '') + '" data-a="' + p.a_id + '"><b>' + esc(p.name) + '</b>' + (p.place ? ' <span class="dhr-chip">' + esc(where(p)) + '</span>' : '')
+      h += '<div class="dhrb-card' + (chosen === p.a_id ? ' on' : '') + '" data-a="' + p.a_id + '"><b>' + labelHtml(p) + '</b>' + (p.place ? ' <span class="dhr-chip">' + esc(where(p)) + '</span>' : '')
         + '<br><small>' + esc(details(p)) + '</small><br>' + hintsHtml(p) + '</div>';
     });
     if (!list.length) h += '<p><small>' + (q ? 'Nobody found.' : (show === 'waiting' ? 'Everyone is placed.' : 'Nobody here yet.')) + '</small></p>';
@@ -99,7 +102,7 @@
           var pl = r.places.map(function (p) {
             var who = H[key(sec, p.name)], o = other(sec, p.name);
             if (freeOnly && (who || o)) return '';
-            if (who) return '<div class="dhrb-pl taken' + (who.some(function (x) { return chosen === x.a_id; }) ? ' on' : '') + (q && anyHit(who) ? ' hit' : '') + '" title="' + esc(who.map(details).join(' / ')) + '" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '" data-a="' + who[0].a_id + '"><span>' + esc(p.name) + '</span><span>' + esc(who.map(function (x) { return x.name; }).join(', ')) + (who.length > 1 ? ' <span class="dhr-t">' + who.length + ' people</span>' : '') + '</span></div>';
+            if (who) return '<div class="dhrb-pl taken' + (who.some(function (x) { return chosen === x.a_id; }) ? ' on' : '') + (q && anyHit(who) ? ' hit' : '') + '" title="' + esc(who.map(function (x) { return label(x) + ' · ' + details(x); }).join(' / ')) + '" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '" data-a="' + who[0].a_id + '"><span>' + esc(p.name) + '</span><span>' + esc(who.map(label).join(', ')) + (who.length > 1 ? ' <span class="dhr-t">' + who.length + ' people</span>' : '') + '</span></div>';
             if (o) return '<div class="dhrb-pl other" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>' + esc(o) + '</span></div>';
             return '<div class="dhrb-pl free" data-sec="' + esc(sec) + '" data-place="' + esc(p.name) + '"><span>' + esc(p.name) + '</span><span>Free</span></div>';
           }).join('');

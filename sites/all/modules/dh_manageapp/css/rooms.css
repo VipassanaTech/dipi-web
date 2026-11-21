@@ -51,3 +51,4 @@
 .dhrb-pin { position: sticky; top: var(--dhr-top, 0px); z-index: 20; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
 @media (max-width: 700px) { .dhrb-pin .dhrb-det { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
 .dhr-shared { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #fbeaf0; color: #72243e; }
+.dhrb-conf { font-weight: 500; color: #185fa5; }

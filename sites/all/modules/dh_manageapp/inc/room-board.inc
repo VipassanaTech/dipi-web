@@ -30,7 +30,7 @@ function dh_room_board_data($centre_id, $course_id)
 	$shared = dh_rooms_shared_sections($centre_id);
 	$cross = array_fill_keys($sides, array());   // [side][section][place] = 'Man'/'Woman': a shared place held by the other side in this course
 	$people = array();
-	foreach (db_query("select a.a_id, a.a_f_name, a.a_m_name, a.a_l_name, a.a_gender, a.a_type, a.a_old, a.a_problem_physical, TIMESTAMPDIFF(YEAR, a.a_dob, CURDATE()) as age,
+	foreach (db_query("select a.a_id, a.a_conf_no, a.a_f_name, a.a_m_name, a.a_l_name, a.a_gender, a.a_type, a.a_old, a.a_problem_physical, TIMESTAMPDIFF(YEAR, a.a_dob, CURDATE()) as age,
 		a.a_occupation, a.a_education, co.c_name as country_name, co.c_nationality, st.s_name as state_name, ae.ae_nationality,
 		aa.aa_section, aa.aa_acco, aa.aa_chowky, aa.aa_chair, ae.ae_desc_physical, ae.ae_desc_special_requirement
 		from dh_applicant a join dh_applicant_attended aa on aa.aa_applicant = a.a_id left join dh_applicant_extra ae on ae.ae_applicant = a.a_id
@@ -53,7 +53,7 @@ function dh_room_board_data($centre_id, $course_id)
 		elseif ($r['a_problem_physical']) $hints[] = 'Physical problem';
 		if (trim((string) $r['ae_desc_special_requirement']) !== '') $hints[] = 'Needs: ' . mb_substr(trim($r['ae_desc_special_requirement']), 0, 60);
 		$nat = trim((string) $r['ae_nationality']);
-		$people[] = array('a_id' => (int) $r['a_id'], 'name' => dh_day0_name($r), 'gender' => $g, 'server' => strtolower((string) $r['a_type']) === 'sevak',
+		$people[] = array('a_id' => (int) $r['a_id'], 'conf' => trim((string) $r['a_conf_no']), 'name' => dh_day0_name($r), 'gender' => $g, 'server' => strtolower((string) $r['a_type']) === 'sevak',
 			'old' => (bool) $r['a_old'], 'age' => $r['age'] === NULL ? NULL : (int) $r['age'],
 			'occupation' => mb_substr(dh_day0_case((string) $r['a_occupation']), 0, 60), 'education' => mb_substr(trim((string) $r['a_education']), 0, 60),
 			'state' => (string) $r['state_name'], 'country' => (string) $r['country_name'],
