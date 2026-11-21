@@ -277,5 +277,16 @@ function dh_rooms_save_page($centre_id)
 	drupal_exit();
 }
 
-/* Temporary until the page body lands (Task 6). */
-function dh_rooms_page($centre_id) { return ''; }
+/** The Rooms page: sections, rooms and places of one centre, edited in place (js/rooms-editor.js). */
+function dh_rooms_page($centre_id)
+{
+	$name = (string) db_query("select c_name from dh_center where c_id = :c", array(':c' => (int) $centre_id))->fetchField();
+	drupal_set_title('Rooms');
+	$path = drupal_get_path('module', 'dh_manageapp');
+	drupal_add_css($path . '/css/rooms.css');
+	drupal_add_js(array('dhRooms' => array('centre' => (int) $centre_id, 'dataUrl' => url('centre/' . (int) $centre_id . '/rooms/data'),
+		'saveUrl' => url('centre/' . (int) $centre_id . '/rooms/save'), 'token' => drupal_get_token('dh-rooms'), 'toilets' => dh_room_toilet_types())), 'setting');
+	drupal_add_js($path . '/js/rooms-editor.js');
+	return '<div class="dh-rooms"><p>' . l('Back to Centre settings', 'centre/' . (int) $centre_id . '/edit') . ' | ' . l('Back to Dashboard', 'centre/' . (int) $centre_id) . '</p>'
+		. '<h2>' . check_plain($name) . '</h2><div id="dh-rooms-app"><p>Loading rooms…</p></div></div>';
+}

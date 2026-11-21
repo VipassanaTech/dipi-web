@@ -1,0 +1,22 @@
+.dh-rooms, .dh-rb { max-width: 1100px; }
+.dh-rooms .dhr-tabs, .dh-rb .dhr-tabs { display: flex; gap: 8px; margin: 8px 0 12px; flex-wrap: wrap; }
+.dhr-tab { padding: 6px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+.dhr-tab.on { background: #e7f1fb; border-color: #378add; color: #0c447c; }
+.dhr-note { background: #faeeda; color: #633806; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
+.dhr-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+.dhr-bar input[type=text] { flex: 1; min-width: 180px; }
+.dhr-sec { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.dhr-sec-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px; cursor: pointer; background: #fafafa; flex-wrap: wrap; }
+.dhr-sec-head b { min-width: 90px; }
+.dhr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; padding: 8px 10px; }
+.dhr-tile { border: 1px solid #ddd; border-radius: 6px; padding: 6px 8px; background: #fff; cursor: pointer; font-size: 13px; }
+.dhr-tile.sel { border: 2px solid #378add; }
+.dhr-tile.rev { border-color: #ef9f27; }
+.dhr-chip { display: inline-block; font-size: 12px; padding: 0 5px; border: 1px solid #ddd; border-radius: 4px; margin: 2px 2px 0 0; }
+.dhr-t { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-top: 4px; }
+.dhr-t-indian { background: #eaf3de; color: #27500a; } .dhr-t-western { background: #e6f1fb; color: #0c447c; }
+.dhr-t-both { background: #eeedfe; color: #3c3489; } .dhr-t-none { background: #f1efe8; color: #444441; } .dhr-t-unset { background: #faeeda; color: #633806; }
+.dhr-form { border: 1px solid #378add; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: #fff; }
+.dhr-form label { display: block; margin-top: 6px; font-weight: normal; }
+.dhr-form input, .dhr-form select, .dhr-form textarea { width: 100%; max-width: 420px; }
+@media (max-width: 600px) { .dhr-tiles { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } }
