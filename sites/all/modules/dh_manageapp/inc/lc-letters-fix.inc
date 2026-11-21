@@ -14,6 +14,13 @@
 define('DH_LC_FIX_DUMMY_CENTRE', 302);   // the test centre (Dummy Centre): left out
 define('DH_LC_FIX_LINE', '<p>To review, please click on this link - [ReviewLink]</p>');
 
+/* The seven letters this 1 Nov 2026 fix was for (the three teacher-change letters added on 21 Nov have their own
+   script: deploy/2026-11-21-lc-teacher-change-letters.php). */
+function dh_lc_fix_role_keys()
+{
+	return array('r_review', 'a_review', 'r_approved', 'r_rejected', 'a_approved', 'a_rejected', 'lc_admin');
+}
+
 /* Active centres: real centres with any course since 2024, plus any centre (including non-centres) with a long course
    since 2024; never the test centre. A long course is one whose course type has td_val3 = 'LC'. */
 function dh_lc_fix_centres()
@@ -37,7 +44,7 @@ function _dh_lc_fix_where($key)
 function dh_lc_fix_sources()
 {
 	$src = array();
-	foreach (array_keys(dh_letter_lc_roles()) as $key)
+	foreach (dh_lc_fix_role_keys() as $key)
 	{
 		list($w, $v) = _dh_lc_fix_where($key);
 		$id = db_query("select l_id from dh_letter where l_center = 0 and l_deleted = 0 and $w order by l_id limit 1", array(':v' => $v))->fetchField();
@@ -140,7 +147,7 @@ function dh_lc_fix_plan($centres = NULL)
 			array(':c' => $c, ':r' => '%[RAuth]%'))->fetchCol());
 		foreach ($wrong as $id)
 			$plan[] = array('do' => 'status', 'centre' => $c, 'l_id' => $id);
-		foreach (array_keys(dh_letter_lc_roles()) as $key)
+		foreach (dh_lc_fix_role_keys() as $key)
 		{
 			list($w, $v) = _dh_lc_fix_where($key);
 			$args = array(':c' => $c, ':v' => $v);

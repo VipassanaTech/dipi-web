@@ -29,7 +29,7 @@ $ctl = dh_lc_fix_replaced_hosts("<p>https://zzq\x1bhost.invalid/x/[RAuth] and ht
 t_ok(count($ctl) >= 1 && count(array_filter($ctl, function ($h) { return preg_match('~^[\x21-\x7e]+$~', $h); })) == count($ctl), 'K8 a control or non-ASCII character in a host is never printed as it is');
 // K9: each source row says which letter it is (l_id, l_center) for the dry run, and keeps the keys the apply step uses
 $srcs = dh_lc_fix_sources();
-t_eq(array_keys($srcs), array_keys(dh_letter_lc_roles()), 'K9 one source entry per LC role');
+t_eq(array_keys($srcs), dh_lc_fix_role_keys(), 'K9 one source entry per LC role of the 1 Nov fix (the seven)');
 $okk = TRUE;
 foreach ($srcs as $key => $sr)
 	if ($sr !== NULL)

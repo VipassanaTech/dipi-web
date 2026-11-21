@@ -12,7 +12,8 @@ foreach ($files as $label => $path) {
   t_eq(preg_match_all("/from dh_letter where l_name\s*=/i", $src), 0, "B1 $label has no direct by-name letter query left");
 }
 t_eq(substr_count(file_get_contents($files['dh_manageapp.module']), 'dh_letter_by_name('), 3, 'B2 dh_manageapp.module uses the helper 3 times');
-t_eq(substr_count(file_get_contents($files['dh_atportal.module']), 'dh_letter_by_name('), 1, 'B2 dh_atportal.module uses the helper once');
+t_eq(substr_count(file_get_contents($files['dh_atportal.module']), 'dh_letter_by_name('), 0, 'B2 dh_atportal.module finds no letter by name itself any more');
+t_eq(substr_count(file_get_contents($files['dh_atportal.module']), 'dh_lc_teacher_letter('), 2, 'B2 ... its two teacher-change letters go through dh_lc_teacher_letter (which uses dh_letter_by_name)');
 // B3: when the centre has an LC admin email but no ACTIVE "LC Admin Notification" letter, the skip is logged like the other branches
 $mod = file_get_contents($files['dh_manageapp.module']);
 t_ok(strpos($mod, 'No LC Admin Notification letter found!') !== FALSE, 'B3 the module logs "No LC Admin Notification letter found!"');

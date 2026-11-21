@@ -1330,6 +1330,7 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
   $trigger_letter_reco = False;
   $trigger_letter_area = False;
+  $prev_reco = $prev_area = '';   // the former teachers, when changed during the review
 
 	if ( isset($app_al) )
 	{
@@ -1375,9 +1376,15 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		{
 			$t_row = db_query("select al_recommending, al_area_at from dh_applicant_lc where al_id=$app_lc_id")->fetchAssoc();
 			if (($t_row['al_recommending'] <> $app_al['al_recommending']) && ($old_status == 'R-ATReview'))
+			{
 				$trigger_letter_reco = True;
+				$prev_reco = trim((string) $t_row['al_recommending']);   // the student is told (below)
+			}
 			if (($t_row['al_area_at'] <> $app_al['al_area_at'])  && ($old_status == 'A-ATReview'))
+			{
 				$trigger_letter_area = True;		
+				$prev_area = trim((string) $t_row['al_area_at']);
+			}
 			db_update('dh_applicant_lc')->fields($app_al)->condition('al_id', $app_lc_id)->execute();
 		}
 		else
@@ -1491,6 +1498,8 @@ function dh_ma_applicant_form_submit($form, &$form_state)
     dh_send_letter('r-teacher', $app_id, 'R-ATReview' );
   if ($trigger_letter_area)
     dh_send_letter('a-teacher', $app_id, 'A-ATReview' );
+  // A teacher changed during the review: tell the student who reviews it now (inc/letter-protect.inc).
+  dh_lc_edit_teacher_letters($app_id, $prev_reco, $prev_area);
 
 
 	//drupal_goto("zero-day");

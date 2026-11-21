@@ -1191,6 +1191,9 @@ function dh_atportal_review_form_submit($form, &$form_state )
 		logit($centre, 'LC Workflow', $lc_id, "RecoAT Transfer from {$review_ats['al_recommending']} to {$app['al_recommending']}" . ($note !== '' ? " (Comment: $note)" : ''));
 		dh_send_letter('r-teacher', $lc_id, 'R-ATReview');
 		drupal_set_message(t('Sent to @n for the Recommending AT review.', array('@n' => $app['al_recommending'])));
+		// The student is told who reviews it now (not when the review mail could not go and it went back to the centre).
+		if (db_query("select a_status from dh_applicant where a_id = :a", array(':a' => $lc_id))->fetchField() == 'R-ATReview')
+			dh_lc_teacher_letter($lc_id, 'reco', $review_ats['al_recommending']);
 	}
 
 	$q = "select al_recommending_approved, al_area_at_approved from dh_applicant_lc where al_applicant=$lc_id";
@@ -1225,16 +1228,8 @@ function dh_atportal_review_form_submit($form, &$form_state )
 
             dh_send_letter('a-teacher', $lc_id, $new_status);
 
-            // active letters only (inc/letter-protect.inc)
-            $lid = dh_letter_by_name($centre, 'Recommending AT Approved');
-
-            if ($lid)
-                dh_send_letter('applicant', $lc_id, 'Custom', $lid);
-            else
-            {
-                $log = "No Recommending AT Approved letter found!";
-                logit($centre,  'Letter', $lc_id, $log );
-            }
+            // The student is told the area AT changed (21 Nov 2026; before, they were sent "Recommending AT Approved" again).
+            dh_lc_teacher_letter($lc_id, 'area', $review_ats['al_area_at']);
         }
 		elseif ($new_status <> '')
 		{

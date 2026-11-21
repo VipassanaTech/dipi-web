@@ -1404,6 +1404,9 @@ function dh_manageapp_admin_form($form, &$form_state)
  	$form[$group]['dh_lc_review_link_a'] = array('#title' => 'Area AT review link', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250, '#required' => TRUE,
  		'#default_value' => variable_get('dh_lc_review_link_a', ''),
  		'#description' => 'Start of the link that [ReviewLink] gives the area AT. DIPI adds the AT\'s code at the end.');
+ 	$form[$group]['dh_lc_choose_link'] = array('#title' => 'Student "choose another teacher" link', '#type' => 'textfield', '#size' => 170, '#maxlength' => 250,
+ 		'#default_value' => variable_get('dh_lc_choose_link', ''),
+ 		'#description' => 'Start of the link that [ChooseTeacherLink] gives the student in the "Recommending AT Returned" letter. DIPI adds the application\'s code at the end. Empty: no link is sent.');
 
 
  	$group = 'Whatsapp Settings';
@@ -2717,6 +2720,10 @@ function update_status_external($app_id, $new_status)
 						logit($centre,  'Letter', $app_id, $log );
 					}
 				}
+				// Back to the centre without the recommending AT's approval: the student is told, with the link to choose
+				// another teacher (inc/letter-protect.inc). Any other status: the centre's letter for it, as before.
+				elseif ($altered_status == 'R-ATTransfer')
+					dh_lc_teacher_letter($app_id, 'returned');
 				else				
 					dh_send_letter('applicant', $app_id, $altered_status );
 			}
@@ -2741,6 +2748,17 @@ function update_status_external($app_id, $new_status)
 						$log = "No LC Admin Notification letter found!";
 						logit($centre,  'Letter', $app_id, $log );
 					}
+				}
+				// From R-ATTransfer back to review with another recommending AT (the registrar's choice, or the student's on
+				// the applicant site): the student is told who reviews it now. Not when the review mail could not go and
+				// the application went straight back to R-ATTransfer (that sends the "returned" letter instead).
+				if ($row['a_status'] == 'R-ATTransfer')
+				{
+					$prev_reco = dh_lc_reco_at_return($app_id);
+					$now = db_query("select a.a_status, al.al_recommending from dh_applicant a join dh_applicant_lc al on al.al_applicant = a.a_id where a.a_id = :a",
+						array(':a' => $app_id))->fetchAssoc();
+					if ($prev_reco !== '' && $now && $now['a_status'] == 'R-ATReview' && strcasecmp(trim($prev_reco), trim((string) $now['al_recommending'])) != 0)
+						dh_lc_teacher_letter($app_id, 'reco', $prev_reco);
 				}
 			}
 

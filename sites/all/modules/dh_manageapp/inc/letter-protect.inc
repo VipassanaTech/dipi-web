@@ -2,7 +2,8 @@
 /**
  * Long-course (LC) letter protection.
  *
- * Seven letters per centre drive the LC approval process. DIPI finds the two review letters (to
+ * Ten letters per centre drive the LC approval process (seven, plus three teacher-change letters to the student since
+ * 21 Nov 2026). DIPI finds the two review letters (to
  * the ATs) by status and the other five by exact name. Their name, status, course type and
  * active/inactive state are locked for everyone in the screens (owner decision, 1 Nov 2026); only
  * an approved script changes them. Every screen and save path asks this file.
@@ -26,6 +27,12 @@ function dh_letter_lc_roles()
 			'purpose' => 'Sent to the student when the area AT does not approve the application.'),
 		'lc_admin'   => array('event' => NULL, 'name' => 'LC Admin Notification', 'to' => "the centre's LC admin",
 			'purpose' => "Sent to the centre's LC admin email when a long-course application arrives."),
+		'r_changed'  => array('event' => NULL, 'name' => 'Recommending AT Changed', 'to' => 'the student',
+			'purpose' => 'Sent to the student when the application is passed to another recommending AT. Use [PreviousRecommendingAT] and [RecommendingAT].'),
+		'a_changed'  => array('event' => NULL, 'name' => 'Area AT Changed', 'to' => 'the student',
+			'purpose' => 'Sent to the student when the application is passed to another area AT. Use [PreviousAreaTeacher] and [AreaTeacher].'),
+		'r_returned' => array('event' => NULL, 'name' => 'Recommending AT Returned', 'to' => 'the student',
+			'purpose' => 'Sent to the student when the application comes back to the centre without the recommending AT\'s approval. Keep [ChooseTeacherLink] in the text: with it the student can choose another teacher.'),
 	);
 }
 
@@ -116,6 +123,12 @@ function dh_letter_protect($centre_id, $action, $id, $fields)
 		if (strpos((string) $body, '[ReviewLink]') === FALSE)
 			return array($fields, t('This review letter must contain [ReviewLink] in its text: it is the only way the AT can open the application from the email.'));
 	}
+	if ($key === 'r_returned')
+	{
+		$body = isset($fields['l_body']) ? $fields['l_body'] : ($stored ? $stored['l_body'] : '');
+		if (strpos((string) $body, '[ChooseTeacherLink]') === FALSE)
+			return array($fields, t('This letter must contain [ChooseTeacherLink] in its text: it is how the student chooses another teacher.'));
+	}
 	return array($fields, '');
 }
 
@@ -132,6 +145,80 @@ function dh_letter_review_link($step, $code)
 {
 	$base = trim((string) variable_get($step == 'a' ? 'dh_lc_review_link_a' : 'dh_lc_review_link_r', ''));
 	return $base === '' ? '' : $base.$code;
+}
+
+/* The [ChooseTeacherLink] for the student: the start of the link from the admin settings plus the application's
+   choose code. '' when the setting is empty, so a broken link is never sent. */
+function dh_letter_choose_link($code)
+{
+	$base = trim((string) variable_get('dh_lc_choose_link', ''));
+	return $base === '' ? '' : $base.$code;
+}
+
+/* The student's letter about a teacher change - no reasons, only the facts:
+     'reco'     Recommending AT Changed   ($previous = the former recommending AT)
+     'area'     Area AT Changed           ($previous = the former area AT)
+     'returned' Recommending AT Returned  (with a new one-time code for [ChooseTeacherLink])
+   Found by exact name at the applicant's centre. When a centre has no such letter: logged like the other LC letters;
+   for 'returned' the centre's own letter for the R-ATTransfer status is sent instead, as before (2 centres have one). */
+function dh_lc_teacher_letter($app_id, $kind, $previous = '')
+{
+	$names = array('reco' => 'Recommending AT Changed', 'area' => 'Area AT Changed', 'returned' => 'Recommending AT Returned');
+	$centre = db_query("select a_center from dh_applicant where a_id = :a", array(':a' => $app_id))->fetchField();
+	$lid = dh_letter_by_name($centre, $names[$kind]);
+	if (!$lid)
+	{
+		if ($kind == 'returned')
+			return dh_send_letter('applicant', $app_id, 'R-ATTransfer');
+		logit($centre, 'Letter', $app_id, 'No '.$names[$kind].' letter found!');
+		return FALSE;
+	}
+	$extra = array();
+	if ($kind == 'reco')
+		$extra['prev_reco'] = $previous;
+	elseif ($kind == 'area')
+		$extra['prev_area'] = $previous;
+	else
+	{
+		$code = dh_lc_review_code($app_id);
+		db_update('dh_applicant_lc')->fields(array('al_choose_auth' => $code))->condition('al_applicant', $app_id)->execute();
+		$extra['choose_link'] = dh_letter_choose_link($code);
+	}
+	dh_letter_extra_values($extra);
+	try
+	{
+		$ret = dh_send_letter('applicant', $app_id, 'Custom', $lid);
+	}
+	finally
+	{
+		dh_letter_extra_values(array());
+	}
+	return $ret;
+}
+
+/* After the application form (DIPI Edit) changed a teacher during the review: tell the student who reviews it now.
+   Not for a first teacher ($prev ''), and not when the review mail could not go and the application went back to the
+   centre (that sends the "returned" letter instead). */
+function dh_lc_edit_teacher_letters($app_id, $prev_reco, $prev_area)
+{
+	$status = db_query("select a_status from dh_applicant where a_id = :a", array(':a' => $app_id))->fetchField();
+	if (trim((string) $prev_reco) !== '' && $status == 'R-ATReview')
+		dh_lc_teacher_letter($app_id, 'reco', $prev_reco);
+	if (trim((string) $prev_area) !== '' && $status == 'A-ATReview')
+		dh_lc_teacher_letter($app_id, 'area', $prev_area);
+}
+
+/* The recommending AT the application had when it last moved to R-ATTransfer (the last "RecoAT Assigned to" line
+   before that move in the Activity Log), or ''. */
+function dh_lc_reco_at_return($app_id)
+{
+	$moved = db_query("select max(l_id) from dh_log where l_module = 'Applicant' and l_identifier = :a and l_event = 'Status Change' and l_msg like :m",
+		array(':a' => (string) $app_id, ':m' => '% To R-ATTransfer'))->fetchField();
+	if (!$moved)
+		return '';
+	$line = db_query("select l_msg from dh_log where l_module = 'Applicant' and l_identifier = :a and l_event = 'LC Workflow' and l_msg like :m and l_id < :i order by l_id desc limit 1",
+		array(':a' => (string) $app_id, ':m' => 'RecoAT Assigned to %', ':i' => $moved))->fetchField();
+	return $line ? trim(substr($line, strlen('RecoAT Assigned to '))) : '';
 }
 
 /* A new code for an LC review link: the application number plus 15 random letters and digits (the form the email

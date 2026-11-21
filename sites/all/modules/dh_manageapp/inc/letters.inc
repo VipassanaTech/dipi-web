@@ -428,7 +428,9 @@ function dh_letters_preview($row)
 		'al_recommending' => 'Sample AT', 'al_area_at' => 'Sample AT');
 	$search = dh_letter_is_at_event($row['l_event']) ? array('[RAuth]' => 'SAMPLE', '[AAuth]' => 'SAMPLE',
 		'[ReviewLink]' => dh_letter_review_link($row['l_event'] == 'A-ATReview' ? 'a' : 'r', 'SAMPLE')) : array();
+	dh_letter_extra_values(array('prev_reco' => 'Former AT', 'prev_area' => 'Former AT', 'choose_link' => dh_letter_choose_link('SAMPLE')));
 	$search = _dh_letter_values($sample, 0, t('(the comment typed when the status is changed)'), $search);
+	dh_letter_extra_values(array());
 	$search['[LetterDetailURL]'] = variable_get('applicant_url', '').'/l.php?a=SAMPLE';
 	list($subject, $body, $sms) = _dh_letter_merge($row, $search);
 	$unfilled = _dh_letter_unfilled_all($subject, $body, $sms, $search, $centre_id);
@@ -1348,6 +1350,16 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
  * which may themselves use DIPI's fields. $id is the applicant (0 for a preview: no AT
  * details). $search may already hold [RAuth]/[AAuth] for AT letters.
  */
+/* Values for the teacher-change letters' fields ([PreviousRecommendingAT], [PreviousAreaTeacher], [ChooseTeacherLink]):
+   set by dh_lc_teacher_letter() just before its send and cleared after. Called with no argument: the current values. */
+function dh_letter_extra_values($set = NULL)
+{
+	static $values = array();
+	if ($set !== NULL)
+		$values = $set;
+	return $values;
+}
+
 function _dh_letter_values($row, $id, $comment, $search = array())
 {
 	$age = 0;
@@ -1395,6 +1407,11 @@ function _dh_letter_values($row, $id, $comment, $search = array())
 	$search['[ApplicantType]']  = $row['a_type'];
 	$search['[RecommendingAT]'] = $row['al_recommending'];
 	$search['[AreaTeacher]'] = $row['al_area_at'];
+	// The teacher-change letters' fields (dh_lc_teacher_letter sets them just for that send; '' in every other letter).
+	$extra = dh_letter_extra_values();
+	$search['[PreviousRecommendingAT]'] = isset($extra['prev_reco']) ? $extra['prev_reco'] : '';
+	$search['[PreviousAreaTeacher]'] = isset($extra['prev_area']) ? $extra['prev_area'] : '';
+	$search['[ChooseTeacherLink]'] = isset($extra['choose_link']) ? $extra['choose_link'] : '';
 	$search['[UserInput]'] 		= $comment;
 	// Start empty: when no teacher of the applicant's gender is confirmed, the loop below adds
 	// nothing, and [ATDetails] used to go out as written (prod: ~360 Attended letters in 6 months).
@@ -1613,12 +1630,22 @@ function dh_send_letter($type, $id, $event, $letter_id = 0, $comment = '', $forc
                 $user_ids = db_query("select td_key, td_val1 from dh_type_detail where td_type='COURSE-APPLICANT'")->fetchAllKeyed();
                 _update_status($id, "R-ATTransfer", $user_ids['COURSE-SYSTEM-UID']);
                 $ret_val['error'] .= ", application moved to R-ATTransfer";
+                // Tell the student, with the link to choose another teacher (inc/letter-protect.inc).
+                dh_lc_teacher_letter($id, 'returned');
             }
 
 			return $ret_val;
 		}
 	}
 
+	// Tests only (tests/*.php set it in their own process): record the letter at the point it would go out, and send
+	// nothing. Never set by the site.
+	if (isset($GLOBALS['dh_letter_capture']) && is_array($GLOBALS['dh_letter_capture']))
+	{
+		$GLOBALS['dh_letter_capture'][] = array('type' => $type, 'app' => (int) $id, 'event' => $event, 'letter_id' => (int) $letter_id,
+			'subject' => $subject, 'body' => $body, 'sms' => $sms_body);
+		return array('captured' => TRUE);
+	}
   $center_setting = db_query("select cs_email_from_name, cs_email_reply_to, cs_whatsapp_msg from dh_center_setting where cs_center=".$row['CentreID'])->fetchAssoc();
 
 	if ( ($delivery_type == DELIVERY_TYPE_EMAIL) || ($delivery_type == DELIVERY_TYPE_BOTH) )
@@ -1779,7 +1806,8 @@ function _dh_letter_builtin_fields()
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[StartDateNum]', '[EndDateNum]', '[CourseType]', '[CourseDescription]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]',
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[ApplicantID]', '[ApplicantLang]', '[ConfirmationNo]', '[UserInput]',
-		'[RecommendingAT]', '[AreaTeacher]', '[LetterDetailURL]', '[ApplicantType]', '[ATDetails]');
+		'[RecommendingAT]', '[AreaTeacher]', '[LetterDetailURL]', '[ApplicantType]', '[ATDetails]',
+		'[PreviousRecommendingAT]', '[PreviousAreaTeacher]', '[ChooseTeacherLink]');
 }
 
 function _get_letter_fields( $centre )

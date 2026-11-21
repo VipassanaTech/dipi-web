@@ -12,7 +12,7 @@ t_eq($r('LC Admin Notification', 'Custom'), 'lc_admin', 'P2 LC Admin Notificatio
 t_eq($r('km Area AT Approved', 'Custom'), NULL, 'P3 a prefixed name is an ordinary letter');
 t_eq($r('Received Common', 'Received'), NULL, 'P3 an ordinary letter');
 t_ok(dh_letter_lc_is_review('r_review') && dh_letter_lc_is_review('a_review') && !dh_letter_lc_is_review('lc_admin'), 'P4 review roles');
-t_eq(count(dh_letter_lc_roles()), 7, 'P4 seven LC roles');
+t_eq(count(dh_letter_lc_roles()), 10, 'P4 ten LC roles (seven + the three teacher-change letters of 21 Nov 2026)');
 
 function tp_letter($over) {
   $now = date('Y-m-d H:i:s');
