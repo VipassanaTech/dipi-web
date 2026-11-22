@@ -2352,6 +2352,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 	$edit_tools = (!$read_only && $pdf == '' && !$return_html);
 	$mopts = array('write_seat' => !$read_only, 'drag' => !$read_only,
 		'seat_aid_edit' => $edit_tools, 'special_edit' => $edit_tools);
+	// Each grid's later label start for this course (inc/seat-label-start.inc); 0 = normal.
+	$label_starts = dh_seat_label_starts($course[0], 'main');
 	// A side scope (AT view) shows only that side's section.
 	if (dh_view_gender_on('M'))
 	{
@@ -2368,8 +2370,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		$out .= dh_seat_tools_js($centre, $course[0]);
 	if ($mopts['seat_aid_edit'])
 		$out .= dh_seat_aid_js($centre, $course[0]);
-	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts, 'M', 'Male');
-	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts, 'M', 'Male');
+	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'M', 'main')), 'M', 'Male');
+	$out_chowky = dh_render_seat_grid($seats['M']['chowky'], $max_col_chowky['M']+1, null, $male_dir, 'chowky-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'M', 'chowky')), 'M', 'Male');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $male_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
@@ -2400,8 +2402,8 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
-	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts, 'F', 'Female');
-	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts, 'F', 'Female');
+	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'F', 'chowky')), 'F', 'Female');
+	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'F', 'main')), 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
 
 	$out .= '<div class="teacher-seat">TEACHER</div>';
@@ -2413,12 +2415,12 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 (function($){
   var DH_CONV = '.(int)$alpha.';
   function dhLetter(n){ n=parseInt(n,10); var s=""; do{ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; }while(n>=0); return s; }
-  function dhLabel(col,row){ return (DH_CONV==2) ? (dhLetter(row)+(col+1)) : (dhLetter(col)+(row+1)); }
+  function dhLabel(col,row,st){ st=st||0; return (DH_CONV==2) ? (dhLetter(row)+(col+1+st)) : (dhLetter(col+st)+(row+1)); }
   function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
+  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
@@ -2432,7 +2434,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     apps.forEach(function(el){ u.fg[0].appendChild(el); });
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx,parseInt($div.attr("data-label-start")||"0",10)); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   function dhBlankCol($div){
@@ -2443,7 +2445,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
     var total=u.fg.children("li").length;
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx,parseInt($div.attr("data-label-start")||"0",10)); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
@@ -3470,6 +3472,8 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 
 	// Editing tools (CW/CH mark, student menu, section buttons): live page only.
 	$edit_tools = ($pdf == '' && !$return_html);
+	// Each grid's later label start for this course (inc/seat-label-start.inc); 0 = normal.
+	$label_starts = dh_seat_label_starts($course[0], 'group');
 	$first = true;
 	foreach ($group_labels as $g)
 	{
@@ -3521,8 +3525,8 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				$out .= dh_seat_aid_js($centre, $course[0]);
 			if ($edit_tools)
 				$out .= dh_seat_tools_js($centre, $course[0]);
-			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts, $sec_id, $sec_lbl);
-			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts, $sec_id, $sec_lbl);
+			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts + array('label_start' => dh_seat_label_start_of($label_starts, $sec_id, 'main')), $sec_id, $sec_lbl);
+			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts + array('label_start' => dh_seat_label_start_of($label_starts, $sec_id, 'chowky')), $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);
 			$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $chowky_pos);
 			$out .= '<div style="clear:both"></div><div class="teacher-seat">TEACHER</div>';
@@ -3542,12 +3546,12 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 (function($){
   var DH_CONV = '.(int)$alpha.';
   function dhLetter(n){ n=parseInt(n,10); var s=""; do{ s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; }while(n>=0); return s; }
-  function dhLabel(col,row){ return (DH_CONV==2) ? (dhLetter(row)+(col+1)) : (dhLetter(col)+(row+1)); }
+  function dhLabel(col,row,st){ st=st||0; return (DH_CONV==2) ? (dhLetter(row)+(col+1+st)) : (dhLetter(col+st)+(row+1)); }
   function dhCellW($ul){ var li=$ul.children("li")[0]; return li ? li.getBoundingClientRect().width : 142; }
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols,pfx){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr),pfx); } $bg[0].innerHTML=html; }
+  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
@@ -3561,7 +3565,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
     apps.forEach(function(el){ u.fg[0].appendChild(el); });
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx,parseInt($div.attr("data-label-start")||"0",10)); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   function dhBlankCol($div){
@@ -3572,7 +3576,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
     var total=u.fg.children("li").length;
     u.fg.find(".s-app-id").attr("data-cols",newC);
     u.fg.css("width",(newC*(cw+1))+"px");
-    dhRelabelBg(u.bg,total,newC,pfx); u.bg.css("width",(newC*(cw+1))+"px");
+    dhRelabelBg(u.bg,total,newC,pfx,parseInt($div.attr("data-label-start")||"0",10)); u.bg.css("width",(newC*(cw+1))+"px");
     dhRefreshSortable(u.fg);
   }
   $(document).on("click",".dh-add-col",function(){ var $d=$(this).closest(".main-div,.chowky-div"); dhReflow($d,dhCurCols($d)+1); });
