@@ -67,9 +67,14 @@ t("each block keeps its room name and toilet", function () {
 
 t("a 3-bed room: room name and toilet once, spanning its 2 lines", function () {
   var h = chart.tableHtml([room("7", ["7A", "7B", "7C"])], esc);
-  assert.strictEqual(count(h, /rowspan="2"/g), 2);
+  assert.strictEqual(count(h, /rowspan="2"/g), 3);   // room, toilet and the grey right-half block
   assert.strictEqual(count(h, /<tbody>/g), 1);
   assert.strictEqual(count(h, /<tr>/g), 2);   // 2 lines, no header row
+});
+t("every bed box is one column wide, so boxes line up on every line", function () {
+  var h = chart.tableHtml([room("1", ["1"]), room("2", ["2A", "2B"]), room("3", ["3"]), room("4", ["4"])], esc);
+  assert.strictEqual(count(h, /<td class="bed"[^>]*colspan/g), 0);
+  assert.strictEqual(count(h, /<td class="cont" colspan="2"/g), 1);   // the double room's right half
 });
 t("each room is its own tbody (a room never splits across pages)", function () {
   var h = chart.tableHtml([room("1", ["1A", "1B"]), room("2", ["2A", "2B"]), room("3", ["3"]), room("4", ["4"])], esc);

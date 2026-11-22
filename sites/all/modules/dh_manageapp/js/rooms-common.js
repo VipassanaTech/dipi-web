@@ -33,8 +33,9 @@
     return '<td class="bed"' + (span ? ' colspan="' + span + '"' : '') + '><b>' + esc(b.name) + '</b>' + (b.text ? ' ' + esc(b.text) : '') + '</td>';
   }
 
-  // Six columns (Room, Toilet, Bed, Room, Toilet, Bed), no header row (every cell says what it is): a room's two bed boxes each cover three of them minus the
-  // room cells, so both are the same width.
+  // Six columns on every line (Room, Toilet, Bed, Room, Toilet, Bed), no header row (every cell says what it is). Every bed
+  // box sits in column 3 or 6, so all boxes have the same width and line up from row to row; a room with more beds keeps
+  // the right half's room and toilet cells as one grey block (it is still the same room).
   function tableHtml(rooms, esc) {
     var h = '<table class="chart"><colgroup><col style="width:9%"><col style="width:9%"><col style="width:32%"><col style="width:9%"><col style="width:9%"><col style="width:32%"></colgroup>';
     layout(rooms).forEach(function (b) {
@@ -43,7 +44,9 @@
         b.lines.forEach(function (ln, i) {
           h += '<tr>';
           if (i === 0) h += '<td class="room" rowspan="' + b.lines.length + '">' + esc(b.name) + '</td><td class="toilet" rowspan="' + b.lines.length + '">' + esc(b.toilet) + '</td>';
-          h += bedCell(ln[0], esc, 2) + bedCell(ln[1], esc, 2) + '</tr>';
+          h += bedCell(ln[0], esc);
+          if (i === 0) h += '<td class="cont" colspan="2" rowspan="' + b.lines.length + '"></td>';
+          h += bedCell(ln[1], esc) + '</tr>';
         });
       } else {
         h += '<tr><td class="room">' + esc(b.left.name) + '</td><td class="toilet">' + esc(b.left.toilet) + '</td>' + bedCell(b.left.bed, esc);
@@ -118,7 +121,7 @@ if (typeof jQuery !== 'undefined') (function ($) {
         // The room chart: equal columns, every room in its own tbody that stays on one page, tall boxes to write in.
         + 'table.chart{table-layout:fixed;font-size:12px}'
         + 'table.chart tbody{page-break-inside:avoid;break-inside:avoid}table.chart tbody tr:first-child td{border-top:2px solid #333}'
-        + 'table.chart td{height:30px;vertical-align:top}table.chart td.room{font-weight:bold}table.chart td.toilet{color:#444}table.chart td.none{background:#f4f4f4}'
+        + 'table.chart td{height:30px;vertical-align:top}table.chart td.room{font-weight:bold}table.chart td.toilet{color:#444}table.chart td.none,table.chart td.cont{background:#f4f4f4}'
         + '</style></head><body><h1>' + esc(title) + '</h1><p class="n">Printed ' + esc(new Date().toLocaleString()) + (note ? ' · ' + esc(note) : '') + '</p>'
         + (body || '<p>Nothing to print.</p>') + '</body></html>');
       w.document.close();
