@@ -69,12 +69,12 @@ t("a 3-bed room: room name and toilet once, spanning its 2 lines", function () {
   var h = chart.tableHtml([room("7", ["7A", "7B", "7C"])], esc);
   assert.strictEqual(count(h, /rowspan="2"/g), 2);
   assert.strictEqual(count(h, /<tbody>/g), 1);
-  assert.strictEqual(count(h, /<tr>/g) + count(h, /<tr class=/g), 3);   // header + 2 lines
+  assert.strictEqual(count(h, /<tr>/g), 2);   // 2 lines, no header row
 });
 t("each room is its own tbody (a room never splits across pages)", function () {
   var h = chart.tableHtml([room("1", ["1A", "1B"]), room("2", ["2A", "2B"]), room("3", ["3"]), room("4", ["4"])], esc);
   assert.strictEqual(count(h, /<tbody/g), 3);
-  assert.strictEqual(count(h, /<thead>/g), 1);
+  assert.strictEqual(count(h, /<thead/g), 0);   // no column header row
 });
 t("a free bed shows only its bed name, in bold", function () {
   var h = chart.tableHtml([room("12", ["12A", "12B"])], esc);

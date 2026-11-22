@@ -33,10 +33,10 @@
     return '<td class="bed"' + (span ? ' colspan="' + span + '"' : '') + '><b>' + esc(b.name) + '</b>' + (b.text ? ' ' + esc(b.text) : '') + '</td>';
   }
 
-  // Six columns (Room, Toilet, Bed, Room, Toilet, Bed): a room's two bed boxes each cover three of them minus the
+  // Six columns (Room, Toilet, Bed, Room, Toilet, Bed), no header row (every cell says what it is): a room's two bed boxes each cover three of them minus the
   // room cells, so both are the same width.
   function tableHtml(rooms, esc) {
-    var h = '<table class="chart"><thead><tr><th>Room</th><th>Toilet</th><th>Bed</th><th>Room</th><th>Toilet</th><th>Bed</th></tr></thead>';
+    var h = '<table class="chart"><colgroup><col style="width:9%"><col style="width:9%"><col style="width:32%"><col style="width:9%"><col style="width:9%"><col style="width:32%"></colgroup>';
     layout(rooms).forEach(function (b) {
       h += '<tbody>';
       if (b.kind === 'multi') {
@@ -116,7 +116,7 @@ if (typeof jQuery !== 'undefined') (function ($) {
         + 'th,td{border:1px solid #999;padding:2px 5px;text-align:left;vertical-align:top}th{background:#eee}'
         + 'thead{display:table-header-group}tr{page-break-inside:avoid}tr.rs td{border-top:2px solid #333}tr.free td{color:#666}td{height:16px}td.who{width:50%}'
         // The room chart: equal columns, every room in its own tbody that stays on one page, tall boxes to write in.
-        + 'table.chart{table-layout:fixed;font-size:12px}table.chart th:nth-child(1),table.chart th:nth-child(4){width:9%}table.chart th:nth-child(2),table.chart th:nth-child(5){width:9%}'
+        + 'table.chart{table-layout:fixed;font-size:12px}'
         + 'table.chart tbody{page-break-inside:avoid;break-inside:avoid}table.chart tbody tr:first-child td{border-top:2px solid #333}'
         + 'table.chart td{height:30px;vertical-align:top}table.chart td.room{font-weight:bold}table.chart td.toilet{color:#444}table.chart td.none{background:#f4f4f4}'
         + '</style></head><body><h1>' + esc(title) + '</h1><p class="n">Printed ' + esc(new Date().toLocaleString()) + (note ? ' · ' + esc(note) : '') + '</p>'
