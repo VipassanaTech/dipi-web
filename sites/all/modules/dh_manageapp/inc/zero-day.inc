@@ -11,11 +11,13 @@
  * One place, so the two conventions cannot drift between the four screens that
  * print seat numbers.
  */
-function dh_seat_label($col, $row, $conv)
+function dh_seat_label($col, $row, $conv, $start = 0)
 {
+	/* $start: the grid's later start (inc/seat-label-start.inc); 0 = the normal start. It moves the columns only. */
+	$start = (int) $start;
 	if ($conv == 2)
-		return dh_seat_letter($row) . ($col + 1);   /* row letter, column number: A1, A2 across a row */
-	return dh_seat_letter($col) . ($row + 1);       /* column letter, row number: A1, B1 across a row */
+		return dh_seat_letter($row) . ($col + 1 + $start);   /* row letter, column number: A1, A2 across a row */
+	return dh_seat_letter($col + $start) . ($row + 1);       /* column letter, row number: A1, B1 across a row */
 }
 
 /**
