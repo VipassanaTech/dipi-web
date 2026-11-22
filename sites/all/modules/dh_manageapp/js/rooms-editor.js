@@ -152,18 +152,10 @@
     });
   }
 
-  // Print every section of this side (with the search and filters in use): one table per section, Room · Places · Toilet.
+  // Print every section of this side (with the search and filters in use): the blank room chart (rooms-common.js roomsPrint).
   function printRooms() {
-    var g = bySection(sideRooms()), body = '';
-    g.order.forEach(function (sec) {
-      var rows = g.o[sec].filter(matches).map(function (r) {
-        return '<tr class="rs"><td>' + esc(r.name) + '</td><td>' + esc(r.places.map(function (p) { return p.name; }).join(', ')) + '</td><td>' + esc(S.toilets[r.toilet] || r.toilet) + '</td></tr>';
-      }).join('');
-      if (rows) body += '<h2>Section ' + esc(sec) + (g.o[sec][0].gender === 'B' ? ' (Men + Women)' : '') + ' · ' + n(g.o[sec].length, 'room') + ', ' + n(places(g.o[sec]), 'bed') + '</h2>'
-        + '<table><thead><tr><th>Room</th><th>Beds</th><th>Toilet</th></tr></thead><tbody>' + rows + '</tbody></table>';
-    });
     var note = [q ? 'Search: ' + q : '', fToilet ? 'Toilet: ' + S.toilets[fToilet] : '', onlyReview ? 'Only rooms that need a look' : ''].filter(Boolean).join(' · ');
-    window.dhRoomsCommon.printDoc('Rooms - ' + $.trim($('.dh-rooms h2').first().text()) + ' - ' + (side === 'M' ? 'Men' : 'Women'), note, body);
+    window.dhRoomsCommon.roomsPrint(sideRooms().filter(matches), S.toilets, 'Rooms - ' + $.trim($('.dh-rooms h2').first().text()) + ' - ' + (side === 'M' ? 'Men' : 'Women'), note);
   }
 
   function pickedIds() { return Object.keys(picked).map(Number); }
