@@ -243,9 +243,11 @@ function dh_rooms_places_in_use($centre_id)
 	$used = array();
 	$labels = array();
 	$shared = dh_rooms_shared_sections($centre_id);
-	foreach (db_query("select a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_course c join dh_applicant a on a.a_course = c.c_id
+	// STRAIGHT_JOIN: start from the centre's courses. dh_course has no index on c_center, and left alone MariaDB
+	// scans all of dh_applicant_attended (~1M rows, ~3.7 s on prod) instead of ~50k courses (~0.03 s).
+	foreach (db_query("select STRAIGHT_JOIN a.a_course, a.a_gender, TRIM(aa.aa_section) as aa_section, TRIM(aa.aa_acco) as aa_acco from dh_course c join dh_applicant a on a.a_course = c.c_id
 		join dh_applicant_attended aa on aa.aa_applicant = a.a_id where c.c_center = :c and c.c_deleted = 0 and c.c_end >= curdate() and a.a_attended = 1 and trim(aa.aa_acco) <> ''
-		order by c.c_start", array(':c' => (int) $centre_id)) as $r)
+		order by c.c_start, c.c_id, aa.aa_id", array(':c' => (int) $centre_id)) as $r)
 	{
 		if (!isset($labels[$r->a_course]))
 			$labels[$r->a_course] = dh_rooms_course_label($r->a_course);
