@@ -637,6 +637,13 @@ function dh_manageapp_menu()
 	       'access arguments' => array('access zero day'),
 	       'type' => MENU_CALLBACK);
 
+	// Seat label start of one section's grids, saved from the seating plans (POST + token, JSON).
+	$items['seat-label-start/%centre_id/%course_id'] = array( 'title' => t('Seat Label Start'),
+	       'page callback' => 'dh_seat_label_start_update',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('access zero day'),
+	       'type' => MENU_CALLBACK);
+
 	// Form autofill API for schedule.vridhamma.org (inc/autofill.inc): server-to-server JSON with
 	// its own API key and IP check, so the route itself is open.
 	foreach (array('autofill/email/start' => 'email_start', 'autofill/email/verify' => 'email_verify', 'autofill/fetch' => 'fetch') as $path => $step)
