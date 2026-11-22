@@ -6,6 +6,8 @@
   // narrow = phone width (people list above the rooms): the pinned "Chosen" bar gets a button down to the rooms.
   // fPlace = the place filter: all | free | placed | other (another course at the same time).
   var S, D = null, side = null, open = {}, chosen = null, q = '', fToilet = '', fPlace = 'all', show = 'waiting';
+  // Self-refresh state: busy = a save is running; lastAct = last click/key/touch in the board; loadedAt = data time.
+  var busy = false, lastAct = 0, loadedAt = null, retryT = null;
   var narrow = window.innerWidth < 700;
 
   function esc(s) { return $('<div/>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -74,7 +76,8 @@
     if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + esc(s) + '">' + (s === 'M' ? 'Male' : 'Female') + '</button>'; }).join('') + '</div>';
     // The count boxes are also the place filter (tap "Free" to see only free places).
     var box = function (f, title, n) { return '<div class="dhrb-count' + (fPlace === f ? ' on' : '') + '" data-f="' + f + '">' + title + '<b>' + n + '</b></div>'; };
-    h += '<div class="dhrb-counts">' + box('all', 'Places', total) + box('placed', 'Placed', placed) + box('other', 'Other course', otherN) + box('free', 'Free', freeN) + '</div>';
+    h += '<div class="dhrb-counts">' + box('all', 'Places', total) + box('placed', 'Placed', placed) + box('other', 'Other course', otherN) + box('free', 'Free', freeN) + '</div>'
+      + '<small class="dhrb-updated">' + updatedText() + '</small>';
     if (shared) h += '<div class="dhr-note">' + (shared === 1 ? '1 place has' : shared + ' places have') + ' more than one person.</div>';
     // The chosen person sits in a bar over both columns that stays under the site header while the board scrolls.
     h += '<div class="dhrb-wrap">';
@@ -146,12 +149,40 @@
   // Every board action (place, move, swap, take out) posts here and redraws from the returned data.
   function save(payload) {
     if (D.finalized) return;
+    busy = true;
     $.post(S.saveUrl, $.extend({token: S.token}, payload), null, 'json').done(function (r) {
-      if (r.confirm) { if (confirm(r.msg)) save($.extend(payload, {confirm: 1})); return; }
-      if (r.data) D = r.data;
+      if (r.confirm) { busy = false; if (confirm(r.msg)) save($.extend(payload, {confirm: 1})); return; }
+      if (r.data) { D = r.data; loadedAt = new Date(); }
       if (!r.ok) alert(r.msg); else chosen = null;
       render();
-    }).fail(function () { alert('Could not save. Please check the connection and try again.'); });
+    }).fail(function () { alert('Could not save. Please check the connection and try again.'); })
+      .always(function () { busy = false; lastAct = Date.now(); });
+  }
+
+  function updatedText() { return loadedAt ? 'Updated ' + loadedAt.toTimeString().slice(0, 5) + ' \u00b7 the board refreshes by itself' : ''; }
+
+  // Self-refresh: arrivals and rooms given in Zero Day (or by another person) show without a reload, every 30 s and
+  // when the tab is shown again. Never while someone is working on the board: not during a save, not within 10 s of
+  // a click, key or touch in it, not while the search box or a filter has the cursor; it tries again a bit later.
+  // A redraw keeps the side, open sections, chosen person, search, filters and scroll position; no change = no redraw.
+  function quiet() {
+    var a = document.activeElement;
+    var typing = a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $(a).closest('#dh-rb-app').length > 0;
+    return !busy && Date.now() - lastAct > 10000 && !typing;
+  }
+  function refresh() {
+    if (!D || document.hidden) return;
+    if (!quiet()) { clearTimeout(retryT); retryT = setTimeout(refresh, 11000); return; }
+    $.getJSON(S.dataUrl).done(function (d) {
+      if (!quiet()) { clearTimeout(retryT); retryT = setTimeout(refresh, 11000); return; }   // they started working meanwhile
+      loadedAt = new Date();
+      if (JSON.stringify(d) === JSON.stringify(D)) { $('#dh-rb-app .dhrb-updated').text(updatedText()); return; }
+      var y = window.scrollY;
+      D = d;
+      if (chosen && !person(chosen)) chosen = null;
+      render();
+      window.scrollTo(0, y);
+    });
   }
 
   function setTop() { return window.dhRoomsCommon.fixedTop('dh-rb-app'); }
@@ -178,6 +209,7 @@
     });
     $.getJSON(S.dataUrl).done(function (d) {
       D = d;
+      loadedAt = new Date();
       // Back to the side and open sections this person had before the reload.
       var v = window.dhRoomsCommon.viewLoad('room-board:' + S.dataUrl);
       if (v && D.sides && D.sides.indexOf(v.side) > -1) side = v.side;
@@ -185,6 +217,9 @@
       render();
     }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
     var doc = $(document);
+    doc.on('mousedown keydown touchstart', '#dh-rb-app', function () { lastAct = Date.now(); });
+    setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
     doc.on('click', '#dh-rb-app .dhr-tab[data-side]', function () { side = $(this).data('side'); chosen = null; render(); });
     doc.on('click', '.dhrb-sec', function () { var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
     doc.on('input', '.dhrb-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhrb-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });

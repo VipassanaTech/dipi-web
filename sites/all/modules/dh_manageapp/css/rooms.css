@@ -46,6 +46,7 @@
 .dhrb-pl.taken { background: #e6f1fb; color: #0c447c; } .dhrb-pl.free { border: 1px dashed #378add; color: #185fa5; }
 .dhrb-pl.other { background: #f1efe8; color: #5f5e5a; }
 /* A filled bed: the name starts right after the bed name, the same gap on every bed (free beds keep "Free" on the right). */
+.dhrb-updated { display: block; color: #666; margin: 2px 0 6px; }
 .dhrb-pl.taken, .dhrb-pl.other { justify-content: flex-start; gap: 8px; } .dhrb-pl > span:first-child { flex: none; }
 .dhrb-pl.hit { outline: 2px dashed #ef9f27; }
 .dhrb-chosen { border: 1px solid #378add; background: #e7f1fb; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 13px; }

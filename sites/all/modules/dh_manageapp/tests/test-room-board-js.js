@@ -19,7 +19,7 @@ t("every function called by name is defined in the file", function () {
   (src.match(/function ([a-zA-Z_]\w*)\(/g) || []).forEach(function (m) { defined[m.slice(9, -1)] = 1; });
   (src.match(/var ([a-zA-Z_]\w*) = function/g) || []).forEach(function (m) { defined[m.slice(4).split(" ")[0]] = 1; });
   // built-ins, jQuery, browser and Drupal names the script uses without defining them
-  var known = "function if for while switch return typeof catch $ jQuery alert confirm setTimeout clearTimeout parseInt String Number Object Array JSON Math encodeURIComponent".split(" ");
+  var known = "function if for while switch return typeof catch $ jQuery alert confirm setTimeout clearTimeout setInterval Date parseInt String Number Object Array JSON Math encodeURIComponent".split(" ");
   var missing = Object.keys(called).filter(function (n) {
     if (defined[n] || known.indexOf(n) >= 0) return false;
     // method calls (.name() are not free functions
