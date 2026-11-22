@@ -109,9 +109,14 @@ function dh_seat_label_start_save($centre, $course_id, $plan, $sec, $texts, $uid
 	$course_id = (int) $course_id;
 	if ($centre <= 0 || (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $course_id))->fetchField() !== $centre)
 		return array('status' => 'Failed', 'msg' => 'This course is not in this centre.');
-	$p = dh_seat_regen_parse($plan, $sec);
+	$p = (strlen($sec) <= 32) ? dh_seat_regen_parse($plan, $sec) : FALSE;
+	if ($p !== FALSE && $plan === 'group' && !preg_match('/^g([0-9]+|Unassigned)_[MF]$/', $sec))
+		$p = FALSE;
 	if ($p === FALSE)
 		return array('status' => 'Failed', 'msg' => 'Unknown section.');
+	$block = dh_seat_label_start_blocker($course_id);
+	if ($block !== '')
+		return array('status' => 'Failed', 'msg' => $block);
 	$conv = (int) db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c", array(':c' => $centre))->fetchField();
 	$starts = array();
 	foreach (array('main' => 'Main grid', 'chowky' => 'Chowky grid') as $grid => $name)
@@ -174,8 +179,10 @@ function dh_seat_label_start_update($centre, $course)
  * with the edit tools). It carries the section and the starts saved now, as the
  * person would type them; js/seat-label-start.js opens the box.
  */
-function dh_seat_label_start_button($plan, $sec, $label, $conv, $starts)
+function dh_seat_label_start_button($plan, $sec, $label, $conv, $starts, $blocked = '')
 {
+	if ($blocked !== '')
+		return ' <span class="dh-sls-note no-print">&#9998; '.check_plain($blocked).'</span>';
 	return ' <button type="button" class="dh-sls-btn no-print"'
 		.' data-plan="'.check_plain($plan).'" data-sec="'.check_plain($sec).'" data-label="'.check_plain($label).'"'
 		.' data-anchor="'.check_plain(dh_seat_sec_anchor($sec)).'"'
@@ -202,4 +209,29 @@ function dh_seat_label_start_js($centre, $course, $conv)
 			'conv' => (int) $conv,
 		)).';</script>'
 		.'<script src="'.$GLOBALS['base_url'].'/'.$path.'?v='.(file_exists($path) ? filemtime($path) : 0).'"></script>';
+}
+
+/** The courses a plan page of $course_id draws: the course and its own combined course, as the seating dispatcher does. */
+function dh_seat_label_page_courses($course_id)
+{
+	$course_id = (int) $course_id;
+	$other = (int) db_query("select c_combined_seat_course from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
+	return $other > 0 ? array($course_id, $other) : array($course_id);
+}
+
+/**
+ * '' when the plan page of $course_id draws every course that shares its plan,
+ * so a save there (and the page reload after it) refreshes every saved label.
+ * Otherwise the sentence to show instead of the button, naming the course
+ * whose plan page draws them all, if there is one.
+ */
+function dh_seat_label_start_blocker($course_id)
+{
+	$all = dh_seat_plan_courses($course_id);
+	if (!array_diff($all, dh_seat_label_page_courses($course_id)))
+		return '';
+	foreach ($all as $c)
+		if (!array_diff($all, dh_seat_label_page_courses($c)))
+			return 'This seating plan is shared with course '.$c.'. Change its seat labels from the seating plan of course '.$c.'.';
+	return 'This seating plan is shared by courses '.implode(', ', $all).'. Its seat labels cannot be changed here.';
 }

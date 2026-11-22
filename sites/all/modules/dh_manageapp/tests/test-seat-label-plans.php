@@ -45,6 +45,8 @@ t_in_txn(function () use ($centre) {
   t_ok(strpos($html, 'function dhLabel(col,row,st){ st=st||0;') !== FALSE, 'main plan script: dhLabel takes the start');
   t_eq(substr_count($html, 'parseInt($div.attr("data-label-start")||"0",10)'), 2, 'main plan script: both relabel calls pass the start');
   $ghtml = dh_generate_group_seating_plan($centre, $c, '', TRUE);
+  t_ok(strpos($html, 'String(sr*cols+sc+1+(st||0))') !== FALSE, 'main plan script: numbered style relabels with numbers');
+  t_ok(strpos($ghtml, 'String(sr*cols+sc+1+(st||0))') !== FALSE, 'group plan script: numbered style relabels with numbers');
   t_ok(strpos($ghtml, 'function dhLabel(col,row,st){ st=st||0;') !== FALSE, 'group plan script: dhLabel takes the start');
   t_eq(substr_count($ghtml, 'parseInt($div.attr("data-label-start")||"0",10)'), 2, 'group plan script: both relabel calls pass the start');
 });

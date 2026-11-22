@@ -70,8 +70,13 @@ t_in_txn(function () use ($centre) {
   dh_seat_label_start_save($centre, $a, 'main', 'F', array('main' => 'I', 'chowky' => ''), 77);
   t_eq(dh_seat_label_starts($a, 'main'), array('F' => array('main' => 8, 'chowky' => 0)), 'combined: the opened course has the start');
   t_eq(dh_seat_label_starts($b, 'main'), array('F' => array('main' => 8, 'chowky' => 0)), 'combined: the course drawn with it has the same start');
-  dh_seat_label_start_save($centre, $b, 'main', 'F', array('main' => '', 'chowky' => ''), 77);
-  t_eq(array(dh_seat_label_starts($a, 'main'), dh_seat_label_starts($b, 'main')), array(array(), array()), 'a reset from the other course clears both');
+  t_eq(dh_seat_label_start_save($centre, $b, 'main', 'F', array('main' => 'K', 'chowky' => ''), 77),
+    array('status' => 'Failed', 'msg' => 'This seating plan is shared with course '.$a.'. Change its seat labels from the seating plan of course '.$a.'.'),
+    'combined: a save from the course that does not draw both is refused');
+  t_eq(array(dh_seat_label_starts($a, 'main'), dh_seat_label_starts($b, 'main')),
+    array(array('F' => array('main' => 8, 'chowky' => 0)), array('F' => array('main' => 8, 'chowky' => 0))), 'combined: the refused save changed nothing');
+  dh_seat_label_start_save($centre, $a, 'main', 'F', array('main' => '', 'chowky' => ''), 77);
+  t_eq(array(dh_seat_label_starts($a, 'main'), dh_seat_label_starts($b, 'main')), array(array(), array()), 'a reset from the course that draws both clears both');
 });
 
 // The JSON route: token first.

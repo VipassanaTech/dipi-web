@@ -2354,6 +2354,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		'seat_aid_edit' => $edit_tools, 'special_edit' => $edit_tools);
 	// Each grid's later label start for this course (inc/seat-label-start.inc); 0 = normal.
 	$label_starts = dh_seat_label_starts($course[0], 'main');
+	$label_block = $edit_tools ? dh_seat_label_start_blocker($course[0]) : '';
 	// A side scope (AT view) shows only that side's section.
 	if (dh_view_gender_on('M'))
 	{
@@ -2364,7 +2365,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'M', 'Male').dh_seat_label_start_button('main', 'M', 'Male', $alpha, $label_starts).dh_seat_regen_notice('M') : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'M', 'Male').dh_seat_label_start_button('main', 'M', 'Male', $alpha, $label_starts, $label_block).dh_seat_regen_notice('M') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
@@ -2400,7 +2401,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'F', 'Female').dh_seat_label_start_button('main', 'F', 'Female', $alpha, $label_starts).dh_seat_regen_notice('F') : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'F', 'Female').dh_seat_label_start_button('main', 'F', 'Female', $alpha, $label_starts, $label_block).dh_seat_regen_notice('F') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
@@ -2424,7 +2425,7 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
+  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell((DH_CONV==0) ? String(sr*cols+sc+1+(st||0)) : dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
@@ -3478,6 +3479,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 	$edit_tools = ($pdf == '' && !$return_html);
 	// Each grid's later label start for this course (inc/seat-label-start.inc); 0 = normal.
 	$label_starts = dh_seat_label_starts($course[0], 'group');
+	$label_block = $edit_tools ? dh_seat_label_start_blocker($course[0]) : '';
 	$first = true;
 	foreach ($group_labels as $g)
 	{
@@ -3502,7 +3504,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 				. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-				. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('group', $centre, (is_array($course)?$course[0]:$course), $sec_id, $sec_lbl).dh_seat_label_start_button('group', $sec_id, $sec_lbl, $alpha, $label_starts).dh_seat_regen_notice($sec_id) : '')
+				. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('group', $centre, (is_array($course)?$course[0]:$course), $sec_id, $sec_lbl).dh_seat_label_start_button('group', $sec_id, $sec_lbl, $alpha, $label_starts, $label_block).dh_seat_regen_notice($sec_id) : '')
 				. '</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
@@ -3557,7 +3559,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
   function dhUls($div){ return { fg: $div.find("ul[class*=sortable]").first(), bg: $div.find("ul[class*=bg-table]").first() }; }
   function dhCurCols($div){ var v=$div.find(".s-app-id[data-cols]").first().attr("data-cols"); if(v) return parseInt(v,10); return parseInt($div.find(".add-row").first().val(),10)||1; }
   function dhBgCell(label,pfx){ var p=pfx?("<span class=\"cwch\">"+pfx+"</span>"):""; return "<li class=\"ui-state-default\"><div class=\"s-seat-no\"><div class=\"seat-no\">"+p+"<span class=\"seatnumber\">"+label+"</span></div></div></li>"; }
-  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell(dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
+  function dhRelabelBg($bg,total,cols,pfx,st){ var newR=Math.ceil(total/cols), html=""; for(var i=0;i<total;i++){ var rft=Math.floor(i/cols), cir=i%cols, sc=(cols-1)-cir, sr=(newR-1)-rft; html+=dhBgCell((DH_CONV==0) ? String(sr*cols+sc+1+(st||0)) : dhLabel(sc,sr,st),pfx); } $bg[0].innerHTML=html; }
   function dhRefreshSortable($fg){ if($fg.hasClass("ui-sortable")){ try{ $fg.sortable("refresh"); }catch(e){} } if(window.dhAidSync) window.dhAidSync(); }
   function dhReflow($div,newC){
     if(newC<1) return;
