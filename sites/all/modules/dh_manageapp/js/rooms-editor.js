@@ -70,7 +70,7 @@
       if (isOpen) {
         // The section's bar stays in view (sticky) while its rooms scroll; forms open inside it.
         var mine = nPicked && pickedSec === sec;
-        var ctl = '<div class="dhr-bar"><b class="dhr-bartitle">' + esc(sec) + (rs[0].section_name ? ' — ' + esc(rs[0].section_name) : '') + '</b><label style="font-weight:normal;margin:0">Used by <select class="form-control dhr-used" data-sec="' + esc(sec) + '" style="width:auto;display:inline-block">'
+        var ctl = '<div class="dhr-bar"><label style="font-weight:normal;margin:0">Used by <select class="form-control dhr-used" data-sec="' + esc(sec) + '" style="width:auto;display:inline-block">'
           + [['M', 'Male only'], ['F', 'Female only'], ['B', 'Male and Female']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === used ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
           + '</select></label><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
           + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-addhere" data-sec="' + esc(sec) + '">Add room here</button>'
