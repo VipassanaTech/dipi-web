@@ -137,6 +137,7 @@
     if (filtered && !shownSecs) h += '<p><small>No places match this filter.</small></p>';
     h += '</div></div></div>';
     $('#dh-rb-app').html(h);
+    window.dhRoomsCommon.viewSave('room-board:' + S.dataUrl, side, open);
   }
 
   // Print every section of this side, with the filters in use (rooms-common.js boardPrint).
@@ -167,7 +168,14 @@
         if (nw !== narrow) { narrow = nw; if (D) render(); }
       }, 200);
     });
-    $.getJSON(S.dataUrl).done(function (d) { D = d; render(); }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
+    $.getJSON(S.dataUrl).done(function (d) {
+      D = d;
+      // Back to the side and open sections this person had before the reload.
+      var v = window.dhRoomsCommon.viewLoad('room-board:' + S.dataUrl);
+      if (v && D.sides && D.sides.indexOf(v.side) > -1) side = v.side;
+      if (v && v.open) open = v.open;
+      render();
+    }).fail(function () { $('#dh-rb-app').html('<p>Could not load the board. Please reload the page.</p>'); });
     var doc = $(document);
     doc.on('click', '#dh-rb-app .dhr-tab[data-side]', function () { side = $(this).data('side'); chosen = null; render(); });
     doc.on('click', '.dhrb-sec', function () { var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });

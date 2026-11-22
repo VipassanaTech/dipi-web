@@ -58,6 +58,18 @@ if (typeof jQuery !== 'undefined') (function ($) {
   window.dhRoomsCommon = {
     esc: esc,
 
+    // The view a person had on a page (side tab, open sections), kept in this browser only, so a reload comes back
+    // to it. key = one page (a course's Room Board, a centre's Rooms page). Storage blocked or empty: nothing kept.
+    viewLoad: function (key) {
+      try { var v = JSON.parse(window.localStorage.getItem('dh-view:' + key) || 'null'); return (v && typeof v === 'object') ? v : null; }
+      catch (e) { return null; }
+    },
+    viewSave: function (key, side, open) {
+      var o = {};
+      Object.keys(open || {}).forEach(function (k) { if (open[k]) o[k] = 1; });
+      try { window.localStorage.setItem('dh-view:' + key, JSON.stringify({side: side, open: o})); } catch (e) {}
+    },
+
     // The site header is fixed at the top: its bottom edge in px, also set as CSS --dhr-top on the app element so a
     // pinned (sticky) bar sits just below it.
     fixedTop: function (appId) {

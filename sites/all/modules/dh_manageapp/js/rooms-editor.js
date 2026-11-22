@@ -92,6 +92,7 @@
       h += '</div>';
     });
     $('#dh-rooms-app').html(h);
+    window.dhRoomsCommon.viewSave('rooms:' + S.dataUrl, side, open);
   }
 
   function post(op, payload, after) {
@@ -175,7 +176,14 @@
         if (nw !== narrow) { narrow = nw; if (loaded) render(); }
       }, 200);
     });
-    $.getJSON(S.dataUrl).done(function (d) { loaded = true; rooms = d.rooms; oldList = !!d.old_list; d.in_use.forEach(function (k) { inUse[k] = 1; }); render(); })
+    $.getJSON(S.dataUrl).done(function (d) {
+      loaded = true; rooms = d.rooms; oldList = !!d.old_list; d.in_use.forEach(function (k) { inUse[k] = 1; });
+      // Back to the side and open sections this person had before the reload.
+      var v = window.dhRoomsCommon.viewLoad('rooms:' + S.dataUrl);
+      if (v && (v.side === 'M' || v.side === 'F')) side = v.side;
+      if (v && v.open) open = v.open;
+      render();
+    })
       .fail(function () { $('#dh-rooms-app').html('<p>Could not load the rooms. Please reload the page.</p>'); });
     var app = $(document);
     app.on('click', '.dhr-tab', function () { side = $(this).data('side'); picked = {}; pickedSec = ''; render(); });
