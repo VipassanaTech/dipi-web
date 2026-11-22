@@ -55,4 +55,4 @@
 .dhrb-conf { font-weight: 500; color: #185fa5; }
 .dhrb-count[data-f] { cursor: pointer; } .dhrb-count.on { outline: 2px solid #378add; background: #e7f1fb; }
 .dhrb-pl.taken.xside { background: #fbeaf0; color: #72243e; cursor: not-allowed; }
-.dhr-secname { font-weight: normal; color: #444; margin-left: 2px; }
+.dhr-secname { font-weight: bold; color: inherit; margin-left: 2px; }
