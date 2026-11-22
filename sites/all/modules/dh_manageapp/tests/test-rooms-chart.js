@@ -100,7 +100,7 @@ t("an odd last single room leaves its right half empty", function () {
 t("section heading: code, name when set, shared, counts", function () {
   assert.strictEqual(chart.heading("M", "Male Common Block", false, "5 of 8 beds taken", esc), "Section M — Male Common Block · 5 of 8 beds taken");
   assert.strictEqual(chart.heading("M", "", false, "2 rooms · 4 beds", esc), "Section M · 2 rooms · 4 beds");
-  assert.strictEqual(chart.heading("S", "Hall", true, "1 of 2 beds taken", esc), "Section S — Hall (Men + Women) · 1 of 2 beds taken");
+  assert.strictEqual(chart.heading("S", "Hall", true, "1 of 2 beds taken", esc), "Section S — Hall (Male + Female) · 1 of 2 beds taken");
 });
 t("sectionsHtml: one heading and one table per section; sections with no rooms are skipped", function () {
   var h = chart.sectionsHtml([

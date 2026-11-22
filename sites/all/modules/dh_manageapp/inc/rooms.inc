@@ -3,10 +3,10 @@
  * Rooms: a centre's physical rooms (dh_center_room), the places in each (dh_center_room_place, what a
  * student's aa_acco holds) and each room's toilet type. A student's room stays aa_section + aa_acco;
  * these tables only describe the rooms.
- * cr_gender is the side a section is used by: 'M' men, 'F' women, 'B' both (a shared section). A shared
- * section's name is not used by a men's or women's section of the same centre, so a student's saved
+ * cr_gender is the side a section is used by: 'M' male, 'F' female, 'B' both (a shared section). A shared
+ * section's name is not used by a male or female section of the same centre, so a student's saved
  * section + place still points to exactly one room. In a shared section a place is taken by anyone,
- * man or woman.
+ * male or female student.
  */
 
 function dh_room_toilet_types()
@@ -14,14 +14,14 @@ function dh_room_toilet_types()
 	return array('indian' => 'Indian', 'western' => 'Western', 'both' => 'Both', 'none' => 'No attached toilet', 'unset' => 'Not set');
 }
 
-/** "Men", "Women" or "Shared" (for messages and the Change Log). */
+/** "Male", "Female" or "Shared" (for messages and the Change Log). */
 function dh_rooms_side_label($g)
 {
-	$l = array('M' => 'Men', 'F' => 'Women', 'B' => 'Shared');
+	$l = array('M' => 'Male', 'F' => 'Female', 'B' => 'Shared');
 	return isset($l[$g]) ? $l[$g] : (string) $g;
 }
 
-/** The centre's shared (men + women) sections: upper-cased name => name as spelled in the room list. */
+/** The centre's shared (male + female) sections: upper-cased name => name as spelled in the room list. */
 function dh_rooms_shared_sections($centre_id)
 {
 	$out = array();
@@ -181,15 +181,15 @@ function dh_rooms_shared_mix($course_id, $sec, $g)
 	return (int) $hit === (int) $course_id ? 'this course' : dh_rooms_course_label($hit);
 }
 
-/** "Section C has women in this course." (or "... in 3 Day Course (4-7 Dec) at the same time.") for dh_rooms_shared_mix(). */
+/** "Section C has female students in this course." (or "... in 3 Day Course (4-7 Dec) at the same time.") for dh_rooms_shared_mix(). */
 function dh_rooms_mix_sentence($sec, $g, $where)
 {
-	return 'Section ' . trim((string) $sec) . ' has ' . ($g === 'M' ? 'women' : 'men') . ($where === 'this course' ? ' in this course.' : ' in ' . $where . ' at the same time.');
+	return 'Section ' . trim((string) $sec) . ' has ' . ($g === 'M' ? 'female students' : 'male students') . ($where === 'this course' ? ' in this course.' : ' in ' . $where . ' at the same time.');
 }
 
 /** The "other side is here" warning for putting a person of side $g into place $place of shared section $sec, as a
  *  sentence, or '' (also '' when the section is not shared). $prev_sec / $prev_place = where the person is now.
- *  Room level first: people of the other side in another place of the same room (a man and a woman in one room),
+ *  Room level first: people of the other side in another place of the same room (a male and a female student in one room),
  *  asked even when moving inside the section but not when moving inside that same room. Then section level,
  *  only when entering the section (from another section or from no place). */
 function dh_rooms_mix_warning($course_id, $sec, $place, $g, $prev_sec, $prev_place)
@@ -215,7 +215,7 @@ function dh_rooms_mix_warning($course_id, $sec, $place, $g, $prev_sec, $prev_pla
 				where a.a_course in (:cs) and a.a_attended = 1 and a.a_gender in ('M', 'F') and a.a_gender <> :g and trim(aa.aa_section) = :s and trim(aa.aa_acco) in (:pl)
 				order by (a.a_course = :this) desc limit 1", array(':cs' => $courses, ':g' => $g, ':s' => $sec, ':pl' => $others, ':this' => (int) $course_id))->fetchField();
 			if ($hit)
-				return 'Room ' . $room['cr_name'] . ' has ' . ($g === 'M' ? 'women' : 'men')
+				return 'Room ' . $room['cr_name'] . ' has ' . ($g === 'M' ? 'female students' : 'male students')
 					. ((int) $hit === (int) $course_id ? ' in this course.' : ' in ' . dh_rooms_course_label($hit) . ' at the same time.');
 		}
 	}
@@ -224,13 +224,13 @@ function dh_rooms_mix_warning($course_id, $sec, $place, $g, $prev_sec, $prev_pla
 	return '';
 }
 
-/** " Place a man here anyway?" — the question after a mix warning. */
+/** " Place a male student here anyway?" — the question after a mix warning. */
 function dh_rooms_mix_ask($g)
 {
-	return ' Place ' . ($g === 'M' ? 'a man' : 'a woman') . ' here anyway?';
+	return ' Place ' . ($g === 'M' ? 'a male student' : 'a female student') . ' here anyway?';
 }
 
-/** The full question for a mix warning alone: "... Place a man here anyway?" */
+/** The full question for a mix warning alone: "... Place a male student here anyway?" */
 function dh_rooms_mix_question($sec, $g, $where)
 {
 	return dh_rooms_mix_sentence($sec, $g, $where) . dh_rooms_mix_ask($g);

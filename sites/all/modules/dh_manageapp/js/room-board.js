@@ -19,7 +19,7 @@
   function person(id) { return D.people.filter(function (p) { return p.a_id === id; })[0]; }
   // Another course of the centre at the same time holds this place: the only case that asks "use it anyway?".
   function otherCourse(sec, place) { var o = D.overlap[side] || {}; return (o[sec] && o[sec][place]) || ''; }
-  // In a shared section the other side of THIS course holds it ("Woman"/"Man"): simply taken, a place goes to one person.
+  // In a shared section the other side of THIS course holds it ("Female"/"Male"): simply taken, a place goes to one person.
   function otherSide(sec, place) { var x = (D.cross && D.cross[side]) || {}; return (x[sec] && x[sec][place]) || ''; }
   // A place for the counts and the filter: placed (this course, either side), other (another course) or free.
   function state(H, sec, place) { return (H[key(sec, place)] || otherSide(sec, place)) ? 'placed' : (otherCourse(sec, place) ? 'other' : 'free'); }
@@ -71,7 +71,7 @@
     var waiting = D.people.filter(function (p) { return p.gender === side && p.place === ''; });
     var h = '';
     if (D.finalized) h += '<div class="dhr-note">This course is finalized. The board is read-only.</div>';
-    if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + esc(s) + '">' + (s === 'M' ? 'Men' : 'Women') + '</button>'; }).join('') + '</div>';
+    if (D.sides.length > 1) h += '<div class="dhr-tabs">' + D.sides.map(function (s) { return '<button class="dhr-tab' + (s === side ? ' on' : '') + '" data-side="' + esc(s) + '">' + (s === 'M' ? 'Male' : 'Female') + '</button>'; }).join('') + '</div>';
     // The count boxes are also the place filter (tap "Free" to see only free places).
     var box = function (f, title, n) { return '<div class="dhrb-count' + (fPlace === f ? ' on' : '') + '" data-f="' + f + '">' + title + '<b>' + n + '</b></div>'; };
     h += '<div class="dhrb-counts">' + box('all', 'Places', total) + box('placed', 'Placed', placed) + box('other', 'Other course', otherN) + box('free', 'Free', freeN) + '</div>';
@@ -113,7 +113,7 @@
       if (filtered && !match) return;   // a filter hides sections with nothing to show
       shownSecs++;
       var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && anyHit(w); }); }));
-      h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (rs[0].gender === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '') + '<span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
+      h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (rs[0].gender === 'B' ? '<span class="dhr-shared">Male + Female</span>' : '') + '<span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
         + '<small>' + pn + ' placed · ' + on + ' other course · ' + (n - pn - on) + ' free</small><span style="flex:1"></span>' + (isOpen ? '▾' : '▸') + '</div>';
       if (isOpen) {
         h += '<div class="dhrb-rooms">';
@@ -191,7 +191,7 @@
     doc.on('click', '.dhrb-remove', function () { save({op: 'remove', a_id: chosen}); });
     doc.on('click', '.dhrb-pl', function () {
       var el = $(this), sec = String(el.attr('data-sec')), place = String(el.attr('data-place')), who = el.data('a');
-      if (el.hasClass('xside')) { alert('Place ' + place + ' is taken by ' + (el.attr('data-x') === 'Woman' ? 'a woman' : 'a man') + ' in this course.'); return; }
+      if (el.hasClass('xside')) { alert('Place ' + place + ' is taken by ' + (el.attr('data-x') === 'Female' ? 'a female student' : 'a male student') + ' in this course.'); return; }
       if (who) {
         if (!chosen || chosen === who) { chosen = chosen === who ? null : who; render(); return; }
         var c = person(chosen);

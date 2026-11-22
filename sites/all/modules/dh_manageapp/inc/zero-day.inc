@@ -450,7 +450,7 @@ function dh_get_acco($centre_id, $course_id)
 function dh_get_alloted($centre_id, $course_id)
 {
 	$alloted['M'] = $alloted['F'] = array();
-	// A place in a shared (men + women) section is taken for both sides, whoever holds it.
+	// A place in a shared (male + female) section is taken for both sides, whoever holds it.
 	$shared = dh_rooms_shared_sections($centre_id);
 	$q = "select a_gender, aa_section, aa_acco from dh_applicant left join dh_applicant_attended on a_id=aa_applicant where a_course=$course_id and a_attended=1";
 	$result = db_query($q);
@@ -672,7 +672,7 @@ function dh_zero_main()
 					var ovs = (room_overlap[cur_gender] && room_overlap[cur_gender][key]) || {};
 					var n = get_rooms(key, cur_gender).filter(function (p) { return !ovs[p]; }).length;
 					var lab = (room_sec_label[cur_gender] && room_sec_label[cur_gender][key]) || key;
-					s.append(new Option(lab+" ("+n+" free"+(room_shared.indexOf(key) > -1 ? ", men + women" : "")+")", key));
+					s.append(new Option(lab+" ("+n+" free"+(room_shared.indexOf(key) > -1 ? ", male + female" : "")+")", key));
 				});
 				s = s.html();
 				var out = "" +

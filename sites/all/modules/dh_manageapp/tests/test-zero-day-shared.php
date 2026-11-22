@@ -35,9 +35,9 @@ try {
   };
   $man = $new('M');
   t_eq($save($man, 'S', '5A'), 'Room has already been alloted', 'ZS1 a shared place a woman holds (saved as " 5A") is taken for a man');
-  t_eq($save($man, 'S', '7A'), 'Section S has women in this course. Place a man here anyway? [mixed]', 'ZS2 a man into a shared section with women: asked first');
+  t_eq($save($man, 'S', '7A'), 'Section S has female students in this course. Place a male student here anyway? [mixed]', 'ZS2 a man into a shared section with women: asked first');
   t_eq($save($man, 'S', '7A', '1'), 'ok', 'ZS3 with mx=1 it is saved');
-  t_eq($save($man, 'S', '5B'), 'Room 5 has women in this course. Place a man here anyway? [mixed]', 'ZS4 inside the section, into the room where a woman is: asked again');
+  t_eq($save($man, 'S', '5B'), 'Room 5 has female students in this course. Place a male student here anyway? [mixed]', 'ZS4 inside the section, into the room where a woman is: asked again');
   t_eq($save($man, 'S', '5B', '1'), 'ok', 'ZS4b with mx=1 it is saved');
   t_eq($save($man, 'S', '5C'), 'ok', 'ZS4c moving inside the same room does not ask again');
   t_eq($save($new('M'), 'T', '1'), 'ok', 'ZS5 men\'s T-1 and women\'s T-1 are two buildings: no clash');

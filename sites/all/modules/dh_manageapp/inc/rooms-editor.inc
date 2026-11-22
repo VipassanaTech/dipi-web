@@ -163,7 +163,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		foreach ((isset($in['places']) && is_array($in['places'])) ? $in['places'] : array() as $p)
 			if (($p = trim((string) $p)) !== '' && !in_array(strtolower($p), array_map('strtolower', $places), TRUE))
 				$places[] = $p;
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
 		if ($sec === '' || mb_strlen($sec) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
 		if (strpos($sec, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
 		if (!$id && dh_rooms_has_old_list($centre_id)) return _dh_rooms_err('This centre still uses its old room list. Use "Bring in the old room list" first.');
@@ -218,7 +218,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		foreach ((isset($in['suffixes']) && is_array($in['suffixes'])) ? $in['suffixes'] : array() as $s)
 			if (($s = trim((string) $s)) !== '')
 				$suf[] = $s;
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
 		if ($sec === '' || mb_strlen($sec) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
 		if (strpos($sec, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
 		if (dh_rooms_has_old_list($centre_id)) return _dh_rooms_err('This centre still uses its old room list. Use "Bring in the old room list" first.');
@@ -345,10 +345,10 @@ function dh_rooms_action($centre_id, $in, $uid)
 	case 'rename_section':
 		$from = trim((string) (isset($in['from']) ? $in['from'] : ''));
 		$to = trim((string) (isset($in['to']) ? $in['to'] : ''));
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
 		if ($to === '' || mb_strlen($to) > 10) return _dh_rooms_err('Section must be 1 to 10 letters.');
 		if (strpos($to, '|') !== FALSE) return _dh_rooms_err('Section can\'t contain "|".');
-		// A shared section's name is free on both sides; a men's or women's name only on its side and among shared ones.
+		// A shared section's name is free on both sides; a male or female name only on its side and among shared ones.
 		$g = _dh_rooms_side_for($centre_id, $g, $from);
 		$clash = ($g === 'B') ? array('M', 'F', 'B') : array($g, 'B');
 		if (db_query("select 1 from dh_center_room where cr_center = :c and cr_gender in (:g) and cr_section = :s and cr_deleted = 0 limit 1",
@@ -360,22 +360,23 @@ function dh_rooms_action($centre_id, $in, $uid)
 		return array('ok' => TRUE, 'msg' => 'Section renamed.');
 
 	case 'set_used_by':
-		// Who a section is for: men, women or both (shared). $g is the tab the section was chosen on.
+		// Who a section is for: male, female or both (shared). $g is the tab the section was chosen on.
 		$sec = trim((string) (isset($in['section']) ? $in['section'] : ''));
 		$to = strtoupper(trim((string) (isset($in['to']) ? $in['to'] : '')));
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
-		if (!in_array($to, array('M', 'F', 'B'), TRUE)) return _dh_rooms_err('Choose Men, Women or Both.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
+		if (!in_array($to, array('M', 'F', 'B'), TRUE)) return _dh_rooms_err('Choose Male, Female or Both.');
 		$from = _dh_rooms_side_for($centre_id, $g, $sec);
 		$rooms = _dh_rooms_section_rooms($centre_id, $from, $sec);
 		if (!$rooms) return _dh_rooms_err('There is no section ' . $sec . '.');
 		$sec = $rooms[0]['cr_section'];
 		if ($from === $to) return array('ok' => TRUE, 'msg' => 'No change.');
-		$who = array('M' => 'men', 'F' => 'women', 'B' => 'men and women');
+		$who = array('M' => 'male students', 'F' => 'female students', 'B' => 'male and female students');
+		$lab = array('M' => 'Male', 'F' => 'Female', 'B' => 'Male and Female');
 		$joined = array();
 		if ($to === 'B')
 		{
 			// The other side may have its own section of this name: it becomes part of this shared section when all its
-			// places are here too, and no place has both a man and a woman in it now (then they are two buildings).
+			// places are here too, and no place has both a male and a female student in it now (then they are two buildings).
 			$oth = ($from === 'M') ? 'F' : 'M';
 			$joined = _dh_rooms_section_rooms($centre_id, $oth, $sec);
 			if ($joined)
@@ -392,16 +393,16 @@ function dh_rooms_action($centre_id, $in, $uid)
 						elseif (!in_array($p, $mine, TRUE))
 							$spelled[] = $p;
 				if ($missing)
-					return _dh_rooms_err(ucfirst($who[$oth]) . "'s section " . $sec . ' also has place' . (count($missing) > 1 ? 's ' : ' ') . implode(', ', array_slice($missing, 0, 10)) . (count($missing) > 10 ? ' and ' . (count($missing) - 10) . ' more' : '')
+					return _dh_rooms_err(ucfirst($who[$oth]) . "' section " . $sec . ' also has place' . (count($missing) > 1 ? 's ' : ' ') . implode(', ', array_slice($missing, 0, 10)) . (count($missing) > 10 ? ' and ' . (count($missing) - 10) . ' more' : '')
 						. ', not in this section. Make the two lists the same first, or rename one of them.');
 				// Saved places are compared letter for letter in some lists, so "1a" and "1A" must not become one place.
 				if ($spelled)
-					return _dh_rooms_err(ucfirst($who[$oth]) . "'s section " . $sec . ' writes place' . (count($spelled) > 1 ? 's ' : ' ') . implode(', ', array_slice($spelled, 0, 10)) . (count($spelled) > 10 ? ' and ' . (count($spelled) - 10) . ' more' : '')
+					return _dh_rooms_err(ucfirst($who[$oth]) . "' section " . $sec . ' writes place' . (count($spelled) > 1 ? 's ' : ' ') . implode(', ', array_slice($spelled, 0, 10)) . (count($spelled) > 10 ? ' and ' . (count($spelled) - 10) . ' more' : '')
 						. ' with other capital letters than this section. Make the two lists exactly the same first.');
 				foreach ($mine as $p)
 					if (isset($in_use[mb_strtoupper($from . '|' . $sec . '|' . $p)], $in_use[mb_strtoupper($oth . '|' . $sec . '|' . $p)]))
-						return _dh_rooms_err('Place ' . $p . ' has a man and a woman in it now (' . $in_use[mb_strtoupper($from . '|' . $sec . '|' . $p)][0] . '). '
-							. "Men's and women's section " . $sec . ' look like two different buildings, so they can\'t be one shared section.');
+						return _dh_rooms_err('Place ' . $p . ' has a male and a female student in it now (' . $in_use[mb_strtoupper($from . '|' . $sec . '|' . $p)][0] . '). '
+							. "Male and female sections " . $sec . ' look like two different buildings, so they can\'t be one shared section.');
 			}
 		}
 		else
@@ -426,17 +427,17 @@ function dh_rooms_action($centre_id, $in, $uid)
 			$f['cr_section_name'] = $joined[0]['cr_section_name'];   // this section has no name: it takes the twin's
 		db_update('dh_center_room')->fields($f)
 			->condition('cr_center', $centre_id)->condition('cr_gender', $from)->condition('cr_section', $sec)->condition('cr_deleted', 0)->execute();
-		$ch = array('used_by' => array('Section ' . $sec . ': ' . $who[$from], $who[$to]));
+		$ch = array('used_by' => array('Section ' . $sec . ': ' . $lab[$from], $lab[$to]));
 		if ($joined)
 			$ch['section'] = array($joined_text, 'joined into shared section ' . $sec);
 		dh_rooms_log($centre_id, 'update', $ch);
-		return array('ok' => TRUE, 'msg' => 'Section ' . $sec . ' is now for ' . $who[$to] . '.' . ($joined ? ' ' . ucfirst($who[$oth]) . "'s section " . $sec . ' was joined into it.' : ''));
+		return array('ok' => TRUE, 'msg' => 'Section ' . $sec . ' is now for ' . $who[$to] . '.' . ($joined ? ' ' . ucfirst($who[$oth]) . "' section " . $sec . ' was joined into it.' : ''));
 
 	case 'set_section_name':
 		// The section's full name ('' = none), the same on every room of the section. $g is the tab the section was chosen on.
 		$sec = trim((string) (isset($in['section']) ? $in['section'] : ''));
 		$name = trim((string) (isset($in['name']) ? $in['name'] : ''));
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
 		if (mb_strlen($name) > 60) return _dh_rooms_err('A section name can be 60 letters at most.');
 		$g = _dh_rooms_side_for($centre_id, $g, $sec);
 		$rooms = _dh_rooms_section_rooms($centre_id, $g, $sec);
@@ -452,7 +453,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 
 	case 'delete_section':
 		$sec = trim((string) (isset($in['section']) ? $in['section'] : ''));
-		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Male or Female.');
 		$g = _dh_rooms_side_for($centre_id, $g, $sec);
 		$rooms = _dh_rooms_section_rooms($centre_id, $g, $sec);
 		if (!$rooms) return _dh_rooms_err('There is no section ' . $sec . '.');

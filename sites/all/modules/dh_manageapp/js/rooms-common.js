@@ -56,9 +56,9 @@
     return h + '</table>';
   }
 
-  // "Section M — Male Common Block (Men + Women) · 5 of 8 beds taken" (the name only when the section has one).
+  // "Section M — Male Common Block (Male + Female) · 5 of 8 beds taken" (the name only when the section has one).
   function heading(code, name, shared, count, esc) {
-    return 'Section ' + esc(code) + (name ? ' — ' + esc(name) : '') + (shared ? ' (Men + Women)' : '') + (count ? ' · ' + esc(count) : '');
+    return 'Section ' + esc(code) + (name ? ' — ' + esc(name) : '') + (shared ? ' (Male + Female)' : '') + (count ? ' · ' + esc(count) : '');
   }
 
   // sections: [{code, name, shared, count, rooms}] -> a heading and a table each; a section with no rooms is skipped.
@@ -157,7 +157,7 @@ if (typeof jQuery !== 'undefined') (function ($) {
       });
       var names = {free: 'Free beds', placed: 'Taken beds', other: 'Beds of the other course'};
       var note = [names[fPlace] ? 'Only: ' + names[fPlace] : '', fToilet ? 'Toilet: ' + (d.toilets[fToilet] || fToilet) : ''].filter(Boolean).join(' · ');
-      window.dhRoomsCommon.printDoc('Room Board - ' + d.course + ' - ' + (side === 'M' ? 'Men' : 'Women'), note,
+      window.dhRoomsCommon.printDoc('Room Board - ' + d.course + ' - ' + (side === 'M' ? 'Male' : 'Female'), note,
         window.dhRoomChart.sectionsHtml(sections, esc), w);
     },
 

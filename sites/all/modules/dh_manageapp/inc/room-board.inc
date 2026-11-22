@@ -25,10 +25,10 @@ function dh_room_board_data($centre_id, $course_id)
 	if (!$c)
 		return array('ok' => FALSE, 'msg' => 'This course is not in this centre.');
 	$sides = _dh_room_board_sides();
-	// A shared (men + women) section shows on every side the user has.
+	// A shared (male + female) section shows on every side the user has.
 	$rooms = array_values(array_filter(dh_rooms_load($centre_id), function ($r) use ($sides) { return $sides && ($r['gender'] === 'B' || in_array($r['gender'], $sides, TRUE)); }));
 	$shared = dh_rooms_shared_sections($centre_id);
-	$cross = array_fill_keys($sides, array());   // [side][section][place] = 'Man'/'Woman': a shared place held by the other side in this course
+	$cross = array_fill_keys($sides, array());   // [side][section][place] = 'Male'/'Female': a shared place held by the other side in this course
 	$people = array();
 	foreach (db_query("select a.a_id, a.a_conf_no, a.a_f_name, a.a_m_name, a.a_l_name, a.a_gender, a.a_type, a.a_old, a.a_problem_physical, TIMESTAMPDIFF(YEAR, a.a_dob, CURDATE()) as age,
 		a.a_occupation, a.a_education, co.c_name as country_name, co.c_nationality, st.s_name as state_name, ae.ae_nationality,
@@ -43,7 +43,7 @@ function dh_room_board_data($centre_id, $course_id)
 		if ($plc !== '' && dh_rooms_is_shared($shared, $sec))
 			foreach ($sides as $s)
 				if ($s !== $g)
-					$cross[$s][$sec][$plc] = $g === 'F' ? 'Woman' : 'Man';
+					$cross[$s][$sec][$plc] = $g === 'F' ? 'Female' : 'Male';
 		if (!in_array($g, $sides, TRUE))
 			continue;
 		$hints = array();
@@ -131,7 +131,7 @@ function dh_room_board_apply($centre_id, $course_id, $in, $uid)
 				where a.a_course = :c and a.a_attended = 1 and (:shared = 1 or a.a_gender = :g) and trim(aa.aa_section) = :s and trim(aa.aa_acco) = :p and a.a_id <> :a limit 1",
 				array(':c' => (int) $course_id, ':shared' => $is_shared, ':g' => $g, ':s' => $sec, ':p' => $place, ':a' => $p['a_id']))->fetchAssoc();
 			if ($holder && strtoupper($holder['a_gender']) !== $g)
-				return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' is taken by ' . (strtoupper($holder['a_gender']) === 'F' ? 'a woman' : 'a man') . ' in this course.', 'confirm' => FALSE);
+				return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' is taken by ' . (strtoupper($holder['a_gender']) === 'F' ? 'a female student' : 'a male student') . ' in this course.', 'confirm' => FALSE);
 			if ($holder) return array('ok' => FALSE, 'msg' => 'Place ' . $place . ' was just given to ' . dh_day0_name($holder) . '. The board has been refreshed.', 'confirm' => FALSE);
 			$ov = dh_rooms_overlap_taken($course_id);
 			$warn = array();
