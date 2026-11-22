@@ -2732,12 +2732,16 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 	$write_col  = (!empty($opts['write_col']) && in_array($opts['write_col'], array('aa_seat', 'aa_group_seat'), true)) ? $opts['write_col'] : 'aa_seat';
 	$drag       = !empty($opts['drag']);
 
-	$counter = $rows * $cushion_cols;
+	// The grid's later label start (inc/seat-label-start.inc): letters or column
+	// numbers move by $start; the numbered counter begins $start higher. 0 = normal.
+	$start = isset($opts['label_start']) ? max(0, (int) $opts['label_start']) : 0;
+	$counter = $rows * $cushion_cols + $start;
 	$cls    = ($direction == LEFT_TO_RIGHT) ? 'sortable-m' : 'sortable-f';
 	$bg_cls = ($direction == LEFT_TO_RIGHT) ? 'bg-table-m' : 'bg-table-f';
 	$width  = ($cushion_cols * 142) + 6;
 
-	$ret = '<div class="'.$div.'"'.($section !== '' ? ' data-section="'.check_plain($section).'" data-section-label="'.check_plain($section_label).'"' : '').'>';
+	$ret = '<div class="'.$div.'"'.($section !== '' ? ' data-section="'.check_plain($section).'" data-section-label="'.check_plain($section_label).'"' : '')
+		.($start ? ' data-label-start="'.$start.'"' : '').'>';
 	$out = '<ul class="'.$cls.'" style="width:'.$width.'px">';
 
 	for ($row = $rows - 1; $row >= 0; $row--)
@@ -2745,7 +2749,7 @@ function dh_render_seat_grid($seats, $cushion_cols, $max_row, $direction, $div, 
 		for ($col = 0; $col < $cushion_cols; $col++)
 		{
 			$col2 = $cushion_cols - $col - 1;
-			$s_no_val = $alpha ? dh_seat_label($col2, $row, $alpha) : $counter;
+			$s_no_val = $alpha ? dh_seat_label($col2, $row, $alpha, $start) : $counter;
 			$counter--;
 			$s_no_html = '<span class="seatnumber">'.$s_no_val.'</span>';
 			$seat_no = '<div class="seat-no">'.$s_no_html.'</div>';
