@@ -16,6 +16,7 @@
 .dhr-picked { background: #e7f1fb; border-radius: 6px; padding: 6px 8px; }
 .dhr-hint { color: #666; display: block; margin-bottom: 6px; }
 .dhr-sec-head b { min-width: 90px; }
+.dhr-hacts { display: inline-flex; gap: 14px; flex-wrap: wrap; } .dhr-hacts a { white-space: nowrap; }
 .dhr-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; padding: 8px 10px; }
 .dhr-tile { border: 1px solid #ddd; border-radius: 6px; padding: 6px 8px; background: #fff; cursor: pointer; font-size: 13px; }
 .dhr-tile.sel { border: 2px solid #378add; }

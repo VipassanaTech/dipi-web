@@ -64,7 +64,9 @@
       var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
       h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (used === 'B' ? '<span class="dhr-shared">Male + Female</span>' : '')
         + '<span>' + n(rs.length, 'room') + ' · ' + n(places(rs), 'place') + '</span>'
-        + sum + '<span style="flex:1"></span><a href="#" class="dhr-ren" data-sec="' + esc(sec) + '">Rename</a> <span>' + (isOpen ? '▾' : '▸') + '</span></div>';
+        + sum + '<span style="flex:1"></span><span class="dhr-hacts"><a href="#" class="dhr-hact dhr-ren" data-sec="' + esc(sec) + '">Rename</a>'
+        + '<a href="#" class="dhr-hact dhr-namesec" data-sec="' + esc(sec) + '">Section name</a><a href="#" class="dhr-hact dhr-delsec" data-sec="' + esc(sec) + '">Delete section</a></span>'
+        + '<span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
         // The section's bar stays in view (sticky) while its rooms scroll; forms open inside it.
         var mine = nPicked && pickedSec === sec;
@@ -72,9 +74,7 @@
           + [['M', 'Male only'], ['F', 'Female only'], ['B', 'Male and Female']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === used ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
           + '</select></label><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
           + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-addhere" data-sec="' + esc(sec) + '">Add room here</button>'
-          + '<button class="btn btn-default btn-sm dhr-manyhere" data-sec="' + esc(sec) + '">Add many rooms here</button>'
-          + '<button class="btn btn-default btn-sm dhr-namesec" data-sec="' + esc(sec) + '">Section name…</button>'
-          + '<button class="btn btn-default btn-sm dhr-delsec" data-sec="' + esc(sec) + '">Delete section</button></div>';
+          + '<button class="btn btn-default btn-sm dhr-manyhere" data-sec="' + esc(sec) + '">Add many rooms here</button></div>';
         var pick = (mine ? '<div class="dhr-bar dhr-picked"><b>' + n(nPicked, 'room') + ' chosen:</b><select class="form-control dhr-set" style="width:auto"><option value="">Set toilet…</option>' + toiletOptions('', false) + '</select>'
               + (nPicked > 1 ? '<button class="btn btn-default btn-sm dhr-join">Join into one room</button>' : '')
               + (nPicked === 1 ? '<button class="btn btn-default btn-sm dhr-edit">Edit</button><button class="btn btn-default btn-sm dhr-split">Split</button><button class="btn btn-default btn-sm dhr-del">Remove</button>' : '')
@@ -200,7 +200,7 @@
       }).fail(function () { w.close(); alert('Could not load the students. Please try again.'); });
     });
     app.on('click', '.dhr-sec-head', function (e) {
-      if ($(e.target).hasClass('dhr-ren')) return;
+      if ($(e.target).closest('.dhr-hact').length) return;
       var sec = String($(this).attr('data-sec')), k = side + '|' + sec;
       open[k] = !open[k];
       if (!open[k] && pickedSec === sec) { picked = {}; pickedSec = ''; }
@@ -220,7 +220,12 @@
     app.on('click', '.dhr-addhere', function () { roomForm(null, String($(this).attr('data-sec'))); });
     app.on('click', '.dhr-edit', function () { roomForm(roomById(pickedIds()[0])); });
     app.on('click', '.dhr-many', function () { manyForm(''); });
-    app.on('click', '.dhr-namesec', function () { nameForm(String($(this).attr('data-sec'))); });
+    app.on('click', '.dhr-namesec', function (e) {
+      e.preventDefault();
+      var sec = String($(this).attr('data-sec'));
+      if (!open[side + '|' + sec]) { open[side + '|' + sec] = true; render(); }
+      nameForm(sec);
+    });
     app.on('click', '.dhr-manyhere', function () { manyForm(String($(this).attr('data-sec'))); });
     app.on('click', '.f-cancel', function () { $('.dhr-formbox').empty(); });
     app.on('change', '.dhr-set', function () { if ($(this).val()) post('set_toilet', {ids: pickedIds(), toilet: $(this).val()}); });
@@ -242,7 +247,8 @@
         : 'Section ' + sec + ' will be used by ' + WHO[to] + '. OK?';
       if (confirm(ask)) post('set_used_by', {section: sec, to: to}, function () { if (lastMsg) alert(lastMsg); }); else render();
     });
-    app.on('click', '.dhr-delsec', function () {
+    app.on('click', '.dhr-delsec', function (e) {
+      e.preventDefault();
       var sec = String($(this).attr('data-sec')), rs = sideRooms().filter(function (r) { return r.section === sec; });
       if (confirm('Delete section ' + sec + ': ' + n(rs.length, 'room') + ', ' + n(places(rs), 'place') + '?' + (rs.length && rs[0].gender === 'B' ? ' It is used by male and female students.' : '')))
         post('delete_section', {section: sec}, function () { if (lastMsg) alert(lastMsg); });
