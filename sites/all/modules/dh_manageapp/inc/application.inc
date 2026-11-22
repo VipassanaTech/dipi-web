@@ -820,9 +820,10 @@ function _ajax_get_section_options($gender, $centre)
 	{
 		$acco = dh_rooms_acco($centre);
 		$g = strtoupper($gender);
+		$labels = dh_rooms_section_labels($centre);
 		if (isset($acco[$g]))
 			foreach (array_keys($acco[$g]) as $sec)
-				$sections[$sec] = $sec;
+				$sections[$sec] = isset($labels[$g][$sec]) ? $labels[$g][$sec] : $sec;   // "CODE — Full name"; the value stays the code
 		return $sections;
 	}
 	$res = db_query("select csa_section from dh_center_setting_acco where csa_center = :c and csa_gender = :g and csa_deleted = 0", array(':c' => $centre, ':g' => $gender));

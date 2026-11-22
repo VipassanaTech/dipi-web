@@ -237,6 +237,7 @@ function dh_centre_log_viewer($centre_id, $form)
 		'csa_room' => array('title' => 'Rooms', 'options' => NULL),
 		'room' => array('title' => 'Room', 'options' => NULL),
 		'section' => array('title' => 'Section', 'options' => NULL),
+		'section_name' => array('title' => 'Section name', 'options' => NULL),
 		'toilet' => array('title' => 'Toilet', 'options' => NULL),
 		'places' => array('title' => 'Places', 'options' => NULL),
 		'converted' => array('title' => 'Converted', 'options' => NULL),

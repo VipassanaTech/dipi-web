@@ -73,6 +73,7 @@
           + '</select></label><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
           + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-addhere" data-sec="' + esc(sec) + '">Add room here</button>'
           + '<button class="btn btn-default btn-sm dhr-manyhere" data-sec="' + esc(sec) + '">Add many rooms here</button>'
+          + '<button class="btn btn-default btn-sm dhr-namesec" data-sec="' + esc(sec) + '">Section name…</button>'
           + '<button class="btn btn-default btn-sm dhr-delsec" data-sec="' + esc(sec) + '">Delete section</button></div>';
         var pick = (mine ? '<div class="dhr-bar dhr-picked"><b>' + n(nPicked, 'room') + ' chosen:</b><select class="form-control dhr-set" style="width:auto"><option value="">Set toilet…</option>' + toiletOptions('', false) + '</select>'
               + (nPicked > 1 ? '<button class="btn btn-default btn-sm dhr-join">Join into one room</button>' : '')
@@ -120,6 +121,19 @@
       var f = $(this).closest('.dhr-form');
       post('save_room', {id: r ? r.id : 0, section: f.find('.f-sec').val(), name: f.find('.f-name').val(), toilet: f.find('.f-toilet').val(),
         places: f.find('.f-places').val().split(',').map(function (s) { return $.trim(s); }).filter(Boolean)});
+    });
+  }
+
+  // The section's full name: one text box in the section's own form area (empty = no name).
+  function nameForm(sec) {
+    var rs = sideRooms().filter(function (r) { return r.section === sec; });
+    var h = '<div class="dhr-form"><b>Full name of section ' + esc(sec) + '</b>'
+      + '<label>Name (optional, up to 60 letters). It shows on web pages and in the print. The code ' + esc(sec) + ' stays in the other lists.'
+      + '<input type="text" class="form-control f-secname" maxlength="60" value="' + esc(rs.length ? rs[0].section_name : '') + '"></label>'
+      + '<p><button class="btn btn-primary f-save">Save</button> <button class="btn btn-default f-cancel">Cancel</button></p></div>';
+    $('.dhr-formbox').empty();
+    box(sec).html(h).find('.f-save').on('click', function () {
+      post('set_section_name', {section: sec, name: $(this).closest('.dhr-form').find('.f-secname').val()});
     });
   }
 
@@ -214,6 +228,7 @@
     app.on('click', '.dhr-addhere', function () { roomForm(null, String($(this).attr('data-sec'))); });
     app.on('click', '.dhr-edit', function () { roomForm(roomById(pickedIds()[0])); });
     app.on('click', '.dhr-many', function () { manyForm(''); });
+    app.on('click', '.dhr-namesec', function () { nameForm(String($(this).attr('data-sec'))); });
     app.on('click', '.dhr-manyhere', function () { manyForm(String($(this).attr('data-sec'))); });
     app.on('click', '.f-cancel', function () { $('.dhr-formbox').empty(); });
     app.on('change', '.dhr-set', function () { if ($(this).val()) post('set_toilet', {ids: pickedIds(), toilet: $(this).val()}); });

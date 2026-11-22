@@ -51,7 +51,7 @@ function dh_rooms_load($centre_id, $gender = NULL)
 	if ($gender !== NULL) { $where = ' and cr_gender = :g'; $pwhere = ' and r.cr_gender = :g'; $args[':g'] = $gender; }
 	$rooms = array();
 	foreach (db_query("select * from dh_center_room where cr_center = :c and cr_deleted = 0" . $where, $args) as $r)
-		$rooms[$r->cr_id] = array('id' => (int) $r->cr_id, 'gender' => strtoupper($r->cr_gender), 'section' => $r->cr_section, 'name' => $r->cr_name,
+		$rooms[$r->cr_id] = array('id' => (int) $r->cr_id, 'gender' => strtoupper($r->cr_gender), 'section' => $r->cr_section, 'section_name' => (string) $r->cr_section_name, 'name' => $r->cr_name,
 			'toilet' => $r->cr_toilet, 'review' => (int) $r->cr_review, 'weight' => (int) $r->cr_weight, 'places' => array());
 	if ($rooms)
 		foreach (db_query("select p.crp_id, p.crp_room, p.crp_name from dh_center_room_place p join dh_center_room r on r.cr_id = p.crp_room
@@ -60,6 +60,23 @@ function dh_rooms_load($centre_id, $gender = NULL)
 	$rooms = array_values($rooms);
 	usort($rooms, 'dh_rooms_cmp');
 	return $rooms;
+}
+
+/** "CODE — Full name" for pages and the print; just the code when the section has no name. */
+function dh_rooms_section_label($sec, $name)
+{
+	$name = trim((string) $name);
+	return $name === '' ? (string) $sec : $sec . ' — ' . $name;
+}
+
+/** Section labels of a centre per side: [gender][section] = "CODE — Name". A shared section is under both sides. */
+function dh_rooms_section_labels($centre_id)
+{
+	$out = array('M' => array(), 'F' => array());
+	foreach (dh_rooms_load($centre_id) as $r)
+		foreach (_dh_rooms_sides_of($r['gender']) as $g)
+			$out[$g][$r['section']] = dh_rooms_section_label($r['section'], $r['section_name']);
+	return $out;
 }
 
 /** Display order: section (natural, so a shared section sits among the side's own), then side, then room. */

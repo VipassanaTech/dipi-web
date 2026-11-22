@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS dh_center_room (
   cr_center bigint NOT NULL,
   cr_gender char(1) NOT NULL,
   cr_section varchar(10) NOT NULL DEFAULT '',
+  cr_section_name varchar(60) NOT NULL DEFAULT '',
   cr_name varchar(40) NOT NULL,
   cr_toilet varchar(10) NOT NULL DEFAULT 'unset',
   cr_weight int NOT NULL DEFAULT 0,

@@ -75,11 +75,11 @@ function t_make_centre() {
   return (int) db_insert('dh_center')->fields($c)->execute();
 }
 // A made-up room with its places. Returns the room id.
-function t_make_room($centre, $gender, $section, $name, $places, $toilet = 'unset') {
+function t_make_room($centre, $gender, $section, $name, $places, $toilet = 'unset', $section_name = '') {
   $now = date('Y-m-d H:i:s');
   $rid = (int) db_insert('dh_center_room')->fields(array('cr_center' => $centre, 'cr_gender' => $gender, 'cr_section' => $section, 'cr_name' => $name,
     'cr_toilet' => $toilet, 'cr_weight' => 0, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => 0,
-    'cr_updated' => $now, 'cr_updated_by' => 0))->execute();
+    'cr_updated' => $now, 'cr_updated_by' => 0) + ($section_name !== '' ? array('cr_section_name' => $section_name) : array()))->execute();
   foreach (array_values($places) as $w => $p)
     db_insert('dh_center_room_place')->fields(array('crp_room' => $rid, 'crp_name' => $p, 'crp_weight' => $w, 'crp_deleted' => 0))->execute();
   return $rid;

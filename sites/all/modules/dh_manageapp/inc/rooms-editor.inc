@@ -50,6 +50,14 @@ function _dh_rooms_section_spelling($centre_id, $g, $sec)
 	return ($e === FALSE || $e === NULL) ? $sec : $e;
 }
 
+/** The full name of a section (side + code, letter case ignored), '' when it has none. $except_room = a room to leave out. */
+function _dh_rooms_section_name($centre_id, $g, $sec, $except_room = 0)
+{
+	$n = db_query("select cr_section_name from dh_center_room where cr_center = :c and cr_gender = :g and cr_section = :s and cr_deleted = 0 and cr_id <> :x and cr_section_name <> '' order by cr_id limit 1",
+		array(':c' => (int) $centre_id, ':g' => $g, ':s' => $sec, ':x' => (int) $except_room))->fetchField();
+	return ($n === FALSE || $n === NULL) ? '' : (string) $n;
+}
+
 /** The next free weight in a section: one more than the largest there (0 for an empty section). */
 function _dh_rooms_next_weight($centre_id, $g, $sec)
 {
@@ -178,8 +186,10 @@ function dh_rooms_action($centre_id, $in, $uid)
 				if ((mb_strtoupper($sec) !== mb_strtoupper($old['cr_section']) || $g !== $old['cr_gender'] || !in_array($p, $places, TRUE)) && ($m = _dh_rooms_in_use_msg($in_use, $old['cr_gender'], $old['cr_section'], $p)) !== '')
 					return _dh_rooms_err($m);
 			$txn = db_transaction();
-			db_update('dh_center_room')->fields(array('cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet,
-				'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->condition('cr_id', $id)->execute();
+			$f = array('cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid);
+			if ($old['cr_gender'] !== $g || $old['cr_section'] !== $sec)
+				$f['cr_section_name'] = _dh_rooms_section_name($centre_id, $g, $sec, $id);   // moved: it takes the new section's name
+			db_update('dh_center_room')->fields($f)->condition('cr_id', $id)->execute();
 			if ($old_places !== $places)
 				_dh_rooms_write_places($id, $places);
 			$ch = array();
@@ -192,7 +202,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		else
 		{
 			$txn = db_transaction();
-			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => $name, 'cr_toilet' => $toilet,
+			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_section_name' => _dh_rooms_section_name($centre_id, $g, $sec), 'cr_name' => $name, 'cr_toilet' => $toilet,
 				'cr_weight' => _dh_rooms_next_weight($centre_id, $g, $sec), 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
 			_dh_rooms_write_places($id, $places);
 			dh_rooms_log($centre_id, 'create', array('room' => array(NULL, dh_rooms_side_label($g) . ' ' . $sec . ' ' . $name . ': ' . implode(', ', $places) . ' (' . $toilets[$toilet] . ')')), $id);
@@ -233,9 +243,10 @@ function dh_rooms_action($centre_id, $in, $uid)
 		}
 		$txn = db_transaction();
 		$weight = _dh_rooms_next_weight($centre_id, $g, $sec);
+		$sname = _dh_rooms_section_name($centre_id, $g, $sec);
 		foreach ($plan as $name => $places)
 		{
-			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_name' => (string) $name, 'cr_toilet' => $toilet,
+			$id = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $g, 'cr_section' => $sec, 'cr_section_name' => $sname, 'cr_name' => (string) $name, 'cr_toilet' => $toilet,
 				'cr_weight' => $weight++, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
 			_dh_rooms_write_places($id, $places);
 		}
@@ -311,7 +322,7 @@ function dh_rooms_action($centre_id, $in, $uid)
 		db_update('dh_center_room')->fields(array('cr_name' => $places[0], 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->condition('cr_id', $id)->execute();
 		foreach (array_slice($places, 1) as $p)
 		{
-			$nid = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $r['cr_gender'], 'cr_section' => $r['cr_section'], 'cr_name' => $p,
+			$nid = db_insert('dh_center_room')->fields(array('cr_center' => $centre_id, 'cr_gender' => $r['cr_gender'], 'cr_section' => $r['cr_section'], 'cr_section_name' => $r['cr_section_name'], 'cr_name' => $p,
 				'cr_toilet' => $r['cr_toilet'], 'cr_weight' => (int) $r['cr_weight'], 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => (int) $uid,
 				'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->execute();
 			_dh_rooms_write_places($nid, array($p));
@@ -410,13 +421,34 @@ function dh_rooms_action($centre_id, $in, $uid)
 			db_update('dh_center_room')->fields(array('cr_deleted' => 1, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))->condition('cr_id', $r['cr_id'])->execute();
 			db_update('dh_center_room_place')->fields(array('crp_deleted' => 1))->condition('crp_room', $r['cr_id'])->execute();
 		}
-		db_update('dh_center_room')->fields(array('cr_gender' => $to, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))
+		$f = array('cr_gender' => $to, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid);
+		if ($joined && $rooms[0]['cr_section_name'] === '')
+			$f['cr_section_name'] = $joined[0]['cr_section_name'];   // this section has no name: it takes the twin's
+		db_update('dh_center_room')->fields($f)
 			->condition('cr_center', $centre_id)->condition('cr_gender', $from)->condition('cr_section', $sec)->condition('cr_deleted', 0)->execute();
 		$ch = array('used_by' => array('Section ' . $sec . ': ' . $who[$from], $who[$to]));
 		if ($joined)
 			$ch['section'] = array($joined_text, 'joined into shared section ' . $sec);
 		dh_rooms_log($centre_id, 'update', $ch);
 		return array('ok' => TRUE, 'msg' => 'Section ' . $sec . ' is now for ' . $who[$to] . '.' . ($joined ? ' ' . ucfirst($who[$oth]) . "'s section " . $sec . ' was joined into it.' : ''));
+
+	case 'set_section_name':
+		// The section's full name ('' = none), the same on every room of the section. $g is the tab the section was chosen on.
+		$sec = trim((string) (isset($in['section']) ? $in['section'] : ''));
+		$name = trim((string) (isset($in['name']) ? $in['name'] : ''));
+		if ($g !== 'M' && $g !== 'F') return _dh_rooms_err('Choose Men or Women.');
+		if (mb_strlen($name) > 60) return _dh_rooms_err('A section name can be 60 letters at most.');
+		$g = _dh_rooms_side_for($centre_id, $g, $sec);
+		$rooms = _dh_rooms_section_rooms($centre_id, $g, $sec);
+		if (!$rooms) return _dh_rooms_err('There is no section ' . $sec . '.');
+		$sec = $rooms[0]['cr_section'];
+		$old_name = _dh_rooms_section_name($centre_id, $g, $sec);
+		if ($old_name === $name) return array('ok' => TRUE, 'msg' => 'No change.');
+		$txn = db_transaction();
+		db_update('dh_center_room')->fields(array('cr_section_name' => $name, 'cr_updated' => $now, 'cr_updated_by' => (int) $uid))
+			->condition('cr_center', $centre_id)->condition('cr_gender', $g)->condition('cr_section', $sec)->condition('cr_deleted', 0)->execute();
+		dh_rooms_log($centre_id, 'update', array('section_name' => array($old_name, $name)));
+		return array('ok' => TRUE, 'msg' => $name === '' ? 'Section name removed.' : 'Section name saved.');
 
 	case 'delete_section':
 		$sec = trim((string) (isset($in['section']) ? $in['section'] : ''));

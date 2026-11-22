@@ -577,6 +577,7 @@ function dh_zero_main()
 			var room_overlap = '.json_encode(dh_rooms_overlap_taken($course_id)).';
 			var room_toilets = '.json_encode(dh_room_toilet_types()).';
 			var room_shared = '.json_encode(array_values(dh_rooms_shared_sections($centre_id))).';
+			var room_sec_label = '.json_encode(dh_rooms_section_labels($centre_id)).';
 			var ov_ok = "";
 			var CELL_OPTS = '.$cellopts_json.';
 			var DINING_OPTS = '.$diningopts_json.';
@@ -670,7 +671,8 @@ function dh_zero_main()
 				$.each(params.sections, function(key, item) {
 					var ovs = (room_overlap[cur_gender] && room_overlap[cur_gender][key]) || {};
 					var n = get_rooms(key, cur_gender).filter(function (p) { return !ovs[p]; }).length;
-					s.append(new Option(key+" ("+n+" free"+(room_shared.indexOf(key) > -1 ? ", men + women" : "")+")", key));
+					var lab = (room_sec_label[cur_gender] && room_sec_label[cur_gender][key]) || key;
+					s.append(new Option(lab+" ("+n+" free"+(room_shared.indexOf(key) > -1 ? ", men + women" : "")+")", key));
 				});
 				s = s.html();
 				var out = "" +
