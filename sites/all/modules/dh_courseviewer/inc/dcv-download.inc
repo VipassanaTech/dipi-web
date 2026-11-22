@@ -6,17 +6,37 @@
  * at least one of the Male / Female permissions, teachers with 'dcv teacher access').
  *
  * The APK is not in git: it sits in the private files folder, private://dipi-app/.
- * A new release = copy its APK there and change dcv_app_release().
+ * A new release = copy its APK there and change dcv_app_release(), its version_code included
+ * (the app's Android versionCode: the app tells people about a release with a higher one).
  */
 
 /** The release offered for download. */
 function dcv_app_release() {
   return array(
-    'version' => '1.1.7',
-    'date'    => '2026-11-17',
-    'file'    => 'DipiApp-1.1.7.apk',
-    'sha256'  => '8e9c61a2039b24e38eee234360d61fdd6c58c56d5b525391858d14bfe7700648',
+    'version' => '1.1.8',
+    'version_code' => 19,
+    'date'    => '2026-11-22',
+    'file'    => 'DipiApp-1.1.8.apk',
+    'sha256'  => '8cf3b99c5d56655bb31b7c1697b05779248427cde54561d38c97734c6807c667',
   );
+}
+
+/**
+ * What the app may tell people about a release (sent with the course list, dcv/courses): its
+ * version, Android versionCode and date, or NULL when there is no file to offer ($uri FALSE) or
+ * the release has no version / versionCode. Pure.
+ */
+function dcv_app_notice(array $rel, $uri) {
+  if (!$uri || empty($rel['version']) || empty($rel['version_code'])) {
+    return NULL;
+  }
+  return array('version' => (string) $rel['version'], 'version_code' => (int) $rel['version_code'],
+    'date' => isset($rel['date']) ? (string) $rel['date'] : '');
+}
+
+/** The release the /dipi-app page offers right now, for the app (dcv_app_notice), or NULL. */
+function dcv_app_latest() {
+  return dcv_app_notice(dcv_app_release(), dcv_app_file());
 }
 
 /**

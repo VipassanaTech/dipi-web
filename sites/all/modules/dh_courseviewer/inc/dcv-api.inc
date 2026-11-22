@@ -325,7 +325,8 @@ function dcv_build_course_list($centres, $teacher_id = FALSE, $today = NULL, $ce
 /** GET dcv/courses — courses the logged-in caller may load (centre and/or teacher). */
 function dcv_courses() {
   $list = dcv_build_course_list(dcv_scope_centres(), dcv_teacher_id(), NULL, dcv_centre_sides());
-  dcv_json('OK', array('courses' => $list));
+  // 'app': the release on the /dipi-app page (or null), so the app can say a new version is ready.
+  dcv_json('OK', array('courses' => $list, 'app' => dcv_app_latest()));
 }
 
 /**
