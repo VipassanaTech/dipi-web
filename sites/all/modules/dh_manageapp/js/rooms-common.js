@@ -44,7 +44,27 @@
     }).join('');
   }
 
-  var api = {COLS: COLS, cardsHtml: cardsHtml, heading: heading, sectionsHtml: sectionsHtml};
+  // The view in the address bar: '#male' / '#female', plus the open sections: '#female:AT,B'.
+  // parse('#female:AT,B') -> {side: 'F', open: {'F|AT': 1, 'F|B': 1}}; nothing usable -> null.
+  function hashParse(hash) {
+    var h = String(hash || '').replace(/^#/, ''), i = h.indexOf(':');
+    var word = (i < 0 ? h : h.slice(0, i)).toLowerCase(), side = word === 'male' ? 'M' : (word === 'female' ? 'F' : '');
+    if (!side) return null;
+    var open = {};
+    if (i >= 0) h.slice(i + 1).split(',').forEach(function (c) {
+      var sec; try { sec = decodeURIComponent(c); } catch (e) { sec = c; }
+      if (sec !== '') open[side + '|' + sec] = 1;
+    });
+    return {side: side, open: open};
+  }
+  // make('F', {'F|AT': true, 'F|B': true, 'M|C': true}) -> '#female:AT,B' (only the shown side's open sections).
+  function hashMake(side, open) {
+    var secs = Object.keys(open || {}).filter(function (k) { return open[k] && k.indexOf(side + '|') === 0; })
+      .map(function (k) { return encodeURIComponent(k.slice(side.length + 1)); });
+    return '#' + (side === 'F' ? 'female' : 'male') + (secs.length ? ':' + secs.join(',') : '');
+  }
+
+  var api = {COLS: COLS, cardsHtml: cardsHtml, heading: heading, sectionsHtml: sectionsHtml, hashParse: hashParse, hashMake: hashMake};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.dhRoomChart = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -58,9 +78,12 @@ if (typeof jQuery !== 'undefined') (function ($) {
   window.dhRoomsCommon = {
     esc: esc,
 
-    // The view a person had on a page (side tab, open sections), kept in this browser only, so a reload comes back
-    // to it. key = one page (a course's Room Board, a centre's Rooms page). Storage blocked or empty: nothing kept.
+    // The view a person has on a page (side tab, open sections): in the address bar ('#female:AT,B', so a reload or
+    // a shared link opens the same view) and in this browser (used when the address has no '#...').
+    // key = one page (a course's Room Board, a centre's Rooms page). Storage blocked: only the address is used.
     viewLoad: function (key) {
+      var h = window.dhRoomChart.hashParse(window.location.hash);
+      if (h) return h;
       try { var v = JSON.parse(window.localStorage.getItem('dh-view:' + key) || 'null'); return (v && typeof v === 'object') ? v : null; }
       catch (e) { return null; }
     },
@@ -68,6 +91,9 @@ if (typeof jQuery !== 'undefined') (function ($) {
       var o = {};
       Object.keys(open || {}).forEach(function (k) { if (open[k]) o[k] = 1; });
       try { window.localStorage.setItem('dh-view:' + key, JSON.stringify({side: side, open: o})); } catch (e) {}
+      var h = window.dhRoomChart.hashMake(side, o);
+      // replaceState: the address follows the view without adding Back-button steps or firing 'hashchange'.
+      if (window.location.hash !== h && window.history && window.history.replaceState) window.history.replaceState(null, '', h);
     },
 
     // The site header is fixed at the top: its bottom edge in px, also set as CSS --dhr-top on the app element so a

@@ -80,5 +80,26 @@ t("sectionsHtml: one heading and one card table per section; sections with no be
   assert.ok(h.indexOf("Section M — Block") >= 0);
 });
 
+t("address: '#female' and '#male' give the side, no open sections", function () {
+  assert.deepStrictEqual(chart.hashParse("#female"), {side: "F", open: {}});
+  assert.deepStrictEqual(chart.hashParse("#MALE"), {side: "M", open: {}});
+});
+t("address: '#female:AT,B' gives the side and its open sections", function () {
+  assert.deepStrictEqual(chart.hashParse("#female:AT,B"), {side: "F", open: {"F|AT": 1, "F|B": 1}});
+});
+t("address: anything else (empty, other words) is ignored", function () {
+  assert.strictEqual(chart.hashParse(""), null);
+  assert.strictEqual(chart.hashParse("#top"), null);
+  assert.strictEqual(chart.hashParse("#"), null);
+});
+t("address made from the view: only the shown side's open sections", function () {
+  assert.strictEqual(chart.hashMake("F", {"F|AT": true, "F|B": 1, "M|C": true, "F|X": false}), "#female:AT,B");
+  assert.strictEqual(chart.hashMake("M", {}), "#male");
+});
+t("address: section codes with odd letters go there and back unchanged", function () {
+  var open = {"M|A1-": 1, "M|DH 4": 1, "M|S/1": 1};
+  assert.deepStrictEqual(chart.hashParse(chart.hashMake("M", open)), {side: "M", open: open});
+});
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

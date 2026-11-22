@@ -168,6 +168,14 @@
         if (nw !== narrow) { narrow = nw; if (D) render(); }
       }, 200);
     });
+    // A new '#male' / '#female:AT,B' typed in the address bar (or a link to one): show that view.
+    $(window).on('hashchange', function () {
+      if (!D) return;
+      var v = window.dhRoomsCommon.viewLoad('room-board:' + S.dataUrl);
+      if (v && D.sides && D.sides.indexOf(v.side) > -1 && v.side !== side) { side = v.side; chosen = null; }
+      if (v && v.open) open = v.open;
+      render();
+    });
     $.getJSON(S.dataUrl).done(function (d) {
       D = d;
       // Back to the side and open sections this person had before the reload.

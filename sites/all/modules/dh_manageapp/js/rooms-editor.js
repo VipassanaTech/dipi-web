@@ -176,6 +176,14 @@
         if (nw !== narrow) { narrow = nw; if (loaded) render(); }
       }, 200);
     });
+    // A new '#male' / '#female:AT,B' typed in the address bar (or a link to one): show that view.
+    $(window).on('hashchange', function () {
+      if (!loaded) return;
+      var v = window.dhRoomsCommon.viewLoad('rooms:' + S.dataUrl);
+      if (v && (v.side === 'M' || v.side === 'F') && v.side !== side) { side = v.side; picked = {}; pickedSec = ''; }
+      if (v && v.open) open = v.open;
+      render();
+    });
     $.getJSON(S.dataUrl).done(function (d) {
       loaded = true; rooms = d.rooms; oldList = !!d.old_list; d.in_use.forEach(function (k) { inUse[k] = 1; });
       // Back to the side and open sections this person had before the reload.
