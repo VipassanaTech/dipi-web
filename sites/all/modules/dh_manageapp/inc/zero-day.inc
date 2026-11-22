@@ -2364,10 +2364,12 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'M', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'M', 'Male').dh_seat_regen_notice('M') : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'M', 'Male').dh_seat_label_start_button('main', 'M', 'Male', $alpha, $label_starts).dh_seat_regen_notice('M') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
+	if ($edit_tools)
+		$out .= dh_seat_label_start_js($centre, $course[0], $alpha);
 	if ($mopts['seat_aid_edit'])
 		$out .= dh_seat_aid_js($centre, $course[0]);
 	$out_seats = dh_render_seat_grid($seats['M']['seats'], $max_col['M']+1, null, $male_dir, 'main-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'M', 'main')), 'M', 'Male');
@@ -2398,10 +2400,12 @@ function dh_generate_seating_plan($centre, $course, $pdf = '', $read_only = FALS
 		. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 		. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 		. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.$course[0], array('html' => TRUE, 'query' => array('sec' => 'F', 'plan' => 'main', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'F', 'Female').dh_seat_regen_notice('F') : '')
+		. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('main', $centre, $course[0], 'F', 'Female').dh_seat_label_start_button('main', 'F', 'Female', $alpha, $label_starts).dh_seat_regen_notice('F') : '')
 		. '</div>';
 	if ($edit_tools)
 		$out .= dh_seat_tools_js($centre, $course[0]);
+	if ($edit_tools)
+		$out .= dh_seat_label_start_js($centre, $course[0], $alpha);
 	$out_chowky = dh_render_seat_grid($seats['F']['chowky'], $max_col_chowky['F']+1, null, $female_dir, 'chowky-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'F', 'chowky')), 'F', 'Female');
 	$out_seats = dh_render_seat_grid($seats['F']['seats'], $max_col['F']+1, null, $female_dir, 'main-div', $alpha, $mopts + array('label_start' => dh_seat_label_start_of($label_starts, 'F', 'main')), 'F', 'Female');
 	$out .= dh_layout_seats_chowky($out_seats, $out_chowky, $female_chowky_pos);
@@ -3498,7 +3502,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
 				. ' ' . l('&#128424; on 4 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 4), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 4 A4 sheets to tape together')))
-				. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('group', $centre, (is_array($course)?$course[0]:$course), $sec_id, $sec_lbl).dh_seat_regen_notice($sec_id) : '')
+				. ($edit_tools ? dh_seat_section_tools_html().dh_seat_regen_link('group', $centre, (is_array($course)?$course[0]:$course), $sec_id, $sec_lbl).dh_seat_label_start_button('group', $sec_id, $sec_lbl, $alpha, $label_starts).dh_seat_regen_notice($sec_id) : '')
 				. '</div>';
 
 			$dims = dh_group_dims($gcfg, $ini, $section_for[$gender], $g);
@@ -3525,6 +3529,8 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 				$out .= dh_seat_aid_js($centre, $course[0]);
 			if ($edit_tools)
 				$out .= dh_seat_tools_js($centre, $course[0]);
+			if ($edit_tools)
+				$out .= dh_seat_label_start_js($centre, $course[0], $alpha);
 			$out_seats  = dh_render_seat_grid($s_grid, $s_cols, $s_mr, $gdir, 'main-div',   $alpha, $gopts + array('label_start' => dh_seat_label_start_of($label_starts, $sec_id, 'main')), $sec_id, $sec_lbl);
 			$out_chowky = dh_render_seat_grid($c_grid, $c_cols, $c_mr, $gdir, 'chowky-div', $alpha, $gopts + array('label_start' => dh_seat_label_start_of($label_starts, $sec_id, 'chowky')), $sec_id, $sec_lbl);
 			$chowky_pos = dh_chowky_position($dims['chowky_position'], $gdir);

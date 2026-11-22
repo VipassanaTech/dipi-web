@@ -168,3 +168,38 @@ function dh_seat_label_start_update($centre, $course)
 	drupal_json_output(dh_seat_label_start_request($centre, $course, $_POST));
 	drupal_exit();
 }
+
+/**
+ * "Seat labels..." button for one section's tool bar on the seating plans (only
+ * with the edit tools). It carries the section and the starts saved now, as the
+ * person would type them; js/seat-label-start.js opens the box.
+ */
+function dh_seat_label_start_button($plan, $sec, $label, $conv, $starts)
+{
+	return ' <button type="button" class="dh-sls-btn no-print"'
+		.' data-plan="'.check_plain($plan).'" data-sec="'.check_plain($sec).'" data-label="'.check_plain($label).'"'
+		.' data-anchor="'.check_plain(dh_seat_sec_anchor($sec)).'"'
+		.' data-main="'.check_plain(dh_seat_label_start_text($conv, dh_seat_label_start_of($starts, $sec, 'main'))).'"'
+		.' data-chowky="'.check_plain(dh_seat_label_start_text($conv, dh_seat_label_start_of($starts, $sec, 'chowky'))).'"'
+		.' title="Start the seat labels of this section from another letter or number (this course only)">&#9998; Seat labels&hellip;</button>';
+}
+
+/**
+ * Script tags for js/seat-label-start.js and its settings (save URL, token,
+ * naming style). The plans print their own HTML, so the caller appends this;
+ * '' after the first call.
+ */
+function dh_seat_label_start_js($centre, $course, $conv)
+{
+	$added = &drupal_static(__FUNCTION__);
+	if ($added)
+		return '';
+	$added = TRUE;
+	$path = drupal_get_path('module', 'dh_manageapp').'/js/seat-label-start.js';
+	return '<script>window.dhSeatLabelCfg = '.drupal_json_encode(array(
+			'url' => url('seat-label-start/'.(int) $centre.'/'.(int) $course),
+			'token' => drupal_get_token('seat-label-start'),
+			'conv' => (int) $conv,
+		)).';</script>'
+		.'<script src="'.$GLOBALS['base_url'].'/'.$path.'?v='.(file_exists($path) ? filemtime($path) : 0).'"></script>';
+}
