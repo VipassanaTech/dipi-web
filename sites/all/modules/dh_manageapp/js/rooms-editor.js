@@ -64,7 +64,7 @@
       var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
       h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (used === 'B' ? '<span class="dhr-shared">Male + Female</span>' : '')
         + '<span>' + n(rs.length, 'room') + ' · ' + n(places(rs), 'place') + '</span>'
-        + sum + '<span style="flex:1"></span><span class="dhr-hacts"><a href="#" class="dhr-hact dhr-ren" data-sec="' + esc(sec) + '">Rename</a>'
+        + sum + '<span style="flex:1"></span><span class="dhr-hacts"><a href="#" class="dhr-hact dhr-ren" data-sec="' + esc(sec) + '">Rename section code</a>'
         + '<a href="#" class="dhr-hact dhr-namesec" data-sec="' + esc(sec) + '">Section name</a><a href="#" class="dhr-hact dhr-delsec" data-sec="' + esc(sec) + '">Delete section</a></span>'
         + '<span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
@@ -111,7 +111,7 @@
   function roomForm(r, here) {
     var sec = r ? r.section : (here || '');
     var h = '<div class="dhr-form"><b>' + (r ? 'Edit room ' + esc(r.name) : 'Add a room') + '</b>'
-      + '<label>Section<input type="text" class="form-control f-sec" maxlength="10" value="' + esc(sec) + '"></label>'
+      + '<label>Section code<input type="text" class="form-control f-sec" maxlength="10" value="' + esc(sec) + '"></label>'
       + '<label>Room name<input type="text" class="form-control f-name" maxlength="40" value="' + esc(r ? r.name : '') + '"></label>'
       + '<label>Places in this room (separate with commas)<input type="text" class="form-control f-places" value="' + esc(r ? r.places.map(function (p) { return p.name; }).join(', ') : '') + '"></label>'
       + '<label>Toilet<select class="form-control f-toilet">' + toiletOptions(r ? r.toilet : 'unset', false) + '</select></label>'
@@ -139,7 +139,7 @@
 
   function manyForm(sec) {
     var h = '<div class="dhr-form"><b>Add many rooms</b>'
-      + '<label>Section<input type="text" class="form-control f-sec" maxlength="10" value="' + esc(sec || '') + '"></label>'
+      + '<label>Section code<input type="text" class="form-control f-sec" maxlength="10" value="' + esc(sec || '') + '"></label>'
       + '<label>Rooms from<input type="number" class="form-control f-from" min="0"></label><label>to<input type="number" class="form-control f-to" min="0"></label>'
       + '<label>Places in each room, e.g. A, B (leave empty for one place per room)<input type="text" class="form-control f-suf"></label>'
       + '<label>Toilet<select class="form-control f-toilet">' + toiletOptions('unset', false) + '</select></label>'
@@ -255,7 +255,7 @@
     });
     app.on('click', '.dhr-ren', function (e) {
       e.preventDefault();
-      var from = String($(this).attr('data-sec')), to = prompt('New name for section ' + from + ':', from);
+      var from = String($(this).attr('data-sec')), to = prompt('New code for section ' + from + ':', from);
       if (to && $.trim(to) !== from) post('rename_section', {from: from, to: $.trim(to)});
     });
   });
