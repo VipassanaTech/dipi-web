@@ -59,6 +59,47 @@ function dcv_resolve_seat_layout(array $sections) {
 }
 
 /**
+ * Each grid's label start for the course's plan (Dipi's "Seat labels…" box, saved for the
+ * course), as label_start {main, chowky}: on each section for a main plan, and on each group for
+ * a group-wise plan (the sections' own are then 0). A group with a saved start but no GROUP<n>-
+ * lines in the seat config gets an entry of its own (n only; dcv_resolve_seat_layout gives it the
+ * section's direction and chowky side). Dipi's group sections are 'g<n>_M' / 'g<n>_F', and
+ * 'gUnassigned_M' / 'gUnassigned_F' for students with no group, the app's group 0. 0 = the normal
+ * start. Read with dh_seat_label_starts() (dh_manageapp), which already ignores a start saved
+ * under another naming style; without it (a Dipi before seat label starts) every start is 0.
+ */
+function dcv_add_label_starts(array $sections, $course_id, $plan) {
+  $starts = function_exists('dh_seat_label_starts') ? dh_seat_label_starts((int) $course_id, $plan) : array();
+  $of = function ($key) use ($starts) {
+    $v = isset($starts[$key]) ? $starts[$key] : array();
+    return array('main' => isset($v['main']) ? max(0, (int) $v['main']) : 0,
+                 'chowky' => isset($v['chowky']) ? max(0, (int) $v['chowky']) : 0);
+  };
+  $none = array('main' => 0, 'chowky' => 0);
+  foreach ($sections as $i => $s) {
+    $g = $s['gender'];
+    $sections[$i]['label_start'] = ($plan === 'main') ? $of($g) : $none;
+    if ($plan !== 'group') { continue; }
+    $key = function ($n) use ($g, $starts) {
+      return ($n === 0 && !isset($starts['g0_' . $g])) ? 'gUnassigned_' . $g : 'g' . $n . '_' . $g;
+    };
+    $have = array();
+    foreach ($sections[$i]['groups'] as $grp) { $have[(int) $grp['n']] = TRUE; }
+    foreach (array_keys($starts) as $k) {
+      if (preg_match('/^g(\d+|Unassigned)_' . preg_quote($g, '/') . '$/', $k, $m)) {
+        $n = ($m[1] === 'Unassigned') ? 0 : (int) $m[1];
+        if (!isset($have[$n])) { $sections[$i]['groups'][] = array('n' => $n); $have[$n] = TRUE; }
+      }
+    }
+    foreach ($sections[$i]['groups'] as $j => $grp) {
+      $sections[$i]['groups'][$j]['label_start'] = $of($key((int) $grp['n']));
+    }
+    usort($sections[$i]['groups'], function ($a, $b) { return (int) $a['n'] - (int) $b['n']; });
+  }
+  return $sections;
+}
+
+/**
  * Parse cs_seat_config INI into structured sections for the app to render.
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
@@ -644,6 +685,7 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $naming_conv = db_query("select cs_seat_naming_conv from dh_center_setting where cs_center = :c",
     array(':c' => $centre))->fetchField();
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
+  $sections = dcv_add_label_starts($sections, $course_id, $header['seat_plan']);
   $sections = dcv_resolve_seat_layout($sections);
   if ($plans !== NULL) {
     $sections = dcv_filter_sections($sections, $plans, $header['seat_plan']);
