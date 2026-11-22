@@ -597,80 +597,8 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 	if ( !$add )
 	{
 		$js = '
-			var editor;
 			(function ($) {
-				function load_editor()
-				{
-					editor = new $.fn.dataTable.Editor({ 
-					    ajax: {url: "/centre/'.arg(1).'/acco-handler", type: "POST"},
-						table: "#centre-acco-table",
-					    fields: [
-					        { name: "dh_center_setting_acco.csa_gender", label: "Gender", type: "select" },
-					        { name: "dh_center_setting_acco.csa_section", label:  "Section", type: "text" }, 
-					        { name: "dh_center_setting_acco.csa_room", label:  "Rooms", type: "textarea" },
-					        { name: "dh_center_setting_acco.csa_deleted", type: "hidden" },
-
-					    ]
-					});
-
-
-					var table = $("#centre-acco-table").DataTable( {
-					    ajax: "/centre/'.arg(1).'/acco-handler",
-					    dom: "Bfrtip",
-						columns: [
-					        { data: null, render: function(data, type, row) {
-					        	//alert(row.csa_gender);
-					        	if (data.dh_center_setting_acco.csa_gender == "F")
-					        		return "Female";
-					        	else
-					        		return "Male";	
-					        } },
-							{ data: "dh_center_setting_acco.csa_section" },
-							{ data: "dh_center_setting_acco.csa_room" },
-						],
-					    select: true,
-					    buttons: [
-					        { extend: "create", editor: editor },
-					        { extend: "edit",   editor: editor },
-				            {
-				                extend: "selected",
-				                text: "Delete",
-				                action: function ( e, dt, node, config ) {
-				                    var rows = table.rows( {selected: true} ).indexes();
-				 
-				                    editor
-				                        .hide( editor.fields() )
-				                        .one( "close", function () {
-				                            setTimeout( function () { // Wait for animation
-				                                editor.show( editor.fields() );
-				                            }, 500 );
-				                        } )
-				                        .edit( rows, {
-				                            title: "Delete",
-				                            message: rows.length === 1 ?
-				                                "Are you sure you wish to delete this row?" :
-				                                "Are you sure you wish to delete these "+rows.length+" rows",
-				                            buttons: "Delete"
-				                        } )
-				                        .val( "dh_center_setting_acco.csa_deleted", 1 );
-				                }
-				            }
-					    ]
-					});
-
-					// The table inits hidden inside the collapsed Accommodation
-					// section, so its columns have no width until first shown.
-					// Recompute them the first time the section is expanded.
-					$("#centre-acco-table").closest(".panel-collapse").one("shown.bs.collapse", function(){
-						table.columns.adjust();
-					});
-
-				}
-
-
-
 				$(document).ready(function(){
-					load_editor();
 					autocomplete_country("#edit-c-country");
 					autocomplete_state("#edit-c-state", "#edit-c-country");
 					autocomplete_city("#edit-c-city", "#edit-c-country", "#edit-c-state");
@@ -682,21 +610,10 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		';
 		drupal_add_js($js, 'inline');
 
-		// Accommodation (rooms per gender/section) as its own collapsible section,
-		// like the others, placed just above the Update button (weight 99 < the
-		// submit's 100).
-		$out = '<table id="centre-acco-table">
-					<thead>
-						<tr>
-							<th>Gender</th>
-							<th>Section</th>
-							<th>Rooms</th>
-						</tr>
-					</thead>
-		</table>';
-		$form['Accommodation Settings'] = array('#type' => 'fieldset', '#title' => 'Accommodation Settings',
-			'#collapsible' => true, '#collapsed' => true, '#weight' => 99);
-		$form['Accommodation Settings']['acco'] = array('#markup' => $out);
+		// Accommodation: rooms, places and toilet types live on the Rooms page.
+		$form['Accommodation Settings'] = array('#type' => 'fieldset', '#title' => 'Accommodation Settings', '#collapsible' => true, '#collapsed' => true, '#weight' => 99);
+		$form['Accommodation Settings']['acco'] = array('#markup' => '<p>Rooms, their places and toilet types are kept on the Rooms page.</p><p>'
+			. l('Open the Rooms page', 'centre/' . (int) $centre_id . '/rooms', array('attributes' => array('class' => array('btn', 'btn-default')))) . '</p>');
 
 		// Who changed what (inc/centre-log.inc), read-only, below the Update button.
 		$form['Change Log'] = array('#type' => 'fieldset', '#title' => 'Change Log',

@@ -67,3 +67,20 @@ function t_add_teacher($course, $gender = 'M', $group = 1) {
   db_insert('dh_course_teacher')->fields(array_merge($row, array('ct_course' => $course, 'ct_teacher' => $t, 'ct_group' => $group)))->execute();
   return $t;
 }
+// A made-up centre: a copy of the newest real centre under a new name. Returns its id.
+function t_make_centre() {
+  $c = db_query("select * from dh_center where c_id > 0 order by c_id desc limit 1")->fetchAssoc();
+  unset($c['c_id']);
+  $c['c_name'] = 'Zzqtest Centre ' . mt_rand(100000, 999999);
+  return (int) db_insert('dh_center')->fields($c)->execute();
+}
+// A made-up room with its places. Returns the room id.
+function t_make_room($centre, $gender, $section, $name, $places, $toilet = 'unset') {
+  $now = date('Y-m-d H:i:s');
+  $rid = (int) db_insert('dh_center_room')->fields(array('cr_center' => $centre, 'cr_gender' => $gender, 'cr_section' => $section, 'cr_name' => $name,
+    'cr_toilet' => $toilet, 'cr_weight' => 0, 'cr_review' => 0, 'cr_deleted' => 0, 'cr_created' => $now, 'cr_created_by' => 0,
+    'cr_updated' => $now, 'cr_updated_by' => 0))->execute();
+  foreach (array_values($places) as $w => $p)
+    db_insert('dh_center_room_place')->fields(array('crp_room' => $rid, 'crp_name' => $p, 'crp_weight' => $w, 'crp_deleted' => 0))->execute();
+  return $rid;
+}
