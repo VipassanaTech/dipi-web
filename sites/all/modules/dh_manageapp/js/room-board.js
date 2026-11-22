@@ -113,7 +113,7 @@
       if (filtered && !match) return;   // a filter hides sections with nothing to show
       shownSecs++;
       var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && anyHit(w); }); }));
-      h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b>' + (rs[0].section_name ? '<span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + (rs[0].gender === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '') + '<span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
+      h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (rs[0].gender === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '') + '<span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
         + '<small>' + pn + ' placed · ' + on + ' other course · ' + (n - pn - on) + ' free</small><span style="flex:1"></span>' + (isOpen ? '▾' : '▸') + '</div>';
       if (isOpen) {
         h += '<div class="dhrb-rooms">';

@@ -62,7 +62,7 @@
       var counts = {};
       rs.forEach(function (r) { counts[r.toilet] = (counts[r.toilet] || 0) + 1; });
       var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
-      h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b>' + (rs[0].section_name ? '<span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + (used === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '')
+      h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (used === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '')
         + '<span>' + n(rs.length, 'room') + ' · ' + n(places(rs), 'place') + '</span>'
         + sum + '<span style="flex:1"></span><a href="#" class="dhr-ren" data-sec="' + esc(sec) + '">Rename</a> <span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
