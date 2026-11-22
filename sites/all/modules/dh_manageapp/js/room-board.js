@@ -142,6 +142,17 @@
   // Print every section of this side, with the filters in use (rooms-common.js boardPrint).
   function printBoard() { window.dhRoomsCommon.boardPrint(D, side, fPlace, fToilet); }
 
+  // Every board action (place, move, swap, take out) posts here and redraws from the returned data.
+  function save(payload) {
+    if (D.finalized) return;
+    $.post(S.saveUrl, $.extend({token: S.token}, payload), null, 'json').done(function (r) {
+      if (r.confirm) { if (confirm(r.msg)) save($.extend(payload, {confirm: 1})); return; }
+      if (r.data) D = r.data;
+      if (!r.ok) alert(r.msg); else chosen = null;
+      render();
+    }).fail(function () { alert('Could not save. Please check the connection and try again.'); });
+  }
+
   function setTop() { return window.dhRoomsCommon.fixedTop('dh-rb-app'); }
 
   $(function () {
