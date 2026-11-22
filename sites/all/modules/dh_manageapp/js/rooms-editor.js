@@ -62,13 +62,13 @@
       var counts = {};
       rs.forEach(function (r) { counts[r.toilet] = (counts[r.toilet] || 0) + 1; });
       var sum = Object.keys(counts).map(function (t) { return '<span class="dhr-t dhr-t-' + esc(t) + '">' + esc(S.toilets[t]) + ' ' + counts[t] + '</span>'; }).join(' ');
-      h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b>' + (used === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '')
+      h += '<div class="dhr-sec' + (isOpen ? ' open' : '') + '"><div class="dhr-sec-head" data-sec="' + esc(sec) + '"><b>' + esc(sec) + '</b>' + (rs[0].section_name ? '<span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + (used === 'B' ? '<span class="dhr-shared">Men + Women</span>' : '')
         + '<span>' + n(rs.length, 'room') + ' · ' + n(places(rs), 'place') + '</span>'
         + sum + '<span style="flex:1"></span><a href="#" class="dhr-ren" data-sec="' + esc(sec) + '">Rename</a> <span>' + (isOpen ? '▾' : '▸') + '</span></div>';
       if (isOpen) {
         // The section's bar stays in view (sticky) while its rooms scroll; forms open inside it.
         var mine = nPicked && pickedSec === sec;
-        var ctl = '<div class="dhr-bar"><label style="font-weight:normal;margin:0">Used by <select class="form-control dhr-used" data-sec="' + esc(sec) + '" style="width:auto;display:inline-block">'
+        var ctl = '<div class="dhr-bar"><b class="dhr-bartitle">' + esc(sec) + (rs[0].section_name ? ' — ' + esc(rs[0].section_name) : '') + '</b><label style="font-weight:normal;margin:0">Used by <select class="form-control dhr-used" data-sec="' + esc(sec) + '" style="width:auto;display:inline-block">'
           + [['M', 'Men only'], ['F', 'Women only'], ['B', 'Men and Women']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === used ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
           + '</select></label><select class="form-control dhr-setsec" data-sec="' + esc(sec) + '" style="width:auto"><option value="">Set toilet for whole section…</option>'
           + toiletOptions('', false) + '</select><button class="btn btn-default btn-sm dhr-addhere" data-sec="' + esc(sec) + '">Add room here</button>'
@@ -127,7 +127,7 @@
   // The section's full name: one text box in the section's own form area (empty = no name).
   function nameForm(sec) {
     var rs = sideRooms().filter(function (r) { return r.section === sec; });
-    var h = '<div class="dhr-form"><b>Full name of section ' + esc(sec) + '</b>'
+    var h = '<div class="dhr-form"><b>Full name of section ' + esc(sec) + (rs.length && rs[0].section_name ? ' (now: ' + esc(rs[0].section_name) + ')' : '') + '</b>'
       + '<label>Name (optional, up to 60 letters). It shows on web pages and in the print. The code ' + esc(sec) + ' stays in the other lists.'
       + '<input type="text" class="form-control f-secname" maxlength="60" value="' + esc(rs.length ? rs[0].section_name : '') + '"></label>'
       + '<p><button class="btn btn-primary f-save">Save</button> <button class="btn btn-default f-cancel">Cancel</button></p></div>';
