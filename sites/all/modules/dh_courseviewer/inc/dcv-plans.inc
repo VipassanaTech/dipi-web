@@ -87,7 +87,8 @@ function dcv_plans_sql(array $ids, $kind) {
 /**
  * The course's plans with their student and server counts, in the order the app's plan
  * switcher shows them (main: RIGHT then LEFT; group-wise: by group, then LEFT before RIGHT);
- * only plans with at least one attended student or server. $sides (dcv_sides_sql) limits rows
+ * only plans with at least one attended student or server, counting the course sharing its hall
+ * too (dcv_seat_courses, in dcv-bundle.inc). $sides (dcv_sides_sql) limits rows
  * by exact gender, so only that side's plans and people are counted.
  */
 function dcv_course_plans($course_id, $sides = NULL) {
@@ -99,9 +100,9 @@ function dcv_course_plans($course_id, $sides = NULL) {
   $sql = "select (case when a_gender = 'M' then 'RIGHT' else 'LEFT' end) as sec,
                  coalesce(aa_group, 0) as grp, a_type as typ, count(*) as n
           from dh_applicant left join dh_applicant_attended on a_id = aa_applicant
-          where a_course = :c and a_attended = 1 and a_type in ('Student', 'Sevak')$fence
+          where a_course in (:cs) and a_attended = 1 and a_type in ('Student', 'Sevak')$fence
           group by sec, grp, typ";
-  foreach (db_query($sql, array(':c' => $course_id) + $fargs) as $r) {
+  foreach (db_query($sql, array(':cs' => dcv_seat_courses($course_id)) + $fargs) as $r) {
     $id = ($kind === 'group') ? $r->sec . '-' . (int) $r->grp : $r->sec;
     if (!isset($counts[$id])) { $counts[$id] = array('students' => 0, 'servers' => 0); }
     $counts[$id][strtolower((string) $r->typ) === 'sevak' ? 'servers' : 'students'] += (int) $r->n;

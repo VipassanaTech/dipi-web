@@ -169,8 +169,24 @@ function dcv_read_file_bytes($uri) {
 }
 
 /**
+ * The courses drawn on this course's seating plan, as Dipi's seating/ and group-seating/ pages
+ * do: the course, plus the course its own c_combined_seat_course names (two courses sharing one
+ * hall). One-way, as in Dipi: a link from B to A does not put B on A's plan. The partner counts
+ * only when it exists, is not the course itself and is at the same centre, so a bad link can
+ * never bring another centre's people into a bundle. Read-only.
+ */
+function dcv_seat_courses($course_id) {
+  $course_id = (int) $course_id;
+  $other = db_query("select o.c_id from dh_course c join dh_course o on o.c_id = c.c_combined_seat_course
+      where c.c_id = :c and c.c_combined_seat_course > 0 and o.c_id <> c.c_id and o.c_center = c.c_center",
+    array(':c' => $course_id))->fetchField();
+  return $other ? array($course_id, (int) $other) : array($course_id);
+}
+
+/**
  * Full Dipi application view for every attending student (or, with $type 'Sevak', Dhamma
- * server), keyed by id. $sides: the caller's side limit (dcv_sides_sql; NULL = whole course).
+ * server), keyed by id, of the course and of the course sharing its hall (dcv_seat_courses),
+ * each with its own course_id. $sides: the caller's side limit (dcv_sides_sql; NULL = whole course).
  * Mirrors dh_application_view (search.inc) field set; grouped JSON; read-only.
  */
 function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = 'Student') {
@@ -182,7 +198,7 @@ function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = '
   $col_din  = ($din_plan  === 'group') ? 'aa_group_dining' : 'aa_dining';
 
   $sql = "select
-      a_id,
+      a_id, a_course,
       a_conf_no, concat_ws(' ', nullif(trim(a_f_name),''), nullif(trim(a_m_name),''), nullif(trim(a_l_name),'')) as fullname,
       a_gender, a_status, a_dob, TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age,
       a_old, a_monk, a_alist, a_photo, a_type,
@@ -231,8 +247,8 @@ function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = '
       left join dh_country co on a_country = co.c_code
       left join dh_city ci on a_city = ci.c_id
       left join dh_state s on (a_state = s.s_code and a_country = s.s_country)
-    where a_course = :c and a_attended = 1 and a_type = :typ";
-  $args = array(':c' => $course_id, ':typ' => $type);
+    where a_course in (:cs) and a_attended = 1 and a_type = :typ";
+  $args = array(':cs' => dcv_seat_courses($course_id), ':typ' => $type);
   if ($plans !== NULL) {
     // Only the chosen plans' students (spec: choose which plans to load).
     list($cond, $pargs) = dcv_plans_sql($plans, $kind);
@@ -252,6 +268,7 @@ function dcv_course_students($course_id, $plans = NULL, $sides = NULL, $type = '
     $short = $I($r->ac_teen) + $I($r->ac_10d) + $I($r->ac_stp);
     $long  = $I($r->ac_20d) + $I($r->ac_30d) + $I($r->ac_45d) + $I($r->ac_60d) + $I($r->ac_tsc) + $I($r->ac_spl);
     $out[(string) $r->a_id] = array(
+      'course_id' => $I($r->a_course),
       'identity' => array(
         'name' => $S($r->fullname), 'conf_no' => $S($r->a_conf_no), 'gender' => $S($r->a_gender),
         'status' => $S($r->a_status), 'dob' => $S($r->a_dob), 'age' => is_null($r->age) ? null : $I($r->age),
@@ -488,8 +505,9 @@ function dcv_student_activity($a_id) {
 }
 
 /**
- * Occupied seats + per-seat card fields for a course, honouring the course's
- * seat plan (main vs group). Seat labels are Dipi's cached values (aa_seat /
+ * Occupied seats + per-seat card fields for a course and the course sharing its hall
+ * (dcv_seat_courses), each with its course_id, honouring the opened course's seat plan
+ * (main vs group), as Dipi's plan page does. Seat labels are Dipi's cached values (aa_seat /
  * aa_group_seat) — not recomputed. Read-only, parameterized.
  */
 function dcv_course_seats($course_id, $plans = NULL, $sides = NULL) {
@@ -508,7 +526,7 @@ function dcv_course_seats($course_id, $plans = NULL, $sides = NULL) {
   $col_cell = ($cell_plan === 'group') ? 'aa_group_cell'   : 'aa_cell';
   $col_din  = ($din_plan  === 'group') ? 'aa_group_dining' : 'aa_dining';
   // Column names are chosen from a fixed whitelist above — safe to interpolate.
-  $sql = "select a_id, a_gender, a_old, a_lang_discourse,
+  $sql = "select a_id, a_course, a_gender, a_old, a_lang_discourse,
             concat_ws(' ', nullif(trim(a_f_name),''), nullif(trim(a_m_name),''), nullif(trim(a_l_name),'')) as name,
             TIMESTAMPDIFF(YEAR, a_dob, CURDATE()) as age,
             ac_teen, ac_10d, ac_stp, ac_20d, ac_30d, ac_45d, ac_60d, ac_tsc, ac_spl,
@@ -524,9 +542,9 @@ function dcv_course_seats($course_id, $plans = NULL, $sides = NULL) {
             left join dh_applicant_course   on a_id = ac_applicant
             left join dh_applicant_attended on a_id = aa_applicant
             left join dh_applicant_extra    on a_id = ae_applicant
-          where a_course = :c and a_attended = 1 and a_type = 'Student'
+          where a_course in (:cs) and a_attended = 1 and a_type = 'Student'
             and $col_r is not null and $col_c is not null";
-  $args = array(':c' => $course_id);
+  $args = array(':cs' => dcv_seat_courses($course_id));
   if ($plans !== NULL) {
     list($cond, $pargs) = dcv_plans_sql($plans, $plan);
     $sql .= " and $cond";
@@ -560,6 +578,7 @@ function dcv_course_seats($course_id, $plans = NULL, $sides = NULL) {
       // separate from the chowky-grid flags above, which still say where the student sits.
       'seat_aid'   => dcv_seat_aid($r->aa_seat_aid),
       'student_id' => (int) $r->a_id,
+      'course_id'  => (int) $r->a_course,
       'name'       => $r->name,
       'acco'       => $acco,
       'age'        => is_null($r->age) ? null : (int) $r->age,
@@ -593,6 +612,13 @@ function dcv_course_header($course_id) {
   $plan = function_exists('dh_course_plan') ? dh_course_plan((int) $course_id, 'seat') : 'main';
   // Teen/children courses label a_company as "School/College" (vs "Company").
   $youth = in_array(strtolower((string) $r->course_kind), array('teen', 'child'), true);
+  // The course sharing this course's hall (dcv_seat_courses), or null.
+  $courses = dcv_seat_courses((int) $r->c_id);
+  $combined = null;
+  if (count($courses) > 1) {
+    $combined = array('id' => $courses[1], 'name' => (string) db_query("select c_name from dh_course where c_id = :c",
+      array(':c' => $courses[1]))->fetchField());
+  }
   return array(
     'id'          => (int) $r->c_id,
     'name'        => $r->c_name,
@@ -604,6 +630,7 @@ function dcv_course_header($course_id) {
     'course_type' => (string) $r->course_type,
     'youth'       => $youth,
     'seat_plan'   => $plan,
+    'combined_with' => $combined,
   );
 }
 
