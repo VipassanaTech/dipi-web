@@ -94,5 +94,24 @@ t_in_txn(function () {
   $h1 = hc_id($c, 'DH1');
   t_eq(dh_halls_centre_validate($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($foreign, 'XX', 'Other Centre Hall')), array()), array('This hall is not part of this centre.'), 'C10 hall of another centre refused');
   t_eq(dh_halls_centre_save($c, array(hc_row($foreign, 'XX', 'Other Centre Hall')), array(), 1), array('This hall is not part of this centre.'), 'C10 save refused, nothing saved');
+
+  // C11-C13: the usual selects post hall ids
+  $c = t_make_centre();
+  dh_halls_centre_save($c, array(hc_row(0, 'DH1', 'Dhamma Hall 1'), hc_row(0, 'DH2', 'Dhamma Hall 2')), array(), 1);
+  dh_halls_reset();
+  $h1 = hc_id($c, 'DH1'); $h2 = hc_id($c, 'DH2');
+  dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($h2, 'DH2', 'Dhamma Hall 2')), array(2 => 'DH2'), 1);
+  dh_halls_reset();
+  $post = array('dhh' => array(array('id' => $h1, 'code' => 'DH1', 'name' => 'Dhamma Hall 1'), array('id' => $h2, 'code' => 'DX2', 'name' => 'Dhamma Hall 2')), 'dhh_usual' => array(2 => (string) $h2));
+  $u = dh_halls_form_usual($post);
+  t_eq($u, array(2 => 'DX2'), 'C11 usual hall follows the posted (renamed) code');
+  t_eq(dh_halls_centre_save($c, dh_halls_form_rows($post), $u, 1), array(), 'C11 rename of a usual hall saves');
+  dh_halls_reset();
+  t_eq(array(dh_halls_usual($c)[2], (string) db_query("select ch_code from dh_center_hall where ch_id = :h", array(':h' => $h2))->fetchField()), array($h2, 'DX2'), 'C11 group 2 keeps the hall, code is DX2');
+  $post = array('dhh' => array(array('id' => $h1, 'code' => 'DH1', 'name' => 'Dhamma Hall 1'), array('id' => $h2, 'code' => 'DX2', 'name' => 'Dhamma Hall 2', 'remove' => 1)), 'dhh_usual' => array(2 => (string) $h2));
+  t_eq(dh_halls_centre_validate($c, dh_halls_form_rows($post), dh_halls_form_usual($post)), array('Hall DX2 is still the usual hall of Group 2. Move that group first.'), 'C12 removing a usual hall gives the clear message');
+  $post['dhh_usual'] = array(3 => (string) ($h2 + 99999));
+  $post['dhh'][1]['remove'] = 0;
+  t_eq(dh_halls_centre_validate($c, dh_halls_form_rows($post), dh_halls_form_usual($post)), array('Group 3: choose one of this centre\'s halls.'), 'C13 usual id not among the rows is refused');
 });
 t_done();

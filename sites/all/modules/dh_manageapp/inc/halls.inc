@@ -160,7 +160,8 @@ function dh_halls_centre_validate($centre_id, $rows, $usual)
 			$kept[strtoupper($code)] = $code;
 	}
 	foreach ($usual as $g => $code)
-		if (trim((string) $code) !== '' && !isset($kept[strtoupper(trim((string) $code))]))
+		if (trim((string) $code) !== '' && !isset($kept[strtoupper(trim((string) $code))])
+			&& !in_array(strtoupper(trim((string) $code)), array_map('strtoupper', $removed), TRUE))
 			$errors[] = 'Group ' . (int) $g . ': choose one of this centre\'s halls.';
 	if ($errors)
 		return $errors;
@@ -262,7 +263,7 @@ function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 }
 
 /** The Centre Settings "Dhamma Halls" section (collapsed). Inputs: dhh[i][id|code|name|remove], dhh_usual[g]. */
-function dh_halls_form_section($centre_id)
+function dh_halls_form_section($centre_id, $posted = array())
 {
 	$halls = dh_halls_list($centre_id);
 	$f = array('#type' => 'fieldset', '#title' => 'Dhamma Halls', '#collapsible' => TRUE, '#collapsed' => TRUE, '#weight' => 98);
@@ -271,8 +272,14 @@ function dh_halls_form_section($centre_id)
 	$f['dhh'] = array('#tree' => TRUE);
 	$rows = array_values($halls);
 	$shown_blank = $halls ? 0 : 2;   // a centre with no halls starts with two empty rows; "Add hall" shows more
+	$base = count($rows);
 	for ($n = 0; $n < 6; $n++)
-		$rows[] = array('id' => 0, 'code' => '', 'name' => '', 'hidden' => $n >= $shown_blank);
+	{
+		// a spare row that holds typed text (after a refused save) stays visible
+		$p = isset($posted[$base + $n]) ? (array) $posted[$base + $n] : array();
+		$typed = trim((string) (isset($p['code']) ? $p['code'] : '')) !== '' || trim((string) (isset($p['name']) ? $p['name'] : '')) !== '';
+		$rows[] = array('id' => 0, 'code' => '', 'name' => '', 'hidden' => $n >= $shown_blank && !$typed);
+	}
 	foreach ($rows as $i => $h)
 	{
 		$hide = !empty($h['hidden']);
@@ -292,12 +299,12 @@ function dh_halls_form_section($centre_id)
 	{
 		$opts = array();
 		foreach ($halls as $h)
-			$opts[$h['code']] = $h['code'] . ' — ' . $h['name'];
+			$opts[(string) $h['id']] = $h['code'] . ' — ' . $h['name'];
 		$usual = dh_halls_usual($centre_id);
 		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b> — every course starts with these; a course can change them on its own page.</p>');
 		$f['dhh_usual'] = array('#tree' => TRUE, '#prefix' => '<div style="display:flex;gap:12px;flex-wrap:wrap">', '#suffix' => '</div>');
 		for ($g = 1; $g <= 9; $g++)
-			$f['dhh_usual'][$g] = array('#type' => 'select', '#title' => 'Group ' . $g, '#options' => $opts, '#default_value' => $halls[$usual[$g]]['code']);
+			$f['dhh_usual'][$g] = array('#type' => 'select', '#title' => 'Group ' . $g, '#options' => $opts, '#default_value' => (string) $usual[$g]);
 	}
 	return $f;
 }
@@ -315,12 +322,18 @@ function dh_halls_form_rows($input)
 	return $rows;
 }
 
-/** The usual hall per group from the posted form: group => code; array() when the form had none. */
+/** The usual hall per group from the posted form (the selects post hall ids): group => the posted code of that hall; array() when the form had none. */
 function dh_halls_form_usual($input)
 {
 	$out = array();
-	foreach ((array) (isset($input['dhh_usual']) ? $input['dhh_usual'] : array()) as $g => $code)
+	$rows = dh_halls_form_rows($input);
+	foreach ((array) (isset($input['dhh_usual']) ? $input['dhh_usual'] : array()) as $g => $id)
 		if ((int) $g >= 1 && (int) $g <= 9)
-			$out[(int) $g] = trim((string) $code);
+		{
+			$out[(int) $g] = '#' . (int) $id;   // not among the posted rows: fails validation
+			foreach ($rows as $r)
+				if ($r['id'] && $r['id'] === (int) $id)
+					$out[(int) $g] = $r['code'];
+		}
 	return $out;
 }

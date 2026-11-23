@@ -611,7 +611,7 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		drupal_add_js($js, 'inline');
 
 		// Dhamma Halls (inc/halls.inc): only centres with more than one hall fill this in.
-		$form['dhamma_halls'] = dh_halls_form_section((int) $centre_id);
+		$form['dhamma_halls'] = dh_halls_form_section((int) $centre_id, isset($form_state['input']['dhh']) ? (array) $form_state['input']['dhh'] : array());
 
 		// Accommodation: rooms, places and toilet types live on the Rooms page.
 		$form['Accommodation Settings'] = array('#type' => 'fieldset', '#title' => 'Accommodation Settings', '#collapsible' => true, '#collapsed' => true, '#weight' => 99);
@@ -862,7 +862,7 @@ function dh_ma_centre_form_validate($form, &$form_state)
 	// Dhamma Halls section (edit page only).
 	if (arg(1) <> 'add' && isset($form_state['input']['dhh']))
 		foreach (dh_halls_centre_validate((int) arg(1), dh_halls_form_rows($form_state['input']), dh_halls_form_usual($form_state['input'])) as $i => $msg)
-			form_set_error('dhh_err_' . $i, $msg);   // one name per message: Drupal shows only the first message of a name
+			form_set_error('dhh_err_' . $i, check_plain($msg));   // one name per message: Drupal shows only the first message of a name
 }
 
 
