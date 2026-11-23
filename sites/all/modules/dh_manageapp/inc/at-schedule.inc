@@ -697,6 +697,7 @@ function dh_assign_teacher()
 			'teacher' => $r['teacher'],
 			'current_status' => $current_status,
 			'group' => $r['ct_group'],
+			'group_hall' => trim(dh_halls_tail($course, $r['ct_group'], 'code'), ' ·'),
 			'type' => $r['ct_type'],
 			'change_type' => $change_type,
 			'change_group' => $change_group,
@@ -741,6 +742,7 @@ function dh_assign_teacher()
 		$r['teacher'] = '<a href="#" id="'.$r['t_id'].'" class="get-at-info" >'.$r['teacher'].'</a>'; 
 		$r['ct_id'] = l("Delete", "at-schedule/del-trainee-teacher/$centre/$course/{$r['ct_id']}", array('attributes' => array('class' => array('delete-confirm')))) ;  
 		unset($r['t_id']);
+		$r['ct_group'] = $r['ct_group'] . check_plain(dh_halls_tail($course, $r['ct_group'], 'code'));
 		$rows[] = $r;
 	}
 
@@ -783,7 +785,7 @@ function dh_assign_teacher()
 			            { data: "t_gender", "title" : "Gender" },
 			            { data: "current_status", "title" : "Status" },
 			            { data: "type", "title" : "Type" },
-			            { data: "group", "title" : "Group" },
+			            { data: "group", "title" : "Group", "render": function (d, t, row) { return (t === "display" && row.group_hall) ? d + " · " + row.group_hall : d; } },
 			            { data: "sees", "title" : "Sees" },
 			            { data: "change_status", "title" : "Change-Status" },
 			            { data: "change_type", "title" : "Change-Type" },

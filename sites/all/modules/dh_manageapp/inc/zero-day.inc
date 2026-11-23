@@ -573,6 +573,7 @@ function dh_zero_main()
 			var acco = '.$acco_json.';
 			var alloted = '.$alloted_json.';
 			var room_optional = '.(dh_room_optional($course_id) ? 'true' : 'false').';
+			var ZD_HALLS = '.json_encode(dh_halls_js_codes($course_id)).';   // group => hall code; [] when the centre has 0 or 1 hall
 			var room_info = '.json_encode(dh_rooms_place_index($centre_id)).';
 			var room_overlap = '.json_encode(dh_rooms_overlap_taken($course_id)).';
 			var room_toilets = '.json_encode(dh_room_toilet_types()).';
@@ -655,6 +656,10 @@ function dh_zero_main()
 				    	"targets": 15,
 				    	"visible": false,
 				    	"searchable": false,
+				    },
+				    {
+				    	"targets": 14,
+				    	"render": function (d, type) { return (type === "display" && ZD_HALLS[d]) ? d + " · " + ZD_HALLS[d] : d; }
 				    }]
 				});
 
@@ -666,7 +671,7 @@ function dh_zero_main()
 				var name = $("<div/>").html(params.applicant_name).text().toUpperCase();
 				var group = "";
 				for(i=1; i<10; i++)
-					group += "<option value=\""+i+"\">"+i+"</option>";
+					group += "<option value=\""+i+"\">"+i+(ZD_HALLS[i] ? " · "+ZD_HALLS[i] : "")+"</option>";
 				var s = $("<select/>").append(new Option("Choose", ""));
 				$.each(params.sections, function(key, item) {
 					var ovs = (room_overlap[cur_gender] && room_overlap[cur_gender][key]) || {};
@@ -1088,7 +1093,7 @@ function dh_manageapp_attended( $centre, $course_id )
         if ( ! isset($group[$g_no]['new']['F']['Sevak']) ) $group[$g_no]['new']['F']['Sevak'] = 0;
 
 		unset($row);
-		$row[] = '<b>'.$g_no.'</b>';
+		$row[] = '<b>'.$g_no.check_plain(dh_halls_tail($course_id, $g_no, 'code')).'</b>';
         $row[] = '<b>'.$group_teachers[$g_no].'</b>';
 		$row[] = $group[$g_no]['new']['M']['Student'];
 		$row[] = $group[$g_no]['old']['M']['Student'];

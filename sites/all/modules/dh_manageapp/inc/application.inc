@@ -619,8 +619,9 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	$cells = array('' => 'Choose');
 	//$sections = array('' => 'Choose');
 	$groups = array();
+	$halls_course = isset($edit_data['a_course']) ? (int) $edit_data['a_course'] : 0;
 	for($i=1; $i<10; $i++)
-		$groups[$i] = $i;
+		$groups[$i] = $i . ($halls_course ? dh_halls_tail($halls_course, $i, 'code') : '');   // "2 · DH3" at 2+ hall centres; the value stays 2
 
 	$attended = 0;	
 	if (!$add)
