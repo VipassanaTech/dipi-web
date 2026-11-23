@@ -919,10 +919,11 @@ function dh_manageapp_menu()
 
 
 
+    // Manage Courses > Delete asks "does this course have applications?": only course managers may ask.
     $items['app-student-count-cancel/%course_arr'] = array(
         'title' => t('Search'),
         'page callback' => '_get_student_cancel_count',
-        'access arguments' => array('access manageapp'),
+        'access arguments' => array('manage course'),
         'type' => MENU_CALLBACK,);
 
     // $items['app-student-count-cancel/%course_arr'] = array(
@@ -3145,34 +3146,29 @@ function dh_manageapp_lock_acquire($name, $timeout = 30.0, $delay = 30)
 
 
 
+/**
+ * Manage Courses > Delete: "does any of these courses have applications?" ('Yes' = cannot be deleted).
+ * $list is the course numbers from the address, comma separated; anything that is not a plain number is
+ * ignored and never reaches the database.
+ */
+function dh_course_ids_have_applications($list)
+{
+	if (!is_string($list))
+		return 'No';
+	$ids = array();
+	foreach (explode(',', $list) as $v)
+		if (ctype_digit(trim($v)))
+			$ids[] = (int) trim($v);
+	if (!$ids)
+		return 'No';
+	$n = db_query("select count(a_id) from dh_applicant where a_course in (:ids)", array(':ids' => array_values(array_unique($ids))))->fetchField();
+	return $n > 0 ? 'Yes' : 'No';
+}
+
 function _get_student_cancel_count()
 {
-    global $user;
-    $c_course = arg(1);
-    $CourseArr = (explode(",", $c_course));
-    foreach ($CourseArr as $key => $value) 
-    {
-         $q = "SELECT count(a_id) as TotalApplicant from dh_applicant where a_course= '".$value."' ";
-        $result = db_query($q);
-        while ($r = $result->fetchAssoc()) 
-        {
-            $ApplicantCount = $r['TotalApplicant'];
-            if ($ApplicantCount > 0) 
-            {
-                $row['ApplicantFound'] = 'Yes';
-                break;
-            } else 
-            {
-                $row['ApplicantFound'] = 'No';
-            }
-        }
-        if ($row['ApplicantFound'] == 'Yes') 
-        {
-            break;
-        }
-    }
-    drupal_json_output($row);
-    exit;
+	drupal_json_output(array('ApplicantFound' => dh_course_ids_have_applications(arg(1))));
+	exit;
 }
 
 function _get_student_finalize()
