@@ -1,6 +1,16 @@
 <?php
 
 /**
+ * A name as it is saved: first letter of each word capital, the rest small ('NGUYỄN VĂN' ->
+ * 'Nguyễn Văn'). Works for every alphabet; the old ucwords(strtolower()) knew only A-Z and left
+ * accented capitals as they were ('NguyỄn'). A letter after a hyphen is a capital too ('Anne-Marie').
+ */
+function dh_name_case($name)
+{
+	return mb_convert_case((string) $name, MB_CASE_TITLE, 'UTF-8');
+}
+
+/**
  * A mobile as staff see it, with its country code: '+91 98765 43210' (each country in its own
  * style, e.g. '+977 984-1234567'). A number that is not valid, or holds text or two numbers, is
  * shown as stored after '+code'. No country code: the number as stored. Plain text; escape it
@@ -1184,8 +1194,8 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 	//if (trim($app['a_dob']) == '')
 	//	unset($app['a_dob']);
 	$status_ce = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-SYSTEM-STATUS' and td_key in ('STATUS-CONFIRMED', 'STATUS-EXPECTED') ")->fetchAllKeyed();
-   $app['a_f_name'] = ucwords(strtolower($app['a_f_name']) );
-   $app['a_l_name'] = ucwords(strtolower($app['a_l_name']) );
+   $app['a_f_name'] = dh_name_case($app['a_f_name']);
+   $app['a_l_name'] = dh_name_case($app['a_l_name']);
 
 	if (arg(2) == 'edit')
 	{

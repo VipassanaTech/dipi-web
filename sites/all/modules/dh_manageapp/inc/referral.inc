@@ -810,9 +810,9 @@ function dh_referral_save(array $input, array $values, $ref_id, $route, $centre)
 	else
 		unset($app['s_city']);                                  // blank: an edit keeps the stored city
 	if (isset($app['s_f_name']))
-		$app['s_f_name'] = ucwords(strtolower($app['s_f_name']));
+		$app['s_f_name'] = dh_name_case($app['s_f_name']);
 	if (isset($app['s_l_name']))
-		$app['s_l_name'] = ucwords(strtolower($app['s_l_name']));
+		$app['s_l_name'] = dh_name_case($app['s_l_name']);
 
 	// The form's s_* / sci_* fields -> the referral's own columns.
 	foreach (dh_referral_person_map() as $f => $c)
