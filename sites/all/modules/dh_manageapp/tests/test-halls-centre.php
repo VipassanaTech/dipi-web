@@ -46,4 +46,53 @@ t_in_txn(function () {
   $last = end($log);
   t_eq(array($last['cl_action'], $last['cl_old'], $last['cl_new']), array('delete', 'MH Mini Hall', NULL), 'C6 log line: hall removed');
 });
+
+// Edge cases on fresh made-up centres: a refused save writes nothing, usual-hall rename, code reuse, foreign hall.
+t_in_txn(function () {
+  // C7: a refused save changes nothing
+  $c = t_make_centre();
+  dh_halls_centre_save($c, array(hc_row(0, 'DH1', 'Dhamma Hall 1'), hc_row(0, 'DH2', 'Dhamma Hall 2')), array(), 1);
+  dh_halls_reset();
+  $h1 = hc_id($c, 'DH1'); $h2 = hc_id($c, 'DH2');
+  $logs_before = count(hc_log($c));
+  t_eq(dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Renamed'), hc_row($h2, 'DH 9', 'B')), array(), 1), array('Hall code must be 1 to 6 letters or digits: DH 9'), 'C7 bad code refused');
+  t_eq((string) db_query("select ch_name from dh_center_hall where ch_id = :h", array(':h' => $h1))->fetchField(), 'Dhamma Hall 1', 'C7 refused save: hall name unchanged');
+  t_eq(count(hc_log($c)), $logs_before, 'C7 refused save: no Change Log lines');
+
+  // C8: renaming a group's usual hall writes one hall line, no usual-hall line
+  $c = t_make_centre();
+  dh_halls_centre_save($c, array(hc_row(0, 'DH1', 'Dhamma Hall 1'), hc_row(0, 'DH2', 'Dhamma Hall 2')), array(), 1);
+  dh_halls_reset();
+  $h1 = hc_id($c, 'DH1'); $h2 = hc_id($c, 'DH2');
+  dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($h2, 'DH2', 'Dhamma Hall 2')), array(2 => 'DH2'), 1);
+  dh_halls_reset();
+  $logs_before = count(hc_log($c));
+  t_eq(dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($h2, 'DH2X', 'Second')), array(2 => 'DH2X'), 1), array(), 'C8 usual hall renamed: saved');
+  dh_halls_reset();
+  $new = array_slice(hc_log($c), $logs_before);
+  t_eq(count($new), 1, 'C8 renaming the usual hall writes exactly one line');
+  t_eq(array($new[0]['cl_field'], $new[0]['cl_old'], $new[0]['cl_new']), array('hall', 'DH2 Dhamma Hall 2', 'DH2X Second'), 'C8 the one line is the hall rename');
+  t_eq(dh_halls_usual($c)[2], $h2, 'C8 group 2 still on the same hall');
+
+  // C9: a new hall may reuse a removed hall's code
+  $c = t_make_centre();
+  dh_halls_centre_save($c, array(hc_row(0, 'DH1', 'Dhamma Hall 1'), hc_row(0, 'MH', 'Mini Hall')), array(), 1);
+  dh_halls_reset();
+  $h1 = hc_id($c, 'DH1'); $hm = hc_id($c, 'MH');
+  t_eq(dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($hm, 'MH', 'Mini Hall', TRUE)), array(), 1), array(), 'C9 MH removed');
+  dh_halls_reset();
+  t_eq(dh_halls_centre_save($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row(0, 'MH', 'New Mini Hall')), array(), 1), array(), 'C9 new hall reuses code MH');
+  dh_halls_reset();
+  t_eq(count(dh_halls_list($c)), 2, 'C9 the centre has 2 halls again');
+
+  // C10: a real hall of another centre is refused
+  $c = t_make_centre();
+  dh_halls_centre_save($c, array(hc_row(0, 'DH1', 'Dhamma Hall 1')), array(), 1);
+  dh_halls_reset();
+  $other = t_make_centre();
+  $foreign = t_make_hall($other, 'XX', 'Other Centre Hall');
+  $h1 = hc_id($c, 'DH1');
+  t_eq(dh_halls_centre_validate($c, array(hc_row($h1, 'DH1', 'Dhamma Hall 1'), hc_row($foreign, 'XX', 'Other Centre Hall')), array()), array('This hall is not part of this centre.'), 'C10 hall of another centre refused');
+  t_eq(dh_halls_centre_save($c, array(hc_row($foreign, 'XX', 'Other Centre Hall')), array(), 1), array('This hall is not part of this centre.'), 'C10 save refused, nothing saved');
+});
 t_done();

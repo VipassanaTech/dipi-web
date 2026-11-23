@@ -197,57 +197,65 @@ function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 	$old = db_query("select ch_id, ch_code, ch_name, ch_weight from dh_center_hall where ch_center = :c and ch_deleted = 0", array(':c' => $centre_id))->fetchAllAssoc('ch_id', PDO::FETCH_ASSOC);
 	$old_usual = dh_halls_usual($centre_id);   // group => hall id before this save; array() when fewer than 2 halls
 	$txn = db_transaction();
-	$w = 0;
-	foreach ($rows as $r)
+	try
 	{
-		$id = (int) $r['id'];
-		$code = trim((string) $r['code']);
-		$name = trim((string) $r['name']);
-		if ($id === 0 && $code === '' && $name === '')
-			continue;
-		if ($id && !empty($r['remove']))
+		$w = 0;
+		foreach ($rows as $r)
 		{
-			db_update('dh_center_hall')->fields(array('ch_deleted' => 1, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
-				->condition('ch_id', $id)->condition('ch_center', $centre_id)->execute();
-			dh_centre_log_write($centre_id, 'halls', 'delete', array('hall' => array($old[$id]['ch_code'] . ' ' . $old[$id]['ch_name'], NULL)), $id);
-			continue;
-		}
-		if ($id)
-		{
-			$o = $old[$id];
-			if ($o['ch_code'] !== $code || $o['ch_name'] !== $name || (int) $o['ch_weight'] !== $w)
-				db_update('dh_center_hall')->fields(array('ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
+			$id = (int) $r['id'];
+			$code = trim((string) $r['code']);
+			$name = trim((string) $r['name']);
+			if ($id === 0 && $code === '' && $name === '')
+				continue;
+			if ($id && !empty($r['remove']))
+			{
+				db_update('dh_center_hall')->fields(array('ch_deleted' => 1, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
 					->condition('ch_id', $id)->condition('ch_center', $centre_id)->execute();
-			if ($o['ch_code'] !== $code || $o['ch_name'] !== $name)
-				dh_centre_log_write($centre_id, 'halls', 'update', array('hall' => array($o['ch_code'] . ' ' . $o['ch_name'], $code . ' ' . $name)), $id);
+				dh_centre_log_write($centre_id, 'halls', 'delete', array('hall' => array($old[$id]['ch_code'] . ' ' . $old[$id]['ch_name'], NULL)), $id);
+				continue;
+			}
+			if ($id)
+			{
+				$o = $old[$id];
+				if ($o['ch_code'] !== $code || $o['ch_name'] !== $name || (int) $o['ch_weight'] !== $w)
+					db_update('dh_center_hall')->fields(array('ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
+						->condition('ch_id', $id)->condition('ch_center', $centre_id)->execute();
+				if ($o['ch_code'] !== $code || $o['ch_name'] !== $name)
+					dh_centre_log_write($centre_id, 'halls', 'update', array('hall' => array($o['ch_code'] . ' ' . $o['ch_name'], $code . ' ' . $name)), $id);
+			}
+			else
+			{
+				$id = (int) db_insert('dh_center_hall')->fields(array('ch_center' => $centre_id, 'ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w,
+					'ch_deleted' => 0, 'ch_created' => $now, 'ch_created_by' => (int) $uid, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))->execute();
+				dh_centre_log_write($centre_id, 'halls', 'create', array('hall' => array(NULL, $code . ' ' . $name)), $id);
+			}
+			$w++;
 		}
-		else
+		dh_halls_reset();
+		$halls = dh_halls_list($centre_id);
+		if (count($halls) >= 2 && $usual)
 		{
-			$id = (int) db_insert('dh_center_hall')->fields(array('ch_center' => $centre_id, 'ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w,
-				'ch_deleted' => 0, 'ch_created' => $now, 'ch_created_by' => (int) $uid, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))->execute();
-			dh_centre_log_write($centre_id, 'halls', 'create', array('hall' => array(NULL, $code . ' ' . $name)), $id);
+			$by_code = array();
+			foreach ($halls as $id => $h)
+				$by_code[strtoupper($h['code'])] = $id;
+			reset($halls);
+			$first = key($halls);
+			for ($g = 1; $g <= 9; $g++)
+			{
+				$want = isset($usual[$g]) ? strtoupper(trim((string) $usual[$g])) : '';
+				$id = ($want !== '' && isset($by_code[$want])) ? $by_code[$want] : $first;
+				db_merge('dh_center_hall_group')->key(array('chg_center' => $centre_id, 'chg_group' => $g))->fields(array('chg_hall' => $id))->execute();
+				$was = isset($old_usual[$g]) ? (int) $old_usual[$g] : 0;
+				if ($was !== $id)   // compare halls, not codes: renaming the usual hall is not a change of hall
+					dh_centre_log_write($centre_id, 'halls', 'update', array('hall_group' => array('Group ' . $g . ': ' . ($was ? $old[$was]['ch_code'] : ''),
+						'Group ' . $g . ': ' . $halls[$id]['code'])), $id);
+			}
 		}
-		$w++;
 	}
-	dh_halls_reset();
-	$halls = dh_halls_list($centre_id);
-	if (count($halls) >= 2 && $usual)
+	catch (Exception $e)
 	{
-		$by_code = array();
-		foreach ($halls as $id => $h)
-			$by_code[strtoupper($h['code'])] = $id;
-		reset($halls);
-		$first = key($halls);
-		for ($g = 1; $g <= 9; $g++)
-		{
-			$want = isset($usual[$g]) ? strtoupper(trim((string) $usual[$g])) : '';
-			$id = ($want !== '' && isset($by_code[$want])) ? $by_code[$want] : $first;
-			db_merge('dh_center_hall_group')->key(array('chg_center' => $centre_id, 'chg_group' => $g))->fields(array('chg_hall' => $id))->execute();
-			$was = isset($old_usual[$g]) ? (int) $old_usual[$g] : 0;
-			if ($was !== $id)   // compare halls, not codes: renaming the usual hall is not a change of hall
-				dh_centre_log_write($centre_id, 'halls', 'update', array('hall_group' => array('Group ' . $g . ': ' . ($was ? $old[$was]['ch_code'] : ''),
-					'Group ' . $g . ': ' . $halls[$id]['code'])), $id);
-		}
+		$txn->rollback();
+		throw $e;
 	}
 	dh_halls_reset();
 	return array();
