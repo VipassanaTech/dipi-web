@@ -51,42 +51,39 @@ function dh_halls_usual($centre_id)
 	return $out;
 }
 
-/** The course whose halls a course follows: its shared seating partner (c_combined_seat_course), else itself. */
+/** The course whose halls a course follows: itself, or the owner of its shared seating plan (the course the others point to). */
 function dh_halls_owner_course($course_id)
 {
 	$course_id = (int) $course_id;
-	$other = (int) db_query("select c_combined_seat_course from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
-	return $other > 0 ? $other : $course_id;
+	$all = dh_seat_plan_courses($course_id);
+	if (count($all) < 2)
+		return $course_id;
+	$own = db_query("select c_id from dh_course where c_id in (:ids) and (c_combined_seat_course is null or c_combined_seat_course = 0) order by c_id",
+		array(':ids' => $all))->fetchCol();
+	return $own ? (int) $own[0] : (int) min($all);
 }
 
-/**
- * The hall of each group 1..9 for a course: array(group => array('id', 'code', 'name')). array() when the feature is off.
- * Order: the owner course's own change, else the centre's usual hall (dh_halls_usual).
- */
+/** The hall of each group 1..9 on a course: group => array('id','code','name'). array() when the centre has 0 or 1 hall. */
 function dh_halls_course_map($course_id)
 {
 	$cache = &drupal_static(__FUNCTION__, array());
+	$course_id = (int) $course_id;
+	if (isset($cache[$course_id]))
+		return $cache[$course_id];
 	$owner = dh_halls_owner_course($course_id);
-	if (!isset($cache[$owner]))
+	$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $owner))->fetchField();
+	$halls = dh_halls_list($centre);
+	$map = array();
+	if (count($halls) >= 2)
 	{
-		$cache[$owner] = array();
-		$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $owner))->fetchField();
-		$halls = dh_halls_list($centre);
-		if (count($halls) >= 2)
-		{
-			$own = array();
-			foreach (db_query("select cg_group, cg_hall from dh_course_hall_group where cg_course = :c", array(':c' => $owner)) as $r)
-				if (isset($halls[(int) $r->cg_hall]))
-					$own[(int) $r->cg_group] = (int) $r->cg_hall;
-			$usual = dh_halls_usual($centre);
-			for ($g = 1; $g <= 9; $g++)
-			{
-				$hall_id = isset($own[$g]) ? $own[$g] : $usual[$g];
-				$cache[$owner][$g] = $halls[$hall_id];
-			}
-		}
+		$ids = dh_halls_usual($centre);
+		foreach (db_query("select cg_group, cg_hall from dh_course_hall_group where cg_course = :c", array(':c' => $owner)) as $r)
+			if (isset($ids[(int) $r->cg_group]) && isset($halls[(int) $r->cg_hall]))
+				$ids[(int) $r->cg_group] = (int) $r->cg_hall;
+		foreach ($ids as $g => $id)
+			$map[$g] = $halls[$id];
 	}
-	return $cache[$owner];
+	return $cache[$course_id] = $map;
 }
 
 /**

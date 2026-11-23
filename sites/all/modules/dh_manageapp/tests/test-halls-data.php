@@ -53,5 +53,17 @@ t_in_txn(function () {
   t_eq(dh_halls_owner_course($kb), $k, 'D8 shared plan: owner is the course the other points to');
   t_eq(dh_halls_owner_course($k), $k, 'D8 owner course is its own owner');
   t_eq(dh_halls_tail($kb, 2, 'code'), ' · DH2', 'D8 shared plan: the other course follows the owner');
+
+  // D9: two courses that point at each other share one plan; both must follow the same (lower id) owner.
+  $ma = t_make_course(array('c_center' => $c, 'c_combined_seat_course' => 0));
+  $mb = t_make_course(array('c_center' => $c, 'c_combined_seat_course' => 0));
+  db_update('dh_course')->fields(array('c_combined_seat_course' => $mb))->condition('c_id', $ma)->execute();
+  db_update('dh_course')->fields(array('c_combined_seat_course' => $ma))->condition('c_id', $mb)->execute();
+  db_insert('dh_course_hall_group')->fields(array('cg_course' => min($ma, $mb), 'cg_group' => 4, 'cg_hall' => $h2))->execute();
+  dh_halls_reset();
+  t_eq(dh_halls_owner_course($ma), min($ma, $mb), 'D9 mutual pair: first course owned by the lower id');
+  t_eq(dh_halls_owner_course($mb), min($ma, $mb), 'D9 mutual pair: second course owned by the same lower id');
+  t_eq(dh_halls_tail($ma, 4, 'code'), ' · DH2', 'D9 mutual pair: first course shows the owner hall');
+  t_eq(dh_halls_tail($mb, 4, 'code'), ' · DH2', 'D9 mutual pair: second course shows the same hall');
 });
 t_done();
