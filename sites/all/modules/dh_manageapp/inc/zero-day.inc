@@ -3558,7 +3558,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			$sec_id  = 'g'.trim($g).'_'.$gender;
 			$sec_lbl = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'code').' - '.ucfirst(strtolower($label));
 			$sec_long = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'name').' - '.ucfirst(strtolower($label));   // the per-section PDF title
-			$out .= '<div class="seat-section '.$page_class.'" id="'.dh_seat_sec_anchor($sec_id).'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'" data-section-title="'.check_plain($sec_long).'">';
+			$out .= '<div class="seat-section '.$page_class.'" id="'.dh_seat_sec_anchor($sec_id).'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'"'.($sec_long !== $sec_lbl ? ' data-section-title="'.check_plain($sec_long).'"' : '').'>';
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
 			$out .= dh_seat_plan_header('GROUP '.check_plain($g).check_plain(dh_halls_tail($hc, trim($g), 'name')).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
