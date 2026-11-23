@@ -43,12 +43,8 @@ function dh_atportal_menu()
 	       'access arguments' => array('access at portal'),
 	       'type' => MENU_CALLBACK);
 
-    $items['lc-review/%atcode'] = array( 'title' => t('Reviews Assigned to me'),
-	       'page callback' => 'dh_atportal_show_apps',
-	       'page arguments' => array('other'),
-	       'access arguments' => array('access at portal'),
-	       'type' => MENU_CALLBACK);
-
+    // (lc-review/<AT code> removed 23 Nov 2026: the 2021 first version of the list, replaced two days later by
+    // lc-review/me; it showed any AT's list to any AT and put the code into SQL.)
     $items['lc-review/me'] = array( 'title' => t('Reviews Assigned to me'),
 	       'page callback' => 'dh_atportal_show_apps',
 	       'page arguments' => array('me'),
@@ -563,12 +559,7 @@ function dh_atportal_dashboard()
 
 function dh_atportal_show_apps( $type )
 {
-	$out = drupal_get_form('dh_atportal_apps_form', $type);
-	$temp = $type;
-	if ($type == 'other')
-		$temp = arg(1);
-	//$out['a']['#prefix'] =  '<h3>'.l("Back", "lc-review/$temp").'</h3>';
-	return $out;
+	return drupal_get_form('dh_atportal_apps_form', $type);
 }
 
 function dh_atportal_make_pretty( $value )
@@ -640,33 +631,23 @@ function dh_atportal_get_ats_assigned()
 function dh_atportal_apps_form($form, &$form_state, $type)
 {
 	global $user;
-	$at_code = '';
-	if (in_array($type, array('me', 'all') ))
-		$at_code = $user->name;
-	elseif ($type == 'other' )
-		$at_code = arg(1);
+	// Always the logged-in AT's own code (lc-review/me and lc-review/all).
+	$at_code = in_array($type, array('me', 'all')) ? $user->name : '';
 
 	$diff_days = 730;
 	$where = '';
 	$where_opts = array(); 
-	$q = "select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = '$at_code' limit 1";
-	$at_name = db_query($q)->fetchField();
+	$at_name = db_query("select CONCAT(t_f_name, ' ', t_l_name) from dh_teacher where t_status='Active' and CONCAT(t_code,'.',t_gender) = :code limit 1",
+		array(':code' => $at_code))->fetchField();
 
-	if (($at_name == '') && (!user_access('approve applications on behalf of at')))
+	if ((($at_name == '') && (!user_access('approve applications on behalf of at'))) || (($type == 'me') && (!$at_name)))
 	{
-		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
-		return $form;
-	}
-
-	if (($type == 'me') && (!$at_name))
-	{
-		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.$user->name.' </h2>');	
+		$form['a'] = array('#markup' => '<h2>Unable to find applications for '.check_plain($user->name).' </h2>');
 		return $form;
 	}
 	switch ($type )
 	{
 		case 'me':
-		case 'other':
 			$where = "(al.al_recommending = :frname or al.al_area_at = :faname )";
 			$where_opts = array( ':frname' => $at_name, ':faname' => $at_name );
 			break;
