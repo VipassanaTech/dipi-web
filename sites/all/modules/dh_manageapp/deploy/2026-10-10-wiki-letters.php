@@ -123,7 +123,6 @@ $body = <<<'HTML'
 <tr><td>[CentreName] [CentreAdd] [CentreCity] [CentreState] [CentreCountry] [CentrePinCode]</td><td>Your centre's name and address</td></tr>
 <tr><td>[CentrePhone] [CentreFax] [CentreEmail] [CentreUrl]</td><td>Your centre's phone, fax, email and website</td></tr>
 <tr><td>[ViewLink] [AuthLogin] [AuthCode]</td><td>The link and login details the applicant uses to see their application</td></tr>
-<tr><td>[LetterDetailURL]</td><td>A link where the applicant can read this letter online</td></tr>
 <tr><td>[UserInput]</td><td>The comment you type when you change the status (see section 3)</td></tr>
 <tr><td>[ATDetails]</td><td>Names and contact details of the course teachers</td></tr>
 <tr><td>[RecommendingAT] [AreaTeacher]</td><td>The teachers named in a long-course application</td></tr>

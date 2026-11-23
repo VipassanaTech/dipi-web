@@ -431,7 +431,6 @@ function dh_letters_preview($row)
 	dh_letter_extra_values(array('prev_reco' => 'Former AT', 'prev_area' => 'Former AT', 'choose_link' => dh_letter_choose_link('SAMPLE')));
 	$search = _dh_letter_values($sample, 0, t('(the comment typed when the status is changed)'), $search);
 	dh_letter_extra_values(array());
-	$search['[LetterDetailURL]'] = variable_get('applicant_url', '').'/l.php?a=SAMPLE';
 	list($subject, $body, $sms) = _dh_letter_merge($row, $search);
 	$unfilled = _dh_letter_unfilled_all($subject, $body, $sms, $search, $centre_id);
 
@@ -1323,8 +1322,6 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 		logit($centre, 'Letter', $id, 'Letter not sent: the review link setting is empty (DIPI admin settings)');
 		return array('result' => false, 'msg' => 'Review link setting is empty');
 	}
-	$search['[LetterDetailURL]']= variable_get('applicant_url', '')."/l.php?a=".simple_crypt($row['a_id']."-".$letter['l_id']); //http://applicant.vipassana.co
-
 	$letter_id = $letter['l_id'];
 	$letter_name = $letter['l_name'];
 	$event_name = $letter['l_event'];
@@ -1806,7 +1803,7 @@ function _dh_letter_builtin_fields()
 		'[ApplicantState]', '[ApplicantPinCode]', '[ApplicantGender]', '[Age]', '[ApplicantEmail]', '[AuthLogin]', '[AuthCode]', '[ViewLink]', '[CourseName]',
 		'[StartDate]', '[EndDate]', '[StartDateNum]', '[EndDateNum]', '[CourseType]', '[CourseDescription]', '[CentreName]', '[CentreAdd]', '[CentreCity]', '[CentreState]', '[CentreCountry]',
 		'[CentrePinCode]', '[CentrePhone]', '[CentreFax]', '[CentreEmail]', '[CentreUrl]', '[ApplicantID]', '[ApplicantLang]', '[ConfirmationNo]', '[UserInput]',
-		'[RecommendingAT]', '[AreaTeacher]', '[LetterDetailURL]', '[ApplicantType]', '[ATDetails]',
+		'[RecommendingAT]', '[AreaTeacher]', '[ApplicantType]', '[ATDetails]',
 		'[PreviousRecommendingAT]', '[PreviousAreaTeacher]', '[ChooseTeacherLink]');
 }
 
