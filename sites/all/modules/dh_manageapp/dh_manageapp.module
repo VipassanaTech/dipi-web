@@ -30,6 +30,7 @@ include_once(dirname(__FILE__)."/inc/referral.inc");
 include_once(dirname(__FILE__)."/inc/referral-person.inc");
 include_once(dirname(__FILE__)."/inc/at-schedule.inc");
 include_once(dirname(__FILE__)."/inc/rooms.inc");
+include_once(dirname(__FILE__)."/inc/halls.inc");
 include_once(dirname(__FILE__)."/inc/rooms-convert.inc");
 include_once(dirname(__FILE__)."/inc/rooms-editor.inc");
 include_once(dirname(__FILE__)."/inc/room-board.inc");

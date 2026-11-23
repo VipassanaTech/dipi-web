@@ -84,3 +84,10 @@ function t_make_room($centre, $gender, $section, $name, $places, $toilet = 'unse
     db_insert('dh_center_room_place')->fields(array('crp_room' => $rid, 'crp_name' => $p, 'crp_weight' => $w, 'crp_deleted' => 0))->execute();
   return $rid;
 }
+// A made-up Dhamma Hall of a centre. Returns its id.
+function t_make_hall($centre, $code, $name, $weight = 0, $deleted = 0) {
+  $now = date('Y-m-d H:i:s');
+  return (int) db_insert('dh_center_hall')->fields(array('ch_center' => (int) $centre, 'ch_code' => $code, 'ch_name' => $name,
+    'ch_weight' => (int) $weight, 'ch_deleted' => (int) $deleted, 'ch_created' => $now, 'ch_created_by' => 0,
+    'ch_updated' => $now, 'ch_updated_by' => 0))->execute();
+}
