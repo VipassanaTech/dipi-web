@@ -79,7 +79,7 @@ function delete_expired_referral($referral_from_email, $referral_cc_email)
 
     $body = "
       Dear {$r['t_f_name']} {$r['t_l_name']},<br><br>
-      Referral entry for {$r['s_f_name']} {$r['s_l_name']} is deleted automatically by system, as referral period has ended for the same.<br><br><br>
+      Referral entry for {$r['s_f_name']} {$r['s_l_name']} is deleted automatically by the system, as referral period has ended for the same.<br><br><br>
       Thanks,<br>
       - Dipi Automation.
       ";
@@ -134,12 +134,12 @@ function send_referral_notification($referral_from_email, $referral_cc_email)
     $deletion_date = date( "jS F Y", strtotime("+100 day"));
     $body = "
       Dear {$r['t_f_name']} {$r['t_l_name']},<br><br>
-      Referral entry for {$r['s_f_name']} {$r['s_l_name']} will get deleted automatically by system on $deletion_date (ie. 100 days after this notification), as referral period is about to end for the same.<br><br>
-      If you decide to extend the referral period, it is recommended that you take a compassionate view towards this student by not blocking the basic courses like 10 Day and Satipatthān (STP) to allow this student to mediate and overcome his/her defilements.<br><br>
+      Referral entry for {$r['s_f_name']} {$r['s_l_name']} will get deleted automatically by the system on $deletion_date (i.e. 100 days after this notification), as referral period is about to end for the same.<br><br>
+      If you decide to extend the referral period, it is recommended that you take a compassionate view towards this student by not blocking the basic courses like 10 Day and Satipatthana (STP) to allow this student to meditate and overcome his/her defilements.<br><br>
       We also recommend that you personally monitor the progress of this student and decide upon his/her referral status at an appropriate time.<br><br>
       Nevertheless, if you still feel strongly otherwise, you may login to Dipi AT-Portal to modify your referral instructions or extend the referral period.<br><br><br>
       Thanks,<br>
-      - DIPI Automation.
+      - Dipi Automation.
       ";
 
     $add_options = array();
