@@ -112,3 +112,143 @@ function dh_halls_js_codes($course_id)
 		$out[(string) $g] = $h['code'];
 	return $out;
 }
+
+/** Usual hall codes in force for a check: the form's choices, or (form had none) the saved ones. group => code. */
+function _dh_halls_usual_codes($centre_id, $usual)
+{
+	if ($usual)
+		return $usual;
+	$halls = dh_halls_list($centre_id);
+	$out = array();
+	foreach (dh_halls_usual($centre_id) as $g => $id)
+		$out[$g] = $halls[$id]['code'];
+	return $out;
+}
+
+/** Checks a Centre Settings halls save. Returns error texts (simple English); array() = fine. See dh_halls_centre_save(). */
+function dh_halls_centre_validate($centre_id, $rows, $usual)
+{
+	$centre_id = (int) $centre_id;
+	$errors = array();
+	$mine = db_query("select ch_id, ch_code from dh_center_hall where ch_center = :c and ch_deleted = 0", array(':c' => $centre_id))->fetchAllKeyed();
+	$kept = array();      // upper code => code
+	$removed = array();   // id => code
+	foreach ($rows as $r)
+	{
+		$id = (int) $r['id'];
+		$code = trim((string) $r['code']);
+		$name = trim((string) $r['name']);
+		if ($id === 0 && $code === '' && $name === '')
+			continue;
+		if ($id && !isset($mine[$id]))
+		{
+			$errors[] = 'This hall is not part of this centre.';
+			continue;
+		}
+		if ($id && !empty($r['remove']))
+		{
+			$removed[$id] = $mine[$id];
+			continue;
+		}
+		if (!preg_match('/^[A-Za-z0-9]{1,6}$/', $code))
+			$errors[] = 'Hall code must be 1 to 6 letters or digits: ' . $code;
+		elseif (mb_strlen($name) < 1 || mb_strlen($name) > 40)
+			$errors[] = 'Hall name must be 1 to 40 characters: ' . $code;
+		elseif (isset($kept[strtoupper($code)]))
+			$errors[] = 'Hall code ' . $kept[strtoupper($code)] . ' is used twice.';
+		else
+			$kept[strtoupper($code)] = $code;
+	}
+	foreach ($usual as $g => $code)
+		if (trim((string) $code) !== '' && !isset($kept[strtoupper(trim((string) $code))]))
+			$errors[] = 'Group ' . (int) $g . ': choose one of this centre\'s halls.';
+	if ($errors)
+		return $errors;
+	$codes = _dh_halls_usual_codes($centre_id, $usual);
+	foreach ($removed as $id => $code)
+	{
+		foreach ($codes as $g => $uc)
+			if (strtoupper((string) $uc) === strtoupper((string) $code))
+			{
+				$errors[] = 'Hall ' . $code . ' is still the usual hall of Group ' . (int) $g . '. Move that group first.';
+				continue 2;
+			}
+		$k = db_query("select cg.cg_course from dh_course_hall_group cg join dh_course c on c.c_id = cg.cg_course
+			where cg.cg_hall = :h and c.c_deleted = 0 and c.c_end >= curdate() order by cg.cg_course limit 1", array(':h' => $id))->fetchField();
+		if ($k)
+			$errors[] = 'Hall ' . $code . ' is used by course ' . (int) $k . '. Change that course first.';
+	}
+	return $errors;
+}
+
+/**
+ * Saves a centre's halls from the Centre Settings form, writing Change Log lines (area 'halls').
+ * $rows: list in display order of array('id' => int (0 = new), 'code', 'name', 'remove' => bool); a new row with empty
+ * code and name is skipped. $usual: group (1-9) => hall code ('' = first hall); empty = keep the saved usual halls.
+ * Returns error texts; nothing is saved when there is one.
+ */
+function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
+{
+	$centre_id = (int) $centre_id;
+	$errors = dh_halls_centre_validate($centre_id, $rows, $usual);
+	if ($errors)
+		return $errors;
+	$now = date('Y-m-d H:i:s');
+	$old = db_query("select ch_id, ch_code, ch_name, ch_weight from dh_center_hall where ch_center = :c and ch_deleted = 0", array(':c' => $centre_id))->fetchAllAssoc('ch_id', PDO::FETCH_ASSOC);
+	$old_usual = dh_halls_usual($centre_id);   // group => hall id before this save; array() when fewer than 2 halls
+	$txn = db_transaction();
+	$w = 0;
+	foreach ($rows as $r)
+	{
+		$id = (int) $r['id'];
+		$code = trim((string) $r['code']);
+		$name = trim((string) $r['name']);
+		if ($id === 0 && $code === '' && $name === '')
+			continue;
+		if ($id && !empty($r['remove']))
+		{
+			db_update('dh_center_hall')->fields(array('ch_deleted' => 1, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
+				->condition('ch_id', $id)->condition('ch_center', $centre_id)->execute();
+			dh_centre_log_write($centre_id, 'halls', 'delete', array('hall' => array($old[$id]['ch_code'] . ' ' . $old[$id]['ch_name'], NULL)), $id);
+			continue;
+		}
+		if ($id)
+		{
+			$o = $old[$id];
+			if ($o['ch_code'] !== $code || $o['ch_name'] !== $name || (int) $o['ch_weight'] !== $w)
+				db_update('dh_center_hall')->fields(array('ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))
+					->condition('ch_id', $id)->condition('ch_center', $centre_id)->execute();
+			if ($o['ch_code'] !== $code || $o['ch_name'] !== $name)
+				dh_centre_log_write($centre_id, 'halls', 'update', array('hall' => array($o['ch_code'] . ' ' . $o['ch_name'], $code . ' ' . $name)), $id);
+		}
+		else
+		{
+			$id = (int) db_insert('dh_center_hall')->fields(array('ch_center' => $centre_id, 'ch_code' => $code, 'ch_name' => $name, 'ch_weight' => $w,
+				'ch_deleted' => 0, 'ch_created' => $now, 'ch_created_by' => (int) $uid, 'ch_updated' => $now, 'ch_updated_by' => (int) $uid))->execute();
+			dh_centre_log_write($centre_id, 'halls', 'create', array('hall' => array(NULL, $code . ' ' . $name)), $id);
+		}
+		$w++;
+	}
+	dh_halls_reset();
+	$halls = dh_halls_list($centre_id);
+	if (count($halls) >= 2 && $usual)
+	{
+		$by_code = array();
+		foreach ($halls as $id => $h)
+			$by_code[strtoupper($h['code'])] = $id;
+		reset($halls);
+		$first = key($halls);
+		for ($g = 1; $g <= 9; $g++)
+		{
+			$want = isset($usual[$g]) ? strtoupper(trim((string) $usual[$g])) : '';
+			$id = ($want !== '' && isset($by_code[$want])) ? $by_code[$want] : $first;
+			db_merge('dh_center_hall_group')->key(array('chg_center' => $centre_id, 'chg_group' => $g))->fields(array('chg_hall' => $id))->execute();
+			$was = isset($old_usual[$g]) ? (int) $old_usual[$g] : 0;
+			if ($was !== $id)   // compare halls, not codes: renaming the usual hall is not a change of hall
+				dh_centre_log_write($centre_id, 'halls', 'update', array('hall_group' => array('Group ' . $g . ': ' . ($was ? $old[$was]['ch_code'] : ''),
+					'Group ' . $g . ': ' . $halls[$id]['code'])), $id);
+		}
+	}
+	dh_halls_reset();
+	return array();
+}

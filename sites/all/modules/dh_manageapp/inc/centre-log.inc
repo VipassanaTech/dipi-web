@@ -243,10 +243,12 @@ function dh_centre_log_viewer($centre_id, $form)
 		'converted' => array('title' => 'Converted', 'options' => NULL),
 		'used_by' => array('title' => 'Used by', 'options' => NULL),
 		'checked' => array('title' => 'Checked', 'options' => NULL),
+		'hall' => array('title' => 'Hall', 'options' => NULL),
+		'hall_group' => array('title' => 'Usual hall', 'options' => NULL),
 		'uc_user' => array('title' => 'User', 'options' => NULL),
 		'uc_center' => array('title' => 'Centre', 'options' => NULL),
 	);
-	$areas = array('centre' => 'Centre details', 'settings' => 'Settings', 'acco' => 'Accommodation', 'rooms' => 'Rooms', 'access' => 'User mapping to centre');
+	$areas = array('centre' => 'Centre details', 'settings' => 'Settings', 'acco' => 'Accommodation', 'rooms' => 'Rooms', 'halls' => 'Dhamma Halls', 'access' => 'User mapping to centre');
 
 	$res = db_query("select l.*, u.name from dh_center_log l left join users u on u.uid = l.cl_user
 		where l.cl_center = :c order by l.cl_tstamp desc, l.cl_id desc limit 501", array(':c' => $centre_id))->fetchAll();
