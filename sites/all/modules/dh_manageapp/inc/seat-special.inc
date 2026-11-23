@@ -191,14 +191,14 @@ function dh_seat_tools_js($centre, $course)
  * 'g<group>_<M|F>' ('gUnassigned_M' for students with no group).
  * Returns array(gender, group or NULL, label), or FALSE for anything else.
  */
-function dh_seat_regen_parse($plan, $sec)
+function dh_seat_regen_parse($plan, $sec, $course_id = 0)
 {
 	$names = array('M' => 'Male', 'F' => 'Female');
 	$sec = (string) $sec;
 	if ($plan == 'main')
 		return isset($names[$sec]) ? array($sec, NULL, $names[$sec]) : FALSE;
 	if ($plan == 'group' && preg_match('/^g(.+)_([MF])$/', $sec, $m) && trim($m[1]) !== '')
-		return array($m[2], $m[1], 'Group '.$m[1].' - '.$names[$m[2]]);
+		return array($m[2], $m[1], 'Group '.$m[1].($course_id ? dh_halls_tail($course_id, $m[1], 'code') : '').' - '.$names[$m[2]]);
 	return FALSE;
 }
 
@@ -217,7 +217,7 @@ function dh_seat_sec_anchor($sec)
  */
 function dh_seat_regen_section($centre, $course, $plan, $sec)
 {
-	$p = dh_seat_regen_parse($plan, $sec);
+	$p = dh_seat_regen_parse($plan, $sec, is_array($course) ? reset($course) : $course);
 	if ($p === FALSE)
 		return FALSE;
 	list($gender, $group, $label) = $p;

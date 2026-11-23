@@ -212,7 +212,7 @@ function dh_alloc_workbench($centre, $course, $resource = 'dining', $return = FA
 					// The Batch column is always shown (default 1) so every table keeps
 					// identical columns and lines up.
 					$show_batch = TRUE;
-					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp : 'No Group').'</div>' : '');
+					$out .= '<div class="wb-group-block">'.(($plan === 'group') ? '<div class="wb-group-title">'.check_plain($grp > 0 ? 'Group '.$grp.dh_halls_tail(is_array($course) ? reset($course) : $course, $grp, 'name') : 'No Group').'</div>' : '');
 					$out .= '<table class="wb-grid">';
 					$out .= '<colgroup><col class="wbc-idx"><col class="wbc-name"><col class="wbc-room"><col class="wbc-cell">'.($show_batch ? '<col class="wbc-batch">' : '').'<col class="wbc-fixed"></colgroup>';
 					$out .= '<thead><tr>'.

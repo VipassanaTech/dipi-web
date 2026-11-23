@@ -1170,6 +1170,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 {
 	global $base_url;
 	$is_pdf = ($pdf <> '');
+	$tl_cp = is_array($course) ? (int) reset($course) : (int) $course;   // the course id, for the hall labels
 	// Screen only: start the Cell column hidden when the centre is marked as having
 	// no meditation cells (cs_has_cells explicitly 0). Operators can toggle it back.
 	$hcv = db_query("select cs_has_cells from dh_center_setting where cs_center=$centre")->fetchField();
@@ -1307,7 +1308,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 			foreach ($grps as $grp)
 			{
 				$tn = isset($teacher[$g][$grp]) ? trim($teacher[$g][$grp]['t_name']) : '';
-				$opts[$g.$grp] = (($g == 'M') ? 'Male' : 'Female').' Group '.$grp
+				$opts[$g.$grp] = (($g == 'M') ? 'Male' : 'Female').' Group '.$grp.dh_halls_tail($tl_cp, $grp, 'code')
 					.' ('.($tn !== '' ? dh_day0_case($tn) : 'unassigned').')';
 			}
 		}
@@ -1358,7 +1359,7 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 				$out .= '<tr><th class="tl-groupinfo" colspan="'.$ncol.'">'
 					.'<span class="at">AT: '.$at_name.'</span><span class="sep">|</span>'
 					.(($g=='M')?'Male':'Female').'<span class="sep">|</span>'.ucfirst($t)
-					.'<span class="sep">|</span>Group '.check_plain($group)
+					.'<span class="sep">|</span>Group '.check_plain($group).check_plain(dh_halls_tail($tl_cp, $group, 'name'))
 					.'<span class="sep">|</span><span class="cnt">'.$total.' total</span></th></tr>';
 				$out .= '<tr>';
 				foreach ($cols as $key => $c)
@@ -1895,6 +1896,8 @@ function dh_seating_section_pdf()
 		return MENU_NOT_FOUND;
 	$node = $nodes->item(0);
 	$sec_label = $node->getAttribute('data-section-label');
+	if ($node->getAttribute('data-section-title') !== '')
+		$sec_label = $node->getAttribute('data-section-title');   // group sections: the label with the hall name
 
 	// Grid width from the bg-table inline styles (exact). A side chowky adds to the
 	// width; a "back" chowky stacks, so width = the widest grid. Used to cap the
@@ -3551,12 +3554,14 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			$page_class = $first ? '' : 'group-page';
 			$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before every group page
 			$first = false;
+			$hc = dh_halls_owner_course(is_array($course) ? reset($course) : $course);
 			$sec_id  = 'g'.trim($g).'_'.$gender;
-			$sec_lbl = 'Group '.trim($g).' - '.ucfirst(strtolower($label));
-			$out .= '<div class="seat-section '.$page_class.'" id="'.dh_seat_sec_anchor($sec_id).'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'">';
+			$sec_lbl = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'code').' - '.ucfirst(strtolower($label));
+			$sec_long = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'name').' - '.ucfirst(strtolower($label));   // the per-section PDF title
+			$out .= '<div class="seat-section '.$page_class.'" id="'.dh_seat_sec_anchor($sec_id).'" data-section="'.check_plain($sec_id).'" data-section-label="'.check_plain($sec_lbl).'" data-section-title="'.check_plain($sec_long).'">';
 			$gt_names = isset($group_teachers[trim($g)]) ? trim($group_teachers[trim($g)]) : '';
 			$teacher_part = ($gt_names !== '') ? ' ('.check_plain($gt_names).')' : '';
-			$out .= dh_seat_plan_header('GROUP '.check_plain($g).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
+			$out .= dh_seat_plan_header('GROUP '.check_plain($g).check_plain(dh_halls_tail($hc, trim($g), 'name')).$teacher_part.' &ndash; '.$label.'<br>'.$course_name, 'group-title');
 			$out .= '<div class="dh-print-bar no-print">'
 				. l('&#128424; Print this section', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group'), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print only this section as a page-filling A4 PDF')))
 				. ' ' . l('&#128424; on 2 sheets', 'seating-section-pdf/'.$centre.'/'.(is_array($course)?$course[0]:$course), array('html' => TRUE, 'query' => array('sec' => $sec_id, 'plan' => 'group', 'sheets' => 2), 'attributes' => array('class' => array('dh-print-section'), 'target' => '_blank', 'title' => 'Print this section bigger, split across 2 A4 sheets to tape together')))
@@ -4654,7 +4659,7 @@ function dh_student_chit($centre, $course, $seating)
 		foreach ($groups as $grp => $rows)
 		{
 			if (empty($rows)) continue;
-			$grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp;
+			$grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp.check_plain(dh_halls_tail($cp, $grp, 'name'));
 			$sec_head = '<div class="header-day0"><div align="center" class="title"><b>Student Chit</b></div>'.
 				'<div align="center" class="title-head">'.$course_name.' / '.$genlabel[$g].' &ndash; '.$grplabel.'</div></div>';
 			if (!$first_section) $out .= '<div class="footer"></div><br>';   // each Gender/Group section starts a new page
@@ -4799,7 +4804,7 @@ function dh_checking_slip($centre, $course, $seating)
     foreach ($groups as $grp => $rows)
     {
       if (empty($rows)) continue;
-      $grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp;
+      $grplabel = ($grp === '' || $grp === null || (int)$grp === 0) ? 'No Group' : 'Group '.$grp.check_plain(dh_halls_tail($cp, $grp, 'name'));
       $sec_head = '<div class="header-day0"><div align="center" class="title"><b>Checking Slip</b></div>'.
         '<div align="center" class="title-head">'.$course_name.' / '.$genlabel[$g].' &ndash; '.$grplabel.'</div></div>';
       if (!$first_section) $out .= '<div class="footer"></div><br>';   // each Gender/Group section starts a new page
