@@ -610,6 +610,9 @@ function dh_ma_centre_form($form, &$form_state, $edit_data = array())
 		';
 		drupal_add_js($js, 'inline');
 
+		// Dhamma Halls (inc/halls.inc): only centres with more than one hall fill this in.
+		$form['dhamma_halls'] = dh_halls_form_section((int) $centre_id);
+
 		// Accommodation: rooms, places and toilet types live on the Rooms page.
 		$form['Accommodation Settings'] = array('#type' => 'fieldset', '#title' => 'Accommodation Settings', '#collapsible' => true, '#collapsed' => true, '#weight' => 99);
 		$form['Accommodation Settings']['acco'] = array('#markup' => '<p>Rooms, their places and toilet types are kept on the Rooms page.</p><p>'
@@ -694,7 +697,12 @@ function dh_ma_centre_form_submit($form, &$form_state)
 			$centre['c_city'] = $city_id;
 	}
 	if ( $centre_id <> '')
+	{
 		_dh_centre_save_edit($centre_id, $centre, $centre_setting);
+		// Dhamma Halls section (inc/halls.inc); validated in dh_ma_centre_form_validate().
+		if (isset($form_state['input']['dhh']))
+			dh_halls_centre_save((int) $centre_id, dh_halls_form_rows($form_state['input']), dh_halls_form_usual($form_state['input']), $user->uid);
+	}
 	else
 		$centre_id = _dh_centre_save_add($centre, $centre_setting);
 	drupal_goto("centre/$centre_id");
@@ -850,6 +858,11 @@ function dh_ma_centre_form_validate($form, &$form_state)
 	// (Cell Settings validation dropped: cells now use the same visual table
 	// editor as dining, which assembles cs_cells_config directly - no cellcfg_*
 	// fields to validate.)
+
+	// Dhamma Halls section (edit page only).
+	if (arg(1) <> 'add' && isset($form_state['input']['dhh']))
+		foreach (dh_halls_centre_validate((int) arg(1), dh_halls_form_rows($form_state['input']), dh_halls_form_usual($form_state['input'])) as $i => $msg)
+			form_set_error('dhh_err_' . $i, $msg);   // one name per message: Drupal shows only the first message of a name
 }
 
 

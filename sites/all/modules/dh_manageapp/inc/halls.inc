@@ -260,3 +260,67 @@ function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 	dh_halls_reset();
 	return array();
 }
+
+/** The Centre Settings "Dhamma Halls" section (collapsed). Inputs: dhh[i][id|code|name|remove], dhh_usual[g]. */
+function dh_halls_form_section($centre_id)
+{
+	$halls = dh_halls_list($centre_id);
+	$f = array('#type' => 'fieldset', '#title' => 'Dhamma Halls', '#collapsible' => TRUE, '#collapsed' => TRUE, '#weight' => 98);
+	$f['help'] = array('#markup' => '<p>Add halls only if this centre has more than one Dhamma Hall.</p>'
+		. '<p><small>Code: up to 6 letters or digits (for example DH1), shown where space is short. Name: up to 40 letters (for example Dhamma Hall 1), shown in headings.</small></p>');
+	$f['dhh'] = array('#tree' => TRUE);
+	$rows = array_values($halls);
+	$shown_blank = $halls ? 0 : 2;   // a centre with no halls starts with two empty rows; "Add hall" shows more
+	for ($n = 0; $n < 6; $n++)
+		$rows[] = array('id' => 0, 'code' => '', 'name' => '', 'hidden' => $n >= $shown_blank);
+	foreach ($rows as $i => $h)
+	{
+		$hide = !empty($h['hidden']);
+		$f['dhh'][$i]['id'] = array('#type' => 'hidden', '#value' => (int) $h['id']);
+		$f['dhh'][$i]['code'] = array('#type' => 'textfield', '#title' => 'Code', '#size' => 8, '#maxlength' => 6, '#default_value' => $h['code'],
+			'#prefix' => '<div class="dhh-row' . ($hide ? ' dhh-spare' : '') . '" style="display:' . ($hide ? 'none' : 'flex') . ';gap:12px;align-items:flex-end;flex-wrap:wrap">');
+		$f['dhh'][$i]['name'] = array('#type' => 'textfield', '#title' => 'Name', '#size' => 30, '#maxlength' => 40, '#default_value' => $h['name'],
+			'#suffix' => $h['id'] ? '' : '</div>');
+		if ($h['id'])
+			$f['dhh'][$i]['remove'] = array('#type' => 'checkbox', '#title' => 'Remove', '#suffix' => '</div>');
+	}
+	// "Add hall" shows the next hidden empty row (empty rows are skipped on save). More than 6 new halls: Update, then add again.
+	$f['add'] = array('#markup' => '<p><button type="button" class="btn btn-default btn-sm dhh-add">Add hall</button></p>');
+	drupal_add_js('(function($){$(function(){ $(".dhh-add").on("click", function(){ var r = $(".dhh-spare:hidden").first();'
+		. ' if (r.length) { r.css("display", "flex"); r.find("input[type=text]").first().focus(); } if (!$(".dhh-spare:hidden").length) $(this).hide(); }); });})(jQuery);', 'inline');
+	if (count($halls) >= 2)
+	{
+		$opts = array();
+		foreach ($halls as $h)
+			$opts[$h['code']] = $h['code'] . ' — ' . $h['name'];
+		$usual = dh_halls_usual($centre_id);
+		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b> — every course starts with these; a course can change them on its own page.</p>');
+		$f['dhh_usual'] = array('#tree' => TRUE, '#prefix' => '<div style="display:flex;gap:12px;flex-wrap:wrap">', '#suffix' => '</div>');
+		for ($g = 1; $g <= 9; $g++)
+			$f['dhh_usual'][$g] = array('#type' => 'select', '#title' => 'Group ' . $g, '#options' => $opts, '#default_value' => $halls[$usual[$g]]['code']);
+	}
+	return $f;
+}
+
+/** The halls rows from the posted Centre Settings form (see dh_halls_centre_save()). */
+function dh_halls_form_rows($input)
+{
+	$rows = array();
+	foreach ((array) (isset($input['dhh']) ? $input['dhh'] : array()) as $r)
+	{
+		$r = (array) $r;
+		$rows[] = array('id' => (int) (isset($r['id']) ? $r['id'] : 0), 'code' => trim((string) (isset($r['code']) ? $r['code'] : '')),
+			'name' => trim((string) (isset($r['name']) ? $r['name'] : '')), 'remove' => !empty($r['remove']));
+	}
+	return $rows;
+}
+
+/** The usual hall per group from the posted form: group => code; array() when the form had none. */
+function dh_halls_form_usual($input)
+{
+	$out = array();
+	foreach ((array) (isset($input['dhh_usual']) ? $input['dhh_usual'] : array()) as $g => $code)
+		if ((int) $g >= 1 && (int) $g <= 9)
+			$out[(int) $g] = trim((string) $code);
+	return $out;
+}
