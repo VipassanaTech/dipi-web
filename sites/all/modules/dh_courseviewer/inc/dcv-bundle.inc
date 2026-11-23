@@ -100,6 +100,36 @@ function dcv_add_label_starts(array $sections, $course_id, $plan) {
 }
 
 /**
+ * Dhamma Halls (dh_manageapp inc/halls.inc): at a centre with 2+ halls each section group 1-9 gets hall_code and
+ * hall_name. With 0 or 1 hall the sections come back unchanged. Added fields only (released apps ignore them).
+ */
+function dcv_add_halls(array $sections, $course_id) {
+  if (!function_exists('dh_halls_course_map')) { return $sections; }
+  $map = dh_halls_course_map($course_id);
+  if (!$map) { return $sections; }
+  foreach ($sections as $i => $s) {
+    if (empty($s['groups'])) { continue; }
+    foreach ($s['groups'] as $j => $g) {
+      $n = (int) $g['n'];
+      if (isset($map[$n])) {
+        $sections[$i]['groups'][$j]['hall_code'] = $map[$n]['code'];
+        $sections[$i]['groups'][$j]['hall_name'] = $map[$n]['name'];
+      }
+    }
+  }
+  return $sections;
+}
+
+/** The course's halls for the bundle, in hall order: list of {code, name}; array() when the centre has 0 or 1 hall. */
+function dcv_bundle_halls($course_id) {
+  if (!function_exists('dh_halls_course_map') || !dh_halls_course_map($course_id)) { return array(); }
+  $centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => dh_halls_owner_course($course_id)))->fetchField();
+  $out = array();
+  foreach (dh_halls_list($centre) as $h) { $out[] = array('code' => $h['code'], 'name' => $h['name']); }
+  return $out;
+}
+
+/**
  * Parse cs_seat_config INI into structured sections for the app to render.
  * Emits only [RIGHT] (Male) and [LEFT] (Female). Group overrides use the
  * GROUP<n>-<Key> convention. Pure — unit tested.
@@ -687,6 +717,7 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $sections = $seat_cfg ? dcv_parse_seat_config($seat_cfg, (int) $naming_conv) : array();
   $sections = dcv_add_label_starts($sections, $course_id, $header['seat_plan']);
   $sections = dcv_resolve_seat_layout($sections);
+  $sections = dcv_add_halls($sections, $course_id);
   if ($plans !== NULL) {
     $sections = dcv_filter_sections($sections, $plans, $header['seat_plan']);
   }
@@ -694,7 +725,7 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   $expires = $end_ts ? date('Y-m-d', $end_ts) : null;
   $students = dcv_course_students($course_id, $plans, $sides);
   $servers = dcv_course_servers($course_id, $plans, $sides);
-  return array(
+  $bundle = array(
     'schema_version' => 2,
     'course'         => $header,
     'sections'       => $sections,
@@ -704,4 +735,7 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
     'generated_at'   => date('c'),
     'expires_after'  => $expires,
   );
+  $halls = dcv_bundle_halls($course_id);
+  if ($halls) { $bundle['halls'] = $halls; }
+  return $bundle;
 }
