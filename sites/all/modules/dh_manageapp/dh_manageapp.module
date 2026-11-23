@@ -1792,92 +1792,99 @@ function _ma_make_link($link_text, $url)
 
 }
 
-function _get_country( $name )
+/*
+ * Suggestion boxes (autocomplete) and the PIN code lookup. The typed text and the chosen country / state reach
+ * the database only as data (placeholders), never as part of the query: same suggestions as before for normal
+ * typing, names with an apostrophe work, crafted text finds nothing. Tested by tests/test-autocomplete-safe.php.
+ */
+
+/** A request value as plain text ('' when missing or not text). */
+function _dh_ac_req($key)
 {
-	$q = 'select c_name, c_code from dh_country where c_name like \''.$name.'%\' order by c_name limit 10';
-	$return = db_query($q);
-	$matches = array();
-  	foreach ($return as $row) {
-    	//$matches[$row->c_code] = $row->c_name;
-    	$matches[] = array('value' =>  $row->c_name, 'code' => $row->c_code);
-  	}
-  	drupal_json_output($matches);  	
+	return (isset($_REQUEST[$key]) && is_scalar($_REQUEST[$key])) ? (string) $_REQUEST[$key] : '';
 }
 
-function _get_state( $name )
+/** Countries whose name starts with $name (at most 10). */
+function dh_ac_country_matches($name)
 {
-	$country = $_REQUEST['country'];
-	//$country_code = db_query("select c_code from dh_country WHERE c_name='$country'")->fetchField();
-	$q = 'select s_code, s_name from dh_state where s_country=\''.$country.'\' and  s_name like \''.$name.'%\' order by s_name limit 10';
-	$return = db_query($q);
 	$matches = array();
-  	foreach ($return as $row) {
-    	$matches[] = array('value' => $row->s_name, 'code' => $row->s_code );
-  	}
-  	drupal_json_output($matches);  	
+	foreach (db_query("select c_name, c_code from dh_country where c_name like :n order by c_name limit 10",
+		array(':n' => db_like((string) $name) . '%')) as $row)
+		$matches[] = array('value' => $row->c_name, 'code' => $row->c_code);
+	return $matches;
 }
 
-function _get_city( $name )
+/** States of $country whose name starts with $name (at most 10). */
+function dh_ac_state_matches($name, $country)
 {
-	$country = $_REQUEST['country'];
-	//$country_code = db_query("select c_code from dh_country WHERE c_name='$country'")->fetchField();
-
-	$state = $_REQUEST['state'];
-	//$state_code = db_query("select s_code from dh_state WHERE s_name='$state'")->fetchField();
-
-	$q = 'select c_name from dh_city where c_country=\''.$country.'\' and c_state=\''.$state.'\' and  c_name like \''.$name.'%\' order by c_name limit 10';
-	$return = db_query($q);
 	$matches = array();
-  	foreach ($return as $row) {
-    	$matches[$row->c_name] = $row->c_name;
-  	}
-  	drupal_json_output($matches);  	
+	foreach (db_query("select s_code, s_name from dh_state where s_country = :c and s_name like :n order by s_name limit 10",
+		array(':c' => (string) $country, ':n' => db_like((string) $name) . '%')) as $row)
+		$matches[] = array('value' => $row->s_name, 'code' => $row->s_code);
+	return $matches;
 }
 
+/** Cities of $country / $state whose name starts with $name (at most 10), as name => name. */
+function dh_ac_city_matches($name, $country, $state)
+{
+	$matches = array();
+	foreach (db_query("select c_name from dh_city where c_country = :c and c_state = :s and c_name like :n order by c_name limit 10",
+		array(':c' => (string) $country, ':s' => (string) $state, ':n' => db_like((string) $name) . '%')) as $row)
+		$matches[$row->c_name] = $row->c_name;
+	return $matches;
+}
+
+/** Country, state and city of a PIN code. */
+function dh_ac_pincode_matches($code)
+{
+	$matches = array();
+	foreach (db_query("select co.c_code, s.s_code, ci.c_name as 'c_city' from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join
+		dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where
+		pc_pin = :code limit 0,1", array(':code' => (string) $code)) as $row)
+		$matches[] = array('country' => $row->c_code, 'state' => $row->s_code, 'city' => $row->c_city);
+	return $matches;
+}
+
+/** Teachers with status $status ('Active' / 'Training') whose name contains $search (at most 10); $type 'full-t' = full-time / CAT / LC area ATs only. */
+function dh_ac_teacher_matches($search, $status, $type)
+{
+	$append = ($status == 'Active' && $type == 'full-t') ? ' and (t_full_t =1 or t_cat = 1 or t_lc_area=1)' : '';
+	$matches = array();
+	foreach (db_query("select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c'
+		from dh_teacher where t_status = :st and CONCAT(t_f_name, ' ', t_l_name) like :s $append limit 10",
+		array(':st' => $status, ':s' => '%' . db_like((string) $search) . '%')) as $row)
+		$matches[] = array('value' => $row->a, 'code' => $row->b, 'fullname' => $row->c);
+	return $matches;
+}
+
+function _get_country( $name = '' )
+{
+	drupal_json_output(dh_ac_country_matches($name));
+}
+
+function _get_state( $name = '' )
+{
+	drupal_json_output(dh_ac_state_matches($name, _dh_ac_req('country')));
+}
+
+function _get_city( $name = '' )
+{
+	drupal_json_output(dh_ac_city_matches($name, _dh_ac_req('country'), _dh_ac_req('state')));
+}
 
 function _get_location_from_pincode()
 {
-	$code = $_REQUEST['code'];
-	$matches = array();
-	$q = "select co.c_code,s.s_code,ci.c_name as 'c_city' from dh_pin_code p left join dh_city ci on p.pc_city=ci.c_id left join 
-		dh_state s on (ci.c_state=s.s_code and ci.c_country=s.s_country) left join dh_country co on ci.c_country=co.c_code where 
-		pc_pin='$code' limit 0,1";
-	$return = db_query($q);
-
-  	foreach ($return as $row) {
-    	$matches[] = array( 'country' => $row->c_code, 'state' => $row->s_code, 'city' => $row->c_city );
-  	}
-
-  	drupal_json_output($matches);  	
+	drupal_json_output(dh_ac_pincode_matches(_dh_ac_req('code')));
 }
 
-function _get_teacher( $search )
+function _get_teacher( $search = '' )
 {
-	$append = '';
-	if (isset($_REQUEST['type']) && ($_REQUEST['type'] == 'full-t') )
-		$append = ' and (t_full_t =1 or t_cat = 1 or t_lc_area=1)';
-	$matches = array();
-	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c' from dh_teacher where t_status='Active' and CONCAT(t_f_name, ' ', t_l_name) like '%$search%' $append limit 10";
-	$return = db_query($q); // array(':name', $search)
-
-  	foreach ($return as $row) {
-    	$matches[] = array('value' =>  $row->a, 'code' => $row->b, 'fullname' => $row->c );
-  	}
-
-  	drupal_json_output($matches);  	
+	drupal_json_output(dh_ac_teacher_matches($search, 'Active', _dh_ac_req('type')));
 }
 
-function _get_trainee_teacher( $search )
+function _get_trainee_teacher( $search = '' )
 {
-	$matches = array();
-	$q = "select CONCAT(t_f_name, ' ', t_l_name, ' (', t_code, ')') as 'a', CONCAT(t_code,'-' ,t_gender) as 'b', CONCAT(t_f_name, ' ', t_l_name) as 'c' from dh_teacher where t_status='Training' and CONCAT(t_f_name, ' ', t_l_name) like '%$search%' limit 10";
-	$return = db_query($q); // array(':name', $search)
-
-  	foreach ($return as $row) {
-    	$matches[] = array('value' =>  $row->a, 'code' => $row->b, 'fullname' => $row->c );
-  	}
-
-  	drupal_json_output($matches);  	
+	drupal_json_output(dh_ac_teacher_matches($search, 'Training', ''));
 }
 
 function _search_student()
