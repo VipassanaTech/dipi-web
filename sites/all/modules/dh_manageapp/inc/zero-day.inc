@@ -1449,6 +1449,8 @@ function dh_generate_teacher_list($centre, $course, $seating, $pdf = '')
 
 	if ($is_pdf)
 	{
+		if (dh_halls_course_map($tl_cp))
+			$out = '<meta charset="utf-8">' . $out;   // the hall tail has a UTF-8 middle dot; only at hall centres
 		create_pdf_from_html($out, $pdf);
 		return;
 	}
@@ -1970,6 +1972,8 @@ function dh_seating_section_pdf()
 		$pad_top  = round(max(0, ($page_h - $h_pt * $zoom) / 2), 1);
 		$pad_left = round(max(0, ($page_w - $w_pt * $zoom) / 2), 1);
 		$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
+		if ($node->getAttribute('data-section-title') !== '')
+			$full = preg_replace('#<head>#i', '<head><meta charset="utf-8">', $full, 1);   // hall tail has a UTF-8 middle dot
 		create_pdf_from_html_a4($full, $tmp, $orientation);
 	} else {
 		// -------- N A4 sheets: fill an overlapping tile-grid canvas, then tile --------
@@ -1999,6 +2003,8 @@ function dh_seating_section_pdf()
 		$pad_top  = round(max(0, ($best['Hc'] - $h_pt * $zoom) / 2), 1);
 		$pad_left = round(max(0, ($best['Wc'] - $w_pt * $zoom) / 2), 1);
 		$full = preg_replace('#</head>#i', $mk_css($zoom, $pad_top, $pad_left, $title_w) . '</head>', $html, 1);
+		if ($node->getAttribute('data-section-title') !== '')
+			$full = preg_replace('#<head>#i', '<head><meta charset="utf-8">', $full, 1);   // hall tail has a UTF-8 middle dot
 
 		// Assembly aid. Every tile is in the top or bottom row (grids are 2x1/1x2/2x2),
 		// so labels sit in the top/bottom outer band - never on the plan or a seam.
@@ -3541,6 +3547,7 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 	$label_starts = dh_seat_label_starts($course[0], 'group');
 	$label_block = $edit_tools ? dh_seat_label_start_blocker($course[0]) : '';
 	$first = true;
+	$hc = dh_halls_owner_course(is_array($course) ? reset($course) : $course);   // once: the course whose halls apply
 	foreach ($group_labels as $g)
 	{
 		$rendered_any = false;
@@ -3554,7 +3561,6 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 			$page_class = $first ? '' : 'group-page';
 			$out .= '<div class="dh-page-sep no-print"></div>';   // screen-only gap before every group page
 			$first = false;
-			$hc = dh_halls_owner_course(is_array($course) ? reset($course) : $course);
 			$sec_id  = 'g'.trim($g).'_'.$gender;
 			$sec_lbl = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'code').' - '.ucfirst(strtolower($label));
 			$sec_long = 'Group '.trim($g).dh_halls_tail($hc, trim($g), 'name').' - '.ucfirst(strtolower($label));   // the per-section PDF title
@@ -3661,7 +3667,11 @@ function dh_generate_group_seating_plan($centre, $course, $pdf = '', $return_htm
 		return $out;
 
 	if ($pdf <> '')
+	{
+		if (strpos($out, 'data-section-title=') !== FALSE)   // hall centres only: the hall tail has a UTF-8 middle dot
+			$out = preg_replace('#<head>#i', '<head><meta charset="utf-8">', $out, 1);
 		create_pdf_from_html($out, $pdf);
+	}
 	else
 	{
 		print $out;

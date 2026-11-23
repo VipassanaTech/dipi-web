@@ -13,11 +13,22 @@ function dh_halls_reset()
 	drupal_static_reset('dh_halls_course_map');
 }
 
+/** TRUE when the 3 halls tables exist (checked once per request). While they do not, every helper answers "no halls". */
+function dh_halls_ready()
+{
+	$ready = &drupal_static(__FUNCTION__, NULL);
+	if ($ready === NULL)
+		$ready = db_table_exists('dh_center_hall') && db_table_exists('dh_center_hall_group') && db_table_exists('dh_course_hall_group');
+	return $ready;
+}
+
 /** The centre's halls in order: ch_id => array('id' => int, 'code' => string, 'name' => string). Removed ones left out. */
 function dh_halls_list($centre_id)
 {
 	$cache = &drupal_static(__FUNCTION__, array());
 	$centre_id = (int) $centre_id;
+	if (!dh_halls_ready())
+		return array();
 	if (!isset($cache[$centre_id]))
 	{
 		$cache[$centre_id] = array();
@@ -68,6 +79,8 @@ function dh_halls_course_map($course_id)
 {
 	$cache = &drupal_static(__FUNCTION__, array());
 	$course_id = (int) $course_id;
+	if ($course_id <= 0)
+		return array();
 	if (isset($cache[$course_id]))
 		return $cache[$course_id];
 	$owner = dh_halls_owner_course($course_id);
@@ -128,6 +141,8 @@ function _dh_halls_usual_codes($centre_id, $usual)
 /** Checks a Centre Settings halls save. Returns error texts (simple English); array() = fine. See dh_halls_centre_save(). */
 function dh_halls_centre_validate($centre_id, $rows, $usual)
 {
+	if (!dh_halls_ready())
+		return array();
 	$centre_id = (int) $centre_id;
 	$errors = array();
 	$mine = db_query("select ch_id, ch_code from dh_center_hall where ch_center = :c and ch_deleted = 0", array(':c' => $centre_id))->fetchAllKeyed();
@@ -190,6 +205,8 @@ function dh_halls_centre_validate($centre_id, $rows, $usual)
  */
 function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 {
+	if (!dh_halls_ready())
+		return array();
 	$centre_id = (int) $centre_id;
 	$errors = dh_halls_centre_validate($centre_id, $rows, $usual);
 	if ($errors)
@@ -253,7 +270,7 @@ function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 			}
 		}
 	}
-	catch (Exception $e)
+	catch (Throwable $e)
 	{
 		$txn->rollback();
 		throw $e;
@@ -265,8 +282,10 @@ function dh_halls_centre_save($centre_id, $rows, $usual, $uid)
 /** The Centre Settings "Dhamma Halls" section (collapsed). Inputs: dhh[i][id|code|name|remove], dhh_usual[g]. */
 function dh_halls_form_section($centre_id, $posted = array())
 {
+	if (!dh_halls_ready())
+		return array();
 	$halls = dh_halls_list($centre_id);
-	$f = array('#type' => 'fieldset', '#title' => 'Dhamma Halls', '#collapsible' => TRUE, '#collapsed' => TRUE, '#weight' => 98);
+	$f = array('#type' => 'fieldset', '#title' => 'Dhamma Halls', '#collapsible' => TRUE, '#collapsed' => empty($posted), '#weight' => 98);
 	$f['help'] = array('#markup' => '<p>Add halls only if this centre has more than one Dhamma Hall.</p>'
 		. '<p><small>Code: up to 6 letters or digits (for example DH1), shown where space is short. Name: up to 40 letters (for example Dhamma Hall 1), shown in headings.</small></p>');
 	$f['dhh'] = array('#tree' => TRUE);
@@ -301,7 +320,7 @@ function dh_halls_form_section($centre_id, $posted = array())
 		foreach ($halls as $h)
 			$opts[(string) $h['id']] = $h['code'] . ' — ' . $h['name'];
 		$usual = dh_halls_usual($centre_id);
-		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b> — every course starts with these; a course can change them on its own page.</p>');
+		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b> — every course follows these unless it changes them on its own page.</p>');
 		$f['dhh_usual'] = array('#tree' => TRUE, '#prefix' => '<div style="display:flex;gap:12px;flex-wrap:wrap">', '#suffix' => '</div>');
 		for ($g = 1; $g <= 9; $g++)
 			$f['dhh_usual'][$g] = array('#type' => 'select', '#title' => 'Group ' . $g, '#options' => $opts, '#default_value' => (string) $usual[$g]);
@@ -395,7 +414,7 @@ function dh_halls_course_save($course_id, $map, $uid)
 				_dh_halls_course_log($course_id, 'Group ' . $g . ': ' . $before[$g]['code'], 'Group ' . $g . ': ' . $halls[$id]['code'], $uid);
 		}
 	}
-	catch (Exception $e)
+	catch (Throwable $e)
 	{
 		$txn->rollback();   // Drupal 7 commits a transaction that goes out of scope: undo the half-done save
 		throw $e;
@@ -423,7 +442,7 @@ function dh_halls_course_reset($course_id, $uid)
 			if ($h['id'] !== $usual[$g])
 				_dh_halls_course_log($course_id, 'Group ' . $g . ': ' . $h['code'], 'Group ' . $g . ': ' . $halls[$usual[$g]]['code'] . ' (usual)', $uid);
 	}
-	catch (Exception $e)
+	catch (Throwable $e)
 	{
 		$txn->rollback();
 		throw $e;
@@ -474,6 +493,8 @@ function dh_halls_course_page_save($centre_id, $course_id)
 /** The course page box (centres with 2+ halls): the course line, and a Change box when the course's halls can be changed. */
 function dh_halls_course_box($centre_id, $course_id)
 {
+	if (!dh_halls_ready())
+		return '';
 	$line = dh_halls_course_line($course_id);
 	if ($line === '')
 		return '';

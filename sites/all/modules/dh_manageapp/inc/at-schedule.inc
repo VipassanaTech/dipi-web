@@ -636,8 +636,11 @@ function dh_assign_teacher()
 
 	$result = db_query($q);
 	$data = array();
+	$hm = dh_halls_course_map($course);   // group => hall; array() at centres without 2+ halls
 	while($r = $result->fetchAssoc())
-	{	
+	{
+		$gt = trim((string) $r['ct_group']);
+		$g1 = (ctype_digit($gt) && (int) $gt >= 1 && (int) $gt <= 9) ? (int) $gt : 0;   // only groups 1-9 have a hall
 
 		$change_status = '
 			<select class="at-status-select">
@@ -697,7 +700,7 @@ function dh_assign_teacher()
 			'teacher' => $r['teacher'],
 			'current_status' => $current_status,
 			'group' => $r['ct_group'],
-			'group_hall' => trim(dh_halls_tail($course, $r['ct_group'], 'code'), ' ·'),
+			'group_hall' => (isset($hm[$g1]) ? $hm[$g1]['code'] : ''),
 			'type' => $r['ct_type'],
 			'change_type' => $change_type,
 			'change_group' => $change_group,

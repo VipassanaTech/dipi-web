@@ -16,6 +16,7 @@ t_in_txn(function () {
   t_eq(dh_halls_on($c), FALSE, 'D2 one hall: feature still off');
   t_eq(dh_halls_tail($k, 2, 'name'), '', 'D2 one hall: no tail');
   t_eq(dh_halls_course_map($k), array(), 'D2 one hall: empty map');
+  t_eq(dh_halls_course_map(0), array(), 'D2b course 0: empty map');
 
   $h2 = t_make_hall($c, 'DH2', 'Dhamma Hall 2', 1);
   dh_halls_reset();
