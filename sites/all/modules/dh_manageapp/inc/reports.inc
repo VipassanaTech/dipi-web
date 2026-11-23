@@ -256,17 +256,19 @@ function dh_center_course_report_form_submit($form, &$form_state)
 
 
 
-function finalize_csv()
+/** Seconds a built finalize report is given out again (it takes 9-14 s to build on prod). */
+define('DH_FINALIZE_CSV_KEEP', 900);
+
+/** Cache id (and lock name) of one of the two finalize reports. */
+function dh_finalize_csv_cid($not_marked)
 {
-  $filename = "MarkedAttended";
-  $append = " and MarkedA <> 0";
-  if(arg(0) == "finalize-not-marked-attended")
-  {
-    $append = " and MarkedA = 0";
-    $filename = "NotMarkedAttended";
-  }
+  return 'dh_finalize_csv:' . ($not_marked ? 'not_marked' : 'marked');
+}
 
-
+/** The finalize report as CSV text: runs the (slow) query. $not_marked: courses with no one marked attended. */
+function dh_finalize_csv_build($not_marked)
+{
+  $append = $not_marked ? " and MarkedA = 0" : " and MarkedA <> 0";
   $q = "select
       Course,
       MarkedA,
@@ -301,30 +303,54 @@ function finalize_csv()
 
   $q .= $append;
 
-
   $result = db_query($q);
-
-  if (!$result)
-  {
-    drupal_set_message("no record found.");
-    exit();
-  }
-
-  $fname = tempnam(sys_get_temp_dir(), $filename);
-  $fp = fopen($fname, "w");
+  $fp = fopen('php://temp', 'w+');
   $header_done = false;
-
-  while($row = $result->fetchAssoc())
+  while ($result && ($row = $result->fetchAssoc()))
   {
-    if(!$header_done)
+    if (!$header_done)
     {
-      $header = array_keys($row);
-      fputcsv($fp, $header);
+      fputcsv($fp, array_keys($row));
       $header_done = true;
     }
     fputcsv($fp, $row);
   }
+  rewind($fp);
+  $csv = stream_get_contents($fp);
   fclose($fp);
+  return $csv;
+}
+
+/**
+ * The finalize report, built at most once every 15 minutes: everyone in between gets the same copy, so repeated
+ * downloads (the pages need no login) cannot load the database. While another download is building it, the
+ * previous copy is given; with no copy at all this waits up to $wait seconds for that build, else builds it.
+ */
+function dh_finalize_csv_get($not_marked, $wait = 30)
+{
+  $cid = dh_finalize_csv_cid($not_marked);
+  $kept = cache_get($cid);
+  if ($kept && $kept->expire > REQUEST_TIME)
+    return $kept->data;
+  if (lock_acquire($cid, 120))
+  {
+    $csv = dh_finalize_csv_build($not_marked);
+    cache_set($cid, $csv, 'cache', REQUEST_TIME + DH_FINALIZE_CSV_KEEP);
+    lock_release($cid);
+    return $csv;
+  }
+  if ($kept)
+    return $kept->data;
+  lock_wait($cid, $wait);
+  $kept = cache_get($cid);
+  return $kept ? $kept->data : dh_finalize_csv_build($not_marked);
+}
+
+function finalize_csv()
+{
+  $not_marked = (arg(0) == "finalize-not-marked-attended");
+  $filename = $not_marked ? "NotMarkedAttended" : "MarkedAttended";
+  $csv = dh_finalize_csv_get($not_marked);
 
   header("Content-Type: text/csv");
   header('Content-disposition:attachment; filename="'.$filename.'.csv"');
@@ -337,7 +363,6 @@ function finalize_csv()
   header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); // always modified
   header ('Cache-Control: cache, must-revalidate'); // HTTP/1.1
   header ('Pragma: public'); // HTTP/1.0
-  readfile($fname);
-  unlink($fname);
+  print $csv;
   exit();
 }
