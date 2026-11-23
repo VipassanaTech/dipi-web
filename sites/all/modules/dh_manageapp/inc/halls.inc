@@ -337,3 +337,136 @@ function dh_halls_form_usual($input)
 		}
 	return $out;
 }
+
+/** '' when a course's halls can be changed, else why not (simple English). */
+function dh_halls_course_block($course_id)
+{
+	$course_id = (int) $course_id;
+	$c = db_query("select c_center, c_finalized from dh_course where c_id = :c", array(':c' => $course_id))->fetchAssoc();
+	if (!$c)
+		return 'This course is not found.';
+	if (!dh_halls_on((int) $c['c_center']))
+		return 'This centre has only one Dhamma Hall.';
+	if ((int) $c['c_finalized'])
+		return 'This course is finalized. Its halls cannot be changed.';
+	$owner = dh_halls_owner_course($course_id);
+	if ($owner !== $course_id)
+		return 'Halls follow course ' . $owner . ' (shared seating plan).';
+	return '';
+}
+
+/** One line in the course Change Log (dh_course_log, field 'halls'). */
+function _dh_halls_course_log($course_id, $old, $new, $uid)
+{
+	$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => (int) $course_id))->fetchField();
+	db_insert('dh_course_log')->fields(array('crl_course' => (int) $course_id, 'crl_center' => $centre, 'crl_action' => 'update', 'crl_field' => 'halls',
+		'crl_old' => $old, 'crl_new' => $new, 'crl_user' => (int) $uid, 'crl_tstamp' => date('Y-m-d H:i:s')))->execute();
+}
+
+/** Saves a course's own halls. $map: group (1-9) => hall code. A group set to its usual hall keeps no row. Returns '' or an error. */
+function dh_halls_course_save($course_id, $map, $uid)
+{
+	$course_id = (int) $course_id;
+	$why = dh_halls_course_block($course_id);
+	if ($why !== '')
+		return $why;
+	$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
+	$halls = dh_halls_list($centre);
+	$by_code = array();
+	foreach ($halls as $id => $h)
+		$by_code[strtoupper($h['code'])] = $id;
+	foreach ($map as $g => $code)
+		if ((int) $g < 1 || (int) $g > 9 || !isset($by_code[strtoupper(trim((string) $code))]))
+			return 'Group ' . (int) $g . ': choose one of this centre\'s halls.';
+	$usual = dh_halls_usual($centre);
+	$before = dh_halls_course_map($course_id);
+	$txn = db_transaction();
+	try
+	{
+		foreach ($map as $g => $code)
+		{
+			$g = (int) $g;
+			$id = $by_code[strtoupper(trim((string) $code))];
+			if ($id === $usual[$g])
+				db_delete('dh_course_hall_group')->condition('cg_course', $course_id)->condition('cg_group', $g)->execute();
+			else
+				db_merge('dh_course_hall_group')->key(array('cg_course' => $course_id, 'cg_group' => $g))->fields(array('cg_hall' => $id))->execute();
+			if ($before[$g]['id'] !== $id)
+				_dh_halls_course_log($course_id, 'Group ' . $g . ': ' . $before[$g]['code'], 'Group ' . $g . ': ' . $halls[$id]['code'], $uid);
+		}
+	}
+	catch (Exception $e)
+	{
+		$txn->rollback();   // Drupal 7 commits a transaction that goes out of scope: undo the half-done save
+		throw $e;
+	}
+	dh_halls_reset();
+	return '';
+}
+
+/** Back to the centre's usual halls for every group of the course. Returns '' or an error. */
+function dh_halls_course_reset($course_id, $uid)
+{
+	$course_id = (int) $course_id;
+	$why = dh_halls_course_block($course_id);
+	if ($why !== '')
+		return $why;
+	$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
+	$halls = dh_halls_list($centre);
+	$usual = dh_halls_usual($centre);
+	$before = dh_halls_course_map($course_id);
+	$txn = db_transaction();
+	try
+	{
+		db_delete('dh_course_hall_group')->condition('cg_course', $course_id)->execute();
+		foreach ($before as $g => $h)
+			if ($h['id'] !== $usual[$g])
+				_dh_halls_course_log($course_id, 'Group ' . $g . ': ' . $h['code'], 'Group ' . $g . ': ' . $halls[$usual[$g]]['code'] . ' (usual)', $uid);
+	}
+	catch (Exception $e)
+	{
+		$txn->rollback();
+		throw $e;
+	}
+	dh_halls_reset();
+	return '';
+}
+
+/** "DH1 — Group 1, 5 · DH2 — Group 2 · DH3 — none" (plain text, hall order). '' when the feature is off. */
+function dh_halls_course_line($course_id)
+{
+	$map = dh_halls_course_map($course_id);
+	if (!$map)
+		return '';
+	$owner = dh_halls_owner_course($course_id);
+	$centre = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $owner))->fetchField();
+	$parts = array();
+	foreach (dh_halls_list($centre) as $id => $h)
+	{
+		$gs = array();
+		foreach ($map as $g => $mh)
+			if ($mh['id'] === $id)
+				$gs[] = $g;
+		$parts[] = $h['code'] . ' — ' . ($gs ? 'Group ' . implode(', ', $gs) : 'none');
+	}
+	return implode(' · ', $parts);
+}
+
+/** POST course-halls/{centre}/{course}: token + map[g]=code, or reset=1. JSON {ok, msg}. */
+function dh_halls_course_page_save($centre_id, $course_id)
+{
+	global $user;
+	$out = array('ok' => FALSE, 'msg' => '');
+	if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['token']) || !drupal_valid_token($_POST['token'], 'dh-course-halls'))
+		$out['msg'] = 'Your page is out of date. Please reload it.';
+	elseif ((int) db_query("select c_center from dh_course where c_id = :c", array(':c' => (int) $course_id))->fetchField() !== (int) $centre_id)
+		$out['msg'] = 'This course is not in this centre.';
+	else
+	{
+		$msg = !empty($_POST['reset']) ? dh_halls_course_reset((int) $course_id, $user->uid)
+			: dh_halls_course_save((int) $course_id, isset($_POST['map']) ? (array) $_POST['map'] : array(), $user->uid);
+		$out = array('ok' => $msg === '', 'msg' => $msg);
+	}
+	drupal_json_output($out);
+	drupal_exit();
+}

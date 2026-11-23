@@ -212,6 +212,12 @@ function dh_manageapp_menu()
 	       'access arguments' => array('manage course'),
 	       'type' => MENU_CALLBACK);
 
+    $items['course-halls/%centre_id/%course_id'] = array('title' => t('Set course halls'),
+	       'page callback' => 'dh_halls_course_page_save',
+	       'page arguments' => array(1, 2),
+	       'access arguments' => array('manage course'),
+	       'type' => MENU_CALLBACK);
+
     $items['centre'] = array('title' => t('Manage Centre'),
 	       'page callback' => 'dh_manage_centre',
 	       'access arguments' => array('access centre'),
