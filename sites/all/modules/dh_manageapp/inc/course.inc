@@ -176,6 +176,9 @@ function dh_course_dashboard()
 				}, "json").fail(function(){ alert("Could not save plan."); s.val(prev); });
 			});
 		});})(jQuery);', "inline");
+
+		// Halls for this course (inc/halls.inc): only centres with 2 or more Dhamma Halls.
+		$out .= dh_halls_course_box((int) arg(1), (int) arg(2));
 	}
 
 	$out .= '<h2>Course Summary</h2>';

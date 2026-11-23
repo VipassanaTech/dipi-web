@@ -470,3 +470,47 @@ function dh_halls_course_page_save($centre_id, $course_id)
 	drupal_json_output($out);
 	drupal_exit();
 }
+
+/** The course page box (centres with 2+ halls): the course line, and a Change box when the course's halls can be changed. */
+function dh_halls_course_box($centre_id, $course_id)
+{
+	$line = dh_halls_course_line($course_id);
+	if ($line === '')
+		return '';
+	$why = dh_halls_course_block($course_id);
+	$h = '<div class="course-halls-box" style="margin:0 0 16px;padding:8px 14px;background:#f5f7f9;border:1px solid #dfe4e8;border-radius:6px">'
+		. '<b style="margin-right:12px">Halls for this course:</b> ' . check_plain($line);
+	if ($why !== '')
+		return $h . ' <span style="color:#888;font-size:13px">&mdash; ' . check_plain($why) . '</span></div>';
+	$owner = dh_halls_owner_course($course_id);
+	$cid = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $owner))->fetchField();
+	$halls = dh_halls_list($cid);
+	$map = dh_halls_course_map($course_id);
+	$h .= ' <button type="button" class="btn btn-default btn-sm ch-open">Change</button>'
+		. '<div class="ch-edit" style="display:none;margin-top:10px"><div style="display:flex;gap:12px;flex-wrap:wrap">';
+	for ($g = 1; $g <= 9; $g++)
+	{
+		$h .= '<label style="font-weight:normal">Group ' . $g . ' <select class="form-control ch-sel" data-g="' . $g . '" style="width:auto;display:inline-block">';
+		foreach ($halls as $id => $x)
+			$h .= '<option value="' . check_plain($x['code']) . '"' . ($map[$g]['id'] === $id ? ' selected' : '') . '>' . check_plain($x['code'] . ' — ' . $x['name']) . '</option>';
+		$h .= '</select></label>';
+	}
+	$h .= '</div><p style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm ch-save">Save</button> '
+		. '<button type="button" class="btn btn-default btn-sm ch-cancel">Cancel</button> '
+		. '<a href="#" class="ch-reset" style="margin-left:12px">Use the centre\'s usual halls</a></p></div></div>';
+	$url = url('course-halls/' . (int) $centre_id . '/' . (int) $course_id);
+	$token = drupal_get_token('dh-course-halls');
+	drupal_add_js('(function($){$(function(){
+		var URL=' . drupal_json_encode($url) . ', TOKEN=' . drupal_json_encode($token) . ';
+		function post(data){ $.post(URL, $.extend({token:TOKEN}, data), function(j){ if (j && j.ok) location.reload(); else alert((j && j.msg) || "Could not save."); }, "json").fail(function(){ alert("Could not save. Please check the connection and try again."); }); }
+		$(".course-halls-box .ch-open").on("click", function(){ $(".course-halls-box .ch-edit").show(); $(this).hide(); });
+		$(".course-halls-box .ch-cancel").on("click", function(){ location.reload(); });
+		$(".course-halls-box .ch-save").on("click", function(){
+			if (!confirm("Set halls for this course?")) return;
+			var map = {}; $(".course-halls-box .ch-sel").each(function(){ map[$(this).data("g")] = $(this).val(); });
+			post({map: map});
+		});
+		$(".course-halls-box .ch-reset").on("click", function(e){ e.preventDefault(); if (confirm("Use the centre\'s usual halls for this course?")) post({reset: 1}); });
+	});})(jQuery);', 'inline');
+	return $h;
+}
