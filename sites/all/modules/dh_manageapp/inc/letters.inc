@@ -1863,6 +1863,9 @@ function dh_clear_email_error($app_id, $centre_id)
  */
 function _dh_mailgun_apply_event($app_id, $at_app_id, $event, $recipient, $test_mode, $desc)
 {
+	// The numbers come from the report: plain numbers only.
+	$app_id = is_scalar($app_id) ? (int) $app_id : 0;
+	$at_app_id = is_scalar($at_app_id) ? (int) $at_app_id : 0;
 	if ($test_mode == 1)
 		return;
 
@@ -1893,16 +1896,38 @@ function _dh_mailgun_apply_event($app_id, $at_app_id, $event, $recipient, $test_
 }
 
 /**
+ * The key Mailgun signs its delivery reports with: the "Mailgun Webhook Signing Key" box on Mail Settings
+ * when it holds a value, else the sending key (mailgun_key) - this account's reports are signed with the
+ * sending key. An EMPTY box counts as not set: saving Mail Settings stores the empty box, and it must never
+ * become an empty key (anyone can sign with an empty key). '' = no key at all.
+ */
+function dh_mailgun_webhook_key()
+{
+	$key = (string) variable_get('mailgun_webhook_signing_key', '');
+	if ($key === '')
+		$key = (string) variable_get('mailgun_key', '');
+	return $key;
+}
+
+/** TRUE only for a report really signed by Mailgun. With no key at all nothing is trusted. */
+function dh_mailgun_signature_ok($timestamp, $token, $signature)
+{
+	$key = dh_mailgun_webhook_key();
+	if ($key === '' || !is_scalar($timestamp) || !is_scalar($token) || !is_string($signature) || $signature === '')
+		return FALSE;
+	return hash_equals(hash_hmac('sha256', $timestamp . $token, $key), $signature);
+}
+
+/**
  * Mailgun webhook - legacy flat ($_POST) format. Parses and delegates to the
  * shared handler. Kept working in case Mailgun still posts the old format.
  */
 function mailgun_webhook()
 {
-	$key = variable_get('mailgun_webhook_signing_key', variable_get('mailgun_key', ''));
 	$post_data = $_POST;
 	if ($_SERVER['REQUEST_METHOD'] == 'POST'
 		&& isset($post_data['timestamp'], $post_data['token'], $post_data['signature'])
-		&& hash_hmac('sha256', $post_data['timestamp'] . $post_data['token'], $key) === $post_data['signature'])
+		&& dh_mailgun_signature_ok($post_data['timestamp'], $post_data['token'], $post_data['signature']))
 	{
 		$event = isset($post_data['event']) ? $post_data['event'] : '';
 		$recipient = isset($post_data['recipient']) ? $post_data['recipient'] : '';
@@ -1930,39 +1955,45 @@ function mailgun_webhook()
  */
 function mailgun_webhook3()
 {
-	$key = variable_get('mailgun_webhook_signing_key', variable_get('mailgun_key', ''));
 	$post_data = json_decode(file_get_contents('php://input'), true);
-
-	$sig = isset($post_data['signature']) ? $post_data['signature'] : array();
-	$valid = isset($sig['timestamp'], $sig['token'], $sig['signature'])
-		&& hash_hmac('sha256', $sig['timestamp'] . $sig['token'], $key) === $sig['signature'];
-
-	if ($valid && isset($post_data['event-data']))
-	{
-		$ed = $post_data['event-data'];
-		$uv = isset($ed['user-variables']) ? $ed['user-variables'] : array();
-		$event = isset($ed['event']) ? $ed['event'] : '';
-		$recipient = isset($ed['recipient']) ? $ed['recipient'] : '';
-		$test_mode = isset($uv['test-mode']) ? $uv['test-mode'] : 0;
-
-		$desc = '(3) ' . strtoupper($event) . " - " . $recipient;
-		if (isset($ed['delivery-status']['code'])) $desc .= " " . $ed['delivery-status']['code'];
-		if (isset($ed['reason'])) $desc .= " " . $ed['reason'];
-		if (isset($ed['delivery-status']['message'])) $desc .= " (" . $ed['delivery-status']['message'] . ") ";
-		if (isset($ed['delivery-status']['description'])) $desc .= " " . $ed['delivery-status']['description'];
-
-		_dh_mailgun_apply_event(
-			isset($uv['app-id']) ? $uv['app-id'] : 0,
-			isset($uv['at-app-id']) ? $uv['at-app-id'] : 0,
-			$event, $recipient, $test_mode, $desc
-		);
-	}
-	else
-	{
+	if (!_dh_mailgun_webhook3_handle($post_data))
 		watchdog('WEBHOOK3', 'Invalid signature or payload: ' . substr(print_r($post_data, true), 0, 2000));
-	}
 	header('X-PHP-Response-Code: 200', true, 200);
 	print "ok 200";
+}
+
+/**
+ * One delivery report in the current format (decoded JSON: signature + event-data). Acts only when Mailgun
+ * really signed it. Returns FALSE for a report that is not signed right or has no event (logged by the caller).
+ */
+function _dh_mailgun_webhook3_handle($post_data)
+{
+	if (!is_array($post_data))
+		return FALSE;
+	$sig = (isset($post_data['signature']) && is_array($post_data['signature'])) ? $post_data['signature'] : array();
+	$valid = isset($sig['timestamp'], $sig['token'], $sig['signature'])
+		&& dh_mailgun_signature_ok($sig['timestamp'], $sig['token'], $sig['signature']);
+	if (!$valid || !isset($post_data['event-data']) || !is_array($post_data['event-data']))
+		return FALSE;
+
+	$ed = $post_data['event-data'];
+	$uv = (isset($ed['user-variables']) && is_array($ed['user-variables'])) ? $ed['user-variables'] : array();
+	$event = isset($ed['event']) ? $ed['event'] : '';
+	$recipient = isset($ed['recipient']) ? $ed['recipient'] : '';
+	$test_mode = isset($uv['test-mode']) ? $uv['test-mode'] : 0;
+
+	$desc = '(3) ' . strtoupper($event) . " - " . $recipient;
+	if (isset($ed['delivery-status']['code'])) $desc .= " " . $ed['delivery-status']['code'];
+	if (isset($ed['reason'])) $desc .= " " . $ed['reason'];
+	if (isset($ed['delivery-status']['message'])) $desc .= " (" . $ed['delivery-status']['message'] . ") ";
+	if (isset($ed['delivery-status']['description'])) $desc .= " " . $ed['delivery-status']['description'];
+
+	_dh_mailgun_apply_event(
+		isset($uv['app-id']) ? $uv['app-id'] : 0,
+		isset($uv['at-app-id']) ? $uv['at-app-id'] : 0,
+		$event, $recipient, $test_mode, $desc
+	);
+	return TRUE;
 }
 
 

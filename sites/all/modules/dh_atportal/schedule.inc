@@ -1179,8 +1179,8 @@ function log_course_teacher($at_app_id, $msg)
 {
 	global $user;
 
-	$q = "select c_center from dh_course_teacher left join dh_course on ct_course=c_id where ct_id=".$at_app_id;
-	$center = db_query($q)->fetchField();
+	$center = db_query("select c_center from dh_course_teacher left join dh_course on ct_course=c_id where ct_id = :id",
+		array(':id' => (int) $at_app_id))->fetchField();
 
 	$fields = array();
 	$fields['l_center'] = $center;
