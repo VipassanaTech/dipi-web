@@ -2170,39 +2170,8 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
 			$where .= " and a_willing_to_serve=1";
 		if ( isset($storage['is_pregnant']) && ($storage['is_pregnant']) )
 			$where .= " and ae_pregnant=1";
-    if ( isset($storage['least_10_day']) && ($storage['least_10_day']) )
-      $where .= " and ac.ac_10d >= {$storage['least_10_day']} ";
-    if ( isset($storage['least_stp']) && ($storage['least_stp']) )
-      $where .= " and ac.ac_stp >= {$storage['least_stp']} ";
-    if ( isset($storage['least_spl']) && ($storage['least_spl']) )
-      $where .= " and ac.ac_spl >= {$storage['least_spl']} ";
-    if ( isset($storage['least_20_day']) && ($storage['least_20_day']) )
-      $where .= " and ac.ac_20d >= {$storage['least_20_day']} ";
-    if ( isset($storage['least_30_day']) && ($storage['least_30_day']) )
-      $where .= " and ac.ac_30d >= {$storage['least_30_day']} ";
-    if ( isset($storage['least_45_day']) && ($storage['least_45_day']) )
-      $where .= " and ac.ac_45d >= {$storage['least_45_day']} ";
-    if ( isset($storage['least_60_day']) && ($storage['least_60_day']) )
-      $where .= " and ac.ac_60d >= {$storage['least_60_day']} ";
-    if ( isset($storage['least_service']) && ($storage['least_service']) )
-      $where .= " and ac.ac_service >= {$storage['least_service']} ";
-
-    if ( isset($storage['max_10_day']) && ($storage['max_10_day']) )
-      $where .= " and ac.ac_10d <= {$storage['max_10_day']} ";
-    if ( isset($storage['max_stp']) && ($storage['max_stp']) )
-      $where .= " and ac.ac_stp <= {$storage['max_stp']} ";
-    if ( isset($storage['max_spl']) && ($storage['max_spl']) )
-      $where .= " and ac.ac_spl <= {$storage['max_spl']} ";
-    if ( isset($storage['max_20_day']) && ($storage['max_20_day']) )
-      $where .= " and ac.ac_20d <= {$storage['max_20_day']} ";
-    if ( isset($storage['max_30_day']) && ($storage['max_30_day']) )
-      $where .= " and ac.ac_30d <= {$storage['max_30_day']} ";
-    if ( isset($storage['max_45_day']) && ($storage['max_45_day']) )
-      $where .= " and ac.ac_45d <= {$storage['max_45_day']} ";
-    if ( isset($storage['max_60_day']) && ($storage['max_60_day']) )
-      $where .= " and ac.ac_60d <= {$storage['max_60_day']} ";
-    if ( isset($storage['max_service']) && ($storage['max_service']) )
-      $where .= " and ac.ac_service <= {$storage['max_service']} ";
+    // Least/Max number boxes: whole numbers only (inc/search.inc dh_search_count_where).
+    $where .= dh_search_count_where($storage);
 
 
 		$out = '<h2>'.l("Back to Search", "search-app/".$centre_id).'</h2>';
@@ -2690,16 +2659,15 @@ function dh_lc_transfer_warning_at($r)
 	return strcasecmp(trim(substr($then, strlen('RecoAT Assigned to '))), trim($r['al_recommending'])) == 0 ? $r['al_recommending'] : '';
 }
 
-function dh_search_lc ($type)
+function dh_search_lc ($type = '')
 {
 	global $user;
-	$res = db_query("select uc_center from dh_user_center where uc_user='".$user->uid."'  and uc_deleted=0");
-	$centres = array();
-	while($r = $res->fetchAssoc())
-	{
-		$centres[] = $r['uc_center'];
-	}
-	$where = " a_center in (".implode(",", $centres).") and a_status in ('".$type."')";
+	// Only an LC review status from the address reaches the database question.
+	$status = dh_search_lc_status($type);
+	$centres = array_map('intval', db_query("select uc_center from dh_user_center where uc_user = :u and uc_deleted = 0", array(':u' => $user->uid))->fetchCol());
+	if ($status === '' || !$centres)
+		return array('out' => array('#markup' => '<p>' . t('Nothing to show.') . '</p>'));
+	$where = " a_center in (".implode(",", $centres).") and a_status in ('".$status."')";
 	$out = dh_manageapp_search_results( 'applicant', $where, $centres[0], True );
 
 	$form['out'] = array('#markup' => $out, '#weight' => 100 );
@@ -3012,4 +2980,101 @@ function dh_application_view($app_id, $at_uid = 0)
 	drupal_add_js($js, 'inline');
 
 	return $out;
+}
+
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Values a search page takes from the address or from its number boxes. Only known values get into the
+ * database question; anything else is ignored, so nothing typed into the address can change the question
+ * or show up on the page. The question stays exactly the same for every link DIPI itself makes.
+ * Tested by tests/test-search-sql-input.php.
+ * ------------------------------------------------------------------------------------------------------- */
+
+/** Status words from ?s= (comma separated): one word of letters and digits, hyphens only between them
+ * ("Clarification-Response", "A-ATReview"), like every status name in DIPI. */
+function dh_search_status_list($s)
+{
+	$out = array();
+	if (!is_string($s))
+		return $out;
+	foreach (explode(',', $s) as $v) {
+		$v = trim($v);
+		if (strlen($v) <= 50 && preg_match('/^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$/', $v) && !in_array($v, $out, TRUE))
+			$out[] = $v;
+	}
+	return $out;
+}
+
+/** One value from a fixed list ($allowed), else ''. */
+function dh_search_choice($v, $allowed)
+{
+	return (is_string($v) && in_array($v, $allowed, TRUE)) ? $v : '';
+}
+
+/**
+ * search-course/{centre}/{course}: the database question (where) and the page heading (msg) from the
+ * address values in $req (= $_REQUEST): s status list, g gender (M/F), t old/new (1/0), at applicant
+ * type (s = servers), d list type (s = students). A user who may see only one gender always gets that one.
+ */
+function dh_search_course_filter($course_id, $req)
+{
+	$get = function ($k) use ($req) { return isset($req[$k]) ? $req[$k] : NULL; };
+	$statuses = dh_search_status_list($get('s'));
+	$old = dh_search_choice($get('t'), array('0', '1'));
+	$app_type = '';
+	if ($get('at') !== NULL)
+		$app_type = ($get('at') === 's') ? 'Sevak' : 'Student';
+	$type = ($get('d') === 's') ? 'student' : 'applicant';
+	if (!(user_access('access male') && user_access('access female')))
+		$gender = user_access('access male') ? 'M' : 'F';
+	else
+		$gender = dh_search_choice($get('g'), array('M', 'F'));
+
+	$where = ' ' . ($type == 'student' ? 'sc_course' : 'a_course') . '=' . (int) $course_id;
+	$msg = '';
+	if ($app_type <> '')
+		$where .= " and a_type='$app_type'";
+	if ($statuses) {
+		if ($type == 'applicant') {
+			$conn = Database::getConnection();
+			$where .= ' and a_status IN (' . implode(',', array_map(array($conn, 'quote'), $statuses)) . ') ';
+			$msg .= 'Status: ' . implode(',', $statuses);
+		}
+	}
+	else
+		$msg .= 'Status: All';
+	if ($gender <> '') {
+		$where .= ' and ' . ($type == 'student' ? 's_gender' : 'a_gender') . " ='$gender' ";
+		$msg .= ', Gender: ' . ($gender == 'M' ? 'Male' : 'Female');
+	}
+	if ($old <> '') {
+		// students: s_first is 1 for a new student
+		$where .= ($type == 'student') ? " and s_first ='" . ($old ? '' : '1') . "' " : " and a_old ='$old' ";
+		$msg .= $old ? 'Old' : 'New';
+	}
+	return array('type' => $type, 'where' => $where, 'msg' => $msg);
+}
+
+/** Search form "Least/Max number of ..." boxes: whole numbers only (they go into the question without quotes). Empty or 0 = not used. */
+function dh_search_count_where($storage)
+{
+	$cols = array('10_day' => 'ac_10d', 'stp' => 'ac_stp', 'spl' => 'ac_spl', '20_day' => 'ac_20d', '30_day' => 'ac_30d',
+		'45_day' => 'ac_45d', '60_day' => 'ac_60d', 'service' => 'ac_service');
+	$where = '';
+	foreach (array('least' => '>=', 'max' => '<=') as $k => $op)
+		foreach ($cols as $box => $col)
+			if (isset($storage[$k . '_' . $box]) && $storage[$k . '_' . $box])
+				$where .= " and ac.$col $op " . (int) $storage[$k . '_' . $box] . ' ';
+	return $where;
+}
+
+/** search-lc/{status}: the LC review status named in the address (any letter case), or '' when it is not one. */
+function dh_search_lc_status($type)
+{
+	if (!is_string($type) || $type === '')
+		return '';
+	foreach (db_query("select td_key from dh_type_detail where td_type = 'COURSE-LC-STATUS'")->fetchCol() as $s)
+		if (strcasecmp($s, $type) === 0)
+			return $s;
+	return '';
 }

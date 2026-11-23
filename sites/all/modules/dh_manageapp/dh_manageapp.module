@@ -2197,74 +2197,11 @@ function _search_course()
 {
 	$centre_id = arg(1);
 	$course_id = arg(2);
-	$status = $_REQUEST['s'];
-	$old = $_REQUEST['t'];
-
-	$app_type = '';
-	if (isset($_REQUEST['at']))
-		$app_type = ($_REQUEST['at']=='s')?'Sevak':'Student';
-
-
-	if (isset($_REQUEST['d']))
-		$type = $_REQUEST['d'];
-	else
-		$type = 'a';
-
-	if ($type == 's')
-		$type = 'student';
-	else
-		$type = 'applicant';
-
-
-	if ( ! (user_access("access male") && (user_access("access female"))) )
-	{
-		if ( user_access("access male") ) $gender = 'M'; else $gender = 'F'; 
-		//$where .= " and a_gender ='$gender'";
-	}
-	else	
-		$gender = $_REQUEST['g'];
-
-	$field = 'a_course'; 
-	if ($type == 'student') $field = 'sc_course';
-	$where = " $field=$course_id";
-	$msg = "";
-	$temp = explode(",", $status);
-
-	if ($app_type <> '')
-		$where .= " and a_type='$app_type'";
-
-	if ( $status <> '' )
-	{
-		if ( $type == 'applicant')
-		{
-			if (count($temp) > 0)
-				$where .= " and a_status IN ('".implode("','", $temp)."') ";
-			else
-				$where .= " and a_status ='$status' ";
-			$msg .= 'Status: '.$status;			
-		}
-	}
-	else
-		$msg .= 'Status: All';
-		
-	if ( $gender <> '' )
-	{
-		$field = 'a_gender';
-		if ($type == 'student') $field = 's_gender';
-		$where .= " and $field ='$gender' ";
-		$msg .= ', Gender: '.($gender=='M'?'Male':'Female');						
-	}
-	if ( $old <> '' )
-	{
-		if ( $type == 'student' )
-		{
-			$temp = !$old;
-			$where .= " and s_first ='$temp' ";			
-		}
-		else
-			$where .= " and a_old ='$old' ";
-		$msg .= ($old?'Old':'New');
-	}
+	// Only known values from the address reach the database question (inc/search.inc).
+	$f = dh_search_course_filter($course_id, $_REQUEST);
+	$type = $f['type'];
+	$where = $f['where'];
+	$msg = check_plain($f['msg']);
 
 	$out = '<h3>'.$msg.' ('.l("Back to Course", "course/".$centre_id."/".$course_id).')&nbsp;&nbsp;|&nbsp;&nbsp; ('.l("Back to Dashboard", "centre/".$centre_id).')&nbsp;&nbsp;|&nbsp;&nbsp;'.l("Add Applicant", "app/add/$centre_id/$course_id").'</h3>';
     $course_name = dh_course_file_basename($centre_id, $course_id);
