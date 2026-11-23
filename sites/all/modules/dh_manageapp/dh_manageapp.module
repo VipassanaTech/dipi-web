@@ -1769,17 +1769,18 @@ function dh_get_course_types()
 }
 
 
+/** Transfer popup: upcoming courses of a centre (name, id). $centre must be a plain number, else no courses. */
+function dh_centre_upcoming_courses($centre)
+{
+	if (!is_string($centre) || !ctype_digit($centre))
+		return array();
+	return db_query("select c_name as 'name', c_id as 'id' from dh_course where c_center = :c and c_deleted = 0 and c_start >= curdate() order by c_start",
+		array(':c' => (int) $centre))->fetchAll(PDO::FETCH_ASSOC);
+}
+
 function _get_courses()
 {
-	$centre = arg(1);
-	$q = "select c_name as 'name', c_id as 'id' from dh_course where c_center=$centre and c_deleted = 0 and c_start >= curdate() order by c_start";
-	$hand = db_query($q);
-	$out = array();
-	while($row = $hand->fetchAssoc())
-	{
-		$out[] = $row;
-	}
-	drupal_json_output($out);
+	drupal_json_output(dh_centre_upcoming_courses((string) arg(1)));
 	exit;
 }
 
