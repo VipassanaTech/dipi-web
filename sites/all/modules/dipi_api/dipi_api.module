@@ -2449,6 +2449,8 @@ function _api_sms_keyword_transfer($phone, $centre, $start_date, $id)
         db_query($q);
         $msg = 'Re-Applied from '.$r['c_name']." (".$r['a_status'].") ";
         logit($new_course['c_id'], 'Status Change', $r['a_id'], $msg );
+        // Tell the applicant where the application is now (dh_manageapp inc/letters.inc).
+        dh_send_transfer_email($r['a_id'], $r['a_course'], $new_course['c_id']);
 
                
         $out = "Application Id ".$r['a_id']." transferred to ".$new_course['c_name']." successfully";

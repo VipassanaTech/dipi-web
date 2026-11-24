@@ -2015,3 +2015,76 @@ function get_mailgun_domain($from)
 
     return $mailgun_domain;
 }
+
+
+/**
+ * Transfer email (owner, 24 Nov 2026): after an application has moved to another course (same or another centre)
+ * - by the registrar's Transfer, or by the TRANSFER keyword (WhatsApp / SMS / partner API) - the applicant gets a
+ * short automatic email from DIPI Automation, with no reply address. Not sent when the course did not change or
+ * there is no email address; in test mode only to the test address. Noted in the application's activity. A
+ * failure is logged and never stops the move. Returns TRUE when sent (or captured by a test).
+ */
+/** A course as the transfer email names it: course names normally start with the centre ("Dhamma Giri / 10 Day /
+ * 2026 / ..."), so the name alone; otherwise "<course> at <centre>". */
+function dh_transfer_course_label($course, $centre)
+{
+	$course = trim((string) $course);
+	$centre = trim((string) $centre);
+	return ($centre === '' || stripos($course, $centre) === 0) ? $course : "$course at $centre";
+}
+
+function dh_send_transfer_email($app_id, $old_course, $new_course)
+{
+	$app_id = (int) $app_id;
+	$old_course = (int) $old_course;
+	$new_course = (int) $new_course;
+	try
+	{
+		if (!$app_id || !$old_course || !$new_course || $old_course == $new_course)
+			return FALSE;
+		$a = db_query("select a_f_name, a_m_name, a_l_name, a_email, a_center from dh_applicant where a_id = :a", array(':a' => $app_id))->fetchAssoc();
+		if (!$a || trim((string) $a['a_email']) === '')
+			return FALSE;
+		$course = function ($id) {
+			return db_query("select co.c_name as course, ce.c_name as centre, ce.c_email, ce.c_phone from dh_course co
+				left join dh_center ce on ce.c_id = co.c_center where co.c_id = :c", array(':c' => $id))->fetchAssoc();
+		};
+		$was = $course($old_course);
+		$now = $course($new_course);
+		if (!$was || !$now)
+			return FALSE;
+
+		$name = implode(' ', array_filter(array(trim((string) $a['a_f_name']), trim((string) $a['a_m_name']), trim((string) $a['a_l_name'])), 'strlen'));
+		$contact = implode(', ', array_filter(array(trim((string) $now['c_email']), trim((string) $now['c_phone'])), 'strlen'));
+		$from = 'DIPI Automation <noreply@vridhamma.org>';
+		$subject = 'Your Vipassana course application has been transferred';
+		$text = "Dear $name,\n\n"
+			. "Your application for " . dh_transfer_course_label($was['course'], $was['centre']) . " has been transferred to "
+			. dh_transfer_course_label($now['course'], $now['centre']) . ".\n\n"
+			. "The new centre will review your application and contact you.\n\n"
+			. ($contact !== '' ? "For questions, please contact {$now['centre']}: $contact.\n\n" : '')
+			. "This is an automatic message. Please do not reply to this email.\n\n"
+			. "- DIPI Automation\n";
+		$test_mode = variable_get('mode_test', '0');
+		$to = $test_mode ? (string) variable_get('mode_test_emails', '') : trim((string) $a['a_email']);
+
+		// Tests only: record the email, send nothing.
+		if (isset($GLOBALS['dh_letter_capture']) && is_array($GLOBALS['dh_letter_capture']))
+			$GLOBALS['dh_letter_capture'][] = array('type' => 'transfer', 'app' => $app_id, 'from' => $from, 'to' => $to, 'subject' => $subject, 'text' => $text);
+		else
+		{
+			if ($to === '')
+				return FALSE;
+			$mg = Mailgun::create(variable_get('mailgun_key', ''));
+			$mg->messages()->send(get_mailgun_domain($from), array('from' => $from, 'to' => $to, 'subject' => $subject, 'text' => $text,
+				'v:app-id' => $app_id, 'v:test-mode' => $test_mode));
+		}
+		logit($a['a_center'], 'Letter', $app_id, "Transfer email sent: {$was['course']} ({$was['centre']}) -> {$now['course']} ({$now['centre']})");
+		return TRUE;
+	}
+	catch (Throwable $e)
+	{
+		watchdog('LETTER', 'Transfer email for application @a not sent: @m', array('@a' => $app_id, '@m' => $e->getMessage()), WATCHDOG_WARNING);
+		return FALSE;
+	}
+}

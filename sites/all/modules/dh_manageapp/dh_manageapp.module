@@ -2573,6 +2573,8 @@ function _move_to_centre_course()
 	// centre's may no longer apply: check the referral again (the API transfer does
 	// the same through status-trigger.php -> update_status_external).
 	set_referral($app_id);
+	// Tell the applicant where the application is now (inc/letters.inc).
+	dh_send_transfer_email($app_id, $rs['a_course'], $new_course);
 	$out = array();
 	$out['status'] = 'OK';
 	$out['msg'] = '';
