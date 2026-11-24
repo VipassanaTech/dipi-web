@@ -78,10 +78,22 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 	}
 	if ($course_id == '')
 	{
-		$course_id = $form_state['input']['course'];
-		$centre_id = $form_state['input']['centre'];
+		// The Male/Female reload (system/ajax): the page address has no course here, so it comes from the form. Use it
+		// only when it is a plain number of a course this user may open (course_id_load, as for the page address); the
+		// centre is that course's own centre. Tested by tests/test-app-form-course.php.
+		$posted = (isset($form_state['input']['course']) && is_scalar($form_state['input']['course'])) ? (string) $form_state['input']['course'] : '';
+		$course_id = (ctype_digit($posted) && course_id_load($posted)) ? (int) $posted : 0;
+		if (!$course_id)
+		{
+			$again = '<div class="messages error">' . t('Please open the form again.') . '</div>';
+			return array('Attending' => array(
+				'aa_section' => array('#markup' => '<div id="dropdown-section-replace">' . $again . '</div>'),
+				'aa_acco' => array('#markup' => '<div id="dropdown-acco-replace"></div>'),
+			));
+		}
+		$centre_id = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
 	}
-	$f_r = db_query("select c_name, c_finalized from dh_course where c_id=$course_id")->fetchAssoc();
+	$f_r = db_query("select c_name, c_finalized from dh_course where c_id = :c", array(':c' => $course_id))->fetchAssoc();
 	$finalized = $f_r['c_finalized'];
 	$course_name = l($f_r['c_name'], "course/$centre_id/$course_id");
 	if ( $finalized )
@@ -92,7 +104,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 
 	$LC = $TEEN = $CHILD = false;
 
-	$course_type_check = db_query("select td_val3, td_key from dh_course left join dh_type_detail on c_course_type=td_id where c_id=$course_id")->fetchAssoc();
+	$course_type_check = db_query("select td_val3, td_key from dh_course left join dh_type_detail on c_course_type=td_id where c_id = :c", array(':c' => $course_id))->fetchAssoc();
 
   $course_check = strtolower($course_type_check['td_val3']);
 	if ($course_check == 'lc')
