@@ -286,8 +286,16 @@ function dh_halls_form_section($centre_id, $posted = array())
 		return array();
 	$halls = dh_halls_list($centre_id);
 	$f = array('#type' => 'fieldset', '#title' => 'Dhamma Halls', '#collapsible' => TRUE, '#collapsed' => empty($posted), '#weight' => 98);
-	$f['help'] = array('#markup' => '<p>Add halls only if this centre has more than one Dhamma Hall.</p>'
-		. '<p><small>Code: up to 6 letters or digits (for example DH1), shown where space is short. Name: up to 40 letters (for example Dhamma Hall 1), shown in headings.</small></p>');
+	$f['help'] = array('#markup' => '<p><b>What this is for:</b> if this centre has <b>more than one Dhamma Hall</b>, add the halls here.'
+		. ' Then DIPI shows which hall each group sits in, next to the group: on seating plans, chits, checking slips, Zero Day and the teacher list.'
+		. ' A centre with one Dhamma Hall does not need this: leave it empty and nothing changes.</p>'
+		. '<p><b>Code</b>: a short label, up to 6 letters or digits, shown where space is small (Zero Day, lists, buttons).'
+		. ' Start it with letters, so it is not mixed up with a group number. For example: <b>DH1</b>, <b>DH2</b>, <b>MINI</b>, <b>DH1LC</b>.<br>'
+		. '<b>Name</b>: the full name, up to 40 characters, shown in headings (seating plans, chits, slips).'
+		. ' For example: <b>Dhamma Hall 1</b>, <b>Dhamma Hall 1 Old</b>, <b>Mini Hall</b>.</p>'
+		. '<table class="table table-condensed" style="width:auto"><tr><th>Code</th><th>Name</th><th>A group shows as</th></tr>'
+		. '<tr><td>DH1</td><td>Dhamma Hall 1</td><td>Group 2 · DH1 (lists) / Group 2 · Dhamma Hall 1 (headings)</td></tr>'
+		. '<tr><td>MINI</td><td>Mini Hall</td><td>Group 3 · MINI / Group 3 · Mini Hall</td></tr></table>');
 	$f['dhh'] = array('#tree' => TRUE);
 	$rows = array_values($halls);
 	$shown_blank = $halls ? 0 : 2;   // a centre with no halls starts with two empty rows; "Add hall" shows more
@@ -303,9 +311,9 @@ function dh_halls_form_section($centre_id, $posted = array())
 	{
 		$hide = !empty($h['hidden']);
 		$f['dhh'][$i]['id'] = array('#type' => 'hidden', '#value' => (int) $h['id']);
-		$f['dhh'][$i]['code'] = array('#type' => 'textfield', '#title' => 'Code', '#size' => 8, '#maxlength' => 6, '#default_value' => $h['code'],
+		$f['dhh'][$i]['code'] = array('#type' => 'textfield', '#title' => 'Code', '#size' => 8, '#maxlength' => 6, '#default_value' => $h['code'], '#attributes' => array('placeholder' => 'e.g. DH1'),
 			'#prefix' => '<div class="dhh-row' . ($hide ? ' dhh-spare' : '') . '" style="display:' . ($hide ? 'none' : 'flex') . ';gap:12px;align-items:flex-end;flex-wrap:wrap">');
-		$f['dhh'][$i]['name'] = array('#type' => 'textfield', '#title' => 'Name', '#size' => 30, '#maxlength' => 40, '#default_value' => $h['name'],
+		$f['dhh'][$i]['name'] = array('#type' => 'textfield', '#title' => 'Name', '#size' => 30, '#maxlength' => 40, '#default_value' => $h['name'], '#attributes' => array('placeholder' => 'e.g. Dhamma Hall 1'),
 			'#suffix' => $h['id'] ? '' : '</div>');
 		if ($h['id'])
 			$f['dhh'][$i]['remove'] = array('#type' => 'checkbox', '#title' => 'Remove', '#suffix' => '</div>');
@@ -320,7 +328,7 @@ function dh_halls_form_section($centre_id, $posted = array())
 		foreach ($halls as $h)
 			$opts[(string) $h['id']] = $h['code'] . ' — ' . $h['name'];
 		$usual = dh_halls_usual($centre_id);
-		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b> — every course follows these unless it changes them on its own page.</p>');
+		$f['usual_title'] = array('#markup' => '<p><b>Usual hall for each group</b>: the hall each group normally sits in. Every course follows these, unless it changes them on its own page (Course page, next to "Plan for this course").</p>');
 		$f['dhh_usual'] = array('#tree' => TRUE, '#prefix' => '<div style="display:flex;gap:12px;flex-wrap:wrap">', '#suffix' => '</div>');
 		for ($g = 1; $g <= 9; $g++)
 			$f['dhh_usual'][$g] = array('#type' => 'select', '#title' => 'Group ' . $g, '#options' => $opts, '#default_value' => (string) $usual[$g]);
