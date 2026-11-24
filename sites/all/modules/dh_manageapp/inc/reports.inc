@@ -120,45 +120,12 @@ function dh_center_course_report_form($form, &$form_state)
 	$form['heading'] = array(
   		'#markup' => '<h2>Get Report for Courses Having Start Date:</h2>',
 	);
-	$form['report_from_date'] = array(
-		'#type' => 'date_popup',
-		'#default_value' => date('Y-m-d', strtotime('-1 year')),
-		'#title' => t('From'),
-		'#size' => 12,
-		'#weight' => 5,
-		'#date_format' => 'Y-m-d',
-		'#date_year_range' => '-100:+0',
-		'#date_label_position' => 'above',
-		'#theme_wrappers' => array('date_popup'),
-		'#datepicker_options' => array(
-			'maxDate' => 0,
-			'#required' => 1,
-			'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-		),
-	);
-
-	$form['report_to_date'] = array(
-		'#type' => 'date_popup',
-		'#default_value' => date('Y-m-d'),
-		'#title' => t('To'),
-		'#size' => 12,
-		'#weight' => 10,
-		'#date_format' => 'Y-m-d',
-		'#date_year_range' => '-100:+0',
-		'#date_label_position' => 'above',
-		'#theme_wrappers' => array('date_popup'),
-		'#datepicker_options' => array(
-			'maxDate' => 0,
-			'#required' => 1,
-			'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-		),
-	);
-
-	$form['#attached']['css'][] = array(
-		'data' => '#edit-report-from-date, #edit-report-to-date { float: none; }',
-		'type' => 'inline',
-	);
-
+	// Day / Month / Year dropdowns (inc/dmy.inc), DIPI's usual date input.
+	$years = array(2000, (int) date('Y'));
+	$form['report_from_date'] = dh_dmy_element(array('title' => t('From'), 'default' => date('Y-m-d', strtotime('-1 year')),
+		'required' => TRUE, 'years' => $years, 'weight' => 5));
+	$form['report_to_date'] = dh_dmy_element(array('title' => t('To'), 'default' => date('Y-m-d'),
+		'required' => TRUE, 'years' => $years, 'weight' => 10));
 
 	$form['sub'] = array(
 		'#type' => 'submit',
@@ -170,16 +137,30 @@ function dh_center_course_report_form($form, &$form_state)
 }
 
 
+/** To must not be before From (both are already real dates after the day/month/year fields' own check). */
+function dh_center_course_report_form_validate($form, &$form_state)
+{
+	$from = $form_state['values']['report_from_date'];
+	$to = $form_state['values']['report_to_date'];
+	if ($from !== '' && $to !== '' && $to < $from)
+		form_set_error('report_to_date', t('The To date cannot be before the From date.'));
+}
+
+/** Course report rows of a centre for courses starting between two dates ('Y-m-d'); the values reach the database only as data. */
+function dh_course_report_rows($centre_id, $from_date, $to_date)
+{
+	$q = "select CourseID, Course, NewMale, NewFemale, (NewMale + NewFemale) as NewTotal, OldMale, OldFemale, (OldMale + OldFemale) as OldTotal , (NewMale + NewFemale + OldMale + OldFemale) as StudentTotal, SevakMale, SevakFemale, (SevakMale + SevakFemale) as SevakTotal from 
+		( select co.c_id as 'CourseID', co.c_name as Course, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 0 then a.a_id end) as NewMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 0 then a.a_id end) AS NewFemale, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 1 then a.a_id end) AS OldMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 1 then a.a_id end) AS OldFemale, count(case when a.a_type='Sevak' and a.a_gender = 'M' then a.a_id end) AS SevakMale, count(case when a.a_type='Sevak' and a.a_gender = 'F' then a.a_id end) AS SevakFemale from dh_applicant a left join dh_course co on a.a_course=co.c_id where a.a_attended=1 and DATE(co.c_start)>=:from and DATE(co.c_start)<=:to and c_cancelled=0 and c_deleted=0 and a.a_center = :centre group by co.c_name order by co.c_start) q";
+	return db_query($q, array(':from' => (string) $from_date, ':to' => (string) $to_date, ':centre' => (int) $centre_id));
+}
+
 function dh_center_course_report_form_submit($form, &$form_state)
 {
 	$centre_id = arg(1);
-	$from_date = $form_state['input']['report_from_date']['date'];
-	$to_date = $form_state['input']['report_to_date']['date'];
+	$from_date = $form_state['values']['report_from_date'];
+	$to_date = $form_state['values']['report_to_date'];
 
-	$q = "select CourseID, Course, NewMale, NewFemale, (NewMale + NewFemale) as NewTotal, OldMale, OldFemale, (OldMale + OldFemale) as OldTotal , (NewMale + NewFemale + OldMale + OldFemale) as StudentTotal, SevakMale, SevakFemale, (SevakMale + SevakFemale) as SevakTotal from 
-		( select co.c_id as 'CourseID', co.c_name as Course, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 0 then a.a_id end) as NewMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 0 then a.a_id end) AS NewFemale, count(case when a.a_type='Student' and a.a_gender = 'M' and a.a_old = 1 then a.a_id end) AS OldMale, count(case when a.a_type='Student' and a.a_gender = 'F' and a.a_old = 1 then a.a_id end) AS OldFemale, count(case when a.a_type='Sevak' and a.a_gender = 'M' then a.a_id end) AS SevakMale, count(case when a.a_type='Sevak' and a.a_gender = 'F' then a.a_id end) AS SevakFemale from dh_applicant a left join dh_course co on a.a_course=co.c_id where a.a_attended=1 and DATE(co.c_start)>='$from_date' and DATE(co.c_start)<='$to_date' and c_cancelled=0 and c_deleted=0 and a.a_center=$centre_id group by co.c_name order by co.c_start) q";
-
-	$result = db_query($q);
+	$result = dh_course_report_rows($centre_id, $from_date, $to_date);
 
 
 	$header = array('Course', 'NewMale', 'NewFemale', 'NewTotal', 'OldMale', 'OldFemale', 'OldTotal', 'StudentTotal', 'SevakMale', 'SevakFemale', 'SevakTotal', 'ConductingTeachers', 'AssistingTeachers', 'TrainingTeachers');
