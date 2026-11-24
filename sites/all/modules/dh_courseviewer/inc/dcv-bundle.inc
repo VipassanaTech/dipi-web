@@ -737,5 +737,10 @@ function dcv_build_bundle($course_id, $plans = NULL, $sides = NULL) {
   );
   $halls = dcv_bundle_halls($course_id);
   if ($halls) { $bundle['halls'] = $halls; }
+  // The hall code of every group 1-9 on this course ({"1": "DH4", ...}), the same map Dipi's pages use: also groups
+  // with no GROUP<n>- seat config lines, and main-plan courses (the app's student page shows the group). Only at a
+  // centre with 2+ halls (empty otherwise), so other bundles stay byte-identical. Added field; schema stays 2.
+  $group_halls = function_exists('dh_halls_js_codes') ? dh_halls_js_codes($course_id) : array();
+  if ($group_halls) { $bundle['group_halls'] = $group_halls; }
   return $bundle;
 }

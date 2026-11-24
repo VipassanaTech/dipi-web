@@ -119,7 +119,11 @@ function dcv_course_plans($course_id, $sides = NULL) {
   $out = array();
   foreach ($ids as $id) {
     $key = strtok($id, '-');
-    $label = ($kind === 'group') ? 'Group ' . substr($id, strlen($key) + 1) . ' · ' . $labels[$key] : $labels[$key];
+    // A group-wise plan names its hall at a centre with 2+ halls, as Dipi's headings do ("Group 2 · Dhamma Hall 3"),
+    // then the side: "Group 2 · Dhamma Hall 3 · Male". dh_halls_tail() is '' otherwise, so the label is as before.
+    $n = substr($id, strlen($key) + 1);
+    $hall = function_exists('dh_halls_tail') ? dh_halls_tail($course_id, $n, 'name') : '';
+    $label = ($kind === 'group') ? 'Group ' . $n . $hall . ' · ' . $labels[$key] : $labels[$key];
     $out[] = array('id' => $id, 'label' => $label,
       'students' => $counts[$id]['students'], 'servers' => $counts[$id]['servers']);
   }
