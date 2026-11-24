@@ -39,6 +39,18 @@ function dh_seat_letter($n)
 	return $s;
 }
 
+/**
+ * "Add" from an earlier application (app/add/<centre>/<course>?ref=<application>): the earlier application's number
+ * when it is a plain number of an application this user may open (app_id_load: own centres or all-centre access,
+ * and gender access), else 0 - so the form never shows another centre's applicant.
+ */
+function dh_add_ref_application($ref)
+{
+	if (!is_scalar($ref) || !ctype_digit((string) $ref))
+		return 0;
+	return app_id_load((string) $ref) ? (int) $ref : 0;
+}
+
 function dh_manage_day_zero()
 {
 	switch( arg(0) )
@@ -181,14 +193,18 @@ function dh_manage_day_zero()
 			elseif ( arg(1) == 'add' ) 
 			{
 				$ajax = arg(4);
-				if ( isset($_REQUEST['ref']) && ($_REQUEST['ref'] <> '') )
+				// "Add" from an earlier application (?ref=): only a plain number of an application this user may open.
+				$ref = dh_add_ref_application(isset($_REQUEST['ref']) ? $_REQUEST['ref'] : '');
+				if ($ref)
 				{
 					$row = db_query("select * from dh_applicant left join dh_applicant_extra on a_id=ae_applicant 
 						left join dh_applicant_course on a_id=ac_applicant left join dh_applicant_lc on a_id=al_applicant 
-						where a_id='".$_REQUEST['ref']."'")->fetchAssoc();	
+						where a_id = :a", array(':a' => $ref))->fetchAssoc();
 					$row['ref'] = 1;
-          $row['ref_id'] = $_REQUEST['ref'];
+					$row['ref_id'] = $ref;
 				}
+				elseif (isset($_REQUEST['ref']) && $_REQUEST['ref'] !== '')
+					drupal_set_message(t("That earlier application can't be used here, so the form starts empty."), 'warning');
 			}
 
 			if ($ajax <> '')
