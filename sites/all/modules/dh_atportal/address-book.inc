@@ -1859,8 +1859,8 @@ function dh_atportal_manage_area_cluster()
             return drupal_get_form('dh_atportal_area_cluster_form');
             break;
         case 'edit':
-            $tac_id = arg(3);
-            $row = db_query("select * from dh_teacher_area_cluster where tac_id=$tac_id")->fetchAssoc();
+            $tac_id = arg(3);   // a real cluster number (area_cluster_id_load)
+            $row = db_query("select * from dh_teacher_area_cluster where tac_id = :id", array(':id' => $tac_id))->fetchAssoc();
             return drupal_get_form('dh_atportal_area_cluster_form', $row);
             break;
     }
@@ -2018,6 +2018,9 @@ function dh_atportal_area_cluster_list()
     while( $r = $result->fetchAssoc() )
     {
         $r["tac_id"] = l("Edit", "/at-portal/area-cluster/edit/".strtolower($r['tac_id']));
+        // Names as plain text (the table shows its cells as page code); areas stay one per line.
+        $r['tac_name'] = check_plain($r['tac_name']);
+        $r['tac_areas'] = implode('<br>', array_map('check_plain', explode('<br>', (string) $r['tac_areas'])));
         $data[] = $r;
     }
 

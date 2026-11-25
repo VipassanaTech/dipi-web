@@ -204,7 +204,7 @@ function dh_atportal_menu()
            'access arguments' => array('access area cluster'),
            'type' => MENU_CALLBACK);
 
-    $items['at-portal/area-cluster/edit/%'] = array( 'title' => t('Edit Area Cluster'),
+    $items['at-portal/area-cluster/edit/%area_cluster_id'] = array( 'title' => t('Edit Area Cluster'),
            'page callback' => 'dh_atportal_manage_area_cluster',
            'access arguments' => array('access area cluster'),
            'type' => MENU_CALLBACK);
@@ -386,6 +386,16 @@ function atappid_load ( $id )
 
 	return false;
 	
+}
+
+// The cluster of the Edit Area Cluster page: a real cluster number only (anything else = Page not found).
+// Tested by dh_manageapp/tests/test-area-cluster.php.
+function area_cluster_id_load($id)
+{
+  if (!is_scalar($id) || !ctype_digit((string) $id))
+    return FALSE;
+  $found = db_query('select tac_id from dh_teacher_area_cluster where tac_id = :id', array(':id' => $id))->fetchField();
+  return ($found !== FALSE && $found == $id) ? $id : FALSE;
 }
 
 // The logged-in AT's own referral that is not deleted (the full-form edit page).
