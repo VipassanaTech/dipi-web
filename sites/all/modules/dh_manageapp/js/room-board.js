@@ -89,6 +89,15 @@
     else if (key !== logKey) { logKey = key; logDT.clear().rows.add(rows).draw(false); }   // keeps search, sort and page
   }
 
+  // Typing a search opens the sections where it finds someone, once; after that they close like any other section.
+  function openHits() {
+    if (!q) return;
+    var H = holders();
+    D.rooms.filter(onSide).forEach(function (r) {
+      if (r.places.some(function (p) { var w = H[key(r.section, p.name)]; return w && anyHit(w); })) open[side + '|' + r.section] = true;
+    });
+  }
+
   function roomOf(p) {
     var r = D.rooms.filter(function (r) { return (r.gender === p.gender || r.gender === 'B') && r.section === p.section && r.places.some(function (x) { return x.name === p.place; }); })[0];
     return r ? r.name : '';
@@ -214,7 +223,9 @@
       }); });
       if (filtered && !match) return;   // a filter hides sections with nothing to show
       shownSecs++;
-      var isOpen = open[side + '|' + sec] || (q && rs.some(function (r) { return r.places.some(function (p) { var w = H[key(sec, p.name)]; return w && anyHit(w); }); }));
+      // Open only by the user (header, Open all / Close all) or once by a search (openHits): never forced, so a
+      // search can no longer keep a section from closing (owner, 25 Nov 2026).
+      var isOpen = !!open[side + '|' + sec];
       h += '<div class="dhr-sec"><div class="dhr-sec-head dhrb-sec" data-sec="' + esc(sec) + '"><b>' + esc(sec) + (rs[0].section_name ? ' <span class="dhr-secname">— ' + esc(rs[0].section_name) + '</span>' : '') + '</b>' + (rs[0].gender === 'B' ? '<span class="dhr-shared">Male + Female</span>' : '') + '<span class="dhrb-fill"><i class="p" style="width:' + (n ? 100 * pn / n : 0) + '%"></i><i class="o" style="width:' + (n ? 100 * on / n : 0) + '%"></i></span>'
         + '<small>' + pn + ' placed · ' + on + ' other course · ' + (n - pn - on) + ' free</small><span style="flex:1"></span>' + (isOpen ? '▾' : '▸') + '</div>';
       if (isOpen) {
@@ -328,7 +339,7 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
     doc.on('click', '#dh-rb-app .dhr-tab[data-side]', function () { side = $(this).data('side'); chosen = null; render(); });
     doc.on('click', '.dhrb-sec', function () { var k = side + '|' + $(this).attr('data-sec'); open[k] = !open[k]; render(); });
-    doc.on('input', '.dhrb-q', function () { q = $(this).val(); var pos = this.selectionStart; render(); var i = $('.dhrb-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
+    doc.on('input', '.dhrb-q', function () { q = $(this).val(); var pos = this.selectionStart; openHits(); render(); var i = $('.dhrb-q')[0]; i.focus(); i.setSelectionRange(pos, pos); });
     doc.on('change', '.dhrb-ft', function () { fToilet = $(this).val(); render(); });
     // Place filter (list or count boxes): a filter other than "All places" opens every section so the places show.
     var setFilter = function (f) {

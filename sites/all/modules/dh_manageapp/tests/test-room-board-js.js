@@ -63,5 +63,10 @@ t("the people list stays in view and scrolls on its own (computer)", function ()
   assert.ok(/@media \(min-width: 701px\) \{\s*\.dhrb-people \{ position: sticky;[^}]*overflow-y: auto;/.test(css));
   assert.ok(/var peopleTop = \$\('#dh-rb-app \.dhrb-people'\)\.scrollTop\(\)[\s\S]*\.html\(h\);\s*\$\('#dh-rb-app \.dhrb-people'\)\.scrollTop\(peopleTop\);/.test(src), "its scroll survives redraws");
 });
+// A search opens matching sections once; it must never keep a section from closing (owner, 25 Nov 2026).
+t("a search never forces a section open (Close all and the header still close it)", function () {
+  assert.ok(/var isOpen = !!open\[side \+ '\|' \+ sec\];/.test(src));
+  assert.ok(/q = \$\(this\)\.val\(\); var pos = this\.selectionStart; openHits\(\); render\(\);/.test(src));
+});
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
