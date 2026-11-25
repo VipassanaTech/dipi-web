@@ -48,6 +48,119 @@ function dh_format_mobile($cc, $num)
 	return '+'.$c.' '.$num;
 }
 
+/**
+ * "Course Left" on the application form (owner, 25 Nov 2026): staff choose the COURSE DAY and the time from dropdowns
+ * (no calendar) and DIPI works out the date. Day 0 = the course start date, Day N = start + N days: a 10-day course
+ * from the 1st to the 12th has the 2nd as Day 1, the 11th as Day 10 and the 12th as Day 11. Saved as before in
+ * aa_left_on ('Y-m-d H:i:00'), so the application view and reports are unchanged. Tested by tests/test-left-on.php.
+ *
+ * The course days a student can have left on, as array(day => "Day 3 · Thu 4 Dec") ("Course day · …" for a one-day
+ * course), up to the course end and never after $today.
+ */
+function dh_left_day_options($start, $end, $today = NULL)
+{
+	$today = $today ? $today : date('Y-m-d');
+	$s = $start ? strtotime($start) : FALSE;
+	$e = $end ? strtotime($end) : FALSE;
+	if ($s === FALSE || $e === FALSE || $e < $s)
+		return array();
+	$days = (int) round(($e - $s) / 86400);
+	$out = array();
+	for ($d = 0; $d <= $days; $d++)
+	{
+		$date = date('Y-m-d', strtotime(date('Y-m-d', $s)." +$d days"));
+		if ($date > $today)
+			break;
+		$out[$d] = ($days == 0 ? 'Course day' : "Day $d").' · '.date('D j M', strtotime($date));
+	}
+	return $out;
+}
+
+// Hours for "Left on", 12-hour labels (value 0..23).
+function dh_left_hour_options()
+{
+	$h = array();
+	for ($i = 0; $i < 24; $i++)
+		$h[$i] = ($i % 12 == 0 ? 12 : $i % 12).($i < 12 ? ' AM' : ' PM');
+	return $h;
+}
+
+// Minutes for "Left on" in 15-minute steps; a saved odd minute ($keep) stays a choice so editing never changes it.
+function dh_left_minute_options($keep = NULL)
+{
+	$m = array(0 => '00', 15 => '15', 30 => '30', 45 => '45');
+	if ($keep !== NULL && $keep !== '' && is_numeric($keep) && !isset($m[(int) $keep]))
+	{
+		$m[(int) $keep] = sprintf('%02d', $keep);
+		ksort($m);
+	}
+	return $m;
+}
+
+/** "Left on" as 'Y-m-d H:i:00' from a course day ('saved' = the date of $saved) and a time; '' when any part is not usable. */
+function dh_left_on_value($start, $day, $hour, $minute, $saved = '')
+{
+	foreach (array($hour, $minute) as $x)
+		if (!is_scalar($x) || !ctype_digit((string) $x))
+			return '';
+	if ((int) $hour > 23 || (int) $minute > 59)
+		return '';
+	if ($day === 'saved')
+	{
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $saved) || substr($saved, 0, 4) == '0000')
+			return '';
+		$date = substr($saved, 0, 10);
+	}
+	elseif (is_scalar($day) && ctype_digit((string) $day) && $start && strtotime($start) !== FALSE)
+		$date = date('Y-m-d', strtotime(date('Y-m-d', strtotime($start)).' +'.(int) $day.' days'));
+	else
+		return '';
+	return sprintf('%s %02d:%02d:00', $date, $hour, $minute);
+}
+
+/** A saved "Left on" back into the form: day / hour / minute; day 'saved' (with its label) when outside the course dates. */
+function dh_left_on_parts($start, $end, $left_on)
+{
+	$empty = array('day' => '', 'hour' => '', 'minute' => '', 'saved' => '');
+	$t = ($left_on && substr($left_on, 0, 4) != '0000') ? strtotime($left_on) : FALSE;
+	if (!$t)
+		return $empty;
+	$date = date('Y-m-d', $t);
+	$out = array('day' => '', 'hour' => (int) date('G', $t), 'minute' => (int) date('i', $t), 'saved' => '');
+	if ($start && $end && $date >= substr($start, 0, 10) && $date <= substr($end, 0, 10))
+		$out['day'] = (int) round((strtotime($date) - strtotime(substr($start, 0, 10))) / 86400);
+	else
+	{
+		$out['day'] = 'saved';
+		$out['saved'] = 'Saved: '.date('D j M Y', $t).' (outside course dates)';
+	}
+	return $out;
+}
+
+/** "Left on" from the posted form for saving (the course start; 'saved' keeps the saved date); '' when not usable. */
+function dh_left_on_from_input($input, $course_id, $app_id)
+{
+	$g = function ($k) use ($input) { return (isset($input[$k]) && is_scalar($input[$k])) ? (string) $input[$k] : ''; };
+	$start = db_query("select c_start from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
+	$saved = $app_id ? (string) db_query("select aa_left_on from dh_applicant_attended where aa_applicant = :a order by aa_id limit 1", array(':a' => $app_id))->fetchField() : '';
+	return dh_left_on_value($start, $g('left_day'), $g('left_hour'), $g('left_minute'), $saved);
+}
+
+/** Course Left = Yes needs the day, the time and a comment (a clear message instead of the old save crash). */
+function dh_left_validate(&$form_state)
+{
+	$in = isset($form_state['input']) && is_array($form_state['input']) ? $form_state['input'] : array();
+	if (!isset($in['aa_left']) || (string) $in['aa_left'] !== '1')
+		return;
+	$g = function ($k) use ($in) { return (isset($in[$k]) && is_scalar($in[$k])) ? trim((string) $in[$k]) : ''; };
+	if ($g('left_day') === '')
+		form_set_error('left_day', t('Please choose the course day the student left.'));
+	if ($g('left_hour') === '' || $g('left_minute') === '')
+		form_set_error('left_hour', t('Please choose the time the student left (hour and minutes).'));
+	if ($g('aa_left_comment') === '')
+		form_set_error('aa_left_comment', t('Please write the Left comment.'));
+}
+
 function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 {
 	/*$conf_detail = '';
@@ -93,7 +206,7 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		}
 		$centre_id = (int) db_query("select c_center from dh_course where c_id = :c", array(':c' => $course_id))->fetchField();
 	}
-	$f_r = db_query("select c_name, c_finalized from dh_course where c_id = :c", array(':c' => $course_id))->fetchAssoc();
+	$f_r = db_query("select c_name, c_finalized, c_start, c_end from dh_course where c_id = :c", array(':c' => $course_id))->fetchAssoc();
 	$finalized = $f_r['c_finalized'];
 	$course_name = l($f_r['c_name'], "course/$centre_id/$course_id");
 	if ( $finalized )
@@ -720,14 +833,26 @@ function dh_ma_applicant_form($form, &$form_state, $edit_data = array())
 		'#options' => array('0' => 'No', "1" => 'Yes')  , 
 		'#default_value' => isset($edit_data['aa_left'])?$edit_data['aa_left']:'0', '#weight' => 98, '#required' => 0,
     '#suffix' => '<div id="left-fields">');
-	$form[$group]['aa_left_on'] = array('#title' => 'Left on Date/Time', '#type' => 'date_popup', '#size' => 20, '#weight' => 99, 
-		'#default_value' => $add?'':$edit_data['aa_left_on'], '#required' => 0, 
-		'#date_format' => 'Y-m-d H:i', '#datepicker_options' => array(
-    		'maxDate' => 0, '#required' => 0, 
-    		'dateFormat' => date_popup_format_to_popup('Y-m-d'),
-    	),'#date_year_range' => '-1:0', '#date_label_position' => 'above',
-	);
-	$form[$group]['aa_left_comment'] = array('#title' => 'Left Comments', '#type' => 'textarea',  
+	// Left on = course day + time from dropdowns (dh_left_day_options); DIPI works out the date when saving.
+	$left = dh_left_on_parts($f_r['c_start'], $f_r['c_end'], ($add || !isset($edit_data['aa_left_on'])) ? '' : $edit_data['aa_left_on']);
+	$day_options = dh_left_day_options($f_r['c_start'], $f_r['c_end']);
+	if ($left['day'] === 'saved')
+		$day_options['saved'] = $left['saved'];
+	elseif ($left['day'] !== '' && !isset($day_options[$left['day']]))
+	{
+		$all_days = dh_left_day_options($f_r['c_start'], $f_r['c_end'], '9999-12-31');
+		if (isset($all_days[$left['day']]))
+			$day_options[$left['day']] = $all_days[$left['day']];
+	}
+	$left_required = array('required' => array(':input[name="aa_left"]' => array('value' => '1')));
+	$form[$group]['left_day'] = array('#title' => 'Left on (course day)', '#type' => 'select', '#weight' => 99,
+		'#options' => array('' => 'Choose day') + $day_options, '#default_value' => $left['day'], '#states' => $left_required,
+		'#description' => 'Day 0 is the course start date.');
+	$form[$group]['left_hour'] = array('#title' => 'Time', '#type' => 'select', '#weight' => 99.1,
+		'#options' => array('' => 'Hour') + dh_left_hour_options(), '#default_value' => $left['hour'], '#states' => $left_required);
+	$form[$group]['left_minute'] = array('#title' => 'Minutes', '#type' => 'select', '#weight' => 99.2,
+		'#options' => array('' => 'Min') + dh_left_minute_options($left['minute']), '#default_value' => $left['minute'], '#states' => $left_required);
+	$form[$group]['aa_left_comment'] = array('#title' => 'Left Comments', '#type' => 'textarea', '#states' => $left_required,
 		'#default_value' => $add?'':$edit_data['aa_left_comment'], '#rows' => 3,  '#weight' => 100, '#required' => 0,'#maxlength' => 150, '#suffix' => '</div>');
 
 
@@ -995,6 +1120,8 @@ function dh_ma_applicant_form_validate($form, &$form_state)
 {
 	if ($form_state['input']['a_gender'] == '')
         form_set_error('a_gender', t('Gender not selected'));
+
+	dh_left_validate($form_state);   // Course Left = Yes: day, time and comment
 
     $teacher_code = $form_state['input']['ac_teacher_code'];
     if (!preg_match("/-/",$teacher_code) && (strpos($teacher_code, " ") !== false)) {
@@ -1447,11 +1574,12 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 		//print_r( $app_aa['aa_left_on'] ) ;
 		if ($app_aa['aa_left'])
 		{
-			if (is_array($app_aa['aa_left_on']))
-			{
-				$app_aa['aa_left_on'] = $app_aa['aa_left_on']['date'].' '.$app_aa['aa_left_on']['time'].':00';
-
-			}			
+			// Course day + time from the form (dh_left_on_from_input). Not usable = keep what was saved (never a broken date).
+			$left_on = dh_left_on_from_input($input, $course_id, $app_id);
+			if ($left_on !== '')
+				$app_aa['aa_left_on'] = $left_on;
+			else
+				unset($app_aa['aa_left_on']);
 		}
 		else
 			unset($app_aa['aa_left_on']);

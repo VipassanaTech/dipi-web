@@ -285,14 +285,29 @@
 				}
 			}
 
+			// Course Left = Yes: course day, time and a comment (the server checks the same: dh_left_validate).
 			if($("input[name=aa_left]:checked").val() == "1")
 			{
-				if ($("#edit-a-dob-datepicker-popup-1").val() == "")
+				if ($("select[name=left_day]").val() == "")
 				{
-					alert("Please enter Date/Time that the student left");
-					$("#edit-a-dob-datepicker-popup-1").focus();
+					alert("Please choose the course day the student left");
+					$("select[name=left_day]").focus();
 					event.preventDefault();
-					return false;				
+					return false;
+				}
+				if ($("select[name=left_hour]").val() == "" || $("select[name=left_minute]").val() == "")
+				{
+					alert("Please choose the time the student left (hour and minutes)");
+					$("select[name=left_hour]").focus();
+					event.preventDefault();
+					return false;
+				}
+				if ($.trim($("textarea[name=aa_left_comment]").val()) == "")
+				{
+					alert("Please write the Left comment");
+					$("textarea[name=aa_left_comment]").focus();
+					event.preventDefault();
+					return false;
 				}
 			}
 
