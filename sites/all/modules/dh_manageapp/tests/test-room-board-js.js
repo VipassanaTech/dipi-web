@@ -27,5 +27,33 @@ t("every function called by name is defined in the file", function () {
   });
   assert.deepStrictEqual(missing, []);
 });
+// No jumping (owner, 25 Nov 2026): the Chosen bar is always drawn (fixed height in css), and a redraw keeps the
+// last tapped thing (or the first visible one) at the same spot on the screen.
+t("the Chosen bar is always drawn, also when nobody is chosen", function () {
+  assert.ok(/dhrb-chosen dhrb-pin dhrb-none/.test(src));
+  var css = require("fs").readFileSync(__dirname + "/../css/rooms.css", "utf8");
+  assert.ok(/\.dhrb-chosen \{ height: \d+px;/.test(css));
+});
+t("every redraw keeps what is on the screen in place", function () {
+  assert.ok(/function render\(visibleOnly\) \{\s*var keep = anchors\(visibleOnly === true\);\s*draw\(\);\s*backInPlace\(keep\);/.test(src));
+  assert.ok(/render\(true\);/.test(src), "the self-refresh keeps the visible part in place");
+});
+// Confirm every change (owner, 25 Nov 2026): place / move, swap and take out each ask first, naming person + room.
+["place", "swap", "remove"].forEach(function (op) {
+  t("the '" + op + "' action asks for a yes before saving", function () {
+    var at = src.indexOf("save({op: '" + op + "'");
+    assert.ok(at > 0);
+    var before = src.slice(Math.max(0, at - 400), at);
+    assert.ok(/if \(!(c \|\| !)?sure\(/.test(before) || /\|\| !sure\(/.test(before), "no sure(...) right before save " + op);
+  });
+});
+t("the room changes log is under the board, collapsed by default, searchable (DataTables)", function () {
+  assert.ok(/draw\(\);\s*backInPlace\(keep\);\s*renderLog\(\);/.test(src), "drawn after every board redraw");
+  assert.ok(/var logOpen = false/.test(src), "collapsed by default");
+  assert.ok(/\$\('#dh-rb-log'\)/.test(src) && !/#dh-rb-app[^\n]*dhrb-log\b/.test(src), "in its own box, outside the board");
+  assert.ok(/\.DataTable\(\{/.test(src) && /logDT\.clear\(\)\.rows\.add\(rows\)\.draw\(false\)/.test(src), "DataTables, updated in place");
+  assert.ok(/<th>Old room<\/th><th>New room<\/th><th>By<\/th>/.test(src));
+  assert.ok(/render: txt/.test(src) && /function txt\(d, type\) \{ return type === 'display' \? esc\(d\) : d; \}/.test(src), "names shown as plain text");
+});
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

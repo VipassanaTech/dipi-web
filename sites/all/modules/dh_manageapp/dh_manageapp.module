@@ -3022,6 +3022,8 @@ function dh_app_update_attended()
 	}
 
 	$attended_id = db_query("select aa_id from dh_applicant_attended where aa_applicant=$app_id")->fetchField();
+	// The seat before this save, for the Room log line (Room Board change log) written after it.
+	$room_before = db_query("select aa_section, aa_acco from dh_applicant_attended where aa_applicant = :a", array(':a' => $app_id))->fetchAssoc();
 
 	if ( $attended_id > 0)
 	{
@@ -3051,8 +3053,11 @@ function dh_app_update_attended()
 
 		$fields['aa_applicant'] = $app_id;
 		$fields['aa_created_by'] = $user->uid;
-		db_insert('dh_applicant_attended')->fields($fields)->execute();		
+		db_insert('dh_applicant_attended')->fields($fields)->execute();
 	}
+	// Room log line when the seat changed (shown in the Room Board change log; dh_room_log_change in room-board.inc).
+	dh_room_log_change($centre_id, $app_id, $room_before ? $room_before['aa_section'] : '', $room_before ? $room_before['aa_acco'] : '',
+		$fields['aa_section'], $fields['aa_acco'], $user->uid);
 	// Auto system tags: mark "Attended" + the current "Group-N"; drop the previous
 	// "Group-M" on a group change. Going forward only (no backfill). Non-fatal:
 	// wrapped so a tagging error can never break attendance or skip lock_release.

@@ -62,7 +62,38 @@ function dh_room_board_data($centre_id, $course_id)
 			'section' => $sec, 'place' => $plc);
 	}
 	return array('ok' => TRUE, 'course' => dh_rooms_course_label($course_id), 'optional' => dh_room_optional($course_id), 'finalized' => (bool) $c['c_finalized'],
-		'sides' => $sides, 'has_rooms' => dh_rooms_centre_has_rooms($centre_id), 'rooms' => $rooms, 'people' => $people, 'cross' => $cross, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types());
+		'sides' => $sides, 'has_rooms' => dh_rooms_centre_has_rooms($centre_id), 'rooms' => $rooms, 'people' => $people, 'cross' => $cross, 'overlap' => array_intersect_key(dh_rooms_overlap_taken($course_id), array_flip($sides)), 'toilets' => dh_room_toilet_types(),
+		'log' => dh_room_board_log($course_id, $sides));
+}
+
+/**
+ * The Room Board change log of a course (owner, 25 Nov 2026), newest first, for the sides this user sees: every room
+ * change the board logged (dh_log 'Room' lines "Room: <old|none> → <new|none>", _dh_room_board_set). Each entry: t
+ * (Y-m-d H:i:s), a_id, conf, name, gender, old ('' = placed fresh), new ('' = taken out), user.
+ * Tested by tests/test-room-board-log.php.
+ */
+function dh_room_board_log($course_id, $sides, $limit = 300)
+{
+	if (!$sides)
+		return array();
+	$apps = array();
+	foreach (db_query("select a_id, a_gender, a_conf_no, a_f_name, a_m_name, a_l_name from dh_applicant where a_course = :c", array(':c' => (int) $course_id))->fetchAll(PDO::FETCH_ASSOC) as $a)
+		if (in_array(strtoupper($a['a_gender']), $sides, TRUE))
+			$apps[(int) $a['a_id']] = $a;
+	if (!$apps)
+		return array();
+	$out = array();
+	$rows = db_query_range("select l.l_tstamp, l.l_identifier, l.l_msg, u.name from dh_log l force index (l_module) left join users u on u.uid = l.l_user
+		where l.l_module = 'Applicant' and l.l_identifier in (:ids) and l.l_event = 'Room' order by l.l_id desc", 0, (int) $limit, array(':ids' => array_keys($apps)));
+	foreach ($rows as $r)
+	{
+		if (!preg_match('/^Room: (.*) → (.*)$/su', (string) $r->l_msg, $m))
+			continue;
+		$a = $apps[(int) $r->l_identifier];
+		$out[] = array('t' => (string) $r->l_tstamp, 'a_id' => (int) $r->l_identifier, 'conf' => trim((string) $a['a_conf_no']), 'name' => dh_day0_name($a),
+			'gender' => strtoupper($a['a_gender']), 'old' => $m[1] === 'none' ? '' : $m[1], 'new' => $m[2] === 'none' ? '' : $m[2], 'user' => (string) $r->name);
+	}
+	return $out;
 }
 
 function _dh_room_board_person($course_id, $a_id)
@@ -75,9 +106,31 @@ function _dh_room_board_set($centre_id, $p, $sec, $place, $uid)
 {
 	db_update('dh_applicant_attended')->fields(array('aa_section' => $sec, 'aa_acco' => $place, 'aa_updated' => date('Y-m-d H:i:s'), 'aa_updated_by' => (int) $uid))
 		->condition('aa_applicant', $p['a_id'])->execute();
-	$old = trim($p['aa_section'] . '-' . $p['aa_acco'], '-');
-	$new = trim($sec . '-' . $place, '-');
-	logit($centre_id, 'Room', $p['a_id'], 'Room: ' . ($old === '' ? 'none' : $old) . ' → ' . ($new === '' ? 'none' : $new), $uid);
+	dh_room_log_change($centre_id, $p['a_id'], $p['aa_section'], $p['aa_acco'], $sec, $place, $uid);
+}
+
+/** A room place as written in the log: "M-5A" (section-place), the place alone without a section, '' when there is no place. */
+function dh_room_place_text($sec, $place)
+{
+	$sec = trim((string) $sec);
+	$place = trim((string) $place);
+	return $place === '' ? '' : ($sec === '' ? $place : $sec . '-' . $place);
+}
+
+/**
+ * The "Room" log line of a room change made anywhere - Room Board, Zero Day popup, Edit Application (owner, 25 Nov
+ * 2026) - so the Room Board change log (dh_room_board_log) shows every change: "Room: <old|none> → <new|none>".
+ * Nothing is written when the room did not change (compared trimmed). TRUE when a line was written.
+ * Tested by tests/test-room-change-log.php.
+ */
+function dh_room_log_change($centre_id, $app_id, $old_sec, $old_place, $new_sec, $new_place, $uid = 0)
+{
+	$old = dh_room_place_text($old_sec, $old_place);
+	$new = dh_room_place_text($new_sec, $new_place);
+	if ($old === $new)
+		return FALSE;
+	logit($centre_id, 'Room', $app_id, 'Room: ' . ($old === '' ? 'none' : $old) . ' → ' . ($new === '' ? 'none' : $new), $uid);
+	return TRUE;
 }
 
 function dh_room_board_apply($centre_id, $course_id, $in, $uid)
@@ -185,8 +238,12 @@ function dh_room_board_page($centre_id, $course_id)
 	drupal_add_css($path . '/css/rooms.css');
 	drupal_add_js(array('dhRoomBoard' => array('dataUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/data'),
 		'saveUrl' => url('room-board/' . (int) $centre_id . '/' . (int) $course_id . '/save'), 'token' => drupal_get_token('dh-room-board'))), 'setting');
+	// DataTables (search, sort, pages) for the room changes log under the board.
+	drupal_add_css(libraries_get_path('editor') . '/DataTables/datatables.min.css');
+	drupal_add_js(libraries_get_path('editor') . '/DataTables/datatables.min.js');
 	drupal_add_js($path . '/js/rooms-common.js');
 	drupal_add_js($path . '/js/room-board.js');
+	// The log has its own box, outside the board, so the board's redraws never reset its search, sort or page.
 	return '<div class="dh-rb"><p>' . l('Back to Course', 'course/' . (int) $centre_id . '/' . (int) $course_id) . ' | ' . l('Zero Day', 'zero-day/' . (int) $centre_id . '/' . (int) $course_id) . '</p>'
-		. '<h2>' . check_plain($label) . '</h2><div id="dh-rb-app"><p>Loading the board…</p></div></div>';
+		. '<h2>' . check_plain($label) . '</h2><div id="dh-rb-app"><p>Loading the board…</p></div><div id="dh-rb-log"></div></div>';
 }

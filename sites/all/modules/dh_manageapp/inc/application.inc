@@ -1562,6 +1562,10 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 	}
 
+	// The seat before this save, for the Room log line (Room Board change log; dh_room_log_change in room-board.inc).
+	$room_before = $app_id ? db_query("select aa_section, aa_acco from dh_applicant_attended where aa_applicant = :a", array(':a' => $app_id))->fetchAssoc() : FALSE;
+	$room_was = array($room_before ? $room_before['aa_section'] : '', $room_before ? $room_before['aa_acco'] : '');
+
 	if ($input['attending'])
 	{
 		if ($app_aa['aa_acco'] == '')
@@ -1628,12 +1632,15 @@ function dh_ma_applicant_form_submit($form, &$form_state)
 
 			$app_aa['aa_applicant'] = $app_id;
 			$app_aa['aa_created_by'] = $user->uid;
-			db_insert('dh_applicant_attended')->fields($app_aa)->execute();				
-		}			
+			db_insert('dh_applicant_attended')->fields($app_aa)->execute();
+		}
+		if (isset($app_aa['aa_acco']))   // a room was chosen in the form (empty = the old one is kept)
+			dh_room_log_change($centre_id, $app_id, $room_was[0], $room_was[1], isset($app_aa['aa_section']) ? $app_aa['aa_section'] : '', $app_aa['aa_acco'], $user->uid);
 	}
 	elseif(!$app_aa['aa_left'])
 	{
-		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);		
+		db_query("delete from dh_applicant_attended where aa_applicant=".$app_id);
+		dh_room_log_change($centre_id, $app_id, $room_was[0], $room_was[1], '', '', $user->uid);   // not attending: the seat is gone
 	}
 
   if ( isset($form_state['storage']) && isset($form_state['storage']['file']) )
