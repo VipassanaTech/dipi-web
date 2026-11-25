@@ -55,5 +55,13 @@ t("the room changes log is under the board, collapsed by default, searchable (Da
   assert.ok(/<th>Old room<\/th><th>New room<\/th><th>By<\/th>/.test(src));
   assert.ok(/render: txt/.test(src) && /function txt\(d, type\) \{ return type === 'display' \? esc\(d\) : d; \}/.test(src), "names shown as plain text");
 });
+// Placing many people (owner, 25 Nov 2026): the people list stays in view on a computer (the automatic next person
+// was tried and left out by the owner).
+t("the people list stays in view and scrolls on its own (computer)", function () {
+  assert.ok(/<div class="dhrb-main"><div class="dhrb-people">/.test(src));
+  var css = require("fs").readFileSync(__dirname + "/../css/rooms.css", "utf8");
+  assert.ok(/@media \(min-width: 701px\) \{\s*\.dhrb-people \{ position: sticky;[^}]*overflow-y: auto;/.test(css));
+  assert.ok(/var peopleTop = \$\('#dh-rb-app \.dhrb-people'\)\.scrollTop\(\)[\s\S]*\.html\(h\);\s*\$\('#dh-rb-app \.dhrb-people'\)\.scrollTop\(peopleTop\);/.test(src), "its scroll survives redraws");
+});
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

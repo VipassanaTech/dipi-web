@@ -119,14 +119,21 @@
     if (!app) return out;
     if (!visibleOnly && lastKey) { var s = spot(lastKey); if (s) out.push(s); }
     var pin = app.querySelector('.dhrb-pin'), min = pin ? pin.getBoundingClientRect().bottom : 0;
-    var vis = [].filter.call(app.querySelectorAll('.dhrb-pl, .dhrb-card, .dhrb-sec'), function (x) { var r = x.getBoundingClientRect(); return r.top >= min && r.top < window.innerHeight; })[0];
+    // Fallback: the first room place or section visible under the bar (the rooms move with the page), else a card.
+    var visible = function (sel) { return [].filter.call(app.querySelectorAll(sel), function (x) { var r = x.getBoundingClientRect(); return r.top >= min && r.top < window.innerHeight; })[0]; };
+    var vis = visible('.dhrb-pl, .dhrb-sec') || visible('.dhrb-card');
     if (vis && keyOf(vis)) out.push({sel: keyOf(vis), top: vis.getBoundingClientRect().top});
     return out;
   }
   function backInPlace(list) {
     for (var i = 0; i < list.length; i++) {
       var el = document.querySelector('#dh-rb-app ' + list[i].sel);
-      if (el) { window.scrollBy(0, el.getBoundingClientRect().top - list[i].top); return; }
+      if (!el) continue;
+      var diff = el.getBoundingClientRect().top - list[i].top, box = $(el).closest('.dhrb-people')[0];
+      // A card in the people list that scrolls on its own (computer): move the list, not the page.
+      if (box && box.scrollHeight > box.clientHeight && window.getComputedStyle(box).overflowY !== 'visible') box.scrollTop += diff;
+      else window.scrollBy(0, diff);
+      return;
     }
   }
 
@@ -178,7 +185,7 @@
     else h += '<div class="dhrb-chosen dhrb-pin dhrb-none"><b class="dhrb-line">Chosen: nobody</b>'
       + '<small class="dhrb-det dhrb-line">Tap a person in the list to choose them, then tap a free place.</small>'
       + '<span class="dhrb-line dhrb-hints"></span><small class="dhrb-det dhrb-line"></small><p class="dhrb-acts"></p></div>';
-    h += '<div class="dhrb-main"><div>';
+    h += '<div class="dhrb-main"><div class="dhrb-people">';
     var mine = D.people.filter(function (p) { return p.gender === side; }), placedN = mine.length - waiting.length;
     h += '<div class="dhr-tabs">' + [['waiting', 'Not placed · ' + waiting.length], ['placed', 'Placed · ' + placedN], ['all', 'All · ' + mine.length]].map(function (t) {
       return '<button class="dhr-tab dhrb-show' + (show === t[0] ? ' on' : '') + '" data-show="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>'
@@ -231,7 +238,9 @@
     });
     if (filtered && !shownSecs) h += '<p><small>No places match this filter.</small></p>';
     h += '</div></div></div>';
+    var peopleTop = $('#dh-rb-app .dhrb-people').scrollTop() || 0;   // the people list scrolls on its own (computer)
     $('#dh-rb-app').html(h);
+    $('#dh-rb-app .dhrb-people').scrollTop(peopleTop);
     window.dhRoomsCommon.viewSave('room-board:' + S.dataUrl, side, open);
   }
 

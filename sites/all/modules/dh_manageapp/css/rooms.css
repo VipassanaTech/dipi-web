@@ -35,6 +35,12 @@
 .dhrb-count { background: #f5f5f3; border-radius: 6px; padding: 6px 10px; } .dhrb-count b { display: block; font-size: 20px; font-weight: 500; }
 .dhrb-main { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.8fr); gap: 12px; }
 @media (max-width: 700px) { .dhrb-main { grid-template-columns: 1fr; } .dhrb-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Computer: the people list stays in view under the Chosen bar (126 px + 8 px gap) and scrolls on its own, so
+   placing many people needs no scrolling back and forth (room-board.js; owner 25 Nov 2026). */
+@media (min-width: 701px) {
+  .dhrb-people { position: sticky; top: calc(var(--dhr-top, 0px) + 134px); align-self: start;
+    max-height: calc(100vh - var(--dhr-top, 0px) - 142px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+}
 .dhrb-card { border: 1px solid #ddd; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; cursor: pointer; background: #fff; font-size: 13px; }
 .dhrb-card.on, .dhrb-pl.on { outline: 2px solid #378add; }
 .dhrb-hint { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; background: #faeeda; color: #633806; margin: 2px 4px 0 0; }
