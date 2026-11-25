@@ -47,7 +47,7 @@ function dh_patrika_menu()
 	    'type' => MENU_CALLBACK
   	);
 
- 	$items['patrika/note/delete/%patrika_id/%payment_id'] = array(
+ 	$items['patrika/note/delete/%patrika_id/%patrika_note_id'] = array(
 	    'title' => 'Delete Note',
 	    'page callback' => 'dh_manage_patrika_note',
 	    'access arguments' => array('delete payment'),
@@ -131,6 +131,55 @@ function payment_id_load( $id )
 	return $id;
 }
 
+// The note of a note Delete link (it used to be checked against the payments, so most note deletes showed "Page not
+// found").
+function patrika_note_id_load( $id )
+{
+	if ( !ctype_digit((string) $id) )
+		return false;
+	$res = db_query("select pn_id from dh_patrika_note where pn_id=:id", array(':id' => $id))->fetchField();
+	if ($res <> $id)
+		return false;
+	return $id;
+}
+
+/**
+ * The Delete link of a subscriber's payment or note ($type 'payment' | 'note'). It carries a security token, so a link
+ * made elsewhere (for example in an email) cannot delete anything. Tested by dh_manageapp/tests/test-patrika-safe.php.
+ */
+function dh_patrika_delete_link($type, $patrika_id, $item_id)
+{
+	return url("patrika/$type/delete/$patrika_id/$item_id", array('query' => array('token' => drupal_get_token("patrika-$type-delete-$patrika_id-$item_id"))));
+}
+
+/**
+ * Marks a payment or note deleted (not erased) when the token of its Delete link is right and it belongs to that
+ * subscriber. TRUE when it was marked.
+ */
+function dh_patrika_delete_item($type, $patrika_id, $item_id, $token)
+{
+	if (!is_string($token) || !drupal_valid_token($token, "patrika-$type-delete-$patrika_id-$item_id"))
+		return FALSE;
+	if ($type == 'payment')
+		$n = db_update('dh_patrika_payment')->fields(array('pp_deleted' => 1))->condition('pp_id', $item_id)->condition('pp_patrika', $patrika_id)->execute();
+	elseif ($type == 'note')
+		$n = db_update('dh_patrika_note')->fields(array('pn_deleted' => 1))->condition('pn_id', $item_id)->condition('pn_patrika', $patrika_id)->execute();
+	else
+		return FALSE;
+	return $n > 0;
+}
+
+// The page of a Delete link: mark it, then back to the subscriber.
+function dh_patrika_delete_page($type)
+{
+	$token = isset($_GET['token']) ? $_GET['token'] : '';
+	if (dh_patrika_delete_item($type, arg(3), arg(4), $token))
+		drupal_set_message(t('Deleted.'));
+	else
+		drupal_set_message(t('Nothing was deleted. Please use the Delete link on the subscriber page.'), 'error');
+	drupal_goto("patrika/edit/".arg(3));
+}
+
 function dh_center_report()
 {
 	$q = "select co.c_name from dh_course co left join dh_center ce on (co.c_center = ce.c_id) left join dh_type_detail on (co.c_course_type = td_id) where c_finalized = 0 and c_deleted = 0 and c_cancelled = 0 and td_val2 > 1 and c_end <= (CURDATE() - interval 1 month) order by ce.c_subdomain, co.c_start";
@@ -168,20 +217,20 @@ function dh_manage_patrika()
 			return drupal_get_form('dh_patrika_addedit');
 			break;
 		case 'edit':
-			$row = db_query("select * from dh_patrika where p_id=".arg(2))->fetchAssoc();
+			$row = db_query("select * from dh_patrika where p_id = :p", array(':p' => arg(2)))->fetchAssoc();
 			$form = drupal_get_form('dh_patrika_addedit', $row);
 			$out = drupal_render($form);
 
 			$rows = array();
-			$q = "select pn_id, pn_note, pn_tstamp, u.name, pn_deleted from dh_patrika_note left join users u on (pn_created_by=u.uid) where pn_patrika=".arg(2)." order by pn_tstamp desc";
-			$result = db_query($q);
+			$q = "select pn_id, pn_note, pn_tstamp, u.name, pn_deleted from dh_patrika_note left join users u on (pn_created_by=u.uid) where pn_patrika = :p order by pn_tstamp desc";
+			$result = db_query($q, array(':p' => arg(2)));
 			while( $r = $result->fetchAssoc() )
 			{
 				$r1 = $r;
 				if (!$r['pn_deleted'])
 				{
 					if (user_access("delete payment"))
-						$r1[] = l('Delete', "patrika/note/delete/".arg(2)."/".$r['pn_id'], array('attributes' => array("pid" => $r['pn_id'], 'class' => array('delete-nid') ) ) );
+						$r1[] = '<a href="'.check_plain(dh_patrika_delete_link('note', arg(2), $r['pn_id'])).'" pid="'.(int) $r['pn_id'].'" class="delete-nid">Delete</a>';
 					else
 						$r1[] = "No Access";
 
@@ -201,15 +250,15 @@ function dh_manage_patrika()
 			$out .= $out_notes;
 
 			$rows = array();			
-			$q = "select pp_id, pp_amt, pp_type, pp_receipt_no, pp_receipt_date, pp_txn_no, pp_txn_bank, pp_txn_date , u.name, pp_deleted from dh_patrika_payment left join users u on (pp_user=u.uid) where pp_patrika=".arg(2)." order by pp_id desc";
-			$result = db_query($q);
+			$q = "select pp_id, pp_amt, pp_type, pp_receipt_no, pp_receipt_date, pp_txn_no, pp_txn_bank, pp_txn_date , u.name, pp_deleted from dh_patrika_payment left join users u on (pp_user=u.uid) where pp_patrika = :p order by pp_id desc";
+			$result = db_query($q, array(':p' => arg(2)));
 			while( $r = $result->fetchAssoc() )
 			{
 				$r1 = $r;
 				if (!$r['pp_deleted'])
 				{
 					if (user_access("delete payment"))
-						$r1[] = l('Delete', "patrika/payment/delete/".arg(2)."/".$r['pp_id'], array('attributes' => array("pid" => $r['pp_id'], 'class' => array('delete-pid') ) ) );
+						$r1[] = '<a href="'.check_plain(dh_patrika_delete_link('payment', arg(2), $r['pp_id'])).'" pid="'.(int) $r['pp_id'].'" class="delete-pid">Delete</a>';
 					else
 						$r1[] = "No Access";
 
@@ -230,8 +279,8 @@ function dh_manage_patrika()
 
 
 			$rows = array();
-			$q = "select pl_tstamp, pl_msg, u.name from dh_patrika_log left join users u on (pl_user=u.uid) where pl_patrika=".arg(2)." order by pl_tstamp desc";
-			$result = db_query($q);
+			$q = "select pl_tstamp, pl_msg, u.name from dh_patrika_log left join users u on (pl_user=u.uid) where pl_patrika = :p order by pl_tstamp desc";
+			$result = db_query($q, array(':p' => arg(2)));
 			while( $r = $result->fetchAssoc() )
 				$rows[] = $r;
 			$header = array('DateTime', 'Log Message', 'User');
@@ -251,9 +300,7 @@ function dh_manage_patrika_payment()
 			return drupal_get_form('dh_patrika_payment_addedit');
 			break;
 		case 'delete':
-			db_query("update dh_patrika_payment set pp_deleted=1 where pp_id=".arg(4));
-			drupal_goto("patrika/edit/".arg(3));
-			return $out;
+			dh_patrika_delete_page('payment');
 			break;
 	}
 }
@@ -266,9 +313,7 @@ function dh_manage_patrika_note()
 			return drupal_get_form('dh_patrika_note_addedit');
 			break;
 		case 'delete':
-			db_query("update dh_patrika_note set pn_deleted=1 where pn_id=".arg(4));
-			drupal_goto("patrika/edit/".arg(3));
-			return $out;
+			dh_patrika_delete_page('note');
 			break;
 	}
 }
@@ -277,9 +322,9 @@ function dh_manage_patrika_note()
 
 function dh_patrika_get_state()
 {
-		$CountryCode = $_POST['Country'];
-		$q = "select s_name,s_code FROM dh_state where s_country='".$CountryCode."' order by s_name ASC";
-		$result = db_query($q);
+		$CountryCode = (isset($_POST['Country']) && is_scalar($_POST['Country'])) ? (string) $_POST['Country'] : '';
+		$q = "select s_name,s_code FROM dh_state where s_country = :c order by s_name ASC";
+		$result = db_query($q, array(':c' => $CountryCode));
 		$rows = array();
 				while( $r = $result->fetchAssoc() )
 				{
@@ -290,16 +335,40 @@ function dh_patrika_get_state()
 
 function dh_patrika_get_city()
 {
-		$State=$_POST['State'];
-		 $q = "select c_id,c_name FROM dh_city where c_state='".$State."' order by c_name ASC";
-		
-		$result = db_query($q);
+		$State = (isset($_POST['State']) && is_scalar($_POST['State'])) ? (string) $_POST['State'] : '';
+		 $q = "select c_id,c_name FROM dh_city where c_state = :s order by c_name ASC";
+
+		$result = db_query($q, array(':s' => $State));
 		$rows = array();
 				while( $r = $result->fetchAssoc() )
 				{
 					$rows[]=$r;
 			  	}
 		echo json_encode($rows);
+}
+
+/**
+ * The subscriber search of the Patrika Management page: array(SQL, values) for the boxes filled in, or NULL when all
+ * are empty. Every box is passed as a value (placeholder), never pasted into the SQL. Matching is as before: names
+ * "start with" (spaces trimmed), the other boxes exact. Tested by dh_manageapp/tests/test-patrika-safe.php.
+ */
+function dh_patrika_search_query($storage)
+{
+	$box = function ($k, $trim) use ($storage) {
+		$v = (is_array($storage) && isset($storage[$k]) && is_scalar($storage[$k])) ? (string) $storage[$k] : '';
+		return $trim ? trim($v) : $v;
+	};
+	$where = '';
+	$args = array();
+	if (($v = $box('student_f_name', TRUE)) !== '') { $where .= " and p_f_name like :fname"; $args[':fname'] = $v.'%'; }
+	if (($v = $box('student_l_name', TRUE)) !== '') { $where .= " and p_l_name like :lname"; $args[':lname'] = $v.'%'; }
+	if (($v = $box('patrika_id', FALSE)) !== '') { $where .= " and p_vray_id = :vray"; $args[':vray'] = $v; }
+	if (($v = $box('receipt_number', TRUE)) !== '') { $where .= " and pp_receipt_no = :rno"; $args[':rno'] = $v; }
+	if (($v = $box('receipt_date', FALSE)) !== '') { $where .= " and pp_receipt_date = :rdate"; $args[':rdate'] = $v; }
+	if (($v = $box('pincode', FALSE)) !== '') { $where .= " and p_zip = :pin"; $args[':pin'] = $v; }
+	if (!$args)
+		return NULL;
+	return array("select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $where group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name", $args);
 }
 
 function dh_patrika_search_form($form, &$form_state)
@@ -382,47 +451,18 @@ function dh_patrika_search_form($form, &$form_state)
 
 	if ( isset($form_state['storage']) )
 	{
-		$storage = $form_state['storage'];
-		$f_name = trim($storage['student_f_name']);
-		$l_name = trim($storage['student_l_name']);
- 		$patrika_id = $storage['patrika_id'];
- 		$pincode = $storage['pincode'];
-		
-		$receipt_number = trim($storage['receipt_number']);
-		$receipt_date = $storage['receipt_date'];
-		
-		$append = ''; 
-		if ( $f_name <> '')
-			$append .= "and p_f_name like '$f_name%'";
-
-		if ( $l_name <> '')
-		 	$append .= " and p_l_name like '$l_name%'";
-
-		if ( $patrika_id <> '')
-		 	$append .= " and p_vray_id = '$patrika_id'";
-
-		if ( $receipt_number <> '')
-		 	$append .= " and pp_receipt_no = '$receipt_number'";
-
-		if ( $receipt_date <> '')
-		 	$append .= " and pp_receipt_date = '$receipt_date'";
-
-		 if ( $pincode <> '')
-		 	$append .= " and p_zip = '$pincode'";
-
-		$q = "select p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, s_name, c_name, p_subscription_type, p_cancelled, p_language from dh_patrika p left join dh_patrika_payment pp on p.p_id=pp.pp_patrika left join dh_city pc on p.p_city=pc.c_id left join dh_state ps on (p.p_state=ps.s_code and c_country=s_country) where p_id > 0 $append group by p_id, p_vray_id, p_f_name, p_m_name, p_l_name, p_address, p_subscription_type, p_cancelled order by p_f_name, p_l_name";
-
+		$search = dh_patrika_search_query($form_state['storage']);
 
 		drupal_add_library('system', 'ui.datepicker');
 		drupal_add_js("(function ($) { $('.datepicker').datepicker({ dateFormat: 'yyyy-mm-dd' }); })(jQuery);", array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
 
-		if($append == '')
+		if (!$search)
 		{
 			drupal_set_message(t('Please enter the student name or mobile no or etc..'), 'error');
 			return $form;
 		}
 
-	   	$result = db_query($q);
+	   	$result = db_query($search[0], $search[1]);
 
 	   	$rows = array();
 		while( $r = $result->fetchAssoc() )
@@ -486,7 +526,7 @@ function dh_patrika_payment_addedit($form, &$form_state, $edit_data = array())
 	drupal_add_library('system', 'ui.datepicker');
 
 	$form['#attributes'] = array('class' => array('container-inline')); 
-	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id=".arg(3))->fetchField();
+	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id = :p", array(':p' => arg(3)))->fetchField();
 	$breadcrumb = '<h3>Transactions of '.$name.'</h3>';
 	$breadcrumb .= '<h3>'.l("Back to Patrika", "patrika/edit/".arg(3))."&nbsp;&nbsp;|&nbsp;&nbsp;".l("Back To Search", "patrika").'</h3>';
 	$form['a'] = array('#markup' => $breadcrumb);
@@ -606,7 +646,7 @@ function dh_patrika_note_addedit($form, &$form_state, $edit_data = array())
 	drupal_add_library('system', 'ui.datepicker');
 
 	$form['#attributes'] = array('class' => array('container-inline')); 
-	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id=".arg(3))->fetchField();
+	$name = db_query("select CONCAT(p_f_name,' ', p_l_name) from dh_patrika where p_id = :p", array(':p' => arg(3)))->fetchField();
 	$breadcrumb = '<h3>Notes for '.$name.'</h3>';
 	$breadcrumb .= '<h3>'.l("Back to Patrika", "patrika/edit/".arg(3))."&nbsp;&nbsp;|&nbsp;&nbsp;".l("Back To Search", "patrika").'</h3>';
 	$form['a'] = array('#markup' => $breadcrumb);
@@ -1164,15 +1204,15 @@ function dmy_to_ymd( $date )
 
 function getDetailsByZipcode()
 {
-		 $PinCode=$_POST['PinCode'];
+		 $PinCode = (isset($_POST['PinCode']) && is_scalar($_POST['PinCode'])) ? (string) $_POST['PinCode'] : '';
 		 $DBCityID='';
 		 $DBState='';
 		 $DBCountry='';
 		 $q = " SELECT pc.pc_pin, c.c_name, s.s_name, c.c_country,c.c_state,c.c_id
 				 from dh_pin_code pc left join dh_city c on pc.pc_city=c.c_id left join dh_state s on (c.c_state=s.s_code and c.c_country=s.s_country) 
-				 where pc.pc_pin = '".$PinCode."' LIMIT 1";
-		
-		$result = db_query($q);
+				 where pc.pc_pin = :pin LIMIT 1";
+
+		$result = db_query($q, array(':pin' => $PinCode));
 		$rows = array();
 		$rows['count']=$result->rowCount();
 		while( $r = $result->fetchAssoc() )
@@ -1184,16 +1224,16 @@ function getDetailsByZipcode()
 			$DBCountry=$r['c_country'];
 		}
 
-		$StateQuery="SELECT * FROM dh_state where s_country='$DBCountry'";
-		$StateResult = db_query($StateQuery);
+		$StateQuery="SELECT * FROM dh_state where s_country = :c";
+		$StateResult = db_query($StateQuery, array(':c' => $DBCountry));
 		$rows['StateCount']=$StateResult->rowCount();
 		while( $r = $StateResult->fetchAssoc() )
 		{
 			$rows['state'][]=$r;
 		}
 
-		$CityQuery="SELECT * FROM dh_city where c_country='$DBCountry' and c_state='$DBState'";
-		$CityResult = db_query($CityQuery);
+		$CityQuery="SELECT * FROM dh_city where c_country = :c and c_state = :s";
+		$CityResult = db_query($CityQuery, array(':c' => $DBCountry, ':s' => $DBState));
 		$rows['CityCount']=$CityResult->rowCount();
 		while( $r = $CityResult->fetchAssoc() )
 		{
@@ -1260,14 +1300,14 @@ function _split_address( $data )
 function dh_patrika_add_course_students($course)
 {
 	$system_uids = db_query("select td_key, td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT'")->fetchAllKeyed();
-	$center = db_query('select c_center from dh_course where c_id='.$course)->fetchField();
+	$center = db_query('select c_center from dh_course where c_id = :c', array(':c' => $course))->fetchField();
 	if ($center <> 1 ) // Only for Dhammagiri
 		return;
 
 	$q = "select distinct s_id, s_f_name, s_m_name, s_l_name, s_city, s_state, s_country, s_address, s_zip, s_email  
-		from dh_student s left join dh_student_course sc on s.s_id=sc.sc_student where sc_course=$course and s_first=1 and s_country='IN'
+		from dh_student s left join dh_student_course sc on s.s_id=sc.sc_student where sc_course = :c and s_first=1 and s_country='IN'
 		and not exists (select 1 from dh_patrika p where p.p_student = s.s_id)";
-	$res = db_query($q);
+	$res = db_query($q, array(':c' => $course));
 	while( $row = $res->fetchAssoc() )
 	{
 		$r = array();
@@ -1280,7 +1320,7 @@ function dh_patrika_add_course_students($course)
 		$r['p_zip'] = $row['s_zip'];
 		$r['p_city'] = $row['s_city'];
 		if (!$r['p_city'])
-			$r['p_city'] = db_query("select pc_city from dh_pin_code where pc_pin='".$r['p_zip']."' limit 1")->fetchField();
+			$r['p_city'] = db_query("select pc_city from dh_pin_code where pc_pin = :pin limit 1", array(':pin' => (string) $r['p_zip']))->fetchField();   // the PIN the applicant typed: data only
 		if (!$r['p_city']) unset($r['p_city']);
 		$r['p_email'] = $row['s_email'];
 		$r['p_address'] = _split_address($row['s_address']);
