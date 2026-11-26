@@ -9,6 +9,12 @@
  * an approved script changes them. Every screen and save path asks this file.
  */
 
+/* The status of the automatic LC letters found by name (all but the two review letters), set once on 26 Nov 2026
+ * (deploy/2026-11-26-lc-automatic-status.php). No application ever has this status, so these letters are never offered
+ * as a Custom letter, in bulk email or by a send by status; DIPI sends them by name. Only they may have it, and their
+ * status is locked (dh_letter_protect; owner, 26 Nov 2026). */
+define('DH_LETTER_LC_AUTO_STATUS', 'LC Automatic');
+
 /* The seven LC letters: how DIPI finds each (status, or exact name when 'event' is NULL), who gets it, what it is for. */
 function dh_letter_lc_roles()
 {
@@ -93,6 +99,17 @@ function dh_letter_lc_is_review($key)
 	return $key === 'r_review' || $key === 'a_review';
 }
 
+/* The names of the LC letters DIPI finds by exact name (all but the two review letters, which it finds by status):
+ * the letters that have the status DH_LETTER_LC_AUTO_STATUS. */
+function dh_letter_lc_names()
+{
+	$names = array();
+	foreach (dh_letter_lc_roles() as $r)
+		if ($r['event'] === NULL)
+			$names[] = $r['name'];
+	return $names;
+}
+
 /**
  * The LC rules for one save of letter $id at $centre_id ($action: add, copy or edit). An LC letter keeps
  * its stored name, status and course type whatever was posted; no other letter may take a reserved
@@ -116,6 +133,9 @@ function dh_letter_protect($centre_id, $action, $id, $fields)
 			$key = _dh_letter_lc_role_sql($check);
 		if ($key !== NULL)
 			return array($fields, t('This name or status belongs to the long-course letter "@r", which DIPI uses in the long-course approval process. Please choose another name and status.', array('@r' => $roles[$key]['name'])));
+		// "LC Automatic" belongs to the automatic LC letters only (capitals and spaces around it do not count).
+		if (isset($check['l_event']) && drupal_strtolower(trim((string) $check['l_event'])) === drupal_strtolower(DH_LETTER_LC_AUTO_STATUS))
+			return array($fields, t('The status "@s" is only for the automatic long-course letters. Please choose another status.', array('@s' => DH_LETTER_LC_AUTO_STATUS)));
 	}
 	if ($key !== NULL && dh_letter_lc_is_review($key))
 	{
@@ -232,16 +252,16 @@ function dh_lc_review_code($app_id)
 	return $app_id.$code;
 }
 
-/* The "LC review letter" label next to an LC letter's name. */
+/* The "Automatic · LC review" label next to an LC letter's name. */
 function dh_letter_lc_badge()
 {
-	return '<span class="lc-letter-badge">'.t('LC review letter').'</span>';
+	return '<span class="lc-letter-badge">'.t('Automatic · LC review').'</span>';
 }
 
 /* The box above the Letters list. */
 function dh_letter_lc_notice_list()
 {
-	return '<div class="lc-letter-notice">'.t('The letters marked LC review letter are used by the long-course approval process. DIPI sends them automatically to the ATs, the student and the LC admin. You can change their subject and text, but not their name, status, course type or whether they are active.').'</div>';
+	return '<div class="lc-letter-notice">'.t('The letters marked Automatic · LC review are used by the long-course approval process. DIPI sends them automatically to the ATs, the student and the LC admin, so their status is LC Automatic (or the review status) and they are never offered as a Custom letter or for bulk email. You can change their subject and text, but not their name, status, course type or whether they are active.').'</div>';
 }
 
 /* The box at the top of an LC letter's edit page ($editing TRUE) or view page. */

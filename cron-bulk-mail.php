@@ -32,6 +32,11 @@ while ($row = $result->fetchAssoc())
 
    $bm_updated_by = db_query("select td_val1 from dh_type_detail where td_type = 'COURSE-APPLICANT' and td_key='COURSE-SYSTEM-UID'")->fetchField();
    $bm_updated = date('Y-m-d H:i:s');
+   // The letter must still be one bulk email may send, else nothing is sent and the bulk mail shows as failed
+   // (inc/bulk-mail.inc dh_bulk_mail_stop_if_letter_bad; owner, 26 Nov 2026).
+   if (dh_bulk_mail_stop_if_letter_bad($row, $bm_updated_by, $bm_updated))
+      continue;
+
    $center_count = 0;
    $center_count = db_query("select COALESCE(SUM(bm_count),0) FROM dh_bulk_mail where MONTH(bm_schedule_date) = MONTH(CURRENT_DATE()) AND YEAR(bm_schedule_date) = YEAR(CURRENT_DATE()) and bm_center='{$row['bm_center']}' and bm_processed in (1, 2);")->fetchField();
 

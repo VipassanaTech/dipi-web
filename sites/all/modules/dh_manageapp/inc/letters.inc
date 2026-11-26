@@ -508,6 +508,11 @@ function dh_letters_form($form, &$form_state, $edit_data = array())
 		$statuses[$key] = $value;
 	}
 
+	// A letter keeps showing its own status when it is not in the list (e.g. LC Automatic, which only the automatic LC
+	// letters have and nobody can choose: inc/letter-protect.inc).
+	if (!$add && isset($edit_data['l_event']) && $edit_data['l_event'] !== '' && !isset($statuses[$edit_data['l_event']]))
+		$statuses[$edit_data['l_event']] = $edit_data['l_event'];
+
 	$q = "select td_id, td_val1 from dh_type_detail where td_type='COURSE-TYPE'";
 	$course_types = db_query($q)->fetchAllKeyed();
 	$course_types['0'] = 'All';
@@ -1300,18 +1305,28 @@ function dh_get_letter($type, $id, $event, $letter_id = 0, $comment = '')
 	}
 	$search = _dh_letter_values($row, $id, $comment, isset($search) ? $search : array());
 
+	// By status: the first fitting active letter (the automatic LC letters have their own status, LC Automatic, which
+	// no application has: the long-course process sends them by id, found by name).
+	$args = array(':c' => $row['CentreID']);
 	if ( $letter_id == 0)
-		$where = " and l_event='$event' and l_course_type in ('".$row['c_course_type']."', '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1";  
+	{
+		$where = " and l_event = :e and l_course_type in (:ct, '0') and l_deleted=0 order by l_course_type desc, l_name asc limit 1";
+		$args += array(':e' => (string) $event, ':ct' => (string) $row['c_course_type']);
+	}
 	else
-		$where = " and l_id=$letter_id";
-	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center='".$row['CentreID']."' $where";
+	{
+		$where = " and l_id = :l";
+		$args[':l'] = (int) $letter_id;
+	}
+	$q = "select l_id, l_name, l_subject, l_body, l_attachment, l_event, l_sms from dh_letter l where l_center = :c $where";
 	//watchdog('LETTER', $q);
-	$result = db_query($q);
+	$result = db_query($q, $args);
 	$letter = $result->fetchAssoc();
 
 	if ($letter['l_subject'] == '')
 	{
-		watchdog('LETTER', $q);
+		// The lookup with its values (centre, status, course type, letter id), as before the placeholders: no personal data.
+		watchdog('LETTER', '@q -- @a', array('@q' => $q, '@a' => json_encode($args)));
 		logit($centre, 'Letter', $id, 'No letter Found!' );		
 		return array('result' => false, 'msg' => 'No Letter Found');
 	}

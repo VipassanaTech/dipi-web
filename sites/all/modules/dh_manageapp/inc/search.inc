@@ -65,19 +65,7 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 	//$statuses[$system_statues['STATUS-ATTENDED']] = $system_statues['STATUS-ATTENDED'];
 	$statuses[$system_statues['STATUS-CUSTOM']] = $system_statues['STATUS-CUSTOM'];
 
-	$letters = array();
-	$q = "select l_id, l_event, l_name, l_course_type, l_subject from dh_letter where l_center=$centre and l_deleted=0 order by l_event, l_name";
-	$letter_res = db_query($q);
-	while( $l = $letter_res->fetchAssoc())
-	{
-		// 'type' = the letter's course type (0 = all types); the status-change popup
-		// offers only letters for the row's course type or for all types.
-		$item = array('id' => $l['l_id'], 'status' => $l['l_name'], 'type' => (int) $l['l_course_type']);
-		// An empty subject = no letter at send time (dh_get_letter): the "no letter" note needs to know.
-		if ($l['l_subject'] == '')
-			$item['nosubj'] = 1;
-		$letters[$l['l_event']][] = $item;
-	}
+	$letters = dh_search_status_letters($centre);
 	$letters_json = json_encode($letters);
 
 	$courses = array(); $today = date('Y-m-d',strtotime("-2 month"));
@@ -1474,6 +1462,19 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 						if (lnote)
 							$(".sub-letter-"+rd.aid).append($("<span class=\"letter-none\" style=\"color:#c62828;font-weight:bold\"></span>").text(lnote));
 					}
+					// Custom, but this centre has no Custom letter for the course type (the automatic LC letters are not
+					// offered, inc/letter-protect.inc): nothing could be sent, so say so instead of updating with no letter.
+					if (tmp == "'.$system_statues['STATUS-CUSTOM'].'" && rd.centreid == lettersCentre && !rd.transferred)
+					{
+						var cct = rd.coursetype, clist = letters[tmp] || [];
+						var cavail = (typeof cct === "undefined") ? clist : clist.filter(function (x) { return x.type == 0 || x.type == cct; });
+						if (!cavail.length)
+						{
+							$.alert("There is no Custom letter for this course type. Add one on the Letters page first.");
+							s.val("");
+							return;
+						}
+					}
 					if ( (letters[tmp] === null) || (typeof letters[tmp] !== "object") )
 						return;
 					// Offer only letters for this row course type or for all types (0), the same
@@ -1560,6 +1561,14 @@ function dh_manageapp_search_results( $type, $where, $centre, $show_centre_name 
 					}
 					var tr1 = $(this).closest("tr");
 					var row1 = table.row( tr1 );
+					// Custom with the letter list closed without a choice: ask for the letter, never send one nobody picked.
+					// (When only one letter fits, its name is already shown under the status and the server sends that one.)
+					var rdc = row1.data() || {};
+					if (s == "'.$system_statues['STATUS-CUSTOM'].'" && !letter && !$(".sub-letter-"+id).text() && rdc.centreid == lettersCentre && !rdc.transferred)
+					{
+						alert("Please choose the letter to send: select Custom again and pick a letter.");
+						return;
+					}
 					// The AT transferred this application and is still its recommending AT: ask before sending it back to them.
 					var tat = (row1.data() || {}).transfer_at;
 					if (s == "R-ATReview" && tat)
@@ -2436,10 +2445,20 @@ function dh_manageapp_search_form($form, &$form_state, $edit_data = array())
       }
 
       $form[$group]['bulk_mail_name'] = array('#title' => 'Bulk Mail Batch Name', '#type' => 'textfield', '#default_value' => $update_bm?$edit_data['bulk_mail_name']:'', '#size' => '15', '#weight' => 5.9, '#description' => 'Give a name to this bulk mail batch', '#prefix' => '<div class="bm-gated">');
-      $q = "select l_id, l_name from dh_letter where l_center = $centre_id and l_event='custom'";
-      $letters = db_query($q)->fetchAllKeyed();
-      $letters[''] = 'Choose';
+      $letters = dh_bulk_mail_letter_options($centre_id);
       $form[$group]['letters'] = array('#title' => 'Custom Letter to Send', '#type' => 'select', '#default_value' => $update_bm?$edit_data['letters']:'', '#options' => $letters, '#weight' => 6);
+      // Editing a saved bulk mail whose letter cannot be sent any more (inactive, gone, an automatic LC letter): say
+      // so and start from Choose, so a new letter must be picked (owner, 26 Nov 2026).
+      if ($update_bm && !empty($edit_data['letters']) && !isset($letters[$edit_data['letters']]))
+      {
+        $gone = dh_bulk_mail_letter_problem($centre_id, $edit_data['letters']).' '.t('Please choose a new letter.');
+        $form[$group]['letters']['#default_value'] = '';
+        // A line under the box (a #description would become a hover tooltip in the Bootstrap theme).
+        $form[$group]['letters']['#suffix'] = '<div class="bm-letter-gone">'.$gone.'</div>';
+        drupal_add_css('.bm-letter-gone{color:#a94442;font-weight:bold;font-size:14px;margin:-8px 0 10px}', array('type' => 'inline'));
+        if (empty($form_state['input']))
+          drupal_set_message($gone, 'warning');
+      }
       $form[$group]['bulk-mail-schedule'] = array('#title' => '&nbsp;Bulk-Mail Date?', '#type' => 'date_popup', '#default_value' => $update_bm?$edit_data['bulk-mail-schedule']:'',
         '#date_format' => 'Y-m-d',
         '#default_value' => date('Y-m-d'),
@@ -3077,4 +3096,39 @@ function dh_search_lc_status($type)
 		if (strcasecmp($s, $type) === 0)
 			return $s;
 	return '';
+}
+
+/**
+ * The letters the search page's status popup offers, by status: array(l_event => array(array('id', 'status' = the
+ * letter name, 'type' = course type (0 = all types), 'nosubj' when the subject is empty))). Active letters of $centre
+ * only. The automatic LC letters have their own status (LC Automatic, inc/letter-protect.inc), which no application
+ * has, so they are never offered.
+ */
+function dh_search_status_letters($centre)
+{
+	$letters = array();
+	$res = db_query("select l_id, l_event, l_name, l_course_type, l_subject from dh_letter where l_center = :c and l_deleted = 0 order by l_event, l_name",
+		array(':c' => (int) $centre));
+	while ($l = $res->fetchAssoc())
+	{
+		// The popup offers only letters for the row's course type or for all types.
+		$item = array('id' => $l['l_id'], 'status' => $l['l_name'], 'type' => (int) $l['l_course_type']);
+		// An empty subject = no letter at send time (dh_get_letter): the "no letter" note needs to know.
+		if ($l['l_subject'] == '')
+			$item['nosubj'] = 1;
+		$letters[$l['l_event']][] = $item;
+	}
+	return $letters;
+}
+
+/**
+ * The "Custom Letter to Send" choices of bulk email: 'Choose', then the centre's active Custom letters by name (the
+ * automatic LC letters have their own status, LC Automatic). The same rule as dh_bulk_mail_letter_problem()
+ * (inc/bulk-mail.inc), which the send checks again on the day.
+ */
+function dh_bulk_mail_letter_options($centre_id)
+{
+	$letters = db_query("select l_id, l_name from dh_letter where l_center = :c and l_event = 'Custom' and l_deleted = 0 order by l_name, l_id",
+		array(':c' => (int) $centre_id))->fetchAllKeyed();
+	return array('' => 'Choose') + $letters;
 }

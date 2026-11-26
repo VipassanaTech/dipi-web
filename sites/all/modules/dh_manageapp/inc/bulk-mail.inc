@@ -17,6 +17,9 @@ function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $sc
   if ($bm_id) {
     $bm['bm_updated'] = date('Y-m-d H:i:s');
     $bm['bm_updated_by'] = $user->uid;
+    // A bulk mail stopped because its letter could not be sent: saved again with a new letter, it is Pending again.
+    if ((int) db_query("select bm_processed from dh_bulk_mail where bm_id = :b", array(':b' => $bm_id))->fetchField() == DH_BULK_MAIL_LETTER_FAILED)
+      $bm['bm_processed'] = 0;
     db_update('dh_bulk_mail')->fields($bm)->condition('bm_id', $bm_id)->execute();
   }
   else {
@@ -26,6 +29,46 @@ function dh_create_edit_bulk_mail_schedule($bulk_mail_name, $where, $letter, $sc
   }
 }
 
+
+/* bm_processed: 0 pending, 1 completed, 2 in progress, 3 muted, 4 failed (monthly limit), 5 failed (letter). */
+define('DH_BULK_MAIL_LETTER_FAILED', 5);
+
+/**
+ * Why bulk email cannot send letter $letter_id of $centre_id, in simple words, or '' when it can. A bulk mail sends
+ * only an active Custom letter of its centre (the automatic LC letters have their own status, LC Automatic): the same
+ * letters the "Custom Letter to Send" list offers (dh_bulk_mail_letter_options). The send checks this again on the day
+ * (cron-bulk-mail.php), so a letter made inactive after the bulk mail was saved is never sent (owner, 26 Nov 2026).
+ */
+function dh_bulk_mail_letter_problem($centre_id, $letter_id)
+{
+  $l = db_query("select l_id, l_name, l_event, l_deleted from dh_letter where l_id = :l and l_center = :c",
+    array(':l' => (int) $letter_id, ':c' => (int) $centre_id))->fetchAssoc();
+  if (!$l)
+    return t('The letter of this bulk mail does not exist any more.');
+  if ($l['l_deleted'])
+    return t('The letter "@n" is not active any more.', array('@n' => $l['l_name']));
+  if (strcasecmp(rtrim((string) $l['l_event']), 'Custom') != 0)
+    return t('The letter "@n" is not a Custom letter any more.', array('@n' => $l['l_name']));
+  return '';
+}
+
+/**
+ * The send-day check of one due bulk mail ($row: bm_id, bm_center, bm_letter), run by cron-bulk-mail.php before
+ * anything is queued: when its letter cannot be sent (dh_bulk_mail_letter_problem), the bulk mail becomes "Failed! Not
+ * sent." (DH_BULK_MAIL_LETTER_FAILED), the reason is printed and logged, and TRUE is returned. FALSE = go ahead.
+ */
+function dh_bulk_mail_stop_if_letter_bad($row, $uid, $now)
+{
+  $problem = dh_bulk_mail_letter_problem($row['bm_center'], $row['bm_letter']);
+  if ($problem === '')
+    return FALSE;
+  $why = html_entity_decode($problem, ENT_QUOTES);
+  echo "Failed! " . $row['bm_id'] . ", letter " . $row['bm_letter'] . ": $why\n";
+  db_update('dh_bulk_mail')->fields(array('bm_processed' => DH_BULK_MAIL_LETTER_FAILED, 'bm_updated' => $now, 'bm_updated_by' => $uid))
+    ->condition('bm_id', $row['bm_id'])->condition('bm_processed', 0)->execute();
+  watchdog('BulkMail', 'Bulk mail @b not sent: letter @l cannot be sent (@why)', array('@b' => $row['bm_id'], '@l' => $row['bm_letter'], '@why' => $why), WATCHDOG_WARNING);
+  return TRUE;
+}
 
 function dh_show_bulk_mail_schedule()
 {
@@ -110,6 +153,15 @@ function dh_show_bulk_mail_schedule()
     {
       $temp['action'] = l("Edit", "bulk-mail/$centre_id/".$r['bm_id']."/edit", array("attributes" => array("class" => array("bulk-mail-edit"))))."<br>".l("Delete", "bulk-mail/$centre_id/".$r['bm_id']."/delete", array("attributes" => array("class" => array("bulk-mail-del"))))."<br>".l("Unmute", "bulk-mail/$centre_id/".$r['bm_id']."/unmute", array("attributes" => array("class" => array("bulk-mail-um"))));
       $temp['status'] = "Mute";
+    }
+    elseif($r['bm_processed'] == DH_BULK_MAIL_LETTER_FAILED)
+    {
+      // Stopped on the send day because the letter could not be sent (cron-bulk-mail.php): nothing went out.
+      $why = dh_bulk_mail_letter_problem($centre_id, $r['bm_letter']);
+      if ($why === '')
+        $why = t('The letter was not active on the send date.');
+      $temp['action'] = l("Edit", "bulk-mail/$centre_id/".$r['bm_id']."/edit", array("attributes" => array("class" => array("bulk-mail-edit"))))."<br>".l("Delete", "bulk-mail/$centre_id/".$r['bm_id']."/delete", array("attributes" => array("class" => array("bulk-mail-del"))));
+      $temp['status'] = '<span style="color:#a94442"><b>'.t('Failed! Not sent.').'</b><br>'.$why.'<br>'.t('Edit it to choose another letter and date.').'</span>';
     }
     elseif($r['bm_processed'] == 4)
     {
