@@ -138,54 +138,107 @@ function dh_city_cleanup_plan($country = NULL)
 	return $plan;
 }
 
-/* Everything the undo needs, read before any change: the city rows of $plan (all columns) and, per table, the rows
-   that point at a copy: array('id', 'city'), dh_patrika also 'p_updated' and 'p_updated_by'. */
+/* The map copy id => kept id of $plan. */
+function _dh_city_cleanup_map($plan)
+{
+	$to_keep = array();
+	foreach ($plan as $g)
+		foreach ($g['drop'] as $d)
+			$to_keep[(int) $d] = (int) $g['keep'];
+	return $to_keep;
+}
+
+/* The records that point at one of the cities $drop right now, found with a plain read (it locks nothing): table =>
+   list of array('id', 'city'), dh_patrika also 'p_updated' and 'p_updated_by'. */
+function _dh_city_cleanup_pointing($drop)
+{
+	$refs = array();
+	foreach (_dh_city_cleanup_tables() as $t => $c)
+	{
+		$refs[$t] = array();
+		$more = $t == 'dh_patrika' ? ', p_updated, p_updated_by' : '';
+		foreach (array_chunk($drop, 500) as $ids)
+			foreach (db_query("select $c[0] id, $c[1] city$more from $t where $c[1] in (:d) order by $c[0]", array(':d' => $ids))->fetchAll(PDO::FETCH_ASSOC) as $r)
+				$refs[$t][] = $r;
+	}
+	return $refs;
+}
+
+/* Everything the undo needs, read before any change: the city rows of $plan (all columns) and, per table, the records
+   that point at a copy (see _dh_city_cleanup_pointing). */
 function dh_city_cleanup_snapshot($plan)
 {
-	$keep = $drop = array();
+	$keep = array();
 	foreach ($plan as $g)
-	{
 		$keep[] = $g['keep'];
-		$drop = array_merge($drop, $g['drop']);
-	}
+	$drop = array_keys(_dh_city_cleanup_map($plan));
 	$snap = array('cities' => array(), 'refs' => array());
 	foreach (array_chunk(array_merge($keep, $drop), 500) as $ids)
 		foreach (db_query("select * from dh_city where c_id in (:i) order by c_id", array(':i' => $ids))->fetchAll(PDO::FETCH_ASSOC) as $r)
 			$snap['cities'][] = $r;
-	foreach (_dh_city_cleanup_tables() as $t => $c)
-	{
-		$snap['refs'][$t] = array();
-		$more = $t == 'dh_patrika' ? ', p_updated, p_updated_by' : '';
-		foreach (array_chunk($drop, 500) as $ids)
-			foreach (db_query("select $c[0] id, $c[1] city$more from $t where $c[1] in (:d) order by $c[0]", array(':d' => $ids))->fetchAll(PDO::FETCH_ASSOC) as $r)
-				$snap['refs'][$t][] = $r;
-	}
+	$snap['refs'] = _dh_city_cleanup_pointing($drop);
 	return $snap;
 }
 
-/* Do $plan in one transaction as $uid: point every record at the kept city, delete the copies, give the kept city its
-   clean name. dh_patrika rows get updated time and user (its trigger logs the change by that user). Returns counts:
-   array('renamed', 'deleted', 'refs' => table => rows). */
-function dh_city_cleanup_apply($plan, $uid)
+/* Point the records $list of table $t at their kept city, by their own row ids, 200 at a time. Each statement is its
+   own short step: it locks only those rows, for a moment. dh_patrika rows get updated time and user (its trigger logs
+   the change by that user). Returns how many records changed. */
+function _dh_city_cleanup_move($t, $list, $to_keep, $uid, $now)
 {
-	$done = array('renamed' => 0, 'deleted' => 0, 'refs' => array_fill_keys(array_keys(_dh_city_cleanup_tables()), 0));
+	$tables = _dh_city_cleanup_tables();
+	list($idc, $col) = $tables[$t];
+	$by = array();
+	foreach ($list as $r)
+		if (isset($to_keep[(int) $r['city']]))
+			$by[(int) $r['city']][] = (int) $r['id'];
+	$n = 0;
+	foreach ($by as $copy => $ids)
+		foreach (array_chunk($ids, 200) as $chunk)
+		{
+			$f = array($col => $to_keep[$copy]);
+			if ($t == 'dh_patrika')
+				$f += array('p_updated' => $now, 'p_updated_by' => (int) $uid);
+			$n += db_update($t)->fields($f)->condition($idc, $chunk, 'IN')->condition($col, $copy)->execute();
+		}
+	return $n;
+}
+
+/**
+ * Do $plan as $uid WITHOUT long locks. On prod dh_applicant has no index on a_city, so one UPDATE by city reads and
+ * locks the whole table, and inside one transaction that held up every application save (27 Nov 2026). So: the
+ * records of $snap are moved by their own row ids, a few at a time; records that took a copy after $snap are found
+ * with a plain read (no lock) and moved the same way; then one short step on dh_city alone deletes the copies and
+ * gives the kept cities their clean names; a last read moves any record that took a copy in between. Safe to stop and
+ * run again. Returns array('renamed', 'deleted', 'refs' => table => records moved, 'late' => table => records found
+ * after $snap, as _dh_city_cleanup_pointing gives them, for the undo).
+ */
+function dh_city_cleanup_apply($plan, $snap, $uid)
+{
+	$to_keep = _dh_city_cleanup_map($plan);
+	$tables = _dh_city_cleanup_tables();
 	$now = date('Y-m-d H:i:s');
+	$done = array('renamed' => 0, 'deleted' => 0, 'refs' => array_fill_keys(array_keys($tables), 0), 'late' => array());
+	foreach ($snap['refs'] as $t => $list)
+		if (isset($tables[$t]))
+			$done['refs'][$t] += _dh_city_cleanup_move($t, $list, $to_keep, $uid, $now);
+	$late = function () use (&$done, $to_keep, $uid, $now)
+	{
+		if ($to_keep)
+			foreach (_dh_city_cleanup_pointing(array_keys($to_keep)) as $t => $list)
+				if ($list)
+				{
+					$done['late'][$t] = array_merge(isset($done['late'][$t]) ? $done['late'][$t] : array(), $list);
+					$done['refs'][$t] += _dh_city_cleanup_move($t, $list, $to_keep, $uid, $now);
+				}
+	};
+	$late();
 	$txn = db_transaction();
 	try
 	{
 		foreach ($plan as $g)
 		{
 			if ($g['drop'])
-			{
-				foreach (_dh_city_cleanup_tables() as $t => $c)
-				{
-					$f = array($c[1] => $g['keep']);
-					if ($t == 'dh_patrika')
-						$f += array('p_updated' => $now, 'p_updated_by' => (int) $uid);
-					$done['refs'][$t] += db_update($t)->fields($f)->condition($c[1], $g['drop'], 'IN')->execute();
-				}
 				$done['deleted'] += db_delete('dh_city')->condition('c_id', $g['drop'], 'IN')->execute();
-			}
 			if ($g['name'] !== $g['old_name'])
 				$done['renamed'] += db_update('dh_city')->fields(array('c_name' => $g['name']))->condition('c_id', $g['keep'])->execute();
 		}
@@ -195,19 +248,19 @@ function dh_city_cleanup_apply($plan, $uid)
 		$txn->rollback();
 		throw $e;
 	}
+	unset($txn);   // the dh_city step is saved here
+	$late();
 	return $done;
 }
 
-/* The undo, from the backup array('plan', 'snap') written before dh_city_cleanup_apply: the deleted cities come back
-   with their own ids, the kept cities get their old names back, and each record points at its old city again. A record
-   or name changed since is left as it is (counted in 'kept'). Returns counts. */
+/* The undo, from the backup array('plan', 'snap', 'late') written around dh_city_cleanup_apply: the deleted cities
+   come back with their own ids and the kept cities get their old names back (one short step on dh_city), then each
+   record points at its old city again, by its row id. A record or name changed since is left as it is (counted in
+   'kept'). Returns counts. */
 function dh_city_cleanup_undo($backup)
 {
 	$res = array('cities_back' => 0, 'names_back' => 0, 'refs_back' => 0, 'kept' => 0);
-	$to_keep = array();
-	foreach ($backup['plan'] as $g)
-		foreach ($g['drop'] as $d)
-			$to_keep[(int) $d] = (int) $g['keep'];
+	$to_keep = _dh_city_cleanup_map($backup['plan']);
 	$txn = db_transaction();
 	try
 	{
@@ -229,8 +282,17 @@ function dh_city_cleanup_undo($backup)
 				else
 					$res['kept']++;
 			}
-		$tables = _dh_city_cleanup_tables();
-		foreach ($backup['snap']['refs'] as $t => $list)
+	}
+	catch (Exception $e)
+	{
+		$txn->rollback();
+		throw $e;
+	}
+	unset($txn);
+	$tables = _dh_city_cleanup_tables();
+	$lists = array($backup['snap']['refs'], isset($backup['late']) ? $backup['late'] : array());
+	foreach ($lists as $refs)
+		foreach ($refs as $t => $list)
 		{
 			if (!isset($tables[$t]))
 				continue;
@@ -244,11 +306,5 @@ function dh_city_cleanup_undo($backup)
 				$res[$n ? 'refs_back' : 'kept']++;
 			}
 		}
-	}
-	catch (Exception $e)
-	{
-		$txn->rollback();
-		throw $e;
-	}
 	return $res;
 }

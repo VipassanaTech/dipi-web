@@ -59,10 +59,13 @@ t_in_txn(function () {
   t_eq(array_intersect_key($n, array_flip(array('dh_applicant', 'dh_student', 'dh_patrika', 'dh_pin_code', 'dh_center', 'dh_referral', 'dh_lc_admin'))),
     array('dh_applicant' => 2, 'dh_student' => 1, 'dh_patrika' => 1, 'dh_pin_code' => 1, 'dh_center' => 1, 'dh_referral' => 1, 'dh_lc_admin' => 1), 'the backup holds every record that points at a copy');
   t_eq(count($snap['cities']), 13, 'and the 5 kept and 8 removed city rows');
-  $backup = json_decode(json_encode(array('plan' => $plan, 'snap' => $snap)), TRUE);   // as the script writes and reads it
+  $late_app = t_make_applicant($course, array('a_city' => $c2));   // a new application takes a copy after the backup was read
 
-  $done = dh_city_cleanup_apply($plan, $sys);
+  $done = dh_city_cleanup_apply($plan, $snap, $sys);
   t_eq(array($done['deleted'], $done['renamed']), array(8, 4), '8 copies removed, 4 names fixed');
+  t_eq(array_column($done['late']['dh_applicant'], 'id'), array((string) $late_app), 'a record that took a copy after the backup is found by a plain read');
+  t_eq(array(tcc_val('dh_applicant', 'a_city', 'a_id', $late_app), $done['refs']['dh_applicant']), array($c1, 3), 'and moved too (3 applications in all)');
+  $backup = json_decode(json_encode(array('plan' => $plan, 'snap' => $snap, 'late' => $done['late'])), TRUE);   // as the script writes and reads it
   t_eq(array(tcc_val('dh_applicant', 'a_city', 'a_id', $app1), tcc_val('dh_applicant', 'a_city', 'a_id', $app2), tcc_val('dh_applicant', 'a_city', 'a_id', $app3)), array($c1, $q[0], $c1), 'applications point at the kept city');
   t_eq(array(tcc_val('dh_student', 's_city', 's_id', $stu), tcc_val('dh_patrika', 'p_city', 'p_id', $pat), tcc_val('dh_pin_code', 'pc_city', 'pc_id', $pin),
     tcc_val('dh_center', 'c_city', 'c_id', $cen), tcc_val('dh_referral', 'r_city', 'r_id', $ref), tcc_val('dh_lc_admin', 'la_city', 'la_id', $la)),
@@ -81,7 +84,8 @@ t_in_txn(function () {
   db_update('dh_applicant')->fields(array('a_city' => $alone))->condition('a_id', $app2)->execute();
   db_update('dh_city')->fields(array('c_name' => 'Alcarras Changed'))->condition('c_id', $ent)->execute();
   $r = dh_city_cleanup_undo($backup);
-  t_eq($r, array('cities_back' => 8, 'names_back' => 3, 'refs_back' => 7, 'kept' => 2), 'undo: 8 cities, 3 names and 7 records back; 2 changed since are kept');
+  t_eq($r, array('cities_back' => 8, 'names_back' => 3, 'refs_back' => 8, 'kept' => 2), 'undo: 8 cities, 3 names and 8 records back; 2 changed since are kept');
+  t_eq(tcc_val('dh_applicant', 'a_city', 'a_id', $late_app), $c2, 'the late record goes back too');
   t_eq(array(tcc_name($c1), tcc_name($c3), tcc_name($q[1]), tcc_name($ent), tcc_name($sp)), array("cox's bazar", "COX'S BAZAR", "Connah\\&#039;s Quay", 'Alcarras Changed', 'Sao Paulo'), 'old names back with their own ids');
   t_eq(array(tcc_val('dh_applicant', 'a_city', 'a_id', $app1), tcc_val('dh_applicant', 'a_city', 'a_id', $app2), tcc_val('dh_student', 's_city', 's_id', $stu),
     tcc_val('dh_patrika', 'p_city', 'p_id', $pat), tcc_val('dh_pin_code', 'pc_city', 'pc_id', $pin), tcc_val('dh_center', 'c_city', 'c_id', $cen),
@@ -89,5 +93,18 @@ t_in_txn(function () {
     array($c3, $alone, $c4, $m_ent, $c2, $c5, $sp_ent, $q[1]), 'records point at their old city again, except the one changed since');
   t_eq(db_query("select p_updated from dh_patrika where p_id = :p", array(':p' => $pat))->fetchField(), '2020-01-01 00:00:00', 'the Patrika row gets its old updated time back');
   t_eq(count(dh_city_cleanup_plan('ZZ')), 4, 'after the undo the four cities with copies need fixing again');
+});
+// stopped half way (records moved, copies not yet removed): a second run finishes the job
+t_in_txn(function () {
+  $a = tcc_city("Ra'anana"); $b = tcc_city("Ra'anana"); $course = t_make_course(); $app = t_make_applicant($course, array('a_city' => $b));
+  $plan = dh_city_cleanup_plan('ZZ'); $snap = dh_city_cleanup_snapshot($plan);
+  _dh_city_cleanup_move('dh_applicant', $snap['refs']['dh_applicant'], _dh_city_cleanup_map($plan), dh_system_uid(), date('Y-m-d H:i:s'));
+  t_eq(array(tcc_val('dh_applicant', 'a_city', 'a_id', $app), (int) db_query("select count(*) from dh_city where c_id = :b", array(':b' => $b))->fetchField()), array($a, 1), 'half way: the record is moved, the copy still there');
+  $plan2 = dh_city_cleanup_plan('ZZ');
+  t_eq(array($plan2[0]['keep'], $plan2[0]['drop']), array($a, array($b)), 'a new run finds the same copy');
+  $snap2 = dh_city_cleanup_snapshot($plan2);
+  t_eq(count($snap2['refs']['dh_applicant']), 0, 'with no record left on it');
+  $done = dh_city_cleanup_apply($plan2, $snap2, dh_system_uid());
+  t_eq(array($done['deleted'], (int) db_query("select count(*) from dh_city where c_id = :b", array(':b' => $b))->fetchField(), tcc_val('dh_applicant', 'a_city', 'a_id', $app)), array(1, 0, $a), 'and finishes: copy removed, record on the kept city');
 });
 t_done();

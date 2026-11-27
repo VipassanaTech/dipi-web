@@ -6,14 +6,18 @@
 //   apply:    php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-27-city-cleanup.php --apply --backup=/root/backups/<dir>/city-cleanup-before.json
 //   undo:     php7.3 sites/all/modules/dh_manageapp/deploy/2026-11-27-city-cleanup.php --undo --backup=/root/backups/<dir>/city-cleanup-before.json
 // --apply first writes the backup (the plan, the city rows and every record that points at a copy; never over an
-// existing file), then makes the change as System in one transaction. --undo puts back what the backup holds, except
-// records changed since. A second --apply finds nothing.
+// existing file), then makes the change as System in small steps by row id, never holding a lock for long (an
+// UPDATE by city on dh_applicant held up all application saves on 27 Nov 2026: a_city has no index). It waits at most
+// 10 seconds for a lock and then stops. If it stops, nothing is broken: run it again with a NEW backup file; undo
+// with each backup file, newest first. --undo puts back what the backup holds, except records changed since. A second
+// --apply finds nothing.
 if (php_sapi_name() !== 'cli') { echo "Command line only.\n"; exit(1); }
 define('DRUPAL_ROOT', getcwd());
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1'; $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['SCRIPT_NAME'] = '/index.php';
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 require_once dirname(__DIR__) . '/inc/city-cleanup.inc';   // one-time code: the site itself does not load it
+db_query('SET SESSION innodb_lock_wait_timeout = 10');   // never make the site wait on us; we give up first
 
 $mode = 'dry'; $backup = '';
 foreach (array_slice($argv, 1) as $arg)
@@ -83,10 +87,25 @@ if ($json === FALSE || @file_put_contents($backup, $json) === FALSE || file_get_
 	echo "Cannot write the backup $backup. Nothing was done.\n";
 	exit(1);
 }
-$done = dh_city_cleanup_apply($plan, dh_system_uid());
+echo "Backup written: $backup\n";
+try
+{
+	$done = dh_city_cleanup_apply($plan, $snap, dh_system_uid());
+}
+catch (Exception $e)
+{
+	echo "STOPPED: " . $e->getMessage() . "\nNothing is broken: records moved so far point at the kept city, which is the same city. Run again with a NEW backup file to finish; undo with each backup file, newest first.\n";
+	exit(1);
+}
+if ($done['late'])
+{
+	$json = json_encode(array('plan' => $plan, 'snap' => $snap, 'late' => $done['late'], 'made' => date('Y-m-d H:i:s')));
+	if ($json === FALSE || @file_put_contents($backup, $json) === FALSE)
+		echo "WARNING: could not add the late records to the backup. Late records (table: row ids): " . json_encode(array_map(function ($l) { return array_column($l, 'id'); }, $done['late'])) . "\n";
+}
 echo "Done: $done[deleted] copies removed, $done[renamed] names changed. Records moved to the kept city:\n";
 foreach ($done['refs'] as $t => $n)
-	echo "  $t: $n\n";
+	echo "  $t: $n" . (isset($done['late'][$t]) ? ' (' . count($done['late'][$t]) . ' of them took a copy after the backup)' : '') . "\n";
 echo "Backup: $backup\n";
 echo "Cities still to fix: " . count(dh_city_cleanup_plan()) . "\n";
 echo "Undo: php7.3 sites/all/modules/dh_manageapp/deploy/" . basename(__FILE__) . " --undo --backup=$backup\n";
