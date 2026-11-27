@@ -17,7 +17,8 @@ function _dh_lc_complete_where($key)
 
 /**
  * What to add: one row per missing letter, array('centre', 'key', 'from' = the template letter id). A centre counts
- * when it has at least one letter. A letter counts as there when the centre has it at all, active or inactive (an
+ * when it is in the centre list (dh_center; letters left behind by removed centres are not a centre) and has at least
+ * one letter. A letter counts as there when the centre has it at all, active or inactive (an
  * inactive LC letter is left as it is, never doubled). Throws when the template lacks an active letter with a subject.
  */
 function dh_lc_complete_plan()
@@ -32,7 +33,7 @@ function dh_lc_complete_plan()
 		$from[$key] = (int) $id;
 	}
 	$plan = array();
-	foreach (db_query("select distinct l_center from dh_letter where l_center > 0 order by l_center")->fetchCol() as $c)
+	foreach (db_query("select distinct l.l_center from dh_letter l join dh_center c on c.c_id = l.l_center where l.l_center > 0 order by l.l_center")->fetchCol() as $c)
 		foreach ($from as $key => $id)
 		{
 			list($w, $v) = _dh_lc_complete_where($key);

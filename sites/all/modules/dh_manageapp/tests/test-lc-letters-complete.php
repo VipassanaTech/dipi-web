@@ -29,6 +29,10 @@ t_in_txn(function () {
   t_eq($for($b), array('r_changed', 'a_changed', 'r_returned'), 'a centre missing the three teacher-change letters gets just those');
   t_eq($for($e), array(), 'a centre without any letters is left out');
   t_eq(count($for(0)), 0, 'the template centre itself is never touched');
+  $gone = (int) db_query("select max(c_id) from dh_center")->fetchField() + 1000;   // letters left behind by a removed centre
+  tc_letter($gone, 'Old letter');
+  t_eq(count($for($gone)), 0, 'letters left behind by a centre that no longer exists: not a centre, left out');
+  $plan = dh_lc_complete_plan();
 
   $ids = dh_lc_complete_apply($plan, dh_system_uid());
   t_eq(count($ids), count($plan), 'one new letter per planned row');
